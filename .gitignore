@@ -1,0 +1,114 @@
+# ============================================================
+# Flutter / Dart
+# ============================================================
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication & obfuscation
+app.*.symbols
+app.*.map.json
+
+# ============================================================
+# Android
+# ============================================================
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/.gradle/
+/android/.kotlin/
+/android/build/
+/android/local.properties
+/android/app/google-services.json
+*.jks
+*.keystore
+
+# ============================================================
+# iOS / macOS / Xcode
+# ============================================================
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/Pods/
+**/ios/*.xcworkspace/xcuserdata/
+**/ios/*.xcodeproj/xcuserdata/
+**/ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+.swiftpm/
+*.xcuserstate
+**/DerivedData/
+**/xcuserdata/
+
+# ============================================================
+# Python backend (server/)
+# ============================================================
+
+# Virtual environment
+server/venv/
+server/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+*.egg-info/
+dist/
+*.egg
+
+# Secrets — never commit
+server/.env
+server/.env.*
+
+# Alembic generated SQL dumps
+server/migration.sql
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ============================================================
+# IDE / Editor
+# ============================================================
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# VS Code — keep if you want shared launch/tasks, else uncomment:
+# .vscode/
+
+# ============================================================
+# Miscellaneous / project-specific
+# ============================================================
+*.class
+*.log
+*.pyc
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+
+# Temp files generated during development
+/temp/
+
+# Code-dump scripts and their output (dev tooling, not source)
+codedump.py
+codedump_output.txt
+activity_top.txt
+activity_top_full.txt
+.FullName
+
+# Claude Code agent state (local only)
+.agents/
