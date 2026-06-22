@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, String, Text
@@ -51,8 +52,8 @@ class ExportLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     file_storage_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     download_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
-    expires_at: Mapped[Any | None] = mapped_column(nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    completed_at: Mapped[Any | None] = mapped_column(nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     is_scheduled: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
     schedule_cron: Mapped[str | None] = mapped_column(String(64), nullable=True)

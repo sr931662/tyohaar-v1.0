@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, Numeric, String, Text
@@ -98,6 +99,6 @@ class ImportLog(UUIDPrimaryKeyMixin, TimestampMixin, MetadataMixin, Base):
         nullable=True,
         comment="Inserted IDs for rollback support",
     )
-    started_at: Mapped[Any | None] = mapped_column(nullable=True)
-    completed_at: Mapped[Any | None] = mapped_column(nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
