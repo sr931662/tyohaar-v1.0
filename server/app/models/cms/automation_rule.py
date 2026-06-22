@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, String, Text
@@ -89,7 +90,7 @@ class AutomationRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     total_executions: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     successful_executions: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     failed_executions: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
-    last_triggered_at: Mapped[Any | None] = mapped_column(nullable=True)
+    last_triggered_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # Relationships
     logs: Mapped[list["AutomationLog"]] = relationship(
