@@ -44,6 +44,18 @@ class Settings(BaseSettings):
     # Set to specific hostnames in production, e.g. ["api.tyohaar.com"].
     ALLOWED_HOSTS: list[str] = ["*"]
 
+    @field_validator("ALLOWED_ORIGINS", "ALLOWED_HOSTS", mode="before")
+    @classmethod
+    def parse_list_from_env(cls, v: object) -> object:
+        """Accept comma-separated string or JSON array from environment variables."""
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                import json
+                return json.loads(v)
+            return [item.strip() for item in v.split(",") if item.strip()]
+        return v
+
     # ── Pagination ───────────────────────────────────────────────────────────
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100
