@@ -1,0 +1,14 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.img {
+  display: block;
+  width: auto;
+}
+
+.sm .img { height: 40px; }
+.md .img { height: 50px; }
+.lg .img { height: 72px; }

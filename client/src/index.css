@@ -1,0 +1,193 @@
+/* ============================================================
+   TYOHAAR — global tokens & base
+   Two themes share one structure. Default = Warm Light.
+   Festival of Lights activates via <html data-theme="dark">.
+   ============================================================ */
+
+/* ---------- Type ---------- */
+:root {
+  --font-display: "Yeseva One", Georgia, "Times New Roman", serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-deva: "Tiro Devanagari Hindi", serif;
+
+  /* Spacing scale */
+  --s1: 4px;  --s2: 8px;   --s3: 12px;  --s4: 16px;
+  --s5: 24px; --s6: 32px;  --s7: 48px;  --s8: 64px;
+  --s9: 96px; --s10: 128px;
+
+  /* Section vertical rhythm (responsive) */
+  --section-y: clamp(64px, 10vw, 140px);
+  --gutter: clamp(20px, 5vw, 64px);
+  --maxw: 1240px;
+
+  /* Radii — the arch language */
+  --r-sm: 12px; --r-md: 18px; --r-lg: 26px; --r-xl: 36px;
+  --r-arch: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-soft: cubic-bezier(0.34, 1.2, 0.4, 1);
+
+  /* z-index */
+  --z-nav: 100;
+  --z-menu: 200;
+}
+
+/* ---------- WARM LIGHT (default) ---------- */
+:root,
+:root[data-theme="light"] {
+  --paper:       #F6F1E8;
+  --paper-2:     #FBF8F2;
+  --surface:     #FFFFFF;
+  --surface-2:   #FCF8F1;
+  --ink:         #2A2018;
+  --ink-2:       #6B5D50;
+  --ink-3:       #796A5A;
+  --line:        rgba(42, 32, 24, 0.10);
+  --line-2:      rgba(42, 32, 24, 0.06);
+
+  --saffron:      #E68A2E;
+  --saffron-deep: #C96E1A;
+  --saffron-soft: #FBE7CC;
+  --rose:         #C8456B;
+  --rose-soft:    #F8DCE4;
+  --leaf:         #5E8C5A;
+  --leaf-soft:    #DCE9D7;
+  --gold:         #C99A3B;
+  --on-primary:   #FFFFFF;
+
+  /* Inverted-surface tokens — use on var(--ink) backgrounds */
+  --on-ink:        var(--paper-2);  /* #FBF8F2 on #2A2018 → 14.7:1 */
+  --accent-on-ink: var(--gold);     /* #C99A3B on #2A2018 → 5.9:1  */
+
+  --glow: radial-gradient(circle at 50% 40%, rgba(230,138,46,0.55), rgba(230,138,46,0) 70%);
+  --shadow-sm: 0 1px 2px rgba(42,32,24,0.05), 0 2px 8px rgba(42,32,24,0.05);
+  --shadow-md: 0 4px 10px rgba(42,32,24,0.06), 0 14px 34px rgba(42,32,24,0.08);
+  --shadow-lg: 0 12px 30px rgba(42,32,24,0.10), 0 30px 70px rgba(42,32,24,0.14);
+  --hero-arch-line: rgba(230,138,46,0.22);
+}
+
+/* ---------- FESTIVAL OF LIGHTS ---------- */
+:root[data-theme="dark"] {
+  --paper:       #1B1320;
+  --paper-2:     #211627;
+  --surface:     #271A2E;
+  --surface-2:   #2E1F36;
+  --ink:         #F4EBDC;
+  --ink-2:       #C6B2C0;
+  --ink-3:       #9C8899;
+  --line:        rgba(244, 235, 220, 0.12);
+  --line-2:      rgba(244, 235, 220, 0.07);
+
+  --saffron:      #F0A93C;
+  --saffron-deep: #E0922A;
+  --saffron-soft: rgba(240,169,60,0.16);
+  --rose:         #EC6E92;
+  --rose-soft:    rgba(236,110,146,0.18);
+  --leaf:         #7FC9A7;
+  --leaf-soft:    rgba(127,201,167,0.16);
+  --gold:         #E8C46A;
+  --on-primary:   #2A1A0A;
+
+  /* Inverted-surface tokens — use on var(--ink) backgrounds */
+  --on-ink:        var(--paper-2);  /* #211627 on #F4EBDC → 13.2:1 */
+  --accent-on-ink: #C96E1A;         /* dark saffron on #F4EBDC → 3.8:1 */
+
+  --glow: radial-gradient(circle at 50% 40%, rgba(240,169,60,0.7), rgba(240,169,60,0) 70%);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4), 0 2px 10px rgba(0,0,0,0.35);
+  --shadow-md: 0 6px 16px rgba(0,0,0,0.45), 0 18px 44px rgba(0,0,0,0.5);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.5), 0 40px 90px rgba(0,0,0,0.6);
+  --hero-arch-line: rgba(240,169,60,0.30);
+}
+
+/* ---------- Reset / base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+* { margin: 0; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 90px; /* offset sticky nav for anchor jumps */
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: background 0.5s var(--ease), color 0.5s var(--ease);
+  overflow-x: hidden;
+}
+
+img, svg, video { display: block; max-width: 100%; }
+
+a { color: inherit; text-decoration: none; }
+
+button { font: inherit; color: inherit; cursor: pointer; }
+
+input, textarea, select { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--saffron);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+::selection { background: var(--saffron-soft); color: var(--ink); }
+
+/* ---------- Shared layout helpers ---------- */
+.ty-container {
+  width: 100%;
+  max-width: var(--maxw);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.ty-section {
+  padding-block: var(--section-y);
+  position: relative;
+}
+
+/* Display & headings */
+.ty-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+}
+
+.ty-deva { font-family: var(--font-deva); }
+
+/* Scrollbar (Festival mood keeps it subtle) */
+@media (pointer: fine) {
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line); border-radius: 999px; border: 3px solid var(--paper);
+  }
+}
+
+/* App demo helpers */
+.ty-scroll {
+  scrollbar-width: none;
+}
+.ty-scroll::-webkit-scrollbar { display: none; }
+
+@keyframes tyfall {
+  0%   { transform: translateY(0) rotate(0deg);    opacity: 0.9; }
+  100% { transform: translateY(120vh) rotate(720deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,54 @@
+.ph {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--ph-color) 26%, var(--surface)) 0%,
+    color-mix(in srgb, var(--ph-color) 9%, var(--surface)) 100%
+  );
+  box-shadow: var(--shadow-sm);
+}
+
+.orb {
+  position: absolute;
+  top: 36%;
+  left: 50%;
+  width: 34%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ph-color) 30%, transparent);
+}
+
+/* custom centerpiece (e.g. gift box) in place of the orb */
+.emblem {
+  position: absolute;
+  top: 36%;
+  left: 50%;
+  width: 46%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  justify-content: center;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35))
+          drop-shadow(0 0 18px color-mix(in srgb, var(--gold) 35%, transparent));
+}
+.emblem :is(img, svg) {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.label {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(4px);
+  padding: 4px 9px;
+  border-radius: 7px;
+}

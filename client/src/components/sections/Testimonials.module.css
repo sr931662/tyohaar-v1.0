@@ -1,0 +1,81 @@
+.wrap { background: var(--surface-2); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(16px, 2vw, 24px);
+}
+
+.card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: clamp(26px, 3vw, 38px);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--tint);
+  opacity: 0.7;
+}
+
+/* first card spans full width as a feature quote */
+.feature {
+  grid-column: 1 / -1;
+  background: var(--ink);
+}
+.feature .quote { color: var(--on-ink); font-size: clamp(22px, 3vw, 32px); }
+.feature .name { color: var(--on-ink); }
+.feature .quoteMark { color: var(--accent-on-ink); }
+
+.quoteMark {
+  position: absolute;
+  top: 14px;
+  right: 26px;
+  font-family: var(--font-display);
+  font-size: 80px;
+  line-height: 1;
+  color: color-mix(in srgb, var(--tint) 40%, transparent);
+  pointer-events: none;
+}
+
+.quote {
+  font-family: var(--font-display);
+  font-size: clamp(18px, 2vw, 23px);
+  line-height: 1.35;
+  color: var(--ink);
+  margin: 0 0 26px;
+  position: relative;
+}
+
+.cite {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--on-primary);
+  background: var(--tint);
+}
+.name { display: block; font-weight: 700; font-size: 15px; color: var(--ink); }
+.role { display: block; font-size: 13.5px; color: var(--ink-3); margin-top: 1px; }
+
+@media (max-width: 720px) {
+  .grid { grid-template-columns: 1fr; }
+}

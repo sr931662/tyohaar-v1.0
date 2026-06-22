@@ -1,0 +1,25 @@
+.diya {
+  display: inline-block;
+  width: var(--diya-size, 12px);
+  height: var(--diya-size, 12px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, #ffe6bf 0%, var(--saffron) 55%, var(--saffron-deep) 100%);
+  box-shadow:
+    0 0 calc(var(--diya-size, 12px) * 1.6) calc(var(--diya-size, 12px) * 0.35) rgba(240, 169, 60, 0.7),
+    0 0 calc(var(--diya-size, 12px) * 0.6) rgba(240, 169, 60, 0.9);
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.pulse {
+  animation: diyaGlow 3.4s ease-in-out infinite;
+}
+
+@keyframes diyaGlow {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse { animation: none; }
+}

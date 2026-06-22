@@ -1,0 +1,15 @@
+export const services = [
+  { name: 'Decorations',  tint: 'saffron', desc: 'Themed florals, balloons & draping' },
+  { name: 'Catering',     tint: 'gold',    desc: 'Full meals, live counters & buffet' },
+  { name: 'Pantry',       tint: 'saffron', desc: 'Chai, juices, snacks & refreshments' },
+  { name: 'Waiters',      tint: 'leaf',    desc: 'Trained waitstaff for seamless service' },
+  { name: 'Photography',  tint: 'rose',    desc: 'Candid, portrait & family coverage' },
+  { name: 'Videography',  tint: 'rose',    desc: 'Cinematic highlights & full recording' },
+  { name: 'Music',        tint: 'leaf',    desc: 'Live musicians & curated playlists' },
+  { name: 'DJ',           tint: 'gold',    desc: 'Professional DJ with full sound setup' },
+  { name: 'Invitations',  tint: 'saffron', desc: 'Digital & printed invitation design' },
+  { name: 'Cakes',        tint: 'rose',    desc: 'Custom celebration cakes & desserts' },
+  { name: 'Lighting',     tint: 'gold',    desc: 'Ambient, fairy & stage lighting' },
+  { name: 'Seating',      tint: 'leaf',    desc: 'Tables, chairs & furniture arrangement' },
+  { name: 'Cleanup',      tint: 'leaf',    desc: 'Post-celebration venue cleanup' },
+];
