@@ -53,10 +53,9 @@ from app.services.admin.exceptions import (
     RoleInUseError,
     RoleNotFoundError,
 )
+from app.core.security import create_access_token, decode_access_token
 from app.services.admin.helpers import (
-    generate_admin_token,
     hash_admin_password,
-    hash_admin_token,
     verify_admin_password,
 )
 from app.services.admin.validators import (
@@ -133,15 +132,7 @@ class AdminService(BaseService):
             await uow.admin.admins.reset_failed_login(admin.id)
             await uow.admin.admins.update_last_login(admin.id, ip_address=ip_address)
 
-            raw_token = generate_admin_token()
-            token_hash = hash_admin_token(raw_token)
-
-            # Store token_hash on user session via auth repository
-            await uow.auth.create_admin_session(
-                admin_id=admin.id,
-                token_hash=token_hash,
-                ip_address=ip_address,
-            )
+            access_token = create_access_token(str(admin.user_id))
 
             await uow.commit()
 
@@ -156,16 +147,11 @@ class AdminService(BaseService):
         )
 
         return AdminTokenResponse(
-            access_token=raw_token,
-            admin_id=admin.id,
+            access_token=access_token,
         )
 
     async def admin_logout(self, admin_id: UUID, token: str) -> None:
-        token_hash = hash_admin_token(token)
-        async with self._uow() as uow:
-            await uow.auth.invalidate_admin_session(token_hash=token_hash)
-            await uow.commit()
-
+        # JWT is stateless — client discards the token on logout.
         await self.write_audit_log(
             admin_id=admin_id,
             action="admin_logout",
@@ -177,12 +163,13 @@ class AdminService(BaseService):
         )
 
     async def verify_admin_token(self, token: str) -> AdminResponse:
-        token_hash = hash_admin_token(token)
+        user_id_str = decode_access_token(token)
+        if user_id_str is None:
+            raise AdminInvalidTokenError("Admin session token is invalid or expired.")
         async with self._uow() as uow:
-            session = await uow.auth.get_admin_session_by_token_hash(token_hash)
-            if session is None:
-                raise AdminInvalidTokenError("Admin session token is invalid or expired.")
-            admin = await uow.admin.admins.get_by_id(session.admin_id)
+            from uuid import UUID as _UUID
+            user_id = _UUID(user_id_str)
+            admin = await uow.admin.admins.find_by_user(user_id)
             if admin is None:
                 raise AdminInvalidTokenError("Admin account not found for this token.")
             return AdminResponse.model_validate(admin)

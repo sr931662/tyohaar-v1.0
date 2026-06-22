@@ -165,6 +165,12 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
         ),
     )
 
+    password_hash: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="HMAC-SHA256 hex digest. Set only for admin/password-based accounts.",
+    )
+
     password_last_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
