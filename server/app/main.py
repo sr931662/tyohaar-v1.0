@@ -322,9 +322,18 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestIDMiddleware)
 
     # 5. CORS — handle OPTIONS preflight and inject CORS response headers.
+    # allow_credentials=True is incompatible with allow_origins=["*"] per the CORS spec.
+    # When wildcard is configured we use allow_origin_regex instead so every origin
+    # receives its own reflected value rather than the literal "*".
+    _origins = settings.ALLOWED_ORIGINS
+    _origin_regex = None
+    if "*" in _origins:
+        _origins = []
+        _origin_regex = ".*"
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_origins=_origins,
+        allow_origin_regex=_origin_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
