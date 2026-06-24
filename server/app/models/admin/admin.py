@@ -340,6 +340,16 @@ class Admin(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, Me
         return datetime.now(tz=timezone.utc) < self.account_locked_until
 
     @property
+    def is_active(self) -> bool:
+        """True when admin_status is ACTIVE."""
+        return self.admin_status == AdminStatus.ACTIVE
+
+    @property
+    def can_login(self) -> bool:
+        """True when the admin may authenticate to the panel."""
+        return self.admin_status == AdminStatus.ACTIVE and not self.is_locked
+
+    @property
     def is_super_admin(self) -> bool:
         """
         True when the assigned role grants super admin privileges.

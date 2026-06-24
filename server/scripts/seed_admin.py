@@ -87,9 +87,9 @@ async def get_or_create_user(session) -> User:
             user.account_status = AccountStatus.ACTIVE
             user.email_verified = True
             print("  [~] Upgraded user role -> SUPER_ADMIN")
-        if PASSWORD and not user.password_hash:
+        if PASSWORD:
             user.password_hash = hash_admin_password(PASSWORD)
-            print("  [~] Set password_hash on existing user")
+            print("  [~] Updated password_hash (re-hashed with current SECRET_KEY)")
         return user
 
     user = User(

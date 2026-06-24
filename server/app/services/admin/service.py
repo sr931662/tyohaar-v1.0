@@ -20,7 +20,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
-from app.models.enums import AdminStatus
+from app.models.enums import AdminStatus, AuditAction
 from app.schemas.admin import (
     AdminCreate,
     AdminPermissionCreate,
@@ -95,51 +95,56 @@ class AdminService(BaseService):
         password: str,
         ip_address: str | None = None,
     ) -> AdminTokenResponse:
-        async with self._uow() as uow:
-            admin = await uow.admin.admins.find_by_work_email(email)
-            if admin is None:
-                raise AdminLoginFailedError("Invalid email or password.")
+        try:
+            async with self._uow() as uow:
+                # Look up user by email first (credentials live on User, not Admin)
+                user = await uow.users.users.find_by_email(email)
+                if user is None:
+                    raise AdminLoginFailedError("Invalid email or password.")
 
-            validate_admin_not_locked(admin)
+                admin = await uow.admin.admins.find_by_user(user.id)
+                if admin is None:
+                    raise AdminLoginFailedError("Invalid email or password.")
 
-            # Retrieve user record that holds password_hash via work_email lookup.
-            # The Admin model stores the hash on the linked User; we access it
-            # via uow.users.users if needed.  Here we check admin-specific stored hash.
-            # The Admin model itself does not have a password_hash column — authentication
-            # is delegated to the User record (see model docstring).  We use the User's
-            # password_hash via the user relationship.
-            user = await uow.users.users.get_by_id(admin.user_id)
-            stored_hash = getattr(user, "password_hash", None) or ""
-            if user is None or not verify_admin_password(password, stored_hash):
-                await uow.admin.admins.increment_failed_login(admin.id)
-                new_count = admin.failed_login_count + 1
-                if new_count >= MAX_FAILED_LOGIN_ATTEMPTS:
-                    locked_until = datetime.now(tz=timezone.utc) + timedelta(
-                        minutes=ADMIN_LOCKOUT_DURATION_MINUTES
-                    )
-                    await uow.admin.admins.update(
-                        admin,
-                        {
-                            "account_locked_until": locked_until,
-                            "failed_login_count": new_count,
-                        },
-                    )
+                validate_admin_not_locked(admin)
+
+                stored_hash = getattr(user, "password_hash", None) or ""
+                if not verify_admin_password(password, stored_hash):
+                    await uow.admin.admins.increment_failed_login(admin.id)
+                    new_count = admin.failed_login_count + 1
+                    if new_count >= MAX_FAILED_LOGIN_ATTEMPTS:
+                        locked_until = datetime.now(tz=timezone.utc) + timedelta(
+                            minutes=ADMIN_LOCKOUT_DURATION_MINUTES
+                        )
+                        await uow.admin.admins.update(
+                            admin,
+                            {
+                                "account_locked_until": locked_until,
+                                "failed_login_count": new_count,
+                            },
+                        )
+                    await uow.commit()
+                    raise AdminLoginFailedError("Invalid email or password.")
+
+                # Successful login — reset counters and record last login
+                await uow.admin.admins.reset_failed_login(admin.id)
+                await uow.admin.admins.update_last_login(admin.id, ip_address=ip_address)
+
+                access_token = create_access_token(str(admin.user_id))
+                admin_id = admin.id
+
                 await uow.commit()
-                raise AdminLoginFailedError("Invalid email or password.")
-
-            # Successful login — reset counters and record last login
-            await uow.admin.admins.reset_failed_login(admin.id)
-            await uow.admin.admins.update_last_login(admin.id, ip_address=ip_address)
-
-            access_token = create_access_token(str(admin.user_id))
-
-            await uow.commit()
+        except (AdminLoginFailedError, AdminLockedError):
+            raise
+        except Exception as exc:
+            logger.error("admin_login DB error for %s: %s", email, exc)
+            raise AdminLoginFailedError("Login service temporarily unavailable. Please try again.") from exc
 
         await self.write_audit_log(
-            admin_id=admin.id,
-            action="admin_login",
+            admin_id=admin_id,
+            action=AuditAction.LOGIN,
             entity_type="admin",
-            entity_id=str(admin.id),
+            entity_id=str(admin_id),
             changes=None,
             ip_address=ip_address,
             user_agent=None,
@@ -149,11 +154,11 @@ class AdminService(BaseService):
             access_token=access_token,
         )
 
-    async def admin_logout(self, admin_id: UUID, token: str) -> None:
+    async def admin_logout(self, admin_id: UUID) -> None:
         # JWT is stateless — client discards the token on logout.
         await self.write_audit_log(
             admin_id=admin_id,
-            action="admin_logout",
+            action=AuditAction.LOGOUT,
             entity_type="admin",
             entity_id=str(admin_id),
             changes=None,
@@ -193,7 +198,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=created_by_id,
-            action="admin_create",
+            action=AuditAction.CREATE,
             entity_type="admin",
             entity_id=str(admin.id),
             changes={"user_id": str(data.user_id), "role_id": str(data.role_id)},
@@ -237,7 +242,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=updated_by_id,
-            action="admin_update",
+            action=AuditAction.UPDATE,
             entity_type="admin",
             entity_id=str(admin_id),
             changes=payload,
@@ -264,7 +269,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=deactivated_by_id,
-            action="admin_deactivate",
+            action=AuditAction.UPDATE,
             entity_type="admin",
             entity_id=str(admin_id),
             changes={"admin_status": AdminStatus.DEACTIVATED.value},
@@ -292,7 +297,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=admin_id,
-            action="admin_password_change",
+            action=AuditAction.UPDATE,
             entity_type="admin",
             entity_id=str(admin_id),
             changes={},
@@ -314,7 +319,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=created_by_id,
-            action="role_create",
+            action=AuditAction.CREATE,
             entity_type="admin_role",
             entity_id=str(role.id),
             changes={"name": data.name, "slug": data.slug},
@@ -350,7 +355,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=updated_by_id,
-            action="role_update",
+            action=AuditAction.UPDATE,
             entity_type="admin_role",
             entity_id=str(role_id),
             changes=payload,
@@ -372,7 +377,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=admin_id,
-            action="role_delete",
+            action=AuditAction.DELETE,
             entity_type="admin_role",
             entity_id=str(role_id),
             changes={"name": role.name},
@@ -395,7 +400,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=assigned_by_id,
-            action="admin_role_assign",
+            action=AuditAction.ASSIGN,
             entity_type="admin",
             entity_id=str(admin_id),
             changes={"role_id": str(role_id)},
@@ -420,7 +425,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=created_by_id,
-            action="permission_create",
+            action=AuditAction.CREATE,
             entity_type="admin_permission",
             entity_id=str(perm.id),
             changes={"code": data.code},
@@ -462,7 +467,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=assigned_by_id,
-            action="role_permission_assign",
+            action=AuditAction.ASSIGN,
             entity_type="admin_role",
             entity_id=str(role_id),
             changes={"permission_id": str(permission_id)},
@@ -492,7 +497,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=admin_id,
-            action="role_permission_revoke",
+            action=AuditAction.REVOKE,
             entity_type="admin_role",
             entity_id=str(role_id),
             changes={"permission_id": str(permission_id)},
@@ -526,7 +531,7 @@ class AdminService(BaseService):
         """
         try:
             async with self._uow() as uow:
-                await uow.admin.audit_logs.create(
+                await uow.admin.audit_logs.create_from_dict(
                     {
                         "actor_id": admin_id,
                         "actor_type": "admin" if admin_id else "system",
@@ -603,7 +608,7 @@ class AdminService(BaseService):
 
         await self.write_audit_log(
             admin_id=unlocked_by_id,
-            action="admin_unlock",
+            action=AuditAction.UPDATE,
             entity_type="admin",
             entity_id=str(admin_id),
             changes={"failed_login_count": 0, "account_locked_until": None},
