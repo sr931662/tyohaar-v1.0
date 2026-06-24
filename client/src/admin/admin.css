@@ -1271,76 +1271,285 @@ textarea.form-control {
   .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
 }
 
-/* Login page */
-.admin-login-page {
+/* ============================================================
+   Login page — full redesign
+   ============================================================ */
+.ty-login-root {
   min-height: 100vh;
-  background: var(--bg-base);
-  background-image: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(212,113,30,0.18), transparent 70%);
+  background: #1B1320;
+  background-image:
+    radial-gradient(ellipse 70% 55% at 50% -5%, rgba(240,169,60,0.22), transparent 65%),
+    radial-gradient(ellipse 40% 40% at 85% 90%, rgba(200,69,107,0.09), transparent 55%),
+    radial-gradient(circle at 1px 1px, rgba(244,235,220,0.04) 1px, transparent 0);
+  background-size: auto, auto, 28px 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
 }
 
-[data-theme="dark"] .admin-login-page {
-  background-image: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(240,169,60,0.15), transparent 70%);
-}
-
-.admin-login-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-xl);
-  padding: 40px;
+.ty-login-card {
+  position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
+  background: rgba(33, 22, 39, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 22px;
+  padding: 44px 40px 36px;
+  box-shadow:
+    0 0 0 1px rgba(240,169,60,0.0),
+    0 24px 64px rgba(0,0,0,0.65),
+    0 8px 24px rgba(0,0,0,0.4),
+    0 0 80px rgba(240,169,60,0.06);
 }
 
-[data-theme="dark"] .admin-login-card {
-  border-color: rgba(240,169,60,0.12);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(240,169,60,0.08);
+/* Gradient border via ::before */
+.ty-login-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgba(240,169,60,0.55) 0%,
+    rgba(240,169,60,0.18) 30%,
+    rgba(255,255,255,0.04) 55%,
+    rgba(200,69,107,0.12) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
-.admin-login-logo {
+/* ---- Brand lockup ---- */
+.ty-login-brand {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  margin-bottom: 32px;
-  justify-content: center;
+  margin-bottom: 28px;
 }
 
-.admin-login-logo .logo-icon {
-  width: 44px;
+.ty-login-emblem {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+
+.ty-login-wordmark {
+  font-family: "Yeseva One", Georgia, serif;
+  font-size: 24px;
+  font-weight: 400;
+  color: #F4EBDC;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+/* ---- Header ---- */
+.ty-login-header {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.ty-login-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(240,169,60,0.12);
+  border: 1px solid rgba(240,169,60,0.25);
+  color: #F0A93C;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.ty-login-title {
+  font-family: "Yeseva One", Georgia, serif;
+  font-size: 26px;
+  font-weight: 400;
+  color: #F4EBDC;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  margin-bottom: 7px;
+}
+
+.ty-login-sub {
+  font-size: 13.5px;
+  color: #C6B2C0;
+  line-height: 1.5;
+}
+
+/* ---- Separator ---- */
+.ty-login-sep {
+  height: 1px;
+  margin: 24px 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(240,169,60,0.25) 30%,
+    rgba(240,169,60,0.25) 70%,
+    transparent
+  );
+}
+
+/* ---- Form ---- */
+.ty-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ty-login-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(220,38,38,0.12);
+  border: 1px solid rgba(220,38,38,0.25);
+  color: #f87171;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.ty-login-field {
+  margin-bottom: 14px;
+}
+
+.ty-login-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #C6B2C0;
+  margin-bottom: 7px;
+}
+
+.ty-login-req {
+  color: #F0A93C;
+  margin-left: 2px;
+}
+
+.ty-login-input {
+  width: 100%;
   height: 44px;
-  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
-  border-radius: var(--radius-xl);
+  padding: 0 14px;
+  background: rgba(14, 10, 20, 0.55);
+  border: 1px solid rgba(244,235,220,0.13);
+  border-radius: 10px;
+  color: #F4EBDC;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.ty-login-input::placeholder {
+  color: rgba(198,178,192,0.45);
+}
+
+.ty-login-input:focus {
+  border-color: rgba(240,169,60,0.55);
+  box-shadow: 0 0 0 3px rgba(240,169,60,0.12);
+}
+
+.ty-login-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ty-login-pass-wrap {
+  position: relative;
+}
+
+.ty-login-pass-wrap .ty-login-input {
+  padding-right: 44px;
+}
+
+.ty-login-eye {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 44px;
+  width: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  font-weight: 700;
-  color: white;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(198,178,192,0.6);
+  transition: color 150ms ease;
 }
 
-.admin-login-logo .logo-text {
-  font-size: 22px;
+.ty-login-eye:hover { color: #F0A93C; }
+
+/* ---- Submit button ---- */
+.ty-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 46px;
+  margin-top: 8px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #F0A93C 0%, #D4711E 55%, #B85A15 100%);
+  color: #fff;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--text-primary);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(212,113,30,0.38), 0 1px 3px rgba(0,0,0,0.3);
+  transition: opacity 180ms ease, box-shadow 180ms ease, transform 120ms ease;
 }
 
-.admin-login-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary);
-  text-align: center;
-  margin-bottom: 6px;
+.ty-login-btn:hover:not(:disabled) {
+  opacity: 0.92;
+  box-shadow: 0 6px 28px rgba(212,113,30,0.52), 0 1px 4px rgba(0,0,0,0.3);
+  transform: translateY(-1px);
 }
 
-.admin-login-sub {
-  font-size: 13.5px;
-  color: var(--text-secondary);
-  text-align: center;
-  margin-bottom: 28px;
+.ty-login-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.ty-login-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@keyframes ty-spin { to { transform: rotate(360deg); } }
+.ty-login-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: ty-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ---- Footer ---- */
+.ty-login-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 24px;
+  font-size: 11.5px;
+  color: rgba(198,178,192,0.5);
+  letter-spacing: 0.02em;
 }
 
 /* Progress / loading */
