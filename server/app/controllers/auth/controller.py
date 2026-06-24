@@ -15,14 +15,20 @@ from app.core.config import settings
 from app.core.current_user import CurrentUserDep
 from app.core.dependencies import AuthServiceDep
 from app.core.responses import SuccessResponse
-from app.core.security import get_token_from_header
+from app.core.security import create_access_token, get_token_from_header
 from app.schemas.auth.create import OTPRequestCreate, OTPVerifyCreate
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
 from app.services.auth.service import TokenPairResponse
+from app.services.admin.helpers import verify_admin_password
 
 
 class _RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class _VendorLoginRequest(BaseModel):
+    email: str
+    password: str
 
 
 def _client_ip(request: Request) -> str | None:
@@ -30,6 +36,31 @@ def _client_ip(request: Request) -> str | None:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else None
+
+
+async def vendor_login(
+    body: _VendorLoginRequest,
+    service: AuthServiceDep,
+) -> SuccessResponse[dict]:
+    from sqlalchemy import select
+    from app.db.session import AsyncSessionLocal
+    from app.models.users.user import User
+    from app.models.enums import UserRole, AccountStatus
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(User).where(User.email == body.email))
+        user = result.scalar_one_or_none()
+
+    if user is None or user.role != UserRole.VENDOR:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
+    if user.account_status != AccountStatus.ACTIVE:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active.")
+    stored_hash = getattr(user, "password_hash", None) or ""
+    if not stored_hash or not verify_admin_password(body.password, stored_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
+
+    token = create_access_token(str(user.id))
+    return SuccessResponse(data={"access_token": token}, message="Vendor login successful.")
 
 
 async def request_otp(

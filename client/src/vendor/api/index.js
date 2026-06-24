@@ -3,11 +3,8 @@ import { vendorClient, extractData, extractList, extractPaginated } from './clie
 // ── Auth (OTP-based) ──────────────────────────────────────────────────────────
 
 export const vendorAuthApi = {
-  requestOtp: (phone) =>
-    vendorClient.post('/auth/otp/request', { phone }).then(extractData),
-
-  verifyOtp: (phone, otp) =>
-    vendorClient.post('/auth/otp/verify', { phone, otp }).then(extractData),
+  loginWithPassword: (email, password) =>
+    vendorClient.post('/auth/vendor/login', { email, password }).then(extractData),
 
   logout: () =>
     vendorClient.post('/auth/logout').then(extractData),

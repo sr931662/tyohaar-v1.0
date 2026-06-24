@@ -14,6 +14,7 @@ Steps:
 from __future__ import annotations
 
 import asyncio
+import getpass
 import sys
 from pathlib import Path
 
@@ -22,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy import select
 
 from app.core.config import settings  # noqa: loads .env
+from app.services.admin.helpers import hash_admin_password
 from app.db.session import AsyncSessionLocal
 from app.models.enums import (
     AccountStatus,
@@ -92,8 +94,11 @@ def collect_details() -> dict:
     phone = ask("Mobile number (E.164 format, e.g. +919876543210)", "+91")
     if not phone.startswith("+"):
         phone = "+91" + phone.lstrip("0")
-    email = ask("Email address")
+    email = ask("Email address (used for login)")
     full_name = ask("Full name")
+    password = getpass.getpass("  Login password: ")
+    if not password:
+        print("  [!] No password entered — vendor won't be able to log in via email.")
 
     divider("BUSINESS IDENTITY")
     vendor_types = [v.value for v in VendorType]
@@ -114,6 +119,7 @@ def collect_details() -> dict:
         "phone": phone,
         "email": email or None,
         "full_name": full_name or None,
+        "password": password or None,
         "vendor_type": vendor_type,
         "business_name": business_name,
         "legal_name": legal_name or None,
@@ -137,7 +143,10 @@ async def get_or_create_user(session, d: dict) -> User:
         print(f"\n  [skip] User already exists  (id={user.id}  phone={d['phone']})")
         if user.role != UserRole.VENDOR:
             user.role = UserRole.VENDOR
-            print("  [~] Role updated → VENDOR")
+            print("  [~] Role updated -> VENDOR")
+        if d.get("password"):
+            user.password_hash = hash_admin_password(d["password"])
+            print("  [~] Password updated")
         return user
 
     user = User(
@@ -152,6 +161,7 @@ async def get_or_create_user(session, d: dict) -> User:
         phone_verified=True,
         email_verified=bool(d["email"]),
         mfa_enabled=False,
+        password_hash=hash_admin_password(d["password"]) if d.get("password") else None,
     )
     session.add(user)
     await session.flush()

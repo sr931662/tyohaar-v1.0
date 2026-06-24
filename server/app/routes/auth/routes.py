@@ -14,6 +14,17 @@ from app.services.auth.service import TokenPairResponse
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 router.add_api_route(
+    "/vendor/login",
+    ctrl.vendor_login,
+    methods=["POST"],
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Vendor Login",
+    description="Authenticate a vendor user with email and password. Returns a JWT access token.",
+    operation_id="auth_vendor_login",
+)
+
+router.add_api_route(
     "/otp/request",
     ctrl.request_otp,
     methods=["POST"],
