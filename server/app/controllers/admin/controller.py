@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from app.core.current_user import CurrentUserDep
 from app.core.dependencies import AdminServiceDep
@@ -46,8 +46,11 @@ def _cursor_resp(page: CursorPage, page_size: int) -> CursorPaginatedResponse:
 async def admin_login(
     body: AdminLoginCreate,
     service: AdminServiceDep,
+    request: Request,
 ) -> SuccessResponse[AdminTokenResponse]:
-    result = await service.admin_login(data=body)
+    forwarded = request.headers.get("X-Forwarded-For")
+    ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else None)
+    result = await service.admin_login(email=body.email, password=body.password, ip_address=ip)
     return SuccessResponse(data=result, message="Admin login successful.")
 
 
