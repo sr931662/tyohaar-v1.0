@@ -1,5 +1,5 @@
 """
-Admin Controller — admin auth, management, roles, permissions, and audit logs.
+Updated Admin Controller — admin auth, management, roles, permissions, and audit logs.
 """
 
 from __future__ import annotations
