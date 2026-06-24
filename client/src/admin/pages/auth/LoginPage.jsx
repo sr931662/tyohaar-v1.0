@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAdminAuth } from '../../context/AuthContext';
+import logoSrc from '../../../assets/logo.png';
 import '../../admin.css';
 
 export default function LoginPage() {
@@ -40,7 +41,7 @@ export default function LoginPage() {
       <div className="admin-login-page" style={{ flex: 1 }}>
         <div className="admin-login-card">
           <div className="admin-login-logo">
-            <div className="logo-icon">T</div>
+            <img src={logoSrc} alt="Tyohaar" style={{ height: 44, width: 'auto' }} />
             <span className="logo-text">Tyohaar</span>
           </div>
 

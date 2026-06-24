@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import logoSrc from '../../../assets/logo.png';
 import { useAdminAuth } from '../../context/AuthContext';
 
 const NAV = [
@@ -65,7 +66,7 @@ export default function Sidebar({ collapsed, onToggle }) {
   return (
     <aside className={`admin-sidebar${collapsed ? ' collapsed' : ''}`}>
       <div className="admin-sidebar-logo">
-        <div className="logo-icon">T</div>
+        <img src={logoSrc} alt="Tyohaar" style={{ height: 28, width: 'auto', flexShrink: 0 }} />
         {!collapsed && <span className="logo-text">Tyohaar</span>}
         <button className="sidebar-toggle" onClick={onToggle} title={collapsed ? 'Expand' : 'Collapse'}>
           {collapsed ? '›' : '‹'}
