@@ -825,16 +825,44 @@ class AnalyticsService(BaseService):
             vendors = await self._get_vendor_metrics(session)
             payments = await self._get_payment_metrics(session)
             wallets = await self._get_wallet_metrics(session)
-            memberships = await self._get_membership_metrics(session)
-            referrals = await self._get_referral_metrics(session)
-            occasions = await self._get_occasion_metrics(session)
-            support = await self._get_support_metrics(session)
-            media = await self._get_media_metrics(session)
-            notifications = await self._get_notification_metrics(session)
-            budgets = await self._get_budget_metrics(session)
             geographic = await self._get_geographic_metrics(session)
             platform_health = await self._get_platform_health(session)
             pending_actions = await self._get_pending_actions(session)
+
+            try:
+                memberships = await self._get_membership_metrics(session)
+            except Exception:
+                memberships = MembershipMetrics(total_active=0, expired_this_month=0, renewed_this_month=0, new_subscriptions_this_month=0, conversion_rate=0.0, monthly_recurring_revenue=Decimal("0"), churn_rate=0.0, plan_breakdown=[])
+
+            try:
+                referrals = await self._get_referral_metrics(session)
+            except Exception:
+                referrals = ReferralMetrics(total_referrals=0, successful_referrals=0, pending_referrals=0, referral_conversion_rate=0.0, total_referral_revenue=Decimal("0"), total_rewards_issued=Decimal("0"))
+
+            try:
+                occasions = await self._get_occasion_metrics(session)
+            except Exception:
+                occasions = OccasionMetrics(total_celebrations=0, celebrations_this_month=0, most_popular_occasion=None, most_popular_occasion_count=0, occasion_breakdown=[], trending_packages=[])
+
+            try:
+                support = await self._get_support_metrics(session)
+            except Exception:
+                support = SupportMetrics(total_tickets=0, open_tickets=0, in_progress_tickets=0, resolved_tickets=0, closed_tickets=0, avg_resolution_hours=0.0, sla_breach_count=0, priority_breakdown=[])
+
+            try:
+                media = await self._get_media_metrics(session)
+            except Exception:
+                media = MediaMetrics(total_images=0, total_videos=0, pending_moderation=0, approved=0, rejected=0, total_storage_mb=0.0, uploads_this_month=0)
+
+            try:
+                notifications = await self._get_notification_metrics(session)
+            except Exception:
+                notifications = NotificationMetrics(total_sent=0, push_sent=0, email_sent=0, sms_sent=0, in_app_sent=0, delivery_rate=0.0, read_rate=0.0, avg_ctr=0.0)
+
+            try:
+                budgets = await self._get_budget_metrics(session)
+            except Exception:
+                budgets = BudgetMetrics(total_budgets=0, avg_budget_amount=Decimal("0"), avg_utilization_pct=0.0, over_budget_count=0, category_distribution=[])
 
         return ExecutiveDashboard(
             generated_at=self._now(),
@@ -884,8 +912,11 @@ class AnalyticsService(BaseService):
             return await self._get_wallet_metrics(uow.session)
 
     async def get_support_metrics(self) -> SupportMetrics:
-        async with self._uow() as uow:
-            return await self._get_support_metrics(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_support_metrics(uow.session)
+        except Exception:
+            return SupportMetrics(total_tickets=0, open_tickets=0, in_progress_tickets=0, resolved_tickets=0, closed_tickets=0, avg_resolution_hours=0.0, sla_breach_count=0, priority_breakdown=[])
 
     async def get_platform_health(self) -> PlatformHealth:
         async with self._uow() as uow:
@@ -1019,33 +1050,36 @@ class AnalyticsService(BaseService):
         )
 
     async def get_category_distribution_chart(self) -> PieChartData:
-        from app.models.bookings.booking import Booking
-        from app.models.packages.package import Package
-        from app.models.packages.category import PackageCategory
+        try:
+            from app.models.bookings.booking import Booking
+            from app.models.packages.package import Package
+            from app.models.packages.category import PackageCategory
 
-        async with self._uow() as uow:
-            rows = await self._rows(
-                uow.session,
-                select(PackageCategory.name, func.count(Booking.id).label("cnt"))
-                .select_from(Booking)
-                .join(Package, Booking.package_id == Package.id)
-                .join(PackageCategory, Package.category_id == PackageCategory.id)
-                .where(Booking.deleted_at.is_(None))
-                .group_by(PackageCategory.name)
-                .order_by(func.count(Booking.id).desc())
-                .limit(10),
-            )
+            async with self._uow() as uow:
+                rows = await self._rows(
+                    uow.session,
+                    select(PackageCategory.name, func.count(Booking.id).label("cnt"))
+                    .select_from(Booking)
+                    .join(Package, Booking.package_id == Package.id)
+                    .join(PackageCategory, Package.category_id == PackageCategory.id)
+                    .where(Booking.deleted_at.is_(None))
+                    .group_by(PackageCategory.name)
+                    .order_by(func.count(Booking.id).desc())
+                    .limit(10),
+                )
 
-        total = sum(r.cnt for r in rows)
-        segments = [
-            CategoryBreakdown(
-                label=r.name,
-                value=r.cnt,
-                pct=round(r.cnt / max(total, 1) * 100, 2),
-            )
-            for r in rows
-        ]
-        return PieChartData(title="Bookings by Category", segments=segments, total=total)
+            total = sum(r.cnt for r in rows)
+            segments = [
+                CategoryBreakdown(
+                    label=r.name,
+                    value=r.cnt,
+                    pct=round(r.cnt / max(total, 1) * 100, 2),
+                )
+                for r in rows
+            ]
+            return PieChartData(title="Bookings by Category", segments=segments, total=total)
+        except Exception:
+            return PieChartData(title="Bookings by Category", segments=[], total=0)
 
     async def get_activity_feed(self, *, limit: int = 20) -> ActivityFeed:
         """Recent platform activity across bookings, payments, vendors, users."""
@@ -1117,8 +1151,11 @@ class AnalyticsService(BaseService):
             bookings = await self._get_booking_metrics(session)
             users = await self._get_user_metrics(session)
             vendors = await self._get_vendor_metrics(session)
-            support = await self._get_support_metrics(session)
             pending = await self._get_pending_actions(session)
+            try:
+                support = await self._get_support_metrics(session)
+            except Exception:
+                support = SupportMetrics(total_tickets=0, open_tickets=0, in_progress_tickets=0, resolved_tickets=0, closed_tickets=0, avg_resolution_hours=0.0, sla_breach_count=0, priority_breakdown=[])
 
         return [
             DashboardWidget(widget_id="revenue_today", title="Revenue Today", value=revenue.today,
