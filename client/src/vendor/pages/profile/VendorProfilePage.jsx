@@ -4,6 +4,16 @@ import { toast } from 'sonner';
 import { vendorProfileApi } from '../../api';
 import { useVendorAuth } from '../../context/VendorAuthContext';
 
+const DOC_TYPE_LABELS = {
+  gst_certificate: 'GST Certificate',
+  pan_card: 'PAN Card',
+  aadhar: 'Aadhaar Card',
+  cancelled_cheque: 'Cancelled Cheque',
+  shop_act_license: 'Shop Act License',
+  incorporation_certificate: 'Incorporation Certificate',
+  other: 'Other',
+};
+
 const VENDOR_TYPES = [
   { value: 'decorator', label: 'Decorator' },
   { value: 'caterer', label: 'Caterer' },
@@ -394,6 +404,244 @@ export default function VendorProfilePage() {
           </button>
         </div>
       </form>
+
+      {/* Gallery & Documents — only for existing vendors */}
+      {!isNew && vendor && (
+        <>
+          <GallerySection vendor={vendor} />
+          <DocumentsSection vendor={vendor} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Gallery Section ───────────────────────────────────────────────────────────
+
+function GallerySection({ vendor }) {
+  const qc = useQueryClient();
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [caption, setCaption] = useState('');
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const { data: gallery = [], isLoading } = useQuery({
+    queryKey: ['vendor-gallery', vendor.id],
+    queryFn: () => vendorProfileApi.listGallery(vendor.id),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (body) => vendorProfileApi.addGalleryItem(vendor.id, body),
+    onSuccess: () => {
+      toast.success('Photo added to gallery.');
+      qc.invalidateQueries(['vendor-gallery', vendor.id]);
+      setMediaUrl(''); setCaption(''); setIsFeatured(false);
+    },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add photo.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (itemId) => vendorProfileApi.deleteGalleryItem(vendor.id, itemId),
+    onSuccess: () => {
+      toast.success('Photo removed.'); qc.invalidateQueries(['vendor-gallery', vendor.id]); setConfirmDelete(null);
+    },
+    onError: () => toast.error('Failed to remove photo.'),
+  });
+
+  const handleAdd = (e) => {
+    e.preventDefault();
+    if (!mediaUrl.trim()) return toast.error('Image URL is required.');
+    addMutation.mutate({ media_url: mediaUrl.trim(), caption: caption.trim() || undefined, is_featured: isFeatured, media_type: 'image' });
+  };
+
+  return (
+    <div className="admin-card" style={{ marginBottom: 20 }}>
+      <div style={{ padding: '18px 20px 0' }}>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Business Gallery</h3>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-tertiary)' }}>Showcase your work — photos visible to customers on your profile</p>
+      </div>
+      <div style={{ padding: '16px 20px 20px' }}>
+        {isLoading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+            {[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 10 }} />)}
+          </div>
+        ) : gallery.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
+            {gallery.map((item) => (
+              <div key={item.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '4/3', background: 'var(--bg-base)' }}>
+                <img src={item.media_url} alt={item.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                {item.is_featured && (
+                  <span style={{ position: 'absolute', top: 5, left: 5, fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'rgba(240,169,60,0.9)', color: '#fff' }}>Featured</span>
+                )}
+                {item.caption && (
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '6px 8px', background: 'rgba(0,0,0,0.55)', fontSize: 11, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {item.caption}
+                  </div>
+                )}
+                <button
+                  onClick={() => setConfirmDelete(item)}
+                  style={{ position: 'absolute', top: 5, right: 5, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(239,68,68,0.85)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
+                >×</button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: 16 }}>No photos yet. Add your first one below.</p>
+        )}
+
+        <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+            <input className="admin-input" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="Image URL (https://...)" type="url" />
+            <input className="admin-input" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption (optional)" />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} />
+              Mark as featured
+            </label>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={addMutation.isPending}>
+              {addMutation.isPending ? 'Adding…' : '+ Add Photo'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <ConfirmDialogInline
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
+        message="Remove this photo from your gallery?"
+        loading={deleteMutation.isPending}
+      />
+    </div>
+  );
+}
+
+// ── Documents Section ─────────────────────────────────────────────────────────
+
+function DocumentsSection({ vendor }) {
+  const qc = useQueryClient();
+  const [docType, setDocType] = useState('gst_certificate');
+  const [docUrl, setDocUrl] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const { data: docs = [], isLoading } = useQuery({
+    queryKey: ['vendor-documents', vendor.id],
+    queryFn: () => vendorProfileApi.listDocuments(vendor.id),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (body) => vendorProfileApi.addDocument(vendor.id, body),
+    onSuccess: () => {
+      toast.success('Document added.');
+      qc.invalidateQueries(['vendor-documents', vendor.id]);
+      setDocUrl('');
+    },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add document.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (docId) => vendorProfileApi.deleteDocument(vendor.id, docId),
+    onSuccess: () => {
+      toast.success('Document removed.');
+      qc.invalidateQueries(['vendor-documents', vendor.id]);
+      setConfirmDelete(null);
+    },
+    onError: () => toast.error('Failed to remove document.'),
+  });
+
+  const handleAdd = (e) => {
+    e.preventDefault();
+    if (!docUrl.trim()) return toast.error('Document URL is required.');
+    addMutation.mutate({ vendor_id: vendor.id, document_type: docType, document_url: docUrl.trim() });
+  };
+
+  const VERIFY_COLOR = { verified: '#22c55e', unverified: '#f59e0b', under_review: '#3b82f6', rejected: '#ef4444' };
+
+  return (
+    <div className="admin-card" style={{ marginBottom: 32 }}>
+      <div style={{ padding: '18px 20px 0' }}>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Business Documents</h3>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-tertiary)' }}>KYC documents required for account verification</p>
+      </div>
+      <div style={{ padding: '16px 20px 20px' }}>
+        {isLoading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            {[0, 1].map((i) => <div key={i} className="skeleton" style={{ height: 52, borderRadius: 8 }} />)}
+          </div>
+        ) : docs.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            {docs.map((doc) => {
+              const color = VERIFY_COLOR[doc.verification_status] ?? 'var(--text-tertiary)';
+              return (
+                <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontSize: 18 }}>📄</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{DOC_TYPE_LABELS[doc.document_type] ?? doc.document_type}</div>
+                    <a href={doc.document_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--text-tertiary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 300 }}>
+                      {doc.document_url}
+                    </a>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: `${color}15`, border: `1px solid ${color}30`, color, whiteSpace: 'nowrap' }}>
+                    {doc.verification_status?.replace(/_/g, ' ')}
+                  </span>
+                  {!doc.is_active || doc.verification_status === 'rejected' ? (
+                    <button className="btn btn-sm" style={{ background: 'transparent', border: '1px solid var(--border-subtle)', color: '#ef4444', flexShrink: 0 }} onClick={() => setConfirmDelete(doc)}>Remove</button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: 16 }}>No documents uploaded yet.</p>
+        )}
+
+        <form onSubmit={handleAdd} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 180 }}>
+            <select className="admin-input" value={docType} onChange={(e) => setDocType(e.target.value)}>
+              {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <input className="admin-input" value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="Document URL (https://...)" type="url" />
+          </div>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={addMutation.isPending} style={{ whiteSpace: 'nowrap' }}>
+            {addMutation.isPending ? 'Uploading…' : '+ Add Document'}
+          </button>
+        </form>
+      </div>
+
+      <ConfirmDialogInline
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
+        message="Remove this document?"
+        loading={deleteMutation.isPending}
+      />
+    </div>
+  );
+}
+
+// Small inline confirm dialog used by gallery/docs sections
+function ConfirmDialogInline({ open, onClose, onConfirm, message, loading }) {
+  if (!open) return null;
+  return (
+    <div className="admin-modal-overlay" onClick={onClose} style={{ zIndex: 200 }}>
+      <div className="admin-modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
+        <div className="admin-modal-header">
+          <h2 className="admin-modal-title">Confirm</h2>
+          <button className="admin-modal-close" onClick={onClose}>×</button>
+        </div>
+        <div style={{ padding: '16px 24px 20px' }}>
+          <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{message}</p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" style={{ background: '#ef4444', borderColor: '#ef4444' }} onClick={onConfirm} disabled={loading}>
+              {loading ? 'Removing…' : 'Remove'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

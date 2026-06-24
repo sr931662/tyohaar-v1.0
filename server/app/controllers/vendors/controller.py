@@ -245,6 +245,15 @@ async def check_availability(
     return SuccessResponse(data=available, message="Availability checked.")
 
 
+async def list_bank_accounts(
+    vendor_id: uuid.UUID,
+    current_user: VendorDep,
+    service: VendorServiceDep,
+) -> SuccessResponse[list[VendorBankAccountResponse]]:
+    result = await service.list_bank_accounts(vendor_id=vendor_id)
+    return SuccessResponse(data=result, message="Bank accounts retrieved.")
+
+
 async def add_bank_account(
     vendor_id: uuid.UUID,
     body: VendorBankAccountCreate,

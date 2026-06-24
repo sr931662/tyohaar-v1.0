@@ -221,6 +221,17 @@ router.add_api_route(
 
 router.add_api_route(
     "/{vendor_id}/bank-accounts",
+    ctrl.list_bank_accounts,
+    methods=["GET"],
+    response_model=SuccessResponse[list[VendorBankAccountResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="List Bank Accounts",
+    description="Return all bank accounts registered by the vendor.",
+    operation_id="vendors_list_bank_accounts",
+)
+
+router.add_api_route(
+    "/{vendor_id}/bank-accounts",
     ctrl.add_bank_account,
     methods=["POST"],
     response_model=SuccessResponse[VendorBankAccountResponse],

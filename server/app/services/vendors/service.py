@@ -374,6 +374,12 @@ class VendorService(BaseService):
 
     # ── 5. Vendor Bank Accounts ────────────────────────────────────────────────
 
+    async def list_bank_accounts(self, vendor_id: UUID) -> list[VendorBankAccountResponse]:
+        async with self._uow() as uow:
+            await validate_vendor_exists(vendor_id, uow)
+            accounts = await uow.vendors.bank_accounts.find_by_vendor(vendor_id)
+            return [VendorBankAccountResponse.model_validate(a) for a in accounts]
+
     async def add_bank_account(
         self,
         vendor_id: UUID,

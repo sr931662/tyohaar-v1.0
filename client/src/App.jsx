@@ -29,6 +29,7 @@ const VendorLoginPage      = lazy(() => import('./vendor/pages/auth/VendorLoginP
 const VendorOverviewPage   = lazy(() => import('./vendor/pages/overview/VendorOverviewPage.jsx'));
 const VendorProfilePage    = lazy(() => import('./vendor/pages/profile/VendorProfilePage.jsx'));
 const VendorPackagesPage   = lazy(() => import('./vendor/pages/packages/VendorPackagesPage.jsx'));
+const VendorBankPage       = lazy(() => import('./vendor/pages/bank/VendorBankPage.jsx'));
 
 // Admin pages — lazy loaded for code splitting
 const LoginPage             = lazy(() => import('./admin/pages/auth/LoginPage.jsx'));
@@ -107,6 +108,7 @@ export default function App() {
                 <Route index element={<VendorOverviewPage />} />
                 <Route path="profile" element={<VendorProfilePage />} />
                 <Route path="packages" element={<VendorPackagesPage />} />
+                <Route path="bank" element={<VendorBankPage />} />
               </Route>
             </Routes>
           </VendorAuthProvider>
