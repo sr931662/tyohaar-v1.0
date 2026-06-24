@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
+import traceback
 from typing import Any
 
 from fastapi import FastAPI, Request, status
+
+logger = logging.getLogger(__name__)
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -230,4 +234,14 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=_err("INTERNAL_ERROR", exc.message),
+        )
+
+    # ── Generic Exception — 500 (debug: exposes actual error) ─────────────────
+    @app.exception_handler(Exception)
+    async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
+        tb = traceback.format_exc()
+        logger.error("Unhandled exception on %s %s:\n%s", request.method, request.url.path, tb)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=_err("INTERNAL_ERROR", f"{type(exc).__name__}: {exc}"),
         )
