@@ -9,7 +9,7 @@ export const vendorClient = axios.create({
 });
 
 vendorClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('vendor_token');
+  const token = localStorage.getItem('vendor_token') || sessionStorage.getItem('vendor_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

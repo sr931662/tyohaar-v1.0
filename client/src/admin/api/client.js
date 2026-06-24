@@ -10,7 +10,7 @@ export const apiClient = axios.create({
 
 // Attach admin token to every request
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('admin_token');
+  const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

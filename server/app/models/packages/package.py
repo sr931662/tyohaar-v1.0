@@ -9,6 +9,8 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+from decimal import Decimal
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -16,6 +18,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Table,
     Text,
@@ -90,6 +93,15 @@ class Package(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         Index("ix_packages_popularity", "popularity_score"),
     )
 
+    # ── Ownership ─────────────────────────────────────────────────────────────
+
+    vendor_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("vendors.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # ── Taxonomy ──────────────────────────────────────────────────────────────
 
     category_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -115,6 +127,8 @@ class Package(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         comment="Short marketing copy shown under the package name in cards",
     )
 
+    short_description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -138,6 +152,18 @@ class Package(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         nullable=True,
         comment="Estimated total setup + execution duration in hours",
     )
+
+    # ── Pricing (denormalised for quick display) ──────────────────────────────
+
+    base_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="INR")
+
+    # ── Customisation & Analytics ─────────────────────────────────────────────
+
+    is_customizable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    average_rating: Mapped[Decimal | None] = mapped_column(Numeric(3, 2), nullable=True)
+    review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    booking_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # ── Status & Visibility ───────────────────────────────────────────────────
 

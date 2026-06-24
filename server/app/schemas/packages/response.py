@@ -64,24 +64,24 @@ class PackageResponse(BaseSchema):
     id: uuid.UUID
     name: str
     slug: str
-    category_id: uuid.UUID | None
-    description: str | None
-    short_description: str | None
-    cover_image_url: str | None
+    category_id: uuid.UUID | None = None
+    description: str | None = None
+    short_description: str | None = None
+    cover_image_url: str | None = None
     status: PackageStatus
-    is_featured: bool
-    is_customizable: bool
-    min_guests: int | None
-    max_guests: int | None
-    duration_hours: Decimal | None
-    base_price: MoneyAmount
-    currency: Currency
-    display_order: int
-    average_rating: Decimal | None = Field(
-        default=None, description="Aggregate star rating (1-5), recomputed by service layer"
-    )
-    review_count: int
-    booking_count: int
+    is_featured: bool = False
+    is_customizable: bool = False
+    # Model columns are min_guest_count / max_guest_count; expose as min_guests / max_guests
+    min_guests: int | None = Field(default=None, alias="min_guest_count")
+    max_guests: int | None = Field(default=None, alias="max_guest_count")
+    duration_hours: Decimal | None = None
+    base_price: MoneyAmount | None = None
+    currency: Currency = Currency.INR
+    display_order: int = 0
+    average_rating: Decimal | None = None
+    review_count: int = 0
+    booking_count: int = 0
+    vendor_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 

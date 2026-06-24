@@ -49,8 +49,26 @@ class PackageService(BaseService):
         vendor_id: UUID,
         data: PackageCreate,
     ) -> PackageResponse:
+        import re
+        import uuid as _uuid
+
         async with self._uow() as uow:
             payload = data.model_dump(exclude_unset=True)
+
+            # Remap schema field names → model column names
+            if "min_guests" in payload:
+                payload["min_guest_count"] = payload.pop("min_guests")
+            if "max_guests" in payload:
+                payload["max_guest_count"] = payload.pop("max_guests")
+
+            # Set vendor ownership
+            payload["vendor_id"] = vendor_id
+
+            # Auto-generate slug from name if not supplied
+            if not payload.get("slug"):
+                base = re.sub(r"[^a-z0-9]+", "-", payload["name"].lower()).strip("-")
+                payload["slug"] = f"{base}-{str(_uuid.uuid4())[:8]}"
+
             package = await uow.packages.packages.create_from_dict(payload)
             await uow.commit()
             return PackageResponse.model_validate(package)
@@ -90,9 +108,12 @@ class PackageService(BaseService):
     ) -> PackageResponse:
         async with self._uow() as uow:
             package = await validate_package_ownership(package_id, vendor_id, uow)
-            updated = await uow.packages.packages.update(
-                package, data.model_dump(exclude_unset=True)
-            )
+            changes = data.model_dump(exclude_unset=True)
+            if "min_guests" in changes:
+                changes["min_guest_count"] = changes.pop("min_guests")
+            if "max_guests" in changes:
+                changes["max_guest_count"] = changes.pop("max_guests")
+            updated = await uow.packages.packages.update(package, changes)
             await uow.commit()
             return PackageResponse.model_validate(updated)
 
