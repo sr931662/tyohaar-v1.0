@@ -1557,6 +1557,25 @@ select.admin-input {
 
 .ty-login-eye:hover { color: #F0A93C; }
 
+/* ---- Remember me ---- */
+.ty-login-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.ty-login-remember input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--brand-500);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ty-login-remember:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+
 /* ---- Submit button ---- */
 .ty-login-btn {
   display: flex;

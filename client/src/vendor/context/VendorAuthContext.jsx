@@ -6,7 +6,8 @@ const VendorAuthContext = createContext(null);
 export function VendorAuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('vendor_user') ?? 'null');
+      const stored = localStorage.getItem('vendor_user') || sessionStorage.getItem('vendor_user');
+      return JSON.parse(stored ?? 'null');
     } catch {
       return null;
     }
@@ -14,29 +15,33 @@ export function VendorAuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('vendor_token');
+    const token = localStorage.getItem('vendor_token') || sessionStorage.getItem('vendor_token');
     if (!token) { setLoading(false); return; }
 
+    const store = localStorage.getItem('vendor_token') ? localStorage : sessionStorage;
     vendorAuthApi.me()
       .then((data) => {
         setUser(data);
-        localStorage.setItem('vendor_user', JSON.stringify(data));
+        store.setItem('vendor_user', JSON.stringify(data));
       })
       .catch(() => {
         localStorage.removeItem('vendor_token');
         localStorage.removeItem('vendor_user');
+        sessionStorage.removeItem('vendor_token');
+        sessionStorage.removeItem('vendor_user');
         setUser(null);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const loginWithPassword = useCallback(async (email, password) => {
+  const loginWithPassword = useCallback(async (email, password, remember = true) => {
     const data = await vendorAuthApi.loginWithPassword(email, password);
     const token = data.access_token;
-    if (token) localStorage.setItem('vendor_token', token);
+    const store = remember ? localStorage : sessionStorage;
+    if (token) store.setItem('vendor_token', token);
     const userData = await vendorAuthApi.me();
     setUser(userData);
-    localStorage.setItem('vendor_user', JSON.stringify(userData));
+    store.setItem('vendor_user', JSON.stringify(userData));
     return userData;
   }, []);
 
@@ -44,6 +49,8 @@ export function VendorAuthProvider({ children }) {
     try { await vendorAuthApi.logout(); } catch { /* ignore */ }
     localStorage.removeItem('vendor_token');
     localStorage.removeItem('vendor_user');
+    sessionStorage.removeItem('vendor_token');
+    sessionStorage.removeItem('vendor_user');
     setUser(null);
   }, []);
 

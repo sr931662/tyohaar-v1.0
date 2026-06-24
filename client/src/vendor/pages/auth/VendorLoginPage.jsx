@@ -25,6 +25,7 @@ export default function VendorLoginPage() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -33,7 +34,7 @@ export default function VendorLoginPage() {
     setLoading(true);
     setError('');
     try {
-      await loginWithPassword(email, password);
+      await loginWithPassword(email, password, remember);
       toast.success('Welcome back!');
       navigate('/vendor', { replace: true });
     } catch (err) {
@@ -106,6 +107,16 @@ export default function VendorLoginPage() {
               </button>
             </div>
           </div>
+
+          <label className="ty-login-remember">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              disabled={loading}
+            />
+            Keep me logged in
+          </label>
 
           <button type="submit" className="ty-login-btn" disabled={loading}>
             {loading ? (

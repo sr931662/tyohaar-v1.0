@@ -6,7 +6,7 @@ const AuthContext = createContext(null);
 export function AdminAuthProvider({ children }) {
   const [admin, setAdmin] = useState(() => {
     try {
-      const stored = localStorage.getItem('admin_user');
+      const stored = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user');
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
@@ -14,32 +14,34 @@ export function AdminAuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(true);
 
-  // Verify token on mount
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
     if (!token) { setLoading(false); return; }
 
+    const store = localStorage.getItem('admin_token') ? localStorage : sessionStorage;
     authApi.me()
       .then((data) => {
         setAdmin(data);
-        localStorage.setItem('admin_user', JSON.stringify(data));
+        store.setItem('admin_user', JSON.stringify(data));
       })
       .catch(() => {
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
+        sessionStorage.removeItem('admin_token');
+        sessionStorage.removeItem('admin_user');
         setAdmin(null);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, remember = true) => {
     const data = await authApi.login(email, password);
-    // Backend returns { access_token, admin, ... }
     const token = data.access_token ?? data.token;
-    if (token) localStorage.setItem('admin_token', token);
+    const store = remember ? localStorage : sessionStorage;
+    if (token) store.setItem('admin_token', token);
     const adminData = data.admin ?? data;
     setAdmin(adminData);
-    localStorage.setItem('admin_user', JSON.stringify(adminData));
+    store.setItem('admin_user', JSON.stringify(adminData));
     return adminData;
   }, []);
 
@@ -47,6 +49,8 @@ export function AdminAuthProvider({ children }) {
     try { await authApi.logout(); } catch { /* ignore */ }
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_user');
     setAdmin(null);
   }, []);
 

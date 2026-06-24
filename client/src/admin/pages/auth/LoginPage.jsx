@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -33,7 +34,7 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
+      await login(email, password, remember);
       toast.success('Welcome back!');
       navigate('/admin', { replace: true });
     } catch (err) {
@@ -113,6 +114,16 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+
+          <label className="ty-login-remember">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              disabled={loading}
+            />
+            Keep me logged in
+          </label>
 
           <button type="submit" className="ty-login-btn" disabled={loading}>
             {loading ? (
