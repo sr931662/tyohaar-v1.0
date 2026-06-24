@@ -3,31 +3,31 @@
    ============================================================================= */
 
 :root {
-  /* Brand */
-  --brand-50: #f5f3ff;
-  --brand-100: #ede9fe;
-  --brand-200: #ddd6fe;
-  --brand-300: #c4b5fd;
-  --brand-400: #a78bfa;
-  --brand-500: #8b5cf6;
-  --brand-600: #7c3aed;
-  --brand-700: #6d28d9;
-  --brand-800: #5b21b6;
-  --brand-900: #4c1d95;
+  /* Brand — Saffron/Amber (matches Tyohaar identity) */
+  --brand-50: #fff8ed;
+  --brand-100: #feecd0;
+  --brand-200: #fcd9a0;
+  --brand-300: #f9be60;
+  --brand-400: #f5a23e;
+  --brand-500: #e8872b;
+  --brand-600: #d4711e;
+  --brand-700: #b85a15;
+  --brand-800: #924610;
+  --brand-900: #763a0d;
 
   /* Neutrals */
   --neutral-0: #ffffff;
-  --neutral-50: #f9fafb;
-  --neutral-100: #f3f4f6;
-  --neutral-200: #e5e7eb;
-  --neutral-300: #d1d5db;
-  --neutral-400: #9ca3af;
-  --neutral-500: #6b7280;
-  --neutral-600: #4b5563;
-  --neutral-700: #374151;
-  --neutral-800: #1f2937;
-  --neutral-900: #111827;
-  --neutral-950: #030712;
+  --neutral-50: #faf8f5;
+  --neutral-100: #f3ede4;
+  --neutral-200: #e8ddd0;
+  --neutral-300: #d4c5b3;
+  --neutral-400: #a8947e;
+  --neutral-500: #7a6a5a;
+  --neutral-600: #5c4d3e;
+  --neutral-700: #3d3028;
+  --neutral-800: #2a2018;
+  --neutral-900: #1a1410;
+  --neutral-950: #0d0a08;
 
   /* Semantic */
   --success-50: #f0fdf4;
@@ -44,23 +44,23 @@
   --info-600: #2563eb;
 
   /* Light mode tokens */
-  --bg-base: var(--neutral-50);
-  --bg-surface: var(--neutral-0);
-  --bg-elevated: var(--neutral-0);
-  --bg-overlay: rgba(0, 0, 0, 0.4);
-  --bg-sidebar: var(--neutral-900);
-  --bg-sidebar-hover: var(--neutral-800);
-  --bg-sidebar-active: var(--brand-700);
+  --bg-base: #F6F1E8;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-overlay: rgba(26, 20, 16, 0.5);
+  --bg-sidebar: #2A2018;
+  --bg-sidebar-hover: #3D3028;
+  --bg-sidebar-active: var(--brand-600);
 
-  --border-subtle: var(--neutral-200);
-  --border-default: var(--neutral-300);
-  --border-strong: var(--neutral-400);
+  --border-subtle: rgba(42,32,24,0.10);
+  --border-default: rgba(42,32,24,0.18);
+  --border-strong: rgba(42,32,24,0.30);
 
-  --text-primary: var(--neutral-900);
-  --text-secondary: var(--neutral-600);
-  --text-tertiary: var(--neutral-400);
-  --text-inverse: var(--neutral-0);
-  --text-brand: var(--brand-600);
+  --text-primary: #2A2018;
+  --text-secondary: #5C4D3E;
+  --text-tertiary: #A8947E;
+  --text-inverse: #F6F1E8;
+  --text-brand: var(--brand-700);
 
   --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
   --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
@@ -87,26 +87,28 @@
 }
 
 [data-theme="dark"] {
-  --bg-base: var(--neutral-950);
-  --bg-surface: var(--neutral-900);
-  --bg-elevated: var(--neutral-800);
-  --bg-sidebar: #0d0d0d;
-  --bg-sidebar-hover: var(--neutral-800);
-  --bg-sidebar-active: var(--brand-700);
+  /* Warm dark — matches Tyohaar "Festival of Lights" dark theme */
+  --bg-base: #1B1320;
+  --bg-surface: #211627;
+  --bg-elevated: #271A2E;
+  --bg-sidebar: #0E0A14;
+  --bg-sidebar-hover: #271A2E;
+  --bg-sidebar-active: var(--brand-600);
 
-  --border-subtle: var(--neutral-800);
-  --border-default: var(--neutral-700);
-  --border-strong: var(--neutral-600);
+  --border-subtle: rgba(244,235,220,0.09);
+  --border-default: rgba(244,235,220,0.16);
+  --border-strong: rgba(244,235,220,0.28);
 
-  --text-primary: var(--neutral-50);
-  --text-secondary: var(--neutral-400);
-  --text-tertiary: var(--neutral-600);
-  --text-inverse: var(--neutral-900);
-  --text-brand: var(--brand-400);
+  --text-primary: #F4EBDC;
+  --text-secondary: #C6B2C0;
+  --text-tertiary: #7A6A7A;
+  --text-inverse: #1B1320;
+  --text-brand: #F0A93C;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -2px rgba(0,0,0,0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 4px 6px -4px rgba(0,0,0,0.5);
+  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -2px rgba(0,0,0,0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.6), 0 4px 6px -4px rgba(0,0,0,0.6);
+  --shadow-xl: 0 20px 40px -8px rgba(0,0,0,0.7), 0 8px 16px -4px rgba(0,0,0,0.6);
 }
 
 /* =============================================================================
@@ -663,7 +665,7 @@
 
 .form-control:focus {
   border-color: var(--brand-500);
-  box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+  box-shadow: 0 0 0 3px rgba(232,135,43,0.15);
 }
 
 .form-control:disabled {
@@ -760,10 +762,10 @@ textarea.form-control {
 .badge-error { background: var(--error-50); color: var(--error-600); }
 .badge-info { background: var(--info-50); color: var(--info-600); }
 
-[data-theme="dark"] .badge-neutral { background: var(--neutral-800); color: var(--neutral-300); }
-[data-theme="dark"] .badge-brand { background: rgba(109,40,217,0.3); color: var(--brand-300); }
+[data-theme="dark"] .badge-neutral { background: rgba(244,235,220,0.08); color: #C6B2C0; }
+[data-theme="dark"] .badge-brand { background: rgba(212,113,30,0.25); color: var(--brand-300); }
 [data-theme="dark"] .badge-success { background: rgba(22,163,74,0.2); color: #4ade80; }
-[data-theme="dark"] .badge-warning { background: rgba(217,119,6,0.2); color: #fbbf24; }
+[data-theme="dark"] .badge-warning { background: rgba(240,169,60,0.2); color: #F0A93C; }
 [data-theme="dark"] .badge-error { background: rgba(220,38,38,0.2); color: #f87171; }
 [data-theme="dark"] .badge-info { background: rgba(37,99,235,0.2); color: #60a5fa; }
 
@@ -960,9 +962,9 @@ textarea.form-control {
 
 [data-theme="dark"] .skeleton {
   background: linear-gradient(90deg,
-    var(--neutral-800) 25%,
-    var(--neutral-700) 50%,
-    var(--neutral-800) 75%
+    rgba(244,235,220,0.06) 25%,
+    rgba(244,235,220,0.10) 50%,
+    rgba(244,235,220,0.06) 75%
   );
   background-size: 200% auto;
 }
@@ -1219,7 +1221,7 @@ textarea.form-control {
 .badge-gray { background: var(--neutral-100); color: var(--neutral-700); }
 [data-theme="dark"] .badge-blue { background: rgba(37,99,235,0.2); color: #60a5fa; }
 [data-theme="dark"] .badge-green { background: rgba(22,163,74,0.2); color: #4ade80; }
-[data-theme="dark"] .badge-gray { background: var(--neutral-800); color: var(--neutral-300); }
+[data-theme="dark"] .badge-gray { background: rgba(244,235,220,0.08); color: #C6B2C0; }
 
 /* Detail rows (used in detail pages side panels) */
 .detail-row {
@@ -1273,10 +1275,15 @@ textarea.form-control {
 .admin-login-page {
   min-height: 100vh;
   background: var(--bg-base);
+  background-image: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(212,113,30,0.18), transparent 70%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+}
+
+[data-theme="dark"] .admin-login-page {
+  background-image: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(240,169,60,0.15), transparent 70%);
 }
 
 .admin-login-card {
@@ -1287,6 +1294,11 @@ textarea.form-control {
   padding: 40px;
   width: 100%;
   max-width: 420px;
+}
+
+[data-theme="dark"] .admin-login-card {
+  border-color: rgba(240,169,60,0.12);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(240,169,60,0.08);
 }
 
 .admin-login-logo {
@@ -1300,7 +1312,7 @@ textarea.form-control {
 .admin-login-logo .logo-icon {
   width: 44px;
   height: 44px;
-  background: var(--brand-600);
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
   border-radius: var(--radius-xl);
   display: flex;
   align-items: center;

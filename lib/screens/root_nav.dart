@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/theme_controller.dart';
+import '../data/app_state.dart';
+import '../data/auth_manager.dart';
 import 'home_screen.dart';
 import 'plans_screen.dart';
 import 'explore_screen.dart';
@@ -35,8 +37,14 @@ class _RootNavState extends State<RootNav> {
   ];
 
   void _openCreate() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PlanFlowScreen()),
+    AuthManager.instance.checkAuth(
+      context, 
+      action: 'start a celebration',
+      onAuthenticated: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PlanFlowScreen()),
+        );
+      },
     );
   }
 
@@ -50,7 +58,18 @@ class _RootNavState extends State<RootNav> {
       key: _scaffoldKey,
       drawer: _AppSidebar(
         onNavigate: (i) {
-          setState(() => _index = i);
+          if (i == 1 || i == 3) {
+             AuthManager.instance.checkAuth(
+              context, 
+              action: i == 1 ? 'view your plans' : 'access your account',
+              onAuthenticated: () => setState(() {
+                _index = i;
+                _isScrolled = false;
+              }),
+            );
+          } else {
+            setState(() => _index = i);
+          }
           Navigator.pop(context);
         },
       ),
@@ -86,10 +105,23 @@ class _RootNavState extends State<RootNav> {
       ),
       bottomNavigationBar: _BottomBar(
         index: _index,
-        onTap: (i) => setState(() {
-          _index = i;
-          _isScrolled = false; // Reset scroll state on tab change
-        }),
+        onTap: (i) {
+          if (i == 1 || i == 3) {
+            AuthManager.instance.checkAuth(
+              context, 
+              action: i == 1 ? 'view your plans' : 'access your account',
+              onAuthenticated: () => setState(() {
+                _index = i;
+                _isScrolled = false;
+              }),
+            );
+          } else {
+            setState(() {
+              _index = i;
+              _isScrolled = false;
+            });
+          }
+        },
         onCreate: _openCreate,
       ),
     );
@@ -288,6 +320,14 @@ class _AppSidebar extends StatelessWidget {
                 _drawerItem(context, Icons.place_outlined, 'Manage Address', -1),
                 _drawerItem(context, Icons.help_outline_rounded, 'Help & Support', -1),
                 _drawerItem(context, Icons.description_outlined, 'Privacy Policy', -1),
+                const Divider(height: 32, indent: 20, endIndent: 20, color: Colors.black12),
+                _drawerItem(
+                  context, 
+                  Icons.swap_horiz_rounded, 
+                  'Switch to Vendor Mode', 
+                  -1, 
+                  onTap: () => AppState.instance.setPOV(UserPOV.vendor),
+                ),
               ],
             ),
           ),
@@ -337,13 +377,13 @@ class _AppSidebar extends StatelessWidget {
     );
   }
 
-  Widget _drawerItem(BuildContext context, IconData icon, String label, int targetIndex) {
+  Widget _drawerItem(BuildContext context, IconData icon, String label, int targetIndex, {VoidCallback? onTap}) {
     final ty = context.ty;
     return ListTile(
       leading: Icon(icon, color: ty.ink2, size: 22),
       title: Text(label, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w600)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
-      onTap: targetIndex != -1 ? () => onNavigate(targetIndex) : () {},
+      onTap: onTap ?? (targetIndex != -1 ? () => onNavigate(targetIndex) : () {}),
     );
   }
 

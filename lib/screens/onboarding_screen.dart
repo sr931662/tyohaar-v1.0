@@ -3,6 +3,7 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
 import 'root_nav.dart';
+import 'auth_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -114,7 +115,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     } else {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const RootNav()),
+                        MaterialPageRoute(builder: (_) => const AuthScreen()),
                       );
                     }
                   },
@@ -125,7 +126,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const RootNav()),
+                        MaterialPageRoute(builder: (_) => const AuthScreen()),
                       );
                     },
                     child: Text('Skip', style: TyType.sans(14, color: ty.ink3, weight: FontWeight.w600)),

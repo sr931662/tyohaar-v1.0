@@ -17,4 +17,12 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    proxy: {
+      '/api': {
+        target: 'https://tyohaar-v1-0-527701068133.asia-south1.run.app',
+        changeOrigin: true,
+      },
+    },
+  },
 })

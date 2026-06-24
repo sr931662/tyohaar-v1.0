@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../data/app_state.dart';
 import '../widgets/common.dart';
 import '../widgets/ty_button.dart';
 
@@ -32,6 +33,9 @@ class AccountScreen extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(18, topPadding, 18, 28),
       children: [
         Text('Account', style: TyType.display(26, color: ty.ink)),
+        const SizedBox(height: 24),
+        // Switch to Vendor
+        _vendorBanner(context),
         const SizedBox(height: 24),
         // identity
         Row(
@@ -95,6 +99,47 @@ class AccountScreen extends StatelessWidget {
             leadingIcon: Icons.logout_rounded,
             onTap: () {}),
       ],
+    );
+  }
+
+  Widget _vendorBanner(BuildContext context) {
+    final ty = context.ty;
+    return GestureDetector(
+      onTap: () => AppState.instance.setPOV(UserPOV.vendor),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: ty.ink,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: ty.ink.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.business_center_rounded, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Business Account', style: TyType.sans(16, color: Colors.white, weight: FontWeight.w700)),
+                  Text('Switch to Vendor POV', style: TyType.sans(12, color: Colors.white.withOpacity(0.6))),
+                ],
+              ),
+            ),
+            Icon(Icons.swap_horiz_rounded, color: Colors.white.withOpacity(0.5)),
+          ],
+        ),
+      ),
     );
   }
 

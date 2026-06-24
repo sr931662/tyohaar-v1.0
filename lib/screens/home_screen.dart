@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../data/auth_manager.dart';
 import '../data/sample_data.dart';
 import '../data/models.dart';
 import '../widgets/avatar.dart';
@@ -21,8 +22,16 @@ import 'package:tyohaar/screens/occasion_detail_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  void _push(BuildContext context, Widget page) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  void _push(BuildContext context, Widget page, {String? authAction}) {
+    if (authAction != null) {
+      AuthManager.instance.checkAuth(
+        context, 
+        action: authAction,
+        onAuthenticated: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
+      );
+    } else {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+    }
   }
 
   @override
@@ -55,11 +64,11 @@ class HomeScreen extends StatelessWidget {
               Row(
                 children: [
                   _quickAction(context, Icons.group_outlined, 'Guests', ty.saffron,
-                      () => _push(context, const GuestsScreen())),
+                      () => _push(context, const GuestsScreen(), authAction: 'manage guests')),
                   _quickAction(context, Icons.account_balance_wallet_outlined, 'Budget',
-                      ty.leaf, () => _push(context, const BudgetScreen())),
+                      ty.leaf, () => _push(context, const BudgetScreen(), authAction: 'view your budget')),
                   _quickAction(context, Icons.checklist_rounded, 'My Plans', ty.gold,
-                      () => _push(context, const PlanFlowScreen(startStep: 4))),
+                      () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your plans')),
                 ],
               ),
               const SizedBox(height: 26),
@@ -67,12 +76,12 @@ class HomeScreen extends StatelessWidget {
               // ── up next ──
               SectionHeader('Up next',
                   action: 'Timeline',
-                  onAction: () => _push(context, const PlanFlowScreen(startStep: 4))),
+                  onAction: () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your timeline')),
               ...openTasks.map((t) => _taskRow(context, t[0], t[1])),
               const SizedBox(height: 12),
               _taskRow(context, 'Manage Invitations', '38 opened · 24 RSVP’d', 
                   icon: Icons.mail_outline_rounded, 
-                  onTap: () => _push(context, const InvitationManagementScreen())),
+                  onTap: () => _push(context, const InvitationManagementScreen(), authAction: 'manage invitations')),
               const SizedBox(height: 26),
 
               // ── from your team ──
@@ -116,7 +125,7 @@ class HomeScreen extends StatelessWidget {
 
               // ── start a celebration ──
               GestureDetector(
-                onTap: () => _push(context, const PlanFlowScreen()),
+                onTap: () => _push(context, const PlanFlowScreen(), authAction: 'start a celebration'),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -189,7 +198,7 @@ class HomeScreen extends StatelessWidget {
     const double radius = 42.0;
     
     return GestureDetector(
-      onTap: () => _push(context, const EventHubScreen()),
+      onTap: () => _push(context, const EventHubScreen(), authAction: 'view your event hub'),
       child: SizedBox(
         height: 440,
         child: Stack(
