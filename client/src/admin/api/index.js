@@ -1,4 +1,5 @@
 export { authApi } from './endpoints/auth';
+export { mediaApi } from './endpoints/media';
 export { analyticsApi } from './endpoints/analytics';
 export { vendorsApi } from './endpoints/vendors';
 export { customersApi } from './endpoints/customers';

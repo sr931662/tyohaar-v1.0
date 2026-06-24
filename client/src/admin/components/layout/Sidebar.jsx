@@ -44,7 +44,7 @@ const NAV = [
   {
     section: 'Platform',
     items: [
-      { to: '/admin/import-export', label: 'Import / Export', icon: '⇅' },
+      { to: '/admin/io', label: 'Import / Export', icon: '⇅' },
       { to: '/admin/automation', label: 'Automation', icon: '⚡' },
       { to: '/admin/settings', label: 'Settings', icon: '⚙' },
     ],
@@ -53,8 +53,7 @@ const NAV = [
     section: 'Admin',
     superAdmin: true,
     items: [
-      { to: '/admin/team', label: 'Team & Roles', icon: '🛡' },
-      { to: '/admin/audit-logs', label: 'Audit Logs', icon: '📋' },
+      { to: '/admin/admin-management', label: 'Team & Roles', icon: '🛡' },
     ],
   },
 ];
