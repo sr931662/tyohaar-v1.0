@@ -739,18 +739,24 @@ class AnalyticsService(BaseService):
     # ── Platform Health ───────────────────────────────────────────────────────
 
     async def _get_platform_health(self, session: AsyncSession) -> PlatformHealth:
-        from app.models.auth.session import UserSession
+        active_sessions = 0
+        try:
+            from app.models.auth.session import UserSession
+            now = self._now()
+            active_sessions = int(
+                await self._scalar(
+                    session,
+                    select(func.count()).select_from(UserSession).where(
+                        UserSession.is_active == True,
+                        UserSession.expires_at > now,
+                    ),
+                ) or 0
+            )
+        except Exception:
+            pass
 
-        now = self._now()
-        active_sessions = await self._scalar(
-            session,
-            select(func.count()).select_from(UserSession).where(
-                UserSession.is_active == True,
-                UserSession.expires_at > now,
-            ),
-        )
         return PlatformHealth(
-            active_sessions=int(active_sessions),
+            active_sessions=active_sessions,
             api_requests_today=0,
             database_status="healthy",
             avg_response_ms=0.0,
@@ -762,35 +768,48 @@ class AnalyticsService(BaseService):
 
     async def _get_pending_actions(self, session: AsyncSession) -> dict[str, int]:
         from app.models.bookings.booking import Booking
-        from app.models.media.image import Image
-        from app.models.support.ticket import SupportTicket
         from app.models.vendors.vendor import Vendor
 
-        pending_vendors = await self._scalar(
-            session,
+        async def _safe_count(stmt) -> int:
+            try:
+                return int(await self._scalar(session, stmt) or 0)
+            except Exception:
+                return 0
+
+        pending_vendors = await _safe_count(
             select(func.count()).select_from(Vendor).where(
                 Vendor.verification_status == "PENDING", Vendor.deleted_at.is_(None)
-            ),
+            )
         )
-        pending_bookings = await self._scalar(
-            session,
+        pending_bookings = await _safe_count(
             select(func.count()).select_from(Booking).where(
                 Booking.status == "PENDING", Booking.deleted_at.is_(None)
-            ),
+            )
         )
-        open_tickets = await self._scalar(
-            session,
-            select(func.count()).select_from(SupportTicket).where(SupportTicket.status == "OPEN"),
-        )
-        pending_media = await self._scalar(
-            session,
-            select(func.count()).select_from(Image).where(Image.moderation_status == "PENDING"),
-        )
+
+        open_tickets = 0
+        try:
+            from app.models.support.ticket import SupportTicket
+            open_tickets = await _safe_count(
+                select(func.count()).select_from(SupportTicket).where(SupportTicket.status == "OPEN")
+            )
+        except Exception:
+            pass
+
+        pending_media = 0
+        try:
+            from app.models.media.image import Image
+            pending_media = await _safe_count(
+                select(func.count()).select_from(Image).where(Image.moderation_status == "PENDING")
+            )
+        except Exception:
+            pass
+
         return {
-            "vendor_approvals": int(pending_vendors),
-            "booking_confirmations": int(pending_bookings),
-            "support_tickets": int(open_tickets),
-            "media_moderation": int(pending_media),
+            "vendor_approvals": pending_vendors,
+            "booking_confirmations": pending_bookings,
+            "support_tickets": open_tickets,
+            "media_moderation": pending_media,
         }
 
     # ── Main dashboard entry point ────────────────────────────────────────────
@@ -1030,62 +1049,60 @@ class AnalyticsService(BaseService):
 
     async def get_activity_feed(self, *, limit: int = 20) -> ActivityFeed:
         """Recent platform activity across bookings, payments, vendors, users."""
-        from app.models.bookings.booking import Booking
-        from app.models.payments.payment import Payment
-        from app.models.users.user import User
-        from app.models.vendors.vendor import Vendor
-
         items: list[ActivityItem] = []
         async with self._uow() as uow:
             # Recent bookings
-            booking_rows = await self._rows(
-                uow.session,
-                select(Booking.id, Booking.status, Booking.created_at)
-                .where(Booking.deleted_at.is_(None))
-                .order_by(Booking.created_at.desc())
-                .limit(5),
-            )
-            for r in booking_rows:
-                items.append(ActivityItem(
-                    type="booking",
-                    entity_id=str(r.id),
-                    entity_type="booking",
-                    summary=f"Booking {r.status}",
-                    timestamp=r.created_at,
-                ))
+            try:
+                from app.models.bookings.booking import Booking
+                booking_rows = await self._rows(
+                    uow.session,
+                    select(Booking.id, Booking.status, Booking.created_at)
+                    .where(Booking.deleted_at.is_(None))
+                    .order_by(Booking.created_at.desc())
+                    .limit(5),
+                )
+                for r in booking_rows:
+                    items.append(ActivityItem(
+                        type="booking", entity_id=str(r.id), entity_type="booking",
+                        summary=f"Booking {r.status}", timestamp=r.created_at,
+                    ))
+            except Exception:
+                pass
 
             # Recent payments
-            payment_rows = await self._rows(
-                uow.session,
-                select(Payment.id, Payment.status, Payment.amount, Payment.created_at)
-                .order_by(Payment.created_at.desc())
-                .limit(5),
-            )
-            for r in payment_rows:
-                items.append(ActivityItem(
-                    type="payment",
-                    entity_id=str(r.id),
-                    entity_type="payment",
-                    summary=f"Payment ₹{r.amount} {r.status}",
-                    timestamp=r.created_at,
-                ))
+            try:
+                from app.models.payments.payment import Payment
+                payment_rows = await self._rows(
+                    uow.session,
+                    select(Payment.id, Payment.status, Payment.amount, Payment.created_at)
+                    .order_by(Payment.created_at.desc())
+                    .limit(5),
+                )
+                for r in payment_rows:
+                    items.append(ActivityItem(
+                        type="payment", entity_id=str(r.id), entity_type="payment",
+                        summary=f"Payment ₹{r.amount} {r.status}", timestamp=r.created_at,
+                    ))
+            except Exception:
+                pass
 
             # Recent user registrations
-            user_rows = await self._rows(
-                uow.session,
-                select(User.id, User.phone, User.created_at)
-                .where(User.deleted_at.is_(None))
-                .order_by(User.created_at.desc())
-                .limit(5),
-            )
-            for r in user_rows:
-                items.append(ActivityItem(
-                    type="user_registered",
-                    entity_id=str(r.id),
-                    entity_type="user",
-                    summary=f"New user registered",
-                    timestamp=r.created_at,
-                ))
+            try:
+                from app.models.users.user import User
+                user_rows = await self._rows(
+                    uow.session,
+                    select(User.id, User.phone, User.created_at)
+                    .where(User.deleted_at.is_(None))
+                    .order_by(User.created_at.desc())
+                    .limit(5),
+                )
+                for r in user_rows:
+                    items.append(ActivityItem(
+                        type="user_registered", entity_id=str(r.id), entity_type="user",
+                        summary="New user registered", timestamp=r.created_at,
+                    ))
+            except Exception:
+                pass
 
         # Sort all items by timestamp desc and cap
         items.sort(key=lambda x: x.timestamp, reverse=True)
