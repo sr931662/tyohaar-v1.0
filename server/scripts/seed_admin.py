@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy import select
 
 from app.core.config import settings  # noqa: loads .env
+from app.services.admin.helpers import hash_admin_password
 from app.db.session import AsyncSessionLocal
 from app.models.admin.admin import Admin
 from app.models.admin.role import AdminRole
@@ -41,9 +42,10 @@ from app.models.users.user import User
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-PHONE = os.getenv("ADMIN_PHONE", "+919999999999")
-EMAIL = os.getenv("ADMIN_EMAIL", "admin@tyohaar.com")
-NAME  = os.getenv("ADMIN_NAME", "Superadmin")
+PHONE    = os.getenv("ADMIN_PHONE", "+919999999999")
+EMAIL    = os.getenv("ADMIN_EMAIL", "admin@tyohaar.com")
+NAME     = os.getenv("ADMIN_NAME", "Superadmin")
+PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
 SUPERADMIN_ROLE = {
     "name": "Super Admin",
@@ -85,6 +87,9 @@ async def get_or_create_user(session) -> User:
             user.account_status = AccountStatus.ACTIVE
             user.email_verified = True
             print("  [~] Upgraded user role -> SUPER_ADMIN")
+        if PASSWORD and not user.password_hash:
+            user.password_hash = hash_admin_password(PASSWORD)
+            print("  [~] Set password_hash on existing user")
         return user
 
     user = User(
@@ -99,6 +104,7 @@ async def get_or_create_user(session) -> User:
         phone_verified=True,
         email_verified=True,
         mfa_enabled=False,
+        password_hash=hash_admin_password(PASSWORD) if PASSWORD else None,
     )
     session.add(user)
     await session.flush()
@@ -150,8 +156,11 @@ async def main() -> None:
             admin = await get_or_create_admin(session, user, role)
 
     print()
-    print("Done. Login via OTP sent to:", EMAIL)
-    print('POST /api/v1/auth/otp/request  { "email": "' + EMAIL + '" }')
+    if PASSWORD:
+        print("Done. Admin password set. Login via:")
+        print('POST /api/v1/admin/auth/login  { "email": "' + EMAIL + '", "password": "****" }')
+    else:
+        print("Done. No password set — set ADMIN_PASSWORD env var to enable password login.")
     print()
 
 

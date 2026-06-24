@@ -109,9 +109,8 @@ class AdminService(BaseService):
             # is delegated to the User record (see model docstring).  We use the User's
             # password_hash via the user relationship.
             user = await uow.users.users.get_by_id(admin.user_id)
-            if user is None or not verify_admin_password(
-                password, getattr(user, "password_hash", "")
-            ):
+            stored_hash = getattr(user, "password_hash", None) or ""
+            if user is None or not verify_admin_password(password, stored_hash):
                 await uow.admin.admins.increment_failed_login(admin.id)
                 new_count = admin.failed_login_count + 1
                 if new_count >= MAX_FAILED_LOGIN_ATTEMPTS:

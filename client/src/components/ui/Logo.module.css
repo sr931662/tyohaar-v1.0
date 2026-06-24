@@ -1,14 +1,32 @@
 .logo {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   line-height: 0;
+  text-decoration: none;
 }
 
-.img {
+.emblem {
   display: block;
   width: auto;
+  flex-shrink: 0;
 }
 
-.sm .img { height: 40px; }
-.md .img { height: 50px; }
-.lg .img { height: 72px; }
+.wordmark {
+  font-family: "Yeseva One", Georgia, serif;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Size variants */
+.sm .emblem  { height: 28px; }
+.sm .wordmark { font-size: 16px; }
+
+.md .emblem  { height: 36px; }
+.md .wordmark { font-size: 20px; }
+
+.lg .emblem  { height: 52px; }
+.lg .wordmark { font-size: 28px; }
