@@ -98,7 +98,25 @@ async def publish_package(
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageResponse]:
     result = await service.publish_package(package_id=package_id, vendor_id=current_user.id)
-    return SuccessResponse(data=result, message="Package published.")
+    return SuccessResponse(data=result, message="Package submitted for review.")
+
+
+async def approve_package(
+    package_id: uuid.UUID,
+    _admin: AdminDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageResponse]:
+    result = await service.approve_package(package_id=package_id)
+    return SuccessResponse(data=result, message="Package approved and published.")
+
+
+async def reject_package(
+    package_id: uuid.UUID,
+    _admin: AdminDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageResponse]:
+    result = await service.reject_package(package_id=package_id)
+    return SuccessResponse(data=result, message="Package rejected and returned to draft.")
 
 
 async def unpublish_package(

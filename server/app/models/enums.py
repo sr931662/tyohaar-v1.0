@@ -275,6 +275,7 @@ class CelebrationStatus(str, enum.Enum):
 
 class PackageStatus(str, enum.Enum):
     DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
     ACTIVE = "active"
     INACTIVE = "inactive"
     ARCHIVED = "archived"

@@ -111,10 +111,11 @@ class PackageService(BaseService):
         package_id: UUID,
         vendor_id: UUID,
     ) -> PackageResponse:
+        """Vendor submits package for admin review (DRAFT → PENDING_REVIEW)."""
         async with self._uow() as uow:
             package = await validate_package_ownership(package_id, vendor_id, uow)
             updated = await uow.packages.packages.update(
-                package, {"status": PackageStatus.ACTIVE, "is_active": True}
+                package, {"status": PackageStatus.PENDING_REVIEW, "is_active": False}
             )
             await uow.commit()
             return PackageResponse.model_validate(updated)
@@ -128,6 +129,26 @@ class PackageService(BaseService):
             package = await validate_package_ownership(package_id, vendor_id, uow)
             updated = await uow.packages.packages.update(
                 package, {"status": PackageStatus.INACTIVE, "is_active": False}
+            )
+            await uow.commit()
+            return PackageResponse.model_validate(updated)
+
+    async def approve_package(self, package_id: UUID) -> PackageResponse:
+        """Admin approves a pending package (PENDING_REVIEW → ACTIVE)."""
+        async with self._uow() as uow:
+            package = await validate_package_exists(package_id, uow)
+            updated = await uow.packages.packages.update(
+                package, {"status": PackageStatus.ACTIVE, "is_active": True}
+            )
+            await uow.commit()
+            return PackageResponse.model_validate(updated)
+
+    async def reject_package(self, package_id: UUID) -> PackageResponse:
+        """Admin rejects a pending package (PENDING_REVIEW → DRAFT)."""
+        async with self._uow() as uow:
+            package = await validate_package_exists(package_id, uow)
+            updated = await uow.packages.packages.update(
+                package, {"status": PackageStatus.DRAFT, "is_active": False}
             )
             await uow.commit()
             return PackageResponse.model_validate(updated)

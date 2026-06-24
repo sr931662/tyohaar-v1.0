@@ -128,8 +128,8 @@ router.add_api_route(
     methods=["POST"],
     response_model=SuccessResponse[PackageResponse],
     status_code=status.HTTP_200_OK,
-    summary="Publish Package",
-    description="Make the package publicly visible. Vendor ownership required.",
+    summary="Submit Package for Review",
+    description="Vendor submits a draft package for admin review (DRAFT → PENDING_REVIEW). Vendor ownership required.",
     operation_id="packages_publish_package",
 )
 
@@ -142,6 +142,28 @@ router.add_api_route(
     summary="Unpublish Package",
     description="Hide the package from public listings. Vendor ownership required.",
     operation_id="packages_unpublish_package",
+)
+
+router.add_api_route(
+    "/{package_id}/approve",
+    ctrl.approve_package,
+    methods=["POST"],
+    response_model=SuccessResponse[PackageResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Approve Package (Admin)",
+    description="Admin approves a pending package, making it publicly active (PENDING_REVIEW → ACTIVE). Admin access required.",
+    operation_id="packages_approve_package",
+)
+
+router.add_api_route(
+    "/{package_id}/reject",
+    ctrl.reject_package,
+    methods=["POST"],
+    response_model=SuccessResponse[PackageResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Reject Package (Admin)",
+    description="Admin rejects a pending package, returning it to draft (PENDING_REVIEW → DRAFT). Admin access required.",
+    operation_id="packages_reject_package",
 )
 
 # ── Package items ─────────────────────────────────────────────────────────────

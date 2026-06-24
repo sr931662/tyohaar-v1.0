@@ -8,7 +8,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import Pagination from '../../components/ui/Pagination';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
-import Modal, { ConfirmDialog } from '../../components/ui/Modal';
+import { ConfirmDialog } from '../../components/ui/Modal';
 import { useDebounce } from '../../hooks/useDebounce';
 import { usePagination } from '../../hooks/usePagination';
 
@@ -20,11 +20,24 @@ export default function PackagesPage() {
   const [status, setStatus] = useState('');
   const [selected, setSelected] = useState([]);
   const [confirmBulk, setConfirmBulk] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null); // { type: 'approve'|'reject', packageId, name }
   const debouncedSearch = useDebounce(search);
 
   const { data, isLoading } = useQuery({
     queryKey: ['packages', { page, perPage, search: debouncedSearch, status }],
     queryFn: () => packagesApi.list({ page, per_page: perPage, search: debouncedSearch || undefined, status: status || undefined }),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (packageId) => packagesApi.approve(packageId),
+    onSuccess: () => { toast.success('Package approved and published'); qc.invalidateQueries(['packages']); },
+    onError: () => toast.error('Failed to approve package'),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (packageId) => packagesApi.reject(packageId),
+    onSuccess: () => { toast.success('Package rejected — returned to draft'); qc.invalidateQueries(['packages']); },
+    onError: () => toast.error('Failed to reject package'),
   });
 
   const publishMutation = useMutation({
@@ -52,12 +65,19 @@ export default function PackagesPage() {
     setConfirmBulk('');
   };
 
+  const handleConfirmAction = () => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'approve') approveMutation.mutate(confirmAction.packageId);
+    else rejectMutation.mutate(confirmAction.packageId);
+    setConfirmAction(null);
+  };
+
   return (
     <div>
       <div className="admin-page-header">
         <div className="admin-page-header-left">
           <h1>Package Management</h1>
-          <p>Manage all service packages and their categories</p>
+          <p>Review pending submissions and manage all service packages</p>
         </div>
         <div className="admin-page-header-actions">
           <button className="btn btn-secondary" onClick={() => navigate('/admin/packages/categories')}>Categories</button>
@@ -71,9 +91,10 @@ export default function PackagesPage() {
         </div>
         <select className="admin-filters-select" value={status} onChange={(e) => { setStatus(e.target.value); reset(); }}>
           <option value="">All Statuses</option>
+          <option value="pending_review">Pending Review</option>
+          <option value="active">Active</option>
           <option value="draft">Draft</option>
-          <option value="published">Published</option>
-          <option value="unpublished">Unpublished</option>
+          <option value="inactive">Inactive</option>
           <option value="archived">Archived</option>
         </select>
         {selected.length > 0 && (
@@ -86,7 +107,10 @@ export default function PackagesPage() {
       </div>
 
       {isLoading ? <SkeletonTable rows={8} cols={6} /> : !items.length ? (
-        <EmptyState title="No packages found" />
+        <EmptyState
+          title={status === 'pending_review' ? 'No pending packages' : 'No packages found'}
+          message={status === 'pending_review' ? 'No vendor packages are waiting for approval.' : undefined}
+        />
       ) : (
         <div className="admin-table-wrapper">
           <table className="admin-table">
@@ -114,7 +138,27 @@ export default function PackagesPage() {
                   <td><StatusBadge status={p.status} /></td>
                   <td>{timeAgo(p.updated_at)}</td>
                   <td>
-                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/admin/packages/${p.id}`)}>View</button>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {p.status === 'pending_review' && (
+                        <>
+                          <button
+                            className="btn btn-success btn-sm"
+                            disabled={approveMutation.isPending || rejectMutation.isPending}
+                            onClick={() => setConfirmAction({ type: 'approve', packageId: p.id, name: p.name })}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            disabled={approveMutation.isPending || rejectMutation.isPending}
+                            onClick={() => setConfirmAction({ type: 'reject', packageId: p.id, name: p.name })}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/admin/packages/${p.id}`)}>View</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -131,6 +175,19 @@ export default function PackagesPage() {
         title={`Bulk ${confirmBulk}`}
         message={`${confirmBulk} ${selected.length} package(s)?`}
         loading={publishMutation.isPending || unpublishMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+        title={confirmAction?.type === 'approve' ? 'Approve Package' : 'Reject Package'}
+        message={
+          confirmAction?.type === 'approve'
+            ? `Approve "${confirmAction?.name}"? It will become publicly visible on the app.`
+            : `Reject "${confirmAction?.name}"? It will be returned to draft for the vendor to edit.`
+        }
+        loading={approveMutation.isPending || rejectMutation.isPending}
       />
     </div>
   );

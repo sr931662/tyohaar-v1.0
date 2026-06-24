@@ -16,11 +16,20 @@ export const packagesApi = {
   delete: (packageId) =>
     apiClient.delete(`/packages/${packageId}`).then(extractData),
 
-  publish: (packageId) =>
+  submitForReview: (packageId) =>
     apiClient.post(`/packages/${packageId}/publish`).then(extractData),
 
   unpublish: (packageId) =>
     apiClient.post(`/packages/${packageId}/unpublish`).then(extractData),
+
+  approve: (packageId) =>
+    apiClient.post(`/packages/${packageId}/approve`).then(extractData),
+
+  reject: (packageId) =>
+    apiClient.post(`/packages/${packageId}/reject`).then(extractData),
+
+  listPending: (params) =>
+    apiClient.get('/packages', { params: { ...params, status: 'pending_review' } }).then(extractPaginated),
 
   // Categories
   listCategories: () =>
