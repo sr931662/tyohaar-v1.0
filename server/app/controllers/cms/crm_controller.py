@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import Depends, Query
 
-from app.core.responses import PaginatedResponse, PaginatedMeta, SuccessResponse
+from app.core.responses import SuccessResponse
 from app.schemas.cms.crm import CustomerCRMProfile, VendorCRMProfile
 from app.services.cms.crm_service import CRMService
 
@@ -36,47 +36,51 @@ async def get_customer_crm(
 async def list_vendors_crm(
     svc: CRMServiceDep,
     verification_status: str | None = Query(default=None),
+    status: str | None = Query(default=None),
     city: str | None = Query(default=None),
+    search: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-) -> PaginatedResponse:
-    skip = (page - 1) * page_size
+    per_page: int = Query(default=None),
+) -> SuccessResponse:
+    effective_page_size = per_page or page_size
+    effective_status = verification_status or status
+    skip = (page - 1) * effective_page_size
     items, total = await svc.list_vendors_crm(
-        verification_status=verification_status, city=city, skip=skip, limit=page_size
+        verification_status=effective_status,
+        city=city,
+        search=search,
+        skip=skip,
+        limit=effective_page_size,
     )
-    total_pages = (total + page_size - 1) // page_size
-    return PaginatedResponse(
-        data=items,
-        meta=PaginatedMeta(
-            page=page,
-            page_size=page_size,
-            total=total,
-            total_pages=total_pages,
-            has_next=page < total_pages,
-            has_prev=page > 1,
-        ),
-    )
+    total_pages = max((total + effective_page_size - 1) // effective_page_size, 1)
+    return SuccessResponse(data={
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": effective_page_size,
+        "pages": total_pages,
+    })
 
 
 async def list_customers_crm(
     svc: CRMServiceDep,
     account_status: str | None = Query(default=None),
+    search: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-) -> PaginatedResponse:
-    skip = (page - 1) * page_size
+    per_page: int = Query(default=None),
+) -> SuccessResponse:
+    effective_page_size = per_page or page_size
+    skip = (page - 1) * effective_page_size
     items, total = await svc.list_customers_crm(
-        account_status=account_status, skip=skip, limit=page_size
+        account_status=account_status, search=search, skip=skip, limit=effective_page_size
     )
-    total_pages = (total + page_size - 1) // page_size
-    return PaginatedResponse(
-        data=items,
-        meta=PaginatedMeta(
-            page=page,
-            page_size=page_size,
-            total=total,
-            total_pages=total_pages,
-            has_next=page < total_pages,
-            has_prev=page > 1,
-        ),
-    )
+    total_pages = max((total + effective_page_size - 1) // effective_page_size, 1)
+    return SuccessResponse(data={
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": effective_page_size,
+        "pages": total_pages,
+    })

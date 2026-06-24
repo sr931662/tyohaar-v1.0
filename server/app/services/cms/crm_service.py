@@ -375,10 +375,11 @@ class CRMService(BaseService):
         *,
         verification_status: str | None = None,
         city: str | None = None,
+        search: str | None = None,
         skip: int = 0,
         limit: int = 20,
     ) -> tuple[list[dict[str, Any]], int]:
-        from app.models.bookings.booking import Booking
+        from sqlalchemy import or_
         from app.models.vendors.vendor import Vendor
 
         async with self._uow() as uow:
@@ -387,6 +388,13 @@ class CRMService(BaseService):
                 conditions.append(Vendor.verification_status == verification_status)
             if city:
                 conditions.append(Vendor.city.ilike(f"%{city}%"))
+            if search:
+                conditions.append(
+                    or_(
+                        Vendor.business_name.ilike(f"%{search}%"),
+                        Vendor.legal_name.ilike(f"%{search}%"),
+                    )
+                )
 
             count_stmt = select(func.count()).select_from(Vendor).where(*conditions)
             data_stmt = (
@@ -413,15 +421,24 @@ class CRMService(BaseService):
         self,
         *,
         account_status: str | None = None,
+        search: str | None = None,
         skip: int = 0,
         limit: int = 20,
     ) -> tuple[list[dict[str, Any]], int]:
+        from sqlalchemy import or_
         from app.models.users.user import User
 
         async with self._uow() as uow:
             conditions = [User.deleted_at.is_(None)]
             if account_status:
                 conditions.append(User.account_status == account_status)
+            if search:
+                conditions.append(
+                    or_(
+                        User.full_name.ilike(f"%{search}%"),
+                        User.phone.ilike(f"%{search}%"),
+                    )
+                )
 
             count_stmt = select(func.count()).select_from(User).where(*conditions)
             data_stmt = (
