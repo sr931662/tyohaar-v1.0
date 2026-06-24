@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 
 // Marketing site components
 import Navbar from './components/layout/Navbar.jsx';
+
 import Footer from './components/layout/Footer.jsx';
 import Hero from './components/sections/Hero.jsx';
 import Marquee from './components/sections/Marquee.jsx';
@@ -18,6 +19,16 @@ import CTA from './components/sections/CTA.jsx';
 import { AdminAuthProvider } from './admin/context/AuthContext.jsx';
 import AdminLayout from './admin/components/layout/AdminLayout.jsx';
 import '@/admin/admin.css';
+
+// Vendor portal
+import { VendorAuthProvider } from './vendor/context/VendorAuthContext.jsx';
+import VendorLayout from './vendor/components/layout/VendorLayout.jsx';
+
+// Vendor pages — lazy loaded
+const VendorLoginPage      = lazy(() => import('./vendor/pages/auth/VendorLoginPage.jsx'));
+const VendorOverviewPage   = lazy(() => import('./vendor/pages/overview/VendorOverviewPage.jsx'));
+const VendorProfilePage    = lazy(() => import('./vendor/pages/profile/VendorProfilePage.jsx'));
+const VendorPackagesPage   = lazy(() => import('./vendor/pages/packages/VendorPackagesPage.jsx'));
 
 // Admin pages — lazy loaded for code splitting
 const LoginPage             = lazy(() => import('./admin/pages/auth/LoginPage.jsx'));
@@ -77,6 +88,30 @@ export default function App() {
     <Routes>
       {/* Marketing site */}
       <Route path="/" element={<MarketingSite />} />
+
+      {/* Vendor portal */}
+      <Route
+        path="/vendor/*"
+        element={
+          <VendorAuthProvider>
+            <Routes>
+              <Route
+                path="login"
+                element={
+                  <Suspense fallback={<AdminFallback />}>
+                    <VendorLoginPage />
+                  </Suspense>
+                }
+              />
+              <Route element={<VendorLayout />}>
+                <Route index element={<VendorOverviewPage />} />
+                <Route path="profile" element={<VendorProfilePage />} />
+                <Route path="packages" element={<VendorPackagesPage />} />
+              </Route>
+            </Routes>
+          </VendorAuthProvider>
+        }
+      />
 
       {/* Admin portal */}
       <Route
