@@ -1,10 +1,10 @@
-import { apiClient, extractData, extractPaginated } from '../client';
+import { apiClient, extractData, extractList } from '../client';
 
 const BASE = '/admin/cms/automation';
 
 export const automationApi = {
   listRules: (params) =>
-    apiClient.get(`${BASE}/rules`, { params }).then(extractPaginated),
+    apiClient.get(`${BASE}/rules`, { params }).then(extractList),
 
   getRule: (ruleId) =>
     apiClient.get(`${BASE}/rules/${ruleId}`).then(extractData),
@@ -25,7 +25,7 @@ export const automationApi = {
     apiClient.post(`${BASE}/rules/${ruleId}/trigger`, payload).then(extractData),
 
   listLogs: (params) =>
-    apiClient.get(`${BASE}/logs`, { params }).then(extractPaginated),
+    apiClient.get(`${BASE}/logs`, { params }).then(extractList),
 
   getLog: (logId) =>
     apiClient.get(`${BASE}/logs/${logId}`).then(extractData),

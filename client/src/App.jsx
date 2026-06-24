@@ -98,11 +98,11 @@ export default function App() {
               <Route element={<AdminLayout />}>
                 <Route index element={<DashboardPage />} />
                 <Route path="vendors" element={<VendorsPage />} />
-                <Route path="vendors/:id" element={<VendorDetailPage />} />
+                <Route path="vendors/:vendorId" element={<VendorDetailPage />} />
                 <Route path="customers" element={<CustomersPage />} />
-                <Route path="customers/:id" element={<CustomerDetailPage />} />
+                <Route path="customers/:userId" element={<CustomerDetailPage />} />
                 <Route path="bookings" element={<BookingsPage />} />
-                <Route path="bookings/:id" element={<BookingDetailPage />} />
+                <Route path="bookings/:bookingId" element={<BookingDetailPage />} />
                 <Route path="packages" element={<PackagesPage />} />
                 <Route path="packages/categories" element={<PackageCategoriesPage />} />
                 <Route path="payments" element={<PaymentsPage />} />
