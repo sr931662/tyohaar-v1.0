@@ -41,6 +41,16 @@ def _err(code: str, message: str, detail: Any = None) -> dict:
     return body
 
 
+def _add_cors(response: JSONResponse, request: Request) -> JSONResponse:
+    """Inject CORS headers so browsers never see a CORS error on top of a real error."""
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Vary"] = "Origin"
+    return response
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """
     Attach all domain and infrastructure exception handlers to the FastAPI app.
@@ -55,92 +65,92 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def _request_validation(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=_err("VALIDATION_ERROR", "Request validation failed.", exc.errors()),
-        )
+        ), request)
 
     # ── Service: NotFoundError — 404 ──────────────────────────────────────────
     @app.exception_handler(NotFoundError)
     async def _not_found(request: Request, exc: NotFoundError) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content=_err("NOT_FOUND", exc.message, exc.detail or None),
-        )
+        ), request)
 
     # ── Repository: NotFoundError — 404 ───────────────────────────────────────
     @app.exception_handler(RepoNotFoundError)
     async def _repo_not_found(request: Request, exc: RepoNotFoundError) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content=_err("NOT_FOUND", str(exc)),
-        )
+        ), request)
 
     # ── BookingConflictError — 409 (must come before ConflictError) ───────────
     @app.exception_handler(BookingConflictError)
     async def _booking_conflict(
         request: Request, exc: BookingConflictError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content=_err("BOOKING_CONFLICT", exc.message),
-        )
+        ), request)
 
     # ── ConflictError — 409 ───────────────────────────────────────────────────
     @app.exception_handler(ConflictError)
     async def _conflict(request: Request, exc: ConflictError) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content=_err("CONFLICT", exc.message, exc.detail or None),
-        )
+        ), request)
 
     # ── Repository: AlreadyExistsError — 409 ─────────────────────────────────
     @app.exception_handler(AlreadyExistsError)
     async def _already_exists(
         request: Request, exc: AlreadyExistsError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content=_err("ALREADY_EXISTS", str(exc)),
-        )
+        ), request)
 
     # ── CouponError — 422 (before ServiceValidationError) ────────────────────
     @app.exception_handler(CouponError)
     async def _coupon_error(request: Request, exc: CouponError) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=_err("COUPON_ERROR", exc.message),
-        )
+        ), request)
 
     # ── InsufficientBalanceError — 422 ────────────────────────────────────────
     @app.exception_handler(InsufficientBalanceError)
     async def _insufficient_balance(
         request: Request, exc: InsufficientBalanceError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=_err("INSUFFICIENT_BALANCE", exc.message),
-        )
+        ), request)
 
     # ── BusinessRuleError — 422 ───────────────────────────────────────────────
     @app.exception_handler(BusinessRuleError)
     async def _business_rule(
         request: Request, exc: BusinessRuleError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=_err("BUSINESS_RULE_VIOLATION", exc.message),
-        )
+        ), request)
 
     # ── ServiceValidationError — 422 ──────────────────────────────────────────
     @app.exception_handler(ServiceValidationError)
     async def _service_validation(
         request: Request, exc: ServiceValidationError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=_err("VALIDATION_ERROR", exc.message, exc.detail or None),
-        )
+        ), request)
 
     # ── AccountLockedError — 401 (before AuthenticationError) ────────────────
     @app.exception_handler(AccountLockedError)
@@ -150,32 +160,33 @@ def register_exception_handlers(app: FastAPI) -> None:
         body = _err("ACCOUNT_LOCKED", exc.message)
         if exc.locked_until:
             body["error"]["locked_until"] = exc.locked_until
-        return JSONResponse(
+        resp = JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content=body,
             headers={"WWW-Authenticate": "Bearer"},
         )
+        return _add_cors(resp, request)
 
     # ── AuthenticationError — 401 ─────────────────────────────────────────────
     @app.exception_handler(AuthenticationError)
     async def _authentication(
         request: Request, exc: AuthenticationError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content=_err("AUTHENTICATION_FAILED", exc.message),
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ), request)
 
     # ── ServicePermissionError — 403 ──────────────────────────────────────────
     @app.exception_handler(ServicePermissionError)
     async def _permission(
         request: Request, exc: ServicePermissionError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=_err("PERMISSION_DENIED", exc.message),
-        )
+        ), request)
 
     # ── RateLimitError — 429 ──────────────────────────────────────────────────
     @app.exception_handler(RateLimitError)
@@ -183,65 +194,68 @@ def register_exception_handlers(app: FastAPI) -> None:
         headers: dict[str, str] = {}
         if exc.retry_after_seconds is not None:
             headers["Retry-After"] = str(exc.retry_after_seconds)
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             content=_err("RATE_LIMIT_EXCEEDED", exc.message),
             headers=headers,
-        )
+        ), request)
 
     # ── PaymentError — 402 ────────────────────────────────────────────────────
     @app.exception_handler(PaymentError)
     async def _payment(request: Request, exc: PaymentError) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             content=_err("PAYMENT_ERROR", exc.message),
-        )
+        ), request)
 
     # ── Repository: StaleDataError — 409 (optimistic locking) ────────────────
     @app.exception_handler(StaleDataError)
     async def _stale_data(request: Request, exc: StaleDataError) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content=_err(
                 "STALE_DATA",
                 "The resource was modified by a concurrent request. Retry with fresh data.",
             ),
-        )
+        ), request)
 
     # ── ExternalServiceError — 502 ────────────────────────────────────────────
     @app.exception_handler(ExternalServiceError)
     async def _external_service(
         request: Request, exc: ExternalServiceError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_502_BAD_GATEWAY,
             content=_err("EXTERNAL_SERVICE_ERROR", exc.message),
-        )
+        ), request)
 
     # ── Repository: DatabaseError — 503 ───────────────────────────────────────
     @app.exception_handler(DatabaseError)
     async def _database_error(
         request: Request, exc: DatabaseError
     ) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content=_err("DATABASE_ERROR", "A database error occurred. Please try again."),
-        )
+        ), request)
 
     # ── ServiceError (catch-all) — 500 ────────────────────────────────────────
     @app.exception_handler(ServiceError)
     async def _service_error(request: Request, exc: ServiceError) -> JSONResponse:
-        return JSONResponse(
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=_err("INTERNAL_ERROR", exc.message),
-        )
+        ), request)
 
-    # ── Generic Exception — 500 (debug: exposes actual error) ─────────────────
+    # ── Generic Exception — 500 ───────────────────────────────────────────────
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
-        tb = traceback.format_exc()
-        logger.error("Unhandled exception on %s %s:\n%s", request.method, request.url.path, tb)
-        return JSONResponse(
+        try:
+            tb = traceback.format_exc()
+            logger.error("Unhandled exception on %s %s:\n%s", request.method, request.url.path, tb)
+        except Exception:
+            pass
+        return _add_cors(JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=_err("INTERNAL_ERROR", f"{type(exc).__name__}: {exc}"),
-        )
+        ), request)

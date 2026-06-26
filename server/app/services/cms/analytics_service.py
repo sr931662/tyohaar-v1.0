@@ -919,16 +919,25 @@ class AnalyticsService(BaseService):
             return SupportMetrics(total_tickets=0, open_tickets=0, in_progress_tickets=0, resolved_tickets=0, closed_tickets=0, avg_resolution_hours=0.0, sla_breach_count=0, priority_breakdown=[])
 
     async def get_platform_health(self) -> PlatformHealth:
-        async with self._uow() as uow:
-            return await self._get_platform_health(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_platform_health(uow.session)
+        except Exception:
+            return PlatformHealth(active_sessions=0, api_requests_today=0, database_status="unknown", avg_response_ms=0.0, error_rate_pct=0.0, uptime_pct=0.0)
 
     async def get_geographic_metrics(self) -> GeographicMetrics:
-        async with self._uow() as uow:
-            return await self._get_geographic_metrics(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_geographic_metrics(uow.session)
+        except Exception:
+            return GeographicMetrics(top_cities=[], revenue_by_state=[], booking_heat=[])
 
     async def get_pending_actions(self) -> dict[str, int]:
-        async with self._uow() as uow:
-            return await self._get_pending_actions(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_pending_actions(uow.session)
+        except Exception:
+            return {"vendor_approvals": 0, "booking_confirmations": 0, "support_tickets": 0, "media_moderation": 0}
 
     # ── Chart: Revenue time series ────────────────────────────────────────────
 
