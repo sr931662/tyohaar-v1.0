@@ -84,7 +84,11 @@ async def get_revenue_chart(
     granularity: str = Query(default="day", enum=["day", "week", "month"]),
     days: int = Query(default=30, ge=7, le=365),
 ) -> SuccessResponse[TimeSeriesChart]:
-    return SuccessResponse(data=await svc.get_revenue_chart(granularity=granularity, days=days))
+    try:
+        data = await svc.get_revenue_chart(granularity=granularity, days=days)
+    except Exception:
+        data = TimeSeriesChart(title="Revenue Over Time", granularity=granularity, series=[], date_range={})
+    return SuccessResponse(data=data)
 
 
 async def get_bookings_chart(
@@ -92,7 +96,11 @@ async def get_bookings_chart(
     granularity: str = Query(default="day", enum=["day", "week", "month"]),
     days: int = Query(default=30, ge=7, le=365),
 ) -> SuccessResponse[TimeSeriesChart]:
-    return SuccessResponse(data=await svc.get_bookings_chart(granularity=granularity, days=days))
+    try:
+        data = await svc.get_bookings_chart(granularity=granularity, days=days)
+    except Exception:
+        data = TimeSeriesChart(title="Bookings Over Time", granularity=granularity, series=[], date_range={})
+    return SuccessResponse(data=data)
 
 
 async def get_users_chart(
@@ -100,19 +108,35 @@ async def get_users_chart(
     granularity: str = Query(default="day", enum=["day", "week", "month"]),
     days: int = Query(default=30, ge=7, le=365),
 ) -> SuccessResponse[TimeSeriesChart]:
-    return SuccessResponse(data=await svc.get_users_chart(granularity=granularity, days=days))
+    try:
+        data = await svc.get_users_chart(granularity=granularity, days=days)
+    except Exception:
+        data = TimeSeriesChart(title="New User Registrations", granularity=granularity, series=[], date_range={})
+    return SuccessResponse(data=data)
 
 
 async def get_category_distribution(svc: AnalyticsServiceDep) -> SuccessResponse[PieChartData]:
-    return SuccessResponse(data=await svc.get_category_distribution_chart())
+    try:
+        data = await svc.get_category_distribution_chart()
+    except Exception:
+        data = PieChartData(title="Bookings by Category", segments=[], total=0)
+    return SuccessResponse(data=data)
 
 
 async def get_activity_feed(
     svc: AnalyticsServiceDep,
     limit: int = Query(default=20, ge=5, le=50),
 ) -> SuccessResponse[ActivityFeed]:
-    return SuccessResponse(data=await svc.get_activity_feed(limit=limit))
+    try:
+        data = await svc.get_activity_feed(limit=limit)
+    except Exception:
+        data = ActivityFeed(items=[], has_more=False)
+    return SuccessResponse(data=data)
 
 
 async def get_dashboard_widgets(svc: AnalyticsServiceDep) -> SuccessResponse[list[DashboardWidget]]:
-    return SuccessResponse(data=await svc.get_dashboard_widgets())
+    try:
+        data = await svc.get_dashboard_widgets()
+    except Exception:
+        data = []
+    return SuccessResponse(data=data)

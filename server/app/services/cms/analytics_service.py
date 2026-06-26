@@ -815,54 +815,34 @@ class AnalyticsService(BaseService):
     # ── Main dashboard entry point ────────────────────────────────────────────
 
     async def get_executive_dashboard(self) -> ExecutiveDashboard:
+        _z = Decimal("0")
+
+        async def _safe(coro, default):
+            try:
+                return await coro
+            except Exception:
+                return default
+
         async with self._uow() as uow:
-            session = uow.session
-            assert session is not None
+            s = uow.session
+            assert s is not None
 
-            revenue = await self._get_revenue_metrics(session)
-            bookings = await self._get_booking_metrics(session)
-            users = await self._get_user_metrics(session)
-            vendors = await self._get_vendor_metrics(session)
-            payments = await self._get_payment_metrics(session)
-            wallets = await self._get_wallet_metrics(session)
-            geographic = await self._get_geographic_metrics(session)
-            platform_health = await self._get_platform_health(session)
-            pending_actions = await self._get_pending_actions(session)
-
-            try:
-                memberships = await self._get_membership_metrics(session)
-            except Exception:
-                memberships = MembershipMetrics(total_active=0, expired_this_month=0, renewed_this_month=0, new_subscriptions_this_month=0, conversion_rate=0.0, monthly_recurring_revenue=Decimal("0"), churn_rate=0.0, plan_breakdown=[])
-
-            try:
-                referrals = await self._get_referral_metrics(session)
-            except Exception:
-                referrals = ReferralMetrics(total_referrals=0, successful_referrals=0, pending_referrals=0, referral_conversion_rate=0.0, total_referral_revenue=Decimal("0"), total_rewards_issued=Decimal("0"))
-
-            try:
-                occasions = await self._get_occasion_metrics(session)
-            except Exception:
-                occasions = OccasionMetrics(total_celebrations=0, celebrations_this_month=0, most_popular_occasion=None, most_popular_occasion_count=0, occasion_breakdown=[], trending_packages=[])
-
-            try:
-                support = await self._get_support_metrics(session)
-            except Exception:
-                support = SupportMetrics(total_tickets=0, open_tickets=0, in_progress_tickets=0, resolved_tickets=0, closed_tickets=0, avg_resolution_hours=0.0, sla_breach_count=0, priority_breakdown=[])
-
-            try:
-                media = await self._get_media_metrics(session)
-            except Exception:
-                media = MediaMetrics(total_images=0, total_videos=0, pending_moderation=0, approved=0, rejected=0, total_storage_mb=0.0, uploads_this_month=0)
-
-            try:
-                notifications = await self._get_notification_metrics(session)
-            except Exception:
-                notifications = NotificationMetrics(total_sent=0, push_sent=0, email_sent=0, sms_sent=0, in_app_sent=0, delivery_rate=0.0, read_rate=0.0, avg_ctr=0.0)
-
-            try:
-                budgets = await self._get_budget_metrics(session)
-            except Exception:
-                budgets = BudgetMetrics(total_budgets=0, avg_budget_amount=Decimal("0"), avg_utilization_pct=0.0, over_budget_count=0, category_distribution=[])
+            revenue = await _safe(self._get_revenue_metrics(s), RevenueMetrics(today=_z, yesterday=_z, this_week=_z, this_month=_z, this_year=_z, total_lifetime=_z, growth_pct_wow=0.0, growth_pct_mom=0.0, growth_pct_yoy=0.0, average_order_value=_z))
+            bookings = await _safe(self._get_booking_metrics(s), BookingMetrics(total=0, pending=0, confirmed=0, in_progress=0, completed=0, cancelled=0, refunded=0, rescheduled=0, completion_rate=0.0, cancellation_rate=0.0, avg_booking_value=_z))
+            users = await _safe(self._get_user_metrics(s), UserMetrics(total=0, active=0, suspended=0, banned=0, deactivated=0, new_today=0, new_this_week=0, new_this_month=0, daily_active=0, monthly_active=0, returning_users=0, retention_rate=0.0))
+            vendors = await _safe(self._get_vendor_metrics(s), VendorMetrics(total=0, verified=0, pending_approval=0, rejected=0, suspended=0, inactive=0, new_this_month=0, avg_rating=0.0, avg_bookings_per_vendor=0.0, top_vendors=[]))
+            payments = await _safe(self._get_payment_metrics(s), PaymentMetrics(total_transactions=0, successful=0, failed=0, refunded=0, pending=0, total_volume=_z, total_refunded=_z, gateway_success_rate=0.0, avg_transaction_value=_z))
+            wallets = await _safe(self._get_wallet_metrics(s), WalletMetrics(total_wallets=0, active_wallets=0, frozen_wallets=0, total_balance=_z, total_credits_issued=_z, total_debits=_z, total_rewards_issued=_z, total_cashback_issued=_z))
+            geographic = await _safe(self._get_geographic_metrics(s), GeographicMetrics(top_cities=[], revenue_by_state=[], booking_heat=[]))
+            platform_health = await _safe(self._get_platform_health(s), PlatformHealth(active_sessions=0, api_requests_today=0, database_status="unknown", avg_response_ms=0.0, error_rate_pct=0.0, uptime_pct=0.0))
+            pending_actions = await _safe(self._get_pending_actions(s), {"vendor_approvals": 0, "booking_confirmations": 0, "support_tickets": 0, "media_moderation": 0})
+            memberships = await _safe(self._get_membership_metrics(s), MembershipMetrics(total_active=0, expired_this_month=0, renewed_this_month=0, new_subscriptions_this_month=0, conversion_rate=0.0, monthly_recurring_revenue=_z, churn_rate=0.0, plan_breakdown=[]))
+            referrals = await _safe(self._get_referral_metrics(s), ReferralMetrics(total_referrals=0, successful_referrals=0, pending_referrals=0, referral_conversion_rate=0.0, total_referral_revenue=_z, total_rewards_issued=_z))
+            occasions = await _safe(self._get_occasion_metrics(s), OccasionMetrics(total_celebrations=0, celebrations_this_month=0, most_popular_occasion=None, most_popular_occasion_count=0, occasion_breakdown=[], trending_packages=[]))
+            support = await _safe(self._get_support_metrics(s), SupportMetrics(total_tickets=0, open_tickets=0, in_progress_tickets=0, resolved_tickets=0, closed_tickets=0, avg_resolution_hours=0.0, sla_breach_count=0, priority_breakdown=[]))
+            media = await _safe(self._get_media_metrics(s), MediaMetrics(total_images=0, total_videos=0, pending_moderation=0, approved=0, rejected=0, total_storage_mb=0.0, uploads_this_month=0))
+            notifications = await _safe(self._get_notification_metrics(s), NotificationMetrics(total_sent=0, push_sent=0, email_sent=0, sms_sent=0, in_app_sent=0, delivery_rate=0.0, read_rate=0.0, avg_ctr=0.0))
+            budgets = await _safe(self._get_budget_metrics(s), BudgetMetrics(total_budgets=0, avg_budget_amount=_z, avg_utilization_pct=0.0, over_budget_count=0, category_distribution=[]))
 
         return ExecutiveDashboard(
             generated_at=self._now(),
@@ -888,28 +868,48 @@ class AnalyticsService(BaseService):
     # ── Individual metric endpoints ───────────────────────────────────────────
 
     async def get_revenue_metrics(self) -> RevenueMetrics:
-        async with self._uow() as uow:
-            return await self._get_revenue_metrics(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_revenue_metrics(uow.session)
+        except Exception:
+            _z = Decimal("0")
+            return RevenueMetrics(today=_z, yesterday=_z, this_week=_z, this_month=_z, this_year=_z, total_lifetime=_z, growth_pct_wow=0.0, growth_pct_mom=0.0, growth_pct_yoy=0.0, average_order_value=_z)
 
     async def get_booking_metrics(self) -> BookingMetrics:
-        async with self._uow() as uow:
-            return await self._get_booking_metrics(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_booking_metrics(uow.session)
+        except Exception:
+            return BookingMetrics(total=0, pending=0, confirmed=0, in_progress=0, completed=0, cancelled=0, refunded=0, rescheduled=0, completion_rate=0.0, cancellation_rate=0.0, avg_booking_value=Decimal("0"))
 
     async def get_user_metrics(self) -> UserMetrics:
-        async with self._uow() as uow:
-            return await self._get_user_metrics(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_user_metrics(uow.session)
+        except Exception:
+            return UserMetrics(total=0, active=0, suspended=0, banned=0, deactivated=0, new_today=0, new_this_week=0, new_this_month=0, daily_active=0, monthly_active=0, returning_users=0, retention_rate=0.0)
 
     async def get_vendor_metrics(self) -> VendorMetrics:
-        async with self._uow() as uow:
-            return await self._get_vendor_metrics(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_vendor_metrics(uow.session)
+        except Exception:
+            return VendorMetrics(total=0, verified=0, pending_approval=0, rejected=0, suspended=0, inactive=0, new_this_month=0, avg_rating=0.0, avg_bookings_per_vendor=0.0, top_vendors=[])
 
     async def get_payment_metrics(self) -> PaymentMetrics:
-        async with self._uow() as uow:
-            return await self._get_payment_metrics(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_payment_metrics(uow.session)
+        except Exception:
+            return PaymentMetrics(total_transactions=0, successful=0, failed=0, refunded=0, pending=0, total_volume=Decimal("0"), total_refunded=Decimal("0"), gateway_success_rate=0.0, avg_transaction_value=Decimal("0"))
 
     async def get_wallet_metrics(self) -> WalletMetrics:
-        async with self._uow() as uow:
-            return await self._get_wallet_metrics(uow.session)
+        try:
+            async with self._uow() as uow:
+                return await self._get_wallet_metrics(uow.session)
+        except Exception:
+            _z = Decimal("0")
+            return WalletMetrics(total_wallets=0, active_wallets=0, frozen_wallets=0, total_balance=_z, total_credits_issued=_z, total_debits=_z, total_rewards_issued=_z, total_cashback_issued=_z)
 
     async def get_support_metrics(self) -> SupportMetrics:
         try:
@@ -1145,17 +1145,22 @@ class AnalyticsService(BaseService):
 
     async def get_dashboard_widgets(self) -> list[DashboardWidget]:
         """Lightweight widget cards for the dashboard overview."""
+        _z = Decimal("0")
+
+        async def _safe(coro, default):
+            try:
+                return await coro
+            except Exception:
+                return default
+
         async with self._uow() as uow:
             session = uow.session
-            revenue = await self._get_revenue_metrics(session)
-            bookings = await self._get_booking_metrics(session)
-            users = await self._get_user_metrics(session)
-            vendors = await self._get_vendor_metrics(session)
-            pending = await self._get_pending_actions(session)
-            try:
-                support = await self._get_support_metrics(session)
-            except Exception:
-                support = SupportMetrics(total_tickets=0, open_tickets=0, in_progress_tickets=0, resolved_tickets=0, closed_tickets=0, avg_resolution_hours=0.0, sla_breach_count=0, priority_breakdown=[])
+            revenue = await _safe(self._get_revenue_metrics(session), RevenueMetrics(today=_z, yesterday=_z, this_week=_z, this_month=_z, this_year=_z, total_lifetime=_z, growth_pct_wow=0.0, growth_pct_mom=0.0, growth_pct_yoy=0.0, average_order_value=_z))
+            bookings = await _safe(self._get_booking_metrics(session), BookingMetrics(total=0, pending=0, confirmed=0, in_progress=0, completed=0, cancelled=0, refunded=0, rescheduled=0, completion_rate=0.0, cancellation_rate=0.0, avg_booking_value=_z))
+            users = await _safe(self._get_user_metrics(session), UserMetrics(total=0, active=0, suspended=0, banned=0, deactivated=0, new_today=0, new_this_week=0, new_this_month=0, daily_active=0, monthly_active=0, returning_users=0, retention_rate=0.0))
+            vendors = await _safe(self._get_vendor_metrics(session), VendorMetrics(total=0, verified=0, pending_approval=0, rejected=0, suspended=0, inactive=0, new_this_month=0, avg_rating=0.0, avg_bookings_per_vendor=0.0, top_vendors=[]))
+            pending = await _safe(self._get_pending_actions(session), {"vendor_approvals": 0, "booking_confirmations": 0, "support_tickets": 0, "media_moderation": 0})
+            support = await _safe(self._get_support_metrics(session), SupportMetrics(total_tickets=0, open_tickets=0, in_progress_tickets=0, resolved_tickets=0, closed_tickets=0, avg_resolution_hours=0.0, sla_breach_count=0, priority_breakdown=[]))
 
         return [
             DashboardWidget(widget_id="revenue_today", title="Revenue Today", value=revenue.today,
