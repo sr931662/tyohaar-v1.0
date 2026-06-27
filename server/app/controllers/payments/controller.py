@@ -14,6 +14,7 @@ from app.core.current_user import CurrentUserDep
 from app.core.dependencies import PaymentServiceDep
 from app.core.pagination import CursorPaginationParams, get_cursor_pagination
 from app.core.permissions import AdminDep
+from app.models.enums import UserRole
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
 from app.schemas.payments.create import CouponCreate, PaymentCreate, RefundCreate
@@ -114,8 +115,9 @@ async def list_payments(
     pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     service: PaymentServiceDep,
 ) -> CursorPaginatedResponse[PaymentResponse]:
+    is_admin = current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
     page = await service.list_payments(
-        customer_id=current_user.id,
+        customer_id=None if is_admin else current_user.id,
         filters=filters,
         cursor=pagination.cursor,
         limit=pagination.page_size,

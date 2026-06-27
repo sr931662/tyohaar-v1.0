@@ -1,0 +1,311 @@
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { vendorBookingsApi } from '../../api';
+import StatusBadge from '../../../admin/components/ui/StatusBadge';
+import { SkeletonCard } from '../../../admin/components/ui/Skeleton';
+import { ConfirmDialog } from '../../../admin/components/ui/Modal';
+import { formatDate, formatDateTime, formatCurrency } from '../../../admin/utils/format';
+
+function Section({ title, children }) {
+  return (
+    <div className="admin-detail-section">
+      <div className="admin-detail-section-title">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, value }) {
+  return (
+    <div className="admin-detail-row">
+      <div className="admin-detail-label">{label}</div>
+      <div className="admin-detail-value">{value ?? '—'}</div>
+    </div>
+  );
+}
+
+const TAB_LABELS = ['Overview', 'Items', 'History'];
+
+export default function VendorBookingDetailPage() {
+  const { bookingId } = useParams();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [confirmStart, setConfirmStart] = useState(false);
+  const [confirmComplete, setConfirmComplete] = useState(false);
+
+  const { data: booking, isLoading } = useQuery({
+    queryKey: ['vendor-booking', bookingId],
+    queryFn: () => vendorBookingsApi.get(bookingId),
+  });
+
+  const { data: history = [] } = useQuery({
+    queryKey: ['vendor-booking', bookingId, 'history'],
+    queryFn: () => vendorBookingsApi.history(bookingId),
+    enabled: activeTab === 'History',
+  });
+
+  const { data: statusHistory = [] } = useQuery({
+    queryKey: ['vendor-booking', bookingId, 'status-history'],
+    queryFn: () => vendorBookingsApi.statusHistory(bookingId),
+    enabled: activeTab === 'History',
+  });
+
+  const invalidate = () => qc.invalidateQueries(['vendor-booking', bookingId]);
+
+  const startMutation = useMutation({
+    mutationFn: () => vendorBookingsApi.start(bookingId),
+    onSuccess: () => { toast.success('Service started'); invalidate(); setConfirmStart(false); },
+    onError: (err) => toast.error(err?.response?.data?.error?.message ?? 'Failed to start service'),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: () => vendorBookingsApi.complete(bookingId),
+    onSuccess: () => { toast.success('Service marked as completed'); invalidate(); setConfirmComplete(false); },
+    onError: (err) => toast.error(err?.response?.data?.error?.message ?? 'Failed to complete service'),
+  });
+
+  if (isLoading) return (
+    <div>
+      <div className="admin-page-header">
+        <button className="btn btn-ghost" onClick={() => navigate(-1)}>← Back</button>
+      </div>
+      {[1, 2, 3].map((i) => <SkeletonCard key={i} height={120} />)}
+    </div>
+  );
+
+  if (!booking) return (
+    <div style={{ padding: 48, textAlign: 'center' }}>
+      <p style={{ color: 'var(--text-secondary)' }}>Booking not found.</p>
+      <button className="btn btn-secondary" onClick={() => navigate(-1)} style={{ marginTop: 12 }}>Go Back</button>
+    </div>
+  );
+
+  const b = booking;
+  const items = b.items ?? [];
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="admin-page-header">
+        <div className="admin-page-header-left">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button className="btn btn-ghost" onClick={() => navigate(-1)}>←</button>
+            <div>
+              <h1>
+                Booking{' '}
+                <code style={{ fontSize: 14, background: 'var(--bg-base)', padding: '2px 8px', borderRadius: 4 }}>
+                  {b.booking_number ?? b.id?.slice(0, 8)}
+                </code>
+              </h1>
+              <div style={{ marginTop: 4 }}>
+                <StatusBadge status={b.status} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="admin-page-header-actions">
+          {b.status === 'confirmed' && (
+            <button
+              className="btn btn-primary"
+              onClick={() => setConfirmStart(true)}
+              disabled={startMutation.isPending}
+            >
+              Start Service
+            </button>
+          )}
+          {b.status === 'in_progress' && (
+            <button
+              className="btn btn-success"
+              onClick={() => setConfirmComplete(true)}
+              disabled={completeMutation.isPending}
+            >
+              Mark Complete
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="admin-tabs" style={{ marginBottom: 20 }}>
+        {TAB_LABELS.map((tab) => (
+          <button
+            key={tab}
+            className={`admin-tab${activeTab === tab ? ' active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Overview Tab */}
+      {activeTab === 'Overview' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="admin-card">
+            <Section title="Booking Details">
+              <Row label="Booking Number" value={b.booking_number ?? b.id?.slice(0, 8)} />
+              <Row label="Status" value={<StatusBadge status={b.status} />} />
+              <Row label="Payment Status" value={<StatusBadge status={b.payment_status} />} />
+              <Row label="Scheduled Date" value={b.scheduled_date ? formatDate(b.scheduled_date) : null} />
+              <Row label="Start Time" value={b.scheduled_start_time} />
+              <Row label="End Time" value={b.scheduled_end_time} />
+              <Row label="Special Instructions" value={b.special_instructions} />
+            </Section>
+          </div>
+
+          <div className="admin-card">
+            <Section title="Customer Info">
+              <Row label="Name" value={b.customer?.name ?? b.customer_name} />
+              <Row label="Phone" value={b.customer?.phone} />
+              <Row label="City" value={b.address?.city ?? b.customer?.city} />
+              <Row label="Full Address" value={b.address?.address_line_1
+                ? [b.address.address_line_1, b.address.address_line_2, b.address.city, b.address.state].filter(Boolean).join(', ')
+                : null} />
+            </Section>
+          </div>
+
+          <div className="admin-card">
+            <Section title="Package">
+              <Row label="Package Name" value={b.package?.name ?? b.package_name} />
+              <Row label="Category" value={b.package?.category?.name} />
+              <Row label="Duration" value={b.package?.duration_hours ? `${b.package.duration_hours} hrs` : null} />
+            </Section>
+          </div>
+
+          <div className="admin-card">
+            <Section title="Financial">
+              <Row label="Subtotal" value={formatCurrency(b.subtotal ?? 0)} />
+              <Row label="Discount" value={b.discount_amount ? formatCurrency(b.discount_amount) : '—'} />
+              <Row label="Tax" value={formatCurrency(b.tax_amount ?? 0)} />
+              <Row label="Platform Fee" value={formatCurrency(b.platform_fee ?? 0)} />
+              <Row
+                label="Total"
+                value={<strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(b.total_amount ?? 0)}</strong>}
+              />
+              <Row label="Amount Paid" value={formatCurrency(b.amount_paid ?? 0)} />
+              <Row label="Amount Due" value={formatCurrency(b.amount_due ?? 0)} />
+            </Section>
+          </div>
+        </div>
+      )}
+
+      {/* Items Tab */}
+      {activeTab === 'Items' && (
+        <div className="admin-card">
+          {!items.length ? (
+            <p style={{ color: 'var(--text-tertiary)', padding: '24px 0', textAlign: 'center' }}>No items on this booking.</p>
+          ) : (
+            <div className="admin-table-wrapper">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Final Price</th>
+                    <th>Customizations</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="admin-user-name">{item.package_item?.name ?? item.name ?? '—'}</div>
+                        {item.package_item?.description && (
+                          <div className="admin-user-email">{item.package_item.description}</div>
+                        )}
+                      </td>
+                      <td>{item.quantity ?? 1}</td>
+                      <td>{formatCurrency(item.unit_price ?? 0)}</td>
+                      <td style={{ fontWeight: 600 }}>{formatCurrency(item.final_price ?? 0)}</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                        {item.customizations
+                          ? Object.entries(item.customizations).map(([k, v]) => `${k}: ${v}`).join(', ')
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* History Tab */}
+      {activeTab === 'History' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="admin-card">
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, fontSize: 14 }}>
+              Status Transitions
+            </div>
+            <div style={{ padding: 16 }}>
+              {!statusHistory.length ? (
+                <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No status history yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {statusHistory.map((h, i) => (
+                    <div key={i} className="admin-activity-item">
+                      <div className="admin-activity-icon" style={{ background: 'var(--bg-raised)' }}>→</div>
+                      <div className="admin-activity-content">
+                        <div className="admin-activity-text">
+                          <StatusBadge status={h.old_status} /> → <StatusBadge status={h.new_status} />
+                        </div>
+                        {h.reason && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{h.reason}</div>}
+                        <div className="admin-activity-time">{h.changed_at ? formatDateTime(h.changed_at) : ''}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="admin-card">
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, fontSize: 14 }}>
+              Event Log
+            </div>
+            <div style={{ padding: 16 }}>
+              {!history.length ? (
+                <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No events yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {history.map((h, i) => (
+                    <div key={i} className="admin-activity-item">
+                      <div className="admin-activity-icon">📌</div>
+                      <div className="admin-activity-content">
+                        <div className="admin-activity-text">{h.event ?? h.action ?? JSON.stringify(h)}</div>
+                        {h.timestamp && <div className="admin-activity-time">{formatDateTime(h.timestamp)}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm dialogs */}
+      <ConfirmDialog
+        open={confirmStart}
+        onClose={() => setConfirmStart(false)}
+        onConfirm={() => startMutation.mutate()}
+        title="Start Service"
+        message="Confirm that you have arrived and the service has started?"
+        loading={startMutation.isPending}
+      />
+      <ConfirmDialog
+        open={confirmComplete}
+        onClose={() => setConfirmComplete(false)}
+        onConfirm={() => completeMutation.mutate()}
+        title="Complete Service"
+        message="Confirm that the service has been fully completed and delivered?"
+        loading={completeMutation.isPending}
+      />
+    </div>
+  );
+}

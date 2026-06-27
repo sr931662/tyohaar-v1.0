@@ -469,15 +469,23 @@ class PaymentService(BaseService):
 
     async def list_payments(
         self,
-        customer_id: uuid.UUID,
+        customer_id: uuid.UUID | None,
         filters: PaymentFilters,
         cursor: str | None = None,
         limit: int = 20,
     ) -> CursorPage[PaymentResponse]:
         async with self._uow() as uow:
-            payments = await uow.payments.payments.find_by_payer(
-                customer_id, skip=0, limit=limit
-            )
+            from app.models.payments.payment import Payment
+            if customer_id is None:
+                # Admin: return all payments
+                payments = await uow.payments.payments.find_many(
+                    order_by=Payment.created_at.desc(),
+                    limit=limit,
+                )
+            else:
+                payments = await uow.payments.payments.find_by_payer(
+                    customer_id, skip=0, limit=limit
+                )
             items = [PaymentResponse.model_validate(p) for p in payments]
             return CursorPage(items=items, has_more=len(items) == limit)
 

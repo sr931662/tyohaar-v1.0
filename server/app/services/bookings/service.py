@@ -204,14 +204,17 @@ class BookingService(BaseService):
 
     async def list_bookings(
         self,
-        customer_id: UUID,
+        customer_id: UUID | None,
         filters: BookingFilters,
         cursor: str | None,
         limit: int,
     ) -> CursorPage[BookingResponse]:
         async with self._uow() as uow:
+            conditions = []
+            if customer_id is not None:
+                conditions.append(uow.bookings.bookings._model.customer_id == customer_id)
             page = await uow.bookings.bookings.cursor_paginate(
-                uow.bookings.bookings._model.customer_id == customer_id,
+                *conditions,
                 cursor=cursor,
                 limit=limit,
             )

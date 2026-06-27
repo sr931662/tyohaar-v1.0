@@ -25,11 +25,18 @@ import { VendorAuthProvider } from './vendor/context/VendorAuthContext.jsx';
 import VendorLayout from './vendor/components/layout/VendorLayout.jsx';
 
 // Vendor pages — lazy loaded
-const VendorLoginPage      = lazy(() => import('./vendor/pages/auth/VendorLoginPage.jsx'));
-const VendorOverviewPage   = lazy(() => import('./vendor/pages/overview/VendorOverviewPage.jsx'));
-const VendorProfilePage    = lazy(() => import('./vendor/pages/profile/VendorProfilePage.jsx'));
-const VendorPackagesPage   = lazy(() => import('./vendor/pages/packages/VendorPackagesPage.jsx'));
-const VendorBankPage       = lazy(() => import('./vendor/pages/bank/VendorBankPage.jsx'));
+const VendorLoginPage           = lazy(() => import('./vendor/pages/auth/VendorLoginPage.jsx'));
+const VendorOverviewPage        = lazy(() => import('./vendor/pages/overview/VendorOverviewPage.jsx'));
+const VendorProfilePage         = lazy(() => import('./vendor/pages/profile/VendorProfilePage.jsx'));
+const VendorPackagesPage        = lazy(() => import('./vendor/pages/packages/VendorPackagesPage.jsx'));
+const VendorBankPage            = lazy(() => import('./vendor/pages/bank/VendorBankPage.jsx'));
+const VendorBookingsPage        = lazy(() => import('./vendor/pages/bookings/VendorBookingsPage.jsx'));
+const VendorBookingDetailPage   = lazy(() => import('./vendor/pages/bookings/VendorBookingDetailPage.jsx'));
+const VendorAvailabilityPage    = lazy(() => import('./vendor/pages/availability/VendorAvailabilityPage.jsx'));
+const VendorEarningsPage        = lazy(() => import('./vendor/pages/earnings/VendorEarningsPage.jsx'));
+const VendorReviewsPage         = lazy(() => import('./vendor/pages/reviews/VendorReviewsPage.jsx'));
+const VendorNotificationsPage   = lazy(() => import('./vendor/pages/notifications/VendorNotificationsPage.jsx'));
+const VendorSupportPage         = lazy(() => import('./vendor/pages/support/VendorSupportPage.jsx'));
 
 // Admin pages — lazy loaded for code splitting
 const LoginPage             = lazy(() => import('./admin/pages/auth/LoginPage.jsx'));
@@ -109,6 +116,13 @@ export default function App() {
                 <Route path="profile" element={<VendorProfilePage />} />
                 <Route path="packages" element={<VendorPackagesPage />} />
                 <Route path="bank" element={<VendorBankPage />} />
+                <Route path="bookings" element={<VendorBookingsPage />} />
+                <Route path="bookings/:bookingId" element={<VendorBookingDetailPage />} />
+                <Route path="availability" element={<VendorAvailabilityPage />} />
+                <Route path="earnings" element={<VendorEarningsPage />} />
+                <Route path="reviews" element={<VendorReviewsPage />} />
+                <Route path="notifications" element={<VendorNotificationsPage />} />
+                <Route path="support" element={<VendorSupportPage />} />
               </Route>
             </Routes>
           </VendorAuthProvider>

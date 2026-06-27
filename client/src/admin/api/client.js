@@ -43,7 +43,23 @@ export function extractList(res) {
 }
 
 export function extractPaginated(res) {
-  const d = res.data?.data;
+  const raw = res.data;
+
+  // Cursor-paginated: { data: [...], meta: { cursor, has_next, page_size } }
+  if (Array.isArray(raw?.data) && raw?.meta !== undefined) {
+    return {
+      items: raw.data,
+      total: raw.data.length,
+      page: 1,
+      per_page: raw.meta?.page_size ?? 20,
+      pages: raw.meta?.has_next ? 2 : 1,
+      next_cursor: raw.meta?.cursor ?? null,
+      has_next: raw.meta?.has_next ?? false,
+    };
+  }
+
+  // Offset-paginated (SuccessResponse-wrapped): { data: { items, total, pages, ... } }
+  const d = raw?.data;
   return {
     items: d?.items ?? d?.data ?? [],
     total: d?.total ?? 0,

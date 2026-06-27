@@ -16,3 +16,4 @@ export { bulkApi } from './endpoints/bulk';
 export { ioApi } from './endpoints/io';
 export { automationApi } from './endpoints/automation';
 export { searchApi } from './endpoints/search';
+export { budgetsApi } from './endpoints/budgets';

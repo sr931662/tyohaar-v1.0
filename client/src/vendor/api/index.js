@@ -48,6 +48,20 @@ export const vendorProfileApi = {
     vendorClient.put(`/vendors/${vendorId}/bank-accounts/${bankId}`, body).then(extractData),
   deleteBankAccount: (vendorId, bankId) =>
     vendorClient.delete(`/vendors/${vendorId}/bank-accounts/${bankId}`).then(extractData),
+
+  // Availability
+  listAvailability: (vendorId, params) =>
+    vendorClient.get(`/vendors/${vendorId}/availability`, { params }).then(extractList),
+  createAvailability: (vendorId, body) =>
+    vendorClient.post(`/vendors/${vendorId}/availability`, body).then(extractData),
+  updateAvailability: (vendorId, slotId, body) =>
+    vendorClient.put(`/vendors/${vendorId}/availability/${slotId}`, body).then(extractData),
+  deleteAvailability: (vendorId, slotId) =>
+    vendorClient.delete(`/vendors/${vendorId}/availability/${slotId}`).then(extractData),
+
+  // Reviews (for my vendor)
+  listReviews: (vendorId, params) =>
+    vendorClient.get(`/vendors/${vendorId}/reviews`, { params }).then(extractPaginated),
 };
 
 // ── Packages ──────────────────────────────────────────────────────────────────
@@ -81,4 +95,62 @@ export const vendorPackagesApi = {
     vendorClient.put(`/packages/${packageId}/items/${itemId}`, body).then(extractData),
   deleteItem: (packageId, itemId) =>
     vendorClient.delete(`/packages/${packageId}/items/${itemId}`).then(extractData),
+};
+
+// ── Bookings ──────────────────────────────────────────────────────────────────
+
+export const vendorBookingsApi = {
+  list: ({ page, per_page, ...rest } = {}) =>
+    vendorClient.get('/bookings/vendor', { params: { page_size: per_page, ...rest } }).then(extractPaginated),
+  get: (bookingId) =>
+    vendorClient.get(`/bookings/${bookingId}`).then(extractData),
+  start: (bookingId) =>
+    vendorClient.post(`/bookings/${bookingId}/start`).then(extractData),
+  complete: (bookingId) =>
+    vendorClient.post(`/bookings/${bookingId}/complete`).then(extractData),
+  history: (bookingId) =>
+    vendorClient.get(`/bookings/${bookingId}/history`).then(extractList),
+  statusHistory: (bookingId) =>
+    vendorClient.get(`/bookings/${bookingId}/status-history`).then(extractList),
+};
+
+// ── Wallet / Earnings ─────────────────────────────────────────────────────────
+
+export const vendorWalletApi = {
+  get: () =>
+    vendorClient.get('/wallets/me').then(extractData),
+  listTransactions: ({ page, per_page, ...rest } = {}) =>
+    vendorClient.get('/wallets/me/transactions', { params: { page_size: per_page, ...rest } }).then(extractPaginated),
+  getRewardBalance: () =>
+    vendorClient.get('/wallets/me/rewards/balance').then(extractData),
+};
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export const vendorNotificationsApi = {
+  list: (params) =>
+    vendorClient.get('/notifications', { params }).then(extractPaginated),
+  unreadCount: () =>
+    vendorClient.get('/notifications/unread-count').then(extractData),
+  markRead: (notificationId) =>
+    vendorClient.patch(`/notifications/${notificationId}/read`).then(extractData),
+  markAllRead: () =>
+    vendorClient.post('/notifications/mark-all-read').then(extractData),
+  remove: (notificationId) =>
+    vendorClient.delete(`/notifications/${notificationId}`).then(extractData),
+};
+
+// ── Support ───────────────────────────────────────────────────────────────────
+
+export const vendorSupportApi = {
+  list: (params) =>
+    vendorClient.get('/support/tickets', { params }).then(extractPaginated),
+  get: (ticketId) =>
+    vendorClient.get(`/support/tickets/${ticketId}`).then(extractData),
+  create: (body) =>
+    vendorClient.post('/support/tickets', body).then(extractData),
+  listMessages: (ticketId, params) =>
+    vendorClient.get(`/support/tickets/${ticketId}/messages`, { params }).then(extractPaginated),
+  addMessage: (ticketId, body) =>
+    vendorClient.post(`/support/tickets/${ticketId}/messages`, body).then(extractData),
 };
