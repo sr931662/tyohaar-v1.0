@@ -66,7 +66,7 @@ async def verify_admin_token(
     current_user: AdminDep,
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminResponse]:
-    result = await service.get_admin(admin_id=current_user.id)
+    result = await service.get_admin_by_user_id(user_id=current_user.id)
     return SuccessResponse(data=result, message="Token valid.")
 
 

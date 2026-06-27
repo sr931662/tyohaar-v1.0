@@ -212,6 +212,13 @@ class AdminService(BaseService):
             admin = await validate_admin_exists(admin_id, uow)
             return AdminResponse.model_validate(admin)
 
+    async def get_admin_by_user_id(self, user_id: UUID) -> AdminResponse:
+        async with self._uow() as uow:
+            admin = await uow.admin.admins.find_by_user(user_id)
+            if admin is None:
+                raise AdminNotFoundError(f"Admin not found for user {user_id}.")
+            return AdminResponse.model_validate(admin)
+
     async def list_admins(
         self,
         cursor: str | None = None,
