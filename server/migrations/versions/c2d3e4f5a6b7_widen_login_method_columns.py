@@ -29,16 +29,37 @@ def upgrade() -> None:
         "ALTER TABLE users "
         "ALTER COLUMN primary_login_provider TYPE VARCHAR(50)"
     )
+    # user_sessions may not exist in every environment (created outside Alembic in some setups)
     op.execute(
-        "ALTER TABLE user_sessions "
-        "ALTER COLUMN login_method TYPE VARCHAR(50)"
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'user_sessions'
+            ) THEN
+                ALTER TABLE user_sessions ALTER COLUMN login_method TYPE VARCHAR(50);
+            END IF;
+        END
+        $$;
+        """
     )
 
 
 def downgrade() -> None:
     op.execute(
-        "ALTER TABLE user_sessions "
-        "ALTER COLUMN login_method TYPE VARCHAR(9)"
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'user_sessions'
+            ) THEN
+                ALTER TABLE user_sessions ALTER COLUMN login_method TYPE VARCHAR(9);
+            END IF;
+        END
+        $$;
+        """
     )
     op.execute(
         "ALTER TABLE users "
