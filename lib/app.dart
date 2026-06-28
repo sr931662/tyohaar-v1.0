@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
+import 'theme/colors.dart';
 import 'data/app_state.dart';
 import 'data/auth_manager.dart';
 import 'data/services/user_service.dart';

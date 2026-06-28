@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../api_client.dart';
 import '../models.dart';
 
@@ -11,16 +12,6 @@ class AuthCredentials {
     required this.refreshToken,
     required this.user,
   });
-
-  factory AuthCredentials.fromJson(Map<String, dynamic> json) {
-    // Backend wraps in SuccessResponse: { "success": true, "data": { ... } }
-    final data = (json['data'] ?? json) as Map<String, dynamic>;
-    return AuthCredentials(
-      accessToken: data['access_token'] as String,
-      refreshToken: data['refresh_token'] as String,
-      user: User.fromJson(data['user'] as Map<String, dynamic>),
-    );
-  }
 }
 
 class AuthService {
@@ -31,7 +22,7 @@ class AuthService {
       'email': email,
       'password': password,
     });
-    return AuthCredentials.fromJson(response.data as Map<String, dynamic>);
+    return _credentialsFromResponse(response.data as Map<String, dynamic>);
   }
 
   Future<AuthCredentials> register(String email, String password, {String? name}) async {
@@ -40,7 +31,26 @@ class AuthService {
       'password': password,
       if (name != null && name.isNotEmpty) 'full_name': name,
     });
-    return AuthCredentials.fromJson(response.data as Map<String, dynamic>);
+    return _credentialsFromResponse(response.data as Map<String, dynamic>);
+  }
+
+  // The auth endpoints return only user_id, not the full user object.
+  // Fetch the profile from users/me using the new token before it is stored
+  // in AuthManager (so the interceptor won't overwrite the explicit header).
+  Future<AuthCredentials> _credentialsFromResponse(Map<String, dynamic> json) async {
+    final data = (json['data'] ?? json) as Map<String, dynamic>;
+    final accessToken = data['access_token'] as String;
+    final refreshToken = data['refresh_token'] as String;
+    final userResp = await _api.dio.get(
+      'users/me',
+      options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+    );
+    final userData = (userResp.data['data'] ?? userResp.data) as Map<String, dynamic>;
+    return AuthCredentials(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      user: User.fromJson(userData),
+    );
   }
 
   Future<void> logout() async {
@@ -74,6 +84,6 @@ class AuthService {
       'otp_code': code,
       'purpose': 'login',
     });
-    return AuthCredentials.fromJson(response.data as Map<String, dynamic>);
+    return _credentialsFromResponse(response.data as Map<String, dynamic>);
   }
 }

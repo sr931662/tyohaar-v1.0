@@ -69,6 +69,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _handleLogin() async {
+    if (_isLoading) return;
     final email = _loginEmailCtrl.text.trim();
     final password = _loginPasswordCtrl.text;
     if (email.isEmpty || password.isEmpty) {
@@ -96,6 +97,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _handleRegister() async {
+    if (_isLoading) return;
     final name = _regNameCtrl.text.trim();
     final email = _regEmailCtrl.text.trim();
     final password = _regPasswordCtrl.text;

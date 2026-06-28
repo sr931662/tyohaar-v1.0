@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 class User {
   final String id;
-  final String phone;
+  final String? phone;
   final String? email;
   final String? fullName;
   final String? firstName;
@@ -16,7 +16,7 @@ class User {
 
   User({
     required this.id,
-    required this.phone,
+    this.phone,
     this.email,
     this.fullName,
     this.firstName,
@@ -40,7 +40,7 @@ class User {
     );
   }
 
-  String get displayName => fullName ?? (firstName != null ? '$firstName ${lastName ?? ""}' : phone);
+  String get displayName => fullName ?? (firstName != null ? '$firstName ${lastName ?? ""}' : (phone ?? id));
 }
 
 class Occasion {
