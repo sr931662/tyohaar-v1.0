@@ -82,13 +82,12 @@ class AuthService(BaseService):
         from app.core.security import hash_password
         from app.services.users.exceptions import EmailTakenError
 
+        # Transaction 1: create the user and profile, then commit.
         async with self._uow() as uow:
-            # 1. Check if email exists
             existing = await uow.users.users.find_by_email(data.email)
             if existing:
                 raise EmailTakenError(data.email)
 
-            # 2. Create user
             user_data = {
                 "email": data.email,
                 "full_name": data.full_name,
@@ -98,18 +97,21 @@ class AuthService(BaseService):
                 "role": UserRole.CUSTOMER,
                 "account_status": AccountStatus.ACTIVE,
                 "verification_status": VerificationStatus.UNVERIFIED,
-                # Phone is required in the model but optional in the registration form
-                # We'll use a placeholder or handle it.
-                # Wait, the model says 'phone' is NOT NULL.
                 "phone": f"TMP-{uuid.uuid4().hex[:10]}",
             }
             user = await uow.users.users.create_from_dict(user_data)
             await uow.users.profiles.create_from_dict({"user_id": user.id})
+            new_user_id = user.id  # capture before the session expires on commit
 
-            # 3. Create Session (reusing logic from verify_otp)
-            return await self._create_user_session(
-                user, ip_address, user_agent, LoginMethod.EMAIL_PASSWORD
-            )
+        # Transaction 2: create the session now that the user row is committed.
+        # _create_user_session only needs user.id, so pass a lightweight proxy.
+        class _UserRef:
+            def __init__(self, uid: uuid.UUID) -> None:
+                self.id = uid
+
+        return await self._create_user_session(
+            _UserRef(new_user_id), ip_address, user_agent, LoginMethod.EMAIL_PASSWORD
+        )
 
     async def authenticate_user(
         self,
