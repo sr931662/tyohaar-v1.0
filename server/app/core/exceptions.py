@@ -234,6 +234,13 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def _database_error(
         request: Request, exc: DatabaseError
     ) -> JSONResponse:
+        logger.error(
+            "DatabaseError on %s %s: %s",
+            request.method,
+            request.url.path,
+            exc,
+            exc_info=True,
+        )
         return _add_cors(JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content=_err("DATABASE_ERROR", "A database error occurred. Please try again."),
