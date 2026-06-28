@@ -42,7 +42,14 @@ async def vendor_login(
     body: _VendorLoginRequest,
     service: AuthServiceDep,
 ) -> SuccessResponse[dict]:
-    # ... (existing code) ...
+    result = await service.authenticate_user(
+        email=body.email,
+        password=body.password,
+    )
+    return SuccessResponse(
+        data={"access_token": result.access_token, "token_type": result.token_type},
+        message="Vendor login successful.",
+    )
 
 async def register(
     body: UserRegisterCreate,
