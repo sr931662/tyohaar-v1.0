@@ -19,7 +19,17 @@ class UserService {
     await _api.dio.put('users/me', data: data);
   }
 
-  Future<void> addAddress(Map<String, dynamic> data) async {
-    await _api.dio.post('users/me/addresses', data: data);
+  Future<Address> addAddress(Map<String, dynamic> data) async {
+    final response = await _api.dio.post('users/me/addresses', data: data);
+    return Address.fromJson(response.data['data'] as Map<String, dynamic>);
+  }
+
+  Future<Address> updateAddress(String addressId, Map<String, dynamic> data) async {
+    final response = await _api.dio.put('users/me/addresses/$addressId', data: data);
+    return Address.fromJson(response.data['data'] as Map<String, dynamic>);
+  }
+
+  Future<void> deleteAddress(String addressId) async {
+    await _api.dio.delete('users/me/addresses/$addressId');
   }
 }

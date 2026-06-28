@@ -18,6 +18,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   double _totalBudget = 0;
   List<BudgetExpense> _expenses = [];
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -26,23 +27,24 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Future<void> _loadBudgetData() async {
+    setState(() { _isLoading = true; _error = null; });
     try {
       final celebrations = await _celebrationService.listCelebrations();
       if (celebrations.isNotEmpty) {
         final details = await _celebrationService.getCelebrationDetails(celebrations.first['id']);
-        // Assuming budget details are in celebration details
         final budget = details['budget'];
-        setState(() {
-          _totalBudget = (budget?['total_amount'] ?? 0).toDouble();
-          _expenses = (budget?['expenses'] as List?)?.map((e) => BudgetExpense.fromJson(e)).toList() ?? [];
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _totalBudget = (budget?['total_amount'] ?? 0).toDouble();
+            _expenses = (budget?['expenses'] as List?)?.map((e) => BudgetExpense.fromJson(e)).toList() ?? [];
+            _isLoading = false;
+          });
+        }
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      debugPrint('Error loading budget data: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = 'Could not load budget data.'; _isLoading = false; });
     }
   }
 
@@ -69,6 +71,28 @@ class _BudgetScreenState extends State<BudgetScreen> {
     
     if (_isLoading) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: ty.paper,
+        appBar: tyAppBar(context, title: 'Budget'),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
+              const SizedBox(height: 12),
+              Text(_error!, style: TyType.sans(14, color: ty.ink2)),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: _loadBudgetData,
+                child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final allocated = _expenses.fold<double>(0, (s, l) => s + l.estimatedAmount);

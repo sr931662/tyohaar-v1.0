@@ -20,6 +20,7 @@ class _WalletScreenState extends State<WalletScreen> {
   Wallet? _wallet;
   List<WalletTransaction> _transactions = [];
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -28,19 +29,21 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> _loadWalletData() async {
+    setState(() { _isLoading = true; _error = null; });
     try {
       final results = await Future.wait([
         _walletService.getWallet(),
         _walletService.listTransactions(),
       ]);
-      setState(() {
-        _wallet = results[0] as Wallet;
-        _transactions = results[1] as List<WalletTransaction>;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _wallet = results[0] as Wallet;
+          _transactions = results[1] as List<WalletTransaction>;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      debugPrint('Error loading wallet data: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = 'Could not load wallet data.'; _isLoading = false; });
     }
   }
 
@@ -50,9 +53,25 @@ class _WalletScreenState extends State<WalletScreen> {
     
     return Scaffold(
       appBar: tyAppBar(context, title: 'Tyohaar Wallet'),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : ListView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline_rounded, size: 48, color: context.ty.rose),
+                      const SizedBox(height: 12),
+                      Text(_error!, style: TyType.sans(14, color: context.ty.ink2)),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: _loadWalletData,
+                        child: Text('Try Again', style: TyType.sans(14, color: context.ty.saffron, weight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView(
             padding: const EdgeInsets.all(20),
             children: [
               Container(

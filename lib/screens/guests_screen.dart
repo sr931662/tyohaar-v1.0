@@ -22,6 +22,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
   String _filter = 'All';
   bool _isLoading = true;
   String? _activeCelebrationId;
+  String? _error;
 
   @override
   void initState() {
@@ -30,21 +31,18 @@ class _GuestsScreenState extends State<GuestsScreen> {
   }
 
   Future<void> _loadGuests() async {
+    setState(() { _isLoading = true; _error = null; });
     try {
       final celebrations = await _celebrationService.listCelebrations();
       if (celebrations.isNotEmpty) {
         _activeCelebrationId = celebrations.first['id'];
         final guests = await _celebrationService.listGuests(_activeCelebrationId!);
-        setState(() {
-          _guests = guests;
-          _isLoading = false;
-        });
+        if (mounted) setState(() { _guests = guests; _isLoading = false; });
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      debugPrint('Error loading guests: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = 'Could not load guests.'; _isLoading = false; });
     }
   }
 
@@ -57,6 +55,28 @@ class _GuestsScreenState extends State<GuestsScreen> {
     
     if (_isLoading) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: ty.paper,
+        appBar: tyAppBar(context, title: 'Guest list'),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
+              const SizedBox(height: 12),
+              Text(_error!, style: TyType.sans(14, color: ty.ink2)),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: _loadGuests,
+                child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final total = _guests.fold<int>(0, (s, g) => s + g.count);

@@ -7,6 +7,7 @@ import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import '../data/auth_manager.dart';
 import '../data/services/auth_service.dart';
+// AuthCredentials is defined in auth_service.dart
 import 'root_nav.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -53,11 +54,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  void _onSuccess(Map<String, dynamic> data) {
-    final token = data['access_token'] as String?;
-    if (token != null) {
-      AuthManager.instance.login();
-    }
+  Future<void> _onSuccess(AuthCredentials creds) async {
+    await AuthManager.instance.login(creds.accessToken, creds.refreshToken, creds.user);
     if (!mounted) return;
     if (widget.onAuthenticated != null) {
       Navigator.pop(context);
@@ -80,14 +78,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
     setState(() { _isLoading = true; _error = ''; });
     try {
-      final data = await context.read<AuthService>().login(email, password);
+      final creds = await context.read<AuthService>().login(email, password);
       if (!mounted) return;
-      _onSuccess(data);
+      await _onSuccess(creds);
     } on DioException catch (e) {
-      final msg = e.response?.data?['detail'] ?? e.response?.data?['message'];
-      setState(() { _isLoading = false; _error = msg ?? 'Login failed. Please try again.'; });
+      final detail = e.response?.data;
+      String msg = 'Login failed. Please try again.';
+      if (detail is Map) {
+        msg = detail['detail'] as String? ?? detail['message'] as String? ?? msg;
+      } else if (detail is String) {
+        msg = detail;
+      }
+      if (mounted) setState(() { _isLoading = false; _error = msg; });
     } catch (_) {
-      setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
+      if (mounted) setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
     }
   }
 
@@ -112,14 +116,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
     setState(() { _isLoading = true; _error = ''; });
     try {
-      final data = await context.read<AuthService>().register(email, password, name: name);
+      final creds = await context.read<AuthService>().register(email, password, name: name);
       if (!mounted) return;
-      _onSuccess(data);
+      await _onSuccess(creds);
     } on DioException catch (e) {
-      final msg = e.response?.data?['detail'] ?? e.response?.data?['message'];
-      setState(() { _isLoading = false; _error = msg ?? 'Registration failed. Please try again.'; });
+      final detail = e.response?.data;
+      String msg = 'Registration failed. Please try again.';
+      if (detail is Map) {
+        msg = detail['detail'] as String? ?? detail['message'] as String? ?? msg;
+      } else if (detail is String) {
+        msg = detail;
+      }
+      if (mounted) setState(() { _isLoading = false; _error = msg; });
     } catch (_) {
-      setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
+      if (mounted) setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
     }
   }
 

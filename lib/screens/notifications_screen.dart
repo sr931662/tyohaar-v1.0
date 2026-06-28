@@ -17,6 +17,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   final NotificationService _notificationService = NotificationService();
   List<NotifItem> _notifications = [];
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -25,15 +26,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _loadNotifications() async {
+    setState(() { _isLoading = true; _error = null; });
     try {
       final notifs = await _notificationService.listNotifications();
-      setState(() {
-        _notifications = notifs;
-        _isLoading = false;
-      });
+      if (mounted) setState(() { _notifications = notifs; _isLoading = false; });
     } catch (e) {
-      debugPrint('Error loading notifications: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = 'Could not load notifications.'; _isLoading = false; });
     }
   }
 
@@ -54,11 +52,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ),
       ]),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : _notifications.isEmpty 
-          ? _buildEmptyState(context)
-          : ListView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline_rounded, size: 48, color: context.ty.rose),
+                      const SizedBox(height: 12),
+                      Text(_error!, style: TyType.sans(14, color: context.ty.ink2)),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: _loadNotifications,
+                        child: Text('Try Again', style: TyType.sans(14, color: context.ty.saffron, weight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                )
+              : _notifications.isEmpty
+                  ? _buildEmptyState(context)
+                  : ListView(
               padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
               children: [
                 _group(context, 'Recent', _notifications),

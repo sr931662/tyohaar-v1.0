@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../data/app_state.dart';
+import '../../data/auth_manager.dart';
 import '../../widgets/ty_button.dart';
 import 'vendor_home_screen.dart';
 
@@ -194,7 +195,10 @@ class _VendorSidebar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Frame Stories', style: TyType.sans(18, color: ty.ink, weight: FontWeight.w700)),
+                Text(
+                  AuthManager.instance.currentUser?.displayName ?? 'Vendor Partner',
+                  style: TyType.sans(18, color: ty.ink, weight: FontWeight.w700),
+                ),
                 Text('Vendor Partner', style: TyType.sans(12.5, color: ty.ink3)),
               ],
             ),

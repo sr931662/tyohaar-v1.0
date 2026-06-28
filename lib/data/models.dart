@@ -363,6 +363,66 @@ class Review {
   });
 }
 
+class PackageItem {
+  final String id;
+  final String name;
+  final String? description;
+  final String itemType;
+  final double unitPrice;
+  final int quantity;
+  final bool isOptional;
+
+  const PackageItem({
+    required this.id,
+    required this.name,
+    this.description,
+    required this.itemType,
+    required this.unitPrice,
+    required this.quantity,
+    required this.isOptional,
+  });
+
+  factory PackageItem.fromJson(Map<String, dynamic> json) {
+    return PackageItem(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String?,
+      itemType: json['item_type'] as String? ?? 'service',
+      unitPrice: (json['unit_price'] ?? 0).toDouble(),
+      quantity: json['quantity'] as int? ?? 1,
+      isOptional: json['is_optional'] as bool? ?? false,
+    );
+  }
+}
+
+class Celebration {
+  final String id;
+  final String title;
+  final String? occasionName;
+  final String? status;
+  final DateTime? celebrationDate;
+
+  Celebration({
+    required this.id,
+    required this.title,
+    this.occasionName,
+    this.status,
+    this.celebrationDate,
+  });
+
+  factory Celebration.fromJson(Map<String, dynamic> json) {
+    return Celebration(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? 'Untitled',
+      occasionName: json['occasion']?['name'] as String?,
+      status: json['status'] as String?,
+      celebrationDate: json['celebration_date'] != null
+          ? DateTime.tryParse(json['celebration_date'] as String)
+          : null,
+    );
+  }
+}
+
 // RESTORED UI-ONLY TYPES
 class Membership {
   final String type;

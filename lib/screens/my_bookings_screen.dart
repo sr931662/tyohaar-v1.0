@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -21,6 +22,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   final BookingService _bookingService = BookingService();
   List<Booking> _bookings = [];
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -29,15 +31,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 
   Future<void> _loadBookings() async {
+    setState(() { _isLoading = true; _error = null; });
     try {
       final bookings = await _bookingService.listMyBookings();
-      setState(() {
-        _bookings = bookings;
-        _isLoading = false;
-      });
+      if (mounted) setState(() { _bookings = bookings; _isLoading = false; });
     } catch (e) {
-      debugPrint('Error loading bookings: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = 'Could not load bookings.'; _isLoading = false; });
     }
   }
 
@@ -51,11 +50,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: tyAppBar(context, title: 'My Bookings'),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : _bookings.isEmpty 
-          ? _buildEmptyState(context)
-          : ListView(
+      body: _isLoading
+          ? _buildSkeleton(context)
+          : _error != null
+              ? _buildError(context)
+              : _bookings.isEmpty
+                  ? _buildEmptyState(context)
+                  : ListView(
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
               children: [
                 if (upcoming.isNotEmpty) ...[
@@ -71,6 +72,42 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 ],
               ],
             ),
+    );
+  }
+
+  Widget _buildSkeleton(BuildContext context) {
+    final ty = context.ty;
+    return Shimmer.fromColors(
+      baseColor: ty.line,
+      highlightColor: ty.surface2,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+        itemCount: 4,
+        itemBuilder: (_, __) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          height: 80,
+          decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(20)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError(BuildContext context) {
+    final ty = context.ty;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
+          const SizedBox(height: 12),
+          Text(_error!, style: TyType.sans(14, color: ty.ink2)),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: _loadBookings,
+            child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+          ),
+        ],
+      ),
     );
   }
 

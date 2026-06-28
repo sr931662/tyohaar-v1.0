@@ -1,11 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/theme_controller.dart';
 import '../data/app_state.dart';
 import '../data/auth_manager.dart';
+import '../data/models.dart';
+import '../data/services/user_service.dart';
 import 'home_screen.dart';
 import 'plans_screen.dart';
 import 'explore_screen.dart';
@@ -36,6 +39,21 @@ class _RootNavState extends State<RootNav> {
     AccountScreen(),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _ensureUserLoaded();
+  }
+
+  Future<void> _ensureUserLoaded() async {
+    if (AuthManager.instance.currentUser != null) return;
+    if (!AuthManager.instance.isAuthenticated) return;
+    try {
+      final user = await context.read<UserService>().getMe();
+      AuthManager.instance.setUser(user);
+    } catch (_) {}
+  }
+
   void _openCreate() {
     AuthManager.instance.checkAuth(
       context, 
@@ -57,6 +75,7 @@ class _RootNavState extends State<RootNav> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: _AppSidebar(
+        user: AuthManager.instance.currentUser,
         onNavigate: (i) {
           if (i == 1 || i == 3) {
              AuthManager.instance.checkAuth(
@@ -93,12 +112,16 @@ class _RootNavState extends State<RootNav> {
             top: 0,
             left: 0,
             right: 0,
-            child: _StickyHeader(
-              isTransparent: _index == 0,
-              isScrolled: _isScrolled,
-              onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
-              onOpenNotifications: () => _push(context, const NotificationsScreen()),
-              onOpenProfile: () => setState(() => _index = 3),
+            child: ListenableBuilder(
+              listenable: AuthManager.instance,
+              builder: (ctx, _) => _StickyHeader(
+                isTransparent: _index == 0,
+                isScrolled: _isScrolled,
+                onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+                onOpenNotifications: () => _push(context, const NotificationsScreen()),
+                onOpenProfile: () => setState(() => _index = 3),
+                user: AuthManager.instance.currentUser,
+              ),
             ),
           ),
         ],
@@ -134,6 +157,7 @@ class _StickyHeader extends StatelessWidget {
   final VoidCallback onOpenDrawer;
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenProfile;
+  final User? user;
 
   const _StickyHeader({
     required this.isTransparent,
@@ -141,6 +165,7 @@ class _StickyHeader extends StatelessWidget {
     required this.onOpenDrawer,
     required this.onOpenNotifications,
     required this.onOpenProfile,
+    this.user,
   });
 
   @override
@@ -198,14 +223,17 @@ class _StickyHeader extends StatelessWidget {
                           ? (isDark ? Colors.white.withOpacity(0.8) : ty.saffronDeep) 
                           : ty.saffronDeep),
                     const SizedBox(width: 4),
-                    Text('JAIPUR, RAJASTHAN',
-                        style: TyType.eyebrow(10, color: isTransparent 
-                            ? (isDark ? Colors.white.withOpacity(0.8) : ty.saffronDeep) 
+                    Text('INDIA',
+                        style: TyType.eyebrow(10, color: isTransparent
+                            ? (isDark ? Colors.white.withOpacity(0.8) : ty.saffronDeep)
                             : ty.saffronDeep)),
                   ],
                 ),
                 const SizedBox(height: 1),
-                Text('Namaste, Aarav', style: TyType.display(22, color: foregroundColor)),
+                Text(
+                  'Namaste, ${user?.firstName ?? user?.displayName.split(' ').first ?? 'there'}',
+                  style: TyType.display(22, color: foregroundColor),
+                ),
               ],
             ),
           ),
@@ -296,7 +324,8 @@ class _StickyHeader extends StatelessWidget {
 
 class _AppSidebar extends StatelessWidget {
   final ValueChanged<int> onNavigate;
-  const _AppSidebar({required this.onNavigate});
+  final User? user;
+  const _AppSidebar({required this.onNavigate, this.user});
 
   @override
   Widget build(BuildContext context) {
@@ -339,6 +368,10 @@ class _AppSidebar extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final ty = context.ty;
+    final name = user?.displayName ?? 'Welcome';
+    final sub = user?.email ?? user?.phone ?? '';
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'T';
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 20, 20, 24),
       decoration: BoxDecoration(
@@ -351,24 +384,19 @@ class _AppSidebar extends StatelessWidget {
             width: 54,
             height: 54,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: ty.saffron,
-              shape: BoxShape.circle,
-            ),
-            child: Text('A',
+            decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle),
+            child: Text(initial,
                 style: TextStyle(
-                    color: ty.onPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 22)),
+                    color: ty.onPrimary, fontWeight: FontWeight.w800, fontSize: 22)),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Aarav Sharma', style: TyType.sans(18, color: ty.ink, weight: FontWeight.w700)),
+                Text(name, style: TyType.sans(18, color: ty.ink, weight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text('Standard Account', style: TyType.sans(12.5, color: ty.ink3)),
+                if (sub.isNotEmpty) Text(sub, style: TyType.sans(12.5, color: ty.ink3)),
               ],
             ),
           ),

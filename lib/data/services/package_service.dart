@@ -21,6 +21,12 @@ class PackageService {
     return Package.fromJson(response.data['data']);
   }
 
+  Future<List<PackageItem>> listPackageItems(String packageId) async {
+    final response = await _api.dio.get('packages/$packageId/items');
+    final List list = (response.data['data'] ?? []) as List;
+    return list.map((item) => PackageItem.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
   Future<List<Occasion>> listOccasions() async {
     final response = await _api.dio.get('occasions');
     final List list = response.data['data'];

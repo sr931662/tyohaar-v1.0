@@ -19,6 +19,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   final UserService _userService = UserService();
   User? _user;
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -27,15 +28,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
+    setState(() { _isLoading = true; _error = null; });
     try {
       final user = await _userService.getMe();
-      setState(() {
-        _user = user;
-        _isLoading = false;
-      });
+      if (mounted) setState(() { _user = user; _isLoading = false; });
     } catch (e) {
-      debugPrint('Error loading profile: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = 'Could not load profile.'; _isLoading = false; });
     }
   }
 
@@ -45,6 +43,28 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     
     if (_isLoading) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: ty.paper,
+        appBar: tyAppBar(context, title: 'My Profile'),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
+              const SizedBox(height: 12),
+              Text(_error!, style: TyType.sans(14, color: ty.ink2)),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: _loadProfile,
+                child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(

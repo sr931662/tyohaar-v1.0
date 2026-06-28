@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -8,7 +9,6 @@ import '../data/services/package_service.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
-import 'catalogue_screen.dart';
 
 class PackageDetailScreen extends StatefulWidget {
   final Package package;
@@ -19,18 +19,12 @@ class PackageDetailScreen extends StatefulWidget {
 }
 
 class _PackageDetailScreenState extends State<PackageDetailScreen> {
-  final PackageService _packageService = PackageService();
   int _guestCount = 20;
   late TextEditingController _guestController;
-  final Set<String> _selectedAddons = {};
+  final Set<String> _selectedOptionalItemIds = {};
   bool _isLoading = true;
   late Package _fullPackage;
-  
-  final Map<String, Product> _selections = {
-    'Decoration': const Product(id: 'd1', name: 'Pink and Silver Bliss', price: 2199, tint: 'rose', rating: 4.8, reviews: 398, category: 'Decoration'),
-    'Cake': const Product(id: 'c1', name: '1-Tier Vanilla Bliss', price: 899, tint: 'saffron', rating: 4.9, reviews: 120, category: 'Cake'),
-    'Bouquet': const Product(id: 'b1', name: 'Red Rose Bunch', price: 599, tint: 'rose', rating: 4.9, reviews: 210, category: 'Bouquet'),
-  };
+  List<PackageItem> _allItems = [];
 
   @override
   void initState() {
@@ -42,16 +36,26 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
 
   Future<void> _loadPackageDetails() async {
     try {
-      final details = await _packageService.getPackageDetails(widget.package.id);
-      setState(() {
-        _fullPackage = details;
-        _isLoading = false;
-      });
+      final svc = context.read<PackageService>();
+      final results = await Future.wait([
+        svc.getPackageDetails(widget.package.id),
+        svc.listPackageItems(widget.package.id),
+      ]);
+      if (mounted) {
+        setState(() {
+          _fullPackage = results[0] as Package;
+          _allItems = results[1] as List<PackageItem>;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error loading package details: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  List<PackageItem> get _coreItems => _allItems.where((i) => !i.isOptional).toList();
+  List<PackageItem> get _optionalItems => _allItems.where((i) => i.isOptional).toList();
 
   @override
   void dispose() {
@@ -66,19 +70,13 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
     });
   }
 
-  final List<Map<String, dynamic>> _addons = [
-    {'id': 'a1', 'name': 'Drone Photography', 'price': 5000, 'icon': Icons.videocam_rounded},
-    {'id': 'a2', 'name': 'Live Food Counters', 'price': 8000, 'icon': Icons.restaurant_rounded},
-  ];
-
   int get _totalPrice {
     double base = _fullPackage.price;
-    int selectionTotal = _selections.values.fold(0, (sum, p) => sum + p.price);
-    int addonTotal = _addons
-        .where((a) => _selectedAddons.contains(a['id']))
-        .fold(0, (sum, item) => sum + (item['price'] as int));
+    double optionalTotal = _allItems
+        .where((i) => i.isOptional && _selectedOptionalItemIds.contains(i.id))
+        .fold(0.0, (sum, item) => sum + item.unitPrice);
     int guestSurcharge = (_guestCount > 20) ? (_guestCount - 20) * 500 : 0;
-    return (base + selectionTotal + addonTotal + guestSurcharge).toInt();
+    return (base + optionalTotal + guestSurcharge).toInt();
   }
 
   @override
@@ -154,19 +152,16 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                         ..._fullPackage.inclusions.map((item) => _inclusionRow(context, item)),
 
                         const SizedBox(height: 32),
-                        Text('Customization Catalogue', style: TyType.eyebrow(12, color: ty.ink3)),
-                        const SizedBox(height: 16),
-                        ..._selections.keys.map((cat) => _catalogueRow(context, cat)),
-                        
-                        const SizedBox(height: 32),
                         Text('Guest Count', style: TyType.eyebrow(12, color: ty.ink3)),
                         const SizedBox(height: 12),
                         _guestStepper(context),
-                        
-                        const SizedBox(height: 32),
-                        Text('Popular Add-ons', style: TyType.eyebrow(12, color: ty.ink3)),
-                        const SizedBox(height: 16),
-                        ..._addons.map((addon) => _addonRow(context, addon)),
+
+                        if (_optionalItems.isNotEmpty) ...[
+                          const SizedBox(height: 32),
+                          Text('Optional Add-ons', style: TyType.eyebrow(12, color: ty.ink3)),
+                          const SizedBox(height: 16),
+                          ..._optionalItems.map((item) => _packageItemRow(context, item)),
+                        ],
                       ],
                     ),
                   ),
@@ -279,14 +274,14 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
     );
   }
 
-  Widget _addonRow(BuildContext context, Map<String, dynamic> addon) {
+  Widget _packageItemRow(BuildContext context, PackageItem item) {
     final ty = context.ty;
-    final isSelected = _selectedAddons.contains(addon['id']);
+    final isSelected = _selectedOptionalItemIds.contains(item.id);
     return GestureDetector(
       onTap: () {
         setState(() {
-          if (isSelected) _selectedAddons.remove(addon['id']);
-          else _selectedAddons.add(addon['id']);
+          if (isSelected) _selectedOptionalItemIds.remove(item.id);
+          else _selectedOptionalItemIds.add(item.id);
         });
       },
       child: Container(
@@ -299,64 +294,23 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
         ),
         child: Row(
           children: [
-            Icon(addon['icon'] as IconData, color: isSelected ? ty.saffron : ty.ink3, size: 20),
+            Icon(Icons.add_circle_outline_rounded, color: isSelected ? ty.saffron : ty.ink3, size: 20),
             const SizedBox(width: 16),
-            Expanded(child: Text(addon['name'] as String, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600))),
-            Text('+₹${((addon['price'] as int) / 1000).toStringAsFixed(0)}K', style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w700)),
-            const SizedBox(width: 12),
-            Icon(isSelected ? Icons.check_box_rounded : Icons.add_box_outlined, color: isSelected ? ty.saffron : ty.ink3),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _catalogueRow(BuildContext context, String category) {
-    final ty = context.ty;
-    final product = _selections[category]!;
-    return GestureDetector(
-      onTap: () async {
-        final Product? result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CatalogueScreen(
-              category: category,
-              selectedProductId: product.id,
-            ),
-          ),
-        );
-        if (result != null) {
-          setState(() => _selections[category] = result);
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: ty.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ty.line),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 54,
-              height: 54,
-              child: PhotoPlaceholder(tint: product.tint, arch: false),
-            ),
-            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(category, style: TyType.sans(11, color: ty.ink3, weight: FontWeight.w700)),
-                  const SizedBox(height: 2),
-                  Text(product.name, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w600)),
-                  Text('₹${product.price}', style: TyType.sans(13, color: ty.saffron, weight: FontWeight.w700)),
+                  Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                  if (item.description != null && item.description!.isNotEmpty)
+                    Text(item.description!, style: TyType.sans(12, color: ty.ink3)),
                 ],
               ),
             ),
-            Icon(Icons.keyboard_arrow_right_rounded, color: ty.ink3),
+            Text('+₹${(item.unitPrice / 1000).toStringAsFixed(1)}K',
+                style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w700)),
+            const SizedBox(width: 12),
+            Icon(isSelected ? Icons.check_box_rounded : Icons.add_box_outlined,
+                color: isSelected ? ty.saffron : ty.ink3),
           ],
         ),
       ),

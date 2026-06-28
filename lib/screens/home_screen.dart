@@ -35,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _activeCelebration;
   List<Guest> _guests = [];
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -61,8 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading home data: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = 'Could not load home data.'; _isLoading = false; });
     }
   }
 
@@ -93,6 +93,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
+            const SizedBox(height: 12),
+            Text('Something went wrong', style: TyType.sans(14, color: ty.ink2)),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _loadData,
+              child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
     }
 
     final totalGuests = _guests.fold<int>(0, (s, g) => s + g.count);

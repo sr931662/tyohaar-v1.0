@@ -18,6 +18,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   final MediaService _mediaService = MediaService();
   List<Memory> _memories = [];
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -26,15 +27,12 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   }
 
   Future<void> _loadMemories() async {
+    setState(() { _isLoading = true; _error = null; });
     try {
       final memories = await _mediaService.listMemories();
-      setState(() {
-        _memories = memories;
-        _isLoading = false;
-      });
+      if (mounted) setState(() { _memories = memories; _isLoading = false; });
     } catch (e) {
-      debugPrint('Error loading memories: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = 'Could not load memories.'; _isLoading = false; });
     }
   }
 
@@ -43,9 +41,25 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
     final ty = context.ty;
     return Scaffold(
       backgroundColor: ty.paper,
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : ListView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
+                      const SizedBox(height: 12),
+                      Text(_error!, style: TyType.sans(14, color: ty.ink2)),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: _loadMemories,
+                        child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView(
             padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
             children: [
               Row(

@@ -13,7 +13,8 @@ import 'budget_screen.dart';
 import 'guests_screen.dart';
 
 class EventHubScreen extends StatefulWidget {
-  const EventHubScreen({super.key});
+  final String? celebrationId;
+  const EventHubScreen({super.key, this.celebrationId});
 
   @override
   State<EventHubScreen> createState() => _EventHubScreenState();
@@ -33,21 +34,27 @@ class _EventHubScreenState extends State<EventHubScreen> {
 
   Future<void> _loadCelebration() async {
     try {
-      final celebrations = await _celebrationService.listCelebrations();
-      if (celebrations.isNotEmpty) {
-        final details = await _celebrationService.getCelebrationDetails(celebrations.first['id']);
-        final guests = await _celebrationService.listGuests(celebrations.first['id']);
+      String? id = widget.celebrationId;
+      if (id == null) {
+        final celebrations = await _celebrationService.listCelebrations();
+        if (celebrations.isEmpty) {
+          setState(() => _isLoading = false);
+          return;
+        }
+        id = celebrations.first['id'] as String;
+      }
+      final details = await _celebrationService.getCelebrationDetails(id);
+      final guests = await _celebrationService.listGuests(id);
+      if (mounted) {
         setState(() {
           _celebration = details;
           _guests = guests;
           _isLoading = false;
         });
-      } else {
-        setState(() => _isLoading = false);
       }
     } catch (e) {
       debugPrint('Error loading event hub: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
