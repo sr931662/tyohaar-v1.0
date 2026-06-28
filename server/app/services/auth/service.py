@@ -80,13 +80,13 @@ class AuthService(BaseService):
         user_agent: str | None = None,
     ) -> TokenPairResponse:
         from app.core.security import hash_password
-        from app.services.users.exceptions import EmailAlreadyExistsError
+        from app.services.users.exceptions import EmailTakenError
 
         async with self._uow() as uow:
             # 1. Check if email exists
             existing = await uow.users.users.find_by_email(data.email)
             if existing:
-                raise EmailAlreadyExistsError(data.email)
+                raise EmailTakenError(data.email)
 
             # 2. Create user
             user_data = {
