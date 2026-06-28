@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
-import '../../data/sample_data.dart';
 import '../../data/models.dart';
+import '../../data/services/package_service.dart';
+import '../../data/services/user_service.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/emblem.dart';
 import '../../widgets/photo_placeholder.dart';
@@ -12,7 +14,6 @@ import '../../widgets/ty_chip.dart';
 import '../../widgets/common.dart';
 import 'package:tyohaar/screens/booking_confirmation_screen.dart';
 
-/// The "plan a celebration" flow — five gentle steps, one warm question
 class PlanFlowScreen extends StatefulWidget {
   final int startStep;
   const PlanFlowScreen({super.key, this.startStep = 0});
@@ -22,18 +23,52 @@ class PlanFlowScreen extends StatefulWidget {
 }
 
 class _PlanFlowScreenState extends State<PlanFlowScreen> {
+  final PackageService _packageService = PackageService();
+  final UserService _userService = UserService();
+
   static const _stepCount = 5;
   late int _step = widget.startStep.clamp(0, _stepCount - 1);
 
-  Occasion _occasion = TyData.occasions.first;
-  final _nameCtrl = TextEditingController(text: 'Diya turns One');
-  final _placeCtrl = TextEditingController(text: 'The Courtyard, Jaipur');
+  List<Occasion> _occasions = [];
+  List<Package> _packages = [];
+  List<Address> _addresses = [];
+  bool _isLoading = true;
+
+  Occasion? _occasion;
+  final _nameCtrl = TextEditingController(text: 'My Celebration');
+  final _placeCtrl = TextEditingController(text: 'Jaipur');
   final Set<String> _vibes = {'Intimate', 'Traditional'};
-  final List<Guest> _guests = TyData.seedGuests().take(4).toList();
-  InvitationTemplate _invite = TyData.invitations.first;
+  final List<Guest> _guests = [Guest(id: 'g1', name: 'Sharma Family', count: 4, rsvpStatus: 'pending')];
   Package? _pkg;
-  Address _address = TyData.addresses.first;
+  Address? _address;
   DateTime _eventDate = DateTime.now().add(const Duration(days: 20));
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final results = await Future.wait([
+        _packageService.listOccasions(),
+        _packageService.listPackages(),
+        _userService.getAddresses(),
+      ]);
+      setState(() {
+        _occasions = results[0] as List<Occasion>;
+        _packages = results[1] as List<Package>;
+        _addresses = results[2] as List<Address>;
+        if (_occasions.isNotEmpty) _occasion = _occasions.first;
+        if (_addresses.isNotEmpty) _address = _addresses.first;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading plan flow data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -70,6 +105,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+
+    if (_isLoading) {
+      return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
     final titles = [
       ['What shall we celebrate?', 'Every milestone deserves to be held with care.'],
       ['Tell us the details', 'The little things help us shape your plan.'],
@@ -83,7 +123,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // header: back + step count + progress
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
               child: Column(
@@ -120,7 +159,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 ],
               ),
             ),
-            // body
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
@@ -133,7 +171,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 ],
               ),
             ),
-            // footer
             Container(
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
               decoration: BoxDecoration(
@@ -174,22 +211,21 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     }
   }
 
-  // ── step 1: Occasions ──
   Widget _occasionStep(BuildContext context) {
-    final ty = context.ty;
     return Column(
       children: [
-        _occasionGroup(context, 'Life Events', TyData.occasions.where((o) => o.category == 'life').toList()),
+        _occasionGroup(context, 'Life Events', _occasions.where((o) => o.category == 'life_event').toList()),
         const SizedBox(height: 24),
-        _occasionGroup(context, 'Major Festivals', TyData.occasions.where((o) => o.category == 'major_festival').toList()),
+        _occasionGroup(context, 'Major Festivals', _occasions.where((o) => o.category == 'major_festival').toList()),
         const SizedBox(height: 24),
-        _occasionGroup(context, 'Minor Festivals', TyData.occasions.where((o) => o.category == 'minor_festival').toList()),
+        _occasionGroup(context, 'Other Moments', _occasions.where((o) => o.category != 'life_event' && o.category != 'major_festival').toList()),
       ],
     );
   }
 
   Widget _occasionGroup(BuildContext context, String label, List<Occasion> list) {
     final ty = context.ty;
+    if (list.isEmpty) return const SizedBox();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -203,7 +239,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           crossAxisSpacing: 10,
           childAspectRatio: 1.3,
           children: list.map((o) {
-            final on = _occasion.id == o.id;
+            final on = _occasion?.id == o.id;
             final c = ty.tint(o.tint);
             return GestureDetector(
               onTap: () => setState(() => _occasion = o),
@@ -220,7 +256,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   children: [
                     Emblem(icon: o.icon, tint: o.tint, size: 28),
                     const Spacer(),
-                    Text(o.en, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                    Text(o.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -231,10 +267,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  // ── step 2: Details & Invitations ──
   Widget _detailsStep(BuildContext context) {
-    final ty = context.ty;
-    final minDate = DateTime.now().add(const Duration(days: 15)); // Mock rule
+    final minDate = DateTime.now().add(const Duration(days: 15));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -262,7 +296,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           Wrap(
             spacing: 9,
             runSpacing: 9,
-            children: TyData.vibes
+            children: ['Intimate', 'Grand', 'Traditional', 'Modern']
                 .map((v) => TyChip(
                       label: v,
                       active: _vibes.contains(v),
@@ -272,80 +306,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 .toList(),
           ),
         ),
-        const SizedBox(height: 12),
-        _field(context, 'Invitation Template', _invitationPicker(context)),
       ],
     );
   }
 
-  Widget _invitationPicker(BuildContext context) {
-    final ty = context.ty;
-    return Column(
-      children: [
-        Container(
-          height: 120,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: ty.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: ty.line),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 80,
-                decoration: BoxDecoration(
-                  color: ty.saffronSoft,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.mail_outline_rounded, size: 32, color: Colors.orange),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(_invite.name, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
-                    Text('Style: ${_invite.mood}', style: TyType.sans(12, color: ty.ink2)),
-                    const SizedBox(height: 8),
-                    Text('Preview changes with mood ✨', style: TyType.sans(11, color: ty.saffronDeep)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 80,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: TyData.invitations.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, i) {
-              final inv = TyData.invitations[i];
-              final on = _invite.id == inv.id;
-              return GestureDetector(
-                onTap: () => setState(() => _invite = inv),
-                child: Container(
-                  width: 80,
-                  decoration: BoxDecoration(
-                    color: ty.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 2 : 1),
-                  ),
-                  child: Center(child: Icon(Icons.image_outlined, color: on ? ty.saffron : ty.ink3)),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── step 3: Guests ──
   Widget _guestsStep(BuildContext context) {
     final ty = context.ty;
     return Column(
@@ -357,9 +321,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           child: Row(children: [
             Text('$_totalGuests', style: TyType.display(36, color: ty.ink)),
             const SizedBox(width: 8),
-            Text('guests confirmed', style: TyType.sans(14, color: ty.ink2)),
+            Text('guests estimated', style: TyType.sans(14, color: ty.ink2)),
             const Spacer(),
-            TyButton('Add Guest', kind: TyButtonKind.ghost, onTap: () {}),
+            TyButton('Add Group', kind: TyButtonKind.ghost, onTap: () {}),
           ]),
         ),
         const SizedBox(height: 16),
@@ -370,7 +334,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             _inviteMethod(context, Icons.person_add_outlined, 'Manual'),
             _inviteMethod(context, Icons.upload_file_rounded, 'CSV'),
             _inviteMethod(context, Icons.contacts_outlined, 'Contacts'),
-            _inviteMethod(context, Icons.chat_bubble_outline_rounded, 'WhatsApp'),
           ],
         ),
         const SizedBox(height: 24),
@@ -413,11 +376,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  // ── step 4: Packages ──
   Widget _packageStep(BuildContext context) {
     final ty = context.ty;
     return Column(
-      children: TyData.packages.map((p) {
+      children: _packages.map((p) {
         final on = _pkg?.id == p.id;
         return GestureDetector(
           onTap: () => setState(() => _pkg = p),
@@ -435,17 +397,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               children: [
                 Stack(
                   children: [
-                    p.coverImage.startsWith('assets/')
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: Image.asset(p.coverImage, height: 160, width: double.infinity, fit: BoxFit.cover),
-                          )
-                        : Container(
-                            height: 160,
-                            width: double.infinity,
-                            decoration: BoxDecoration(color: ty.tint(p.tint).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                            child: Center(child: Icon(Icons.celebration_rounded, color: ty.tint(p.tint), size: 40)),
-                          ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: CachedNetworkImage(
+                        imageUrl: p.coverImageUrl ?? '',
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: 160, arch: false),
+                        errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: 160, arch: false),
+                      ),
+                    ),
                     Positioned(
                       top: 12,
                       left: 12,
@@ -461,20 +423,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 const SizedBox(height: 16),
                 Text(p.name, style: TyType.display(22, color: ty.ink)),
                 const SizedBox(height: 4),
-                Text(p.description, style: TyType.sans(13, color: ty.ink2)),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8, runSpacing: 8,
-                  children: p.inclusions.take(3).map((inc) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(color: ty.surface2, borderRadius: BorderRadius.circular(8)),
-                    child: Text(inc, style: TyType.sans(11, color: ty.ink)),
-                  )).toList(),
-                ),
-                if (p.inclusions.length > 3) ...[
-                  const SizedBox(height: 8),
-                  Text('+${p.inclusions.length - 3} more inclusions', style: TyType.sans(11, color: ty.saffronDeep, weight: FontWeight.w600)),
-                ],
+                Text(p.description ?? '', style: TyType.sans(13, color: ty.ink2)),
               ],
             ),
           ),
@@ -483,16 +432,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  // ── step 5: Summary ──
   Widget _summaryStep(BuildContext context) {
     final ty = context.ty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _summaryCard(context, 'Celebration', '${_occasion.en} - ${_nameCtrl.text}'),
+        _summaryCard(context, 'Celebration', '${_occasion?.name} - ${_nameCtrl.text}'),
         _summaryCard(context, 'Package & Theme', '${_pkg?.name} (${_pkg?.theme})'),
         _summaryCard(context, 'Date & Time', '${_eventDate.day} ${_eventDate.month} · 6:30 PM'),
-        _summaryCard(context, 'Guest Count', '$_totalGuests Guests (${_guests.length} Households)'),
+        _summaryCard(context, 'Guest Count', '$_totalGuests Guests'),
         const SizedBox(height: 16),
         _sectionHeader('Address'),
         Container(
@@ -500,17 +448,18 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           decoration: _cardDeco(ty),
           child: Column(
             children: [
-              ...TyData.addresses.map((addr) => RadioListTile<Address>(
-                value: addr,
-                groupValue: _address,
-                activeColor: ty.saffron,
-                contentPadding: EdgeInsets.zero,
-                title: Text(addr.label, style: TyType.sans(14, weight: FontWeight.w700)),
-                subtitle: Text(addr.fullAddress, style: TyType.sans(12, color: ty.ink2)),
-                onChanged: (v) => setState(() => _address = v!),
-              )),
-              const Divider(),
-              TyButton('Add New Address', kind: TyButtonKind.ghost, leadingIcon: Icons.add_location_alt_outlined, onTap: () {}),
+              if (_addresses.isEmpty)
+                TyButton('Add Address', kind: TyButtonKind.ghost, leadingIcon: Icons.add_location_alt_outlined, onTap: () {})
+              else
+                ..._addresses.map((addr) => RadioListTile<Address>(
+                  value: addr,
+                  groupValue: _address,
+                  activeColor: ty.saffron,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(addr.label, style: TyType.sans(14, weight: FontWeight.w700)),
+                  subtitle: Text(addr.fullAddress, style: TyType.sans(12, color: ty.ink2)),
+                  onChanged: (v) => setState(() => _address = v!),
+                )),
             ],
           ),
         ),
@@ -521,11 +470,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           decoration: _cardDeco(ty),
           child: Column(
             children: [
-              _priceRow('Package Base Price', _pkg?.price ?? 0),
-              _priceRow('Guest Add-on (x$_totalGuests)', _totalGuests * 150),
+              _priceRow('Package Base Price', _pkg?.price.toInt() ?? 0),
               _priceRow('Tyohaar Fee', 1500),
               const Divider(height: 24),
-              _priceRow('Total Amount', (_pkg?.price ?? 0) + (_totalGuests * 150) + 1500, bold: true),
+              _priceRow('Total Amount', (_pkg?.price.toInt() ?? 0) + 1500, bold: true),
             ],
           ),
         ),
@@ -565,8 +513,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TyType.sans(13, color: bold ? ty.ink : ty.ink2, weight: bold ? FontWeight.w700 : FontWeight.w500)),
-          Text('₹${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}', 
-              style: TyType.sans(14, color: ty.ink, weight: bold ? FontWeight.w800 : FontWeight.w600)),
+          Text('₹$amount', style: TyType.sans(14, color: ty.ink, weight: bold ? FontWeight.w800 : FontWeight.w600)),
         ],
       ),
     );
@@ -579,7 +526,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  // ── shared bits ──
   Widget _field(BuildContext context, String label, Widget child) {
     final ty = context.ty;
     return Padding(

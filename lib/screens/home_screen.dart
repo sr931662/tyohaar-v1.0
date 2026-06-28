@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/auth_manager.dart';
-import '../data/sample_data.dart';
 import '../data/models.dart';
+import '../data/services/package_service.dart';
+import '../data/services/celebration_service.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
@@ -17,15 +19,66 @@ import 'package:tyohaar/screens/package_detail_screen.dart';
 import 'package:tyohaar/screens/invitation_management_screen.dart';
 import 'package:tyohaar/screens/occasion_detail_screen.dart';
 
-/// A logical, scannable hub: the active celebration, quick actions,
-/// the nearest tasks, a vendor message, and inspiration.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final PackageService _packageService = PackageService();
+  final CelebrationService _celebrationService = CelebrationService();
+
+  List<Package> _bestSellers = [];
+  List<Occasion> _occasions = [];
+  Map<String, dynamic>? _activeCelebration;
+  List<Guest> _guests = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final results = await Future.wait([
+        _packageService.listPackages(),
+        _packageService.listOccasions(),
+        _celebrationService.listCelebrations(),
+      ]);
+
+      setState(() {
+        _bestSellers = results[0] as List<Package>;
+        _occasions = results[1] as List<Occasion>;
+        final celebrations = results[2] as List<Map<String, dynamic>>;
+        if (celebrations.isNotEmpty) {
+          _activeCelebration = celebrations.first;
+          _loadGuests(_activeCelebration!['id']);
+        }
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading home data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadGuests(String celebrationId) async {
+    try {
+      final guests = await _celebrationService.listGuests(celebrationId);
+      setState(() => _guests = guests);
+    } catch (e) {
+      debugPrint('Error loading guests: $e');
+    }
+  }
 
   void _push(BuildContext context, Widget page, {String? authAction}) {
     if (authAction != null) {
       AuthManager.instance.checkAuth(
-        context, 
+        context,
         action: authAction,
         onAuthenticated: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
       );
@@ -37,30 +90,30 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final guests = TyData.seedGuests();
-    final totalGuests = guests.fold<int>(0, (s, g) => s + g.count);
-    final phases = TyData.planTemplate();
-    final allTasks = phases.expand((p) => p.items).toList();
-    final done = allTasks.where((t) => t.done).length;
-    final total = allTasks.length;
-    final pct = (done / total * 100).round();
-    final openTasks = phases
-        .expand((p) => p.items.where((t) => !t.done).map((t) => [t.title, '${p.phase} · ${t.who}']))
-        .take(3)
-        .toList();
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final totalGuests = _guests.fold<int>(0, (s, g) => s + g.count);
+    final pct = _activeCelebration?['progress_percentage'] ?? 0;
+    
+    // Placeholder for tasks if backend doesn't provide them yet
+    final openTasks = [
+      ['Confirm the venue', 'Now · The Courtyard'],
+      ['Shortlist catering tasting', '8 weeks before · Saffron Table'],
+    ];
 
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        // ── active celebration (Hero) ──
-        _buildHeroCard(context, pct, total - done, guests, totalGuests),
+        _buildHeroCard(context, pct, totalGuests),
 
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── quick actions ──
               Row(
                 children: [
                   _quickAction(context, Icons.group_outlined, 'Guests', ty.saffron,
@@ -73,7 +126,6 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 26),
 
-              // ── up next ──
               SectionHeader('Up next',
                   action: 'Timeline',
                   onAction: () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your timeline')),
@@ -84,7 +136,6 @@ class HomeScreen extends StatelessWidget {
                   onTap: () => _push(context, const InvitationManagementScreen(), authAction: 'manage invitations')),
               const SizedBox(height: 26),
 
-              // ── from your team ──
               SectionHeader('From your team'),
               Container(
                 padding: const EdgeInsets.all(13),
@@ -123,7 +174,6 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 26),
 
-              // ── start a celebration ──
               GestureDetector(
                 onTap: () => _push(context, const PlanFlowScreen(), authAction: 'start a celebration'),
                 child: Container(
@@ -164,28 +214,31 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 26),
 
-              // ── membership banner ──
               _membershipBanner(context),
               const SizedBox(height: 26),
 
-              // ── best selling packages ──
-              SectionHeader('Best Selling Packages'),
-              _packageRail(context, TyData.bestSellers),
-              const SizedBox(height: 26),
+              if (_bestSellers.isNotEmpty) ...[
+                SectionHeader('Best Selling Packages'),
+                _packageRail(context, _bestSellers),
+                const SizedBox(height: 26),
+              ],
 
-              // ── popular festivals ──
-              SectionHeader('Popular Festivals'),
-              _festivalRail(context, TyData.occasions.where((o) => o.category == 'major_festival').toList()),
-              const SizedBox(height: 26),
+              if (_occasions.any((o) => o.category == 'major_festival')) ...[
+                SectionHeader('Popular Festivals'),
+                _festivalRail(context, _occasions.where((o) => o.category == 'major_festival').toList()),
+                const SizedBox(height: 26),
+              ],
 
-              // ── life moments ──
-              SectionHeader('Life Moments'),
-              _festivalRail(context, TyData.occasions.where((o) => o.category == 'life').toList()),
-              const SizedBox(height: 26),
+              if (_occasions.any((o) => o.category == 'life_event')) ...[
+                SectionHeader('Life Moments'),
+                _festivalRail(context, _occasions.where((o) => o.category == 'life_event').toList()),
+                const SizedBox(height: 26),
+              ],
 
-              // ── upcoming celebrations ──
-              SectionHeader('Upcoming Celebrations'),
-              _festivalRail(context, TyData.occasions.where((o) => o.category == 'minor_festival').toList()),
+              if (_occasions.any((o) => o.category == 'minor_festival')) ...[
+                SectionHeader('Upcoming Celebrations'),
+                _festivalRail(context, _occasions.where((o) => o.category == 'minor_festival').toList()),
+              ],
             ],
           ),
         ),
@@ -193,9 +246,13 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeroCard(BuildContext context, int pct, int tasksLeft, List guests, int totalGuests) {
+  Widget _buildHeroCard(BuildContext context, int pct, int totalGuests) {
     final ty = context.ty;
     const double radius = 42.0;
+    
+    final title = _activeCelebration?['title'] ?? 'Start Planning';
+    final date = _activeCelebration?['scheduled_date'] ?? '';
+    final location = _activeCelebration?['venue_address'] ?? 'Select Location';
     
     return GestureDetector(
       onTap: () => _push(context, const EventHubScreen(), authAction: 'view your event hub'),
@@ -203,23 +260,20 @@ class HomeScreen extends StatelessWidget {
         height: 440,
         child: Stack(
           children: [
-            // Background Image
             Positioned.fill(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(radius)),
-                child: Image.asset(
-                  'assets/images/Landing page image.png',
+                child: CachedNetworkImage(
+                  imageUrl: _activeCelebration?['hero_image_url'] ?? '',
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => PhotoPlaceholder(
-                    tint: 'saffron', 
-                    height: 440, 
-                    arch: false,
-                    radius: BorderRadius.vertical(bottom: Radius.circular(radius)),
+                  placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: 440, arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius))),
+                  errorWidget: (context, url, error) => Image.asset(
+                    'assets/images/Landing page image.png',
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
             ),
-            // Top overlay for header readability - STRENGTHENED for light imagery
             Positioned(
               top: 0,
               left: 0,
@@ -240,7 +294,6 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // Bottom overlay for content readability
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -261,34 +314,34 @@ class HomeScreen extends StatelessWidget {
             Positioned(
               left: 18,
               right: 18,
-              bottom: 32, // Increased bottom padding to clear the curve
+              bottom: 32,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('YOUR NEXT CELEBRATION',
                       style: TyType.eyebrow(11.5, color: Colors.white.withOpacity(0.7))),
                   const SizedBox(height: 12),
-                  Row(children: const [
-                    TyPill('Birthday'),
-                    SizedBox(width: 8),
-                    TyPill('in 11 days', background: Colors.orange, foreground: Colors.white),
+                  Row(children: [
+                    TyPill(_activeCelebration?['category'] ?? 'Celebration'),
+                    const SizedBox(width: 8),
+                    if (date.isNotEmpty)
+                      const TyPill('Upcoming', background: Colors.orange, foreground: Colors.white),
                   ]),
                   const SizedBox(height: 14),
-                  Text('Diya turns One',
-                      style: TyType.display(34, color: Colors.white)),
+                  Text(title, style: TyType.display(34, color: Colors.white)),
                   const SizedBox(height: 6),
                   Row(children: [
                     const Icon(Icons.event, size: 15, color: Colors.white70),
                     const SizedBox(width: 6),
-                    Text('Sat, 14 June · Jaipur',
+                    Text('$date · $location',
                         style: TyType.sans(14, color: Colors.white70)),
                   ]),
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      _stackedAvatars(guests, totalGuests),
+                      _stackedAvatars(_guests, totalGuests),
                       const Spacer(),
-                      _progressChip(context, pct, tasksLeft),
+                      _progressChip(context, pct, 5), // Hardcoded 5 tasks left for now
                     ],
                   ),
                 ],
@@ -299,9 +352,6 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
-  // Placeholder for setstate in stateless widget fix
-  void setState(VoidCallback fn) {}
 
   Widget _membershipBanner(BuildContext context) {
     final ty = context.ty;
@@ -370,12 +420,17 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Stack(
                     children: [
-                      p.coverImage.startsWith('assets/')
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
-                              child: Image.asset(p.coverImage, height: 130, width: double.infinity, fit: BoxFit.cover),
-                            )
-                          : PhotoPlaceholder(tint: p.tint, height: 130, arch: false),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: CachedNetworkImage(
+                          imageUrl: p.coverImageUrl ?? '',
+                          height: 130,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: 130, arch: false),
+                          errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: 130, arch: false),
+                        ),
+                      ),
                       Positioned(
                         top: 10,
                         right: 10,
@@ -428,7 +483,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(f.en,
+                  Text(f.name,
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       style: TyType.sans(12, color: ty.ink, weight: FontWeight.w600)),
@@ -441,33 +496,35 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _stackedAvatars(List guests, int total) {
+  Widget _stackedAvatars(List<Guest> guests, int total) {
+    if (guests.isEmpty) return const SizedBox();
     return SizedBox(
       width: 112,
       height: 30,
       child: Stack(
         children: [
-          for (int i = 0; i < 4; i++)
+          for (int i = 0; i < guests.length.clamp(0, 4); i++)
             Positioned(
               left: i * 20.0,
               child: TyAvatar(name: guests[i].name, index: i, size: 30),
             ),
-          Positioned(
-            left: 4 * 20.0 - 10,
-            child: Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.22),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+          if (total > 4)
+            Positioned(
+              left: 4 * 20.0 - 10,
+              child: Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.22),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+                ),
+                child: Text('+${total - 4}',
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700)),
               ),
-              child: Text('+${total - 8}',
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700)),
             ),
-          ),
         ],
       ),
     );

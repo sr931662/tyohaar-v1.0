@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../data/services/support_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 
@@ -12,13 +13,39 @@ class RaiseTicketScreen extends StatefulWidget {
 }
 
 class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
+  final SupportService _supportService = SupportService();
   String _category = 'Planning';
   final _descCtrl = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
     _descCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_descCtrl.text.isEmpty) return;
+    
+    setState(() => _isSubmitting = true);
+    try {
+      await _supportService.createTicket(_category, _descCtrl.text);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ticket raised successfully!')),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      debugPrint('Error raising ticket: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to raise ticket. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -109,12 +136,12 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
           
           const SizedBox(height: 48),
           
-          TyButton('Submit Ticket', full: true, onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Ticket raised successfully!')),
-            );
-            Navigator.of(context).pop();
-          }),
+          TyButton(
+            _isSubmitting ? 'Submitting...' : 'Submit Ticket', 
+            full: true, 
+            enabled: !_isSubmitting && _descCtrl.text.isNotEmpty,
+            onTap: _submit
+          ),
         ],
       ),
     );

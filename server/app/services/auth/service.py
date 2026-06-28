@@ -25,8 +25,9 @@ from app.models.enums import (
     SessionStatus,
     TokenRevocationReason,
     VerificationStatus,
+    UserRole,
 )
-from app.schemas.auth.create import OTPVerifyCreate
+from app.schemas.auth.create import OTPVerifyCreate, UserRegisterCreate
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
 from app.schemas.users.create import UserCreate
 from app.services.auth.constants import (
@@ -69,6 +70,147 @@ class TokenPairResponse:
 class AuthService(BaseService):
     def __init__(self, session_factory: Callable[[], AsyncSession] = AsyncSessionLocal) -> None:
         super().__init__(session_factory)
+
+    # ── Traditional Email/Password Auth ──────────────────────────────────────
+
+    async def register_user(
+        self,
+        data: UserRegisterCreate,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> TokenPairResponse:
+        from app.core.security import hash_password
+        from app.services.users.exceptions import EmailAlreadyExistsError
+
+        async with self._uow() as uow:
+            # 1. Check if email exists
+            existing = await uow.users.users.find_by_email(data.email)
+            if existing:
+                raise EmailAlreadyExistsError(data.email)
+
+            # 2. Create user
+            user_data = {
+                "email": data.email,
+                "full_name": data.full_name,
+                "password_hash": hash_password(data.password),
+                "primary_login_provider": LoginMethod.EMAIL_PASSWORD,
+                "email_verified": False,
+                "role": UserRole.CUSTOMER,
+                "account_status": AccountStatus.ACTIVE,
+                "verification_status": VerificationStatus.UNVERIFIED,
+                # Phone is required in the model but optional in the registration form
+                # We'll use a placeholder or handle it.
+                # Wait, the model says 'phone' is NOT NULL.
+                "phone": f"TMP-{uuid.uuid4().hex[:10]}",
+            }
+            user = await uow.users.users.create_from_dict(user_data)
+            await uow.users.profiles.create_from_dict({"user_id": user.id})
+
+            # 3. Create Session (reusing logic from verify_otp)
+            return await self._create_user_session(
+                user, ip_address, user_agent, LoginMethod.EMAIL_PASSWORD
+            )
+
+    async def authenticate_user(
+        self,
+        email: str,
+        password: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> TokenPairResponse:
+        from app.core.security import verify_password
+        from app.services.auth.exceptions import InvalidCredentialsError
+
+        async with self._uow() as uow:
+            user = await uow.users.users.find_by_email(email)
+            if not user or not user.password_hash:
+                raise InvalidCredentialsError()
+
+            if not verify_password(password, user.password_hash):
+                raise InvalidCredentialsError()
+
+            if user.account_status != AccountStatus.ACTIVE:
+                from app.services.auth.exceptions import AccountLockedError
+                raise AccountLockedError("Account is not active.")
+
+            return await self._create_user_session(
+                user, ip_address, user_agent, LoginMethod.EMAIL_PASSWORD
+            )
+
+    async def _create_user_session(
+        self,
+        user,
+        ip_address: str | None,
+        user_agent: str | None,
+        login_method: LoginMethod,
+        device_id: str | None = None,
+    ) -> TokenPairResponse:
+        # Refactored common session creation logic
+        async with self._uow() as uow:
+            # Enforce MAX_ACTIVE_SESSIONS
+            active_count = await uow.auth.sessions.count_active_for_user(user.id)
+            if active_count >= MAX_ACTIVE_SESSIONS:
+                active_sessions = await uow.auth.sessions.find_active_for_user(user.id)
+                active_sessions.sort(key=lambda s: s.login_at)
+                oldest = active_sessions[0]
+                await uow.auth.sessions.revoke_session(oldest, TokenRevocationReason.LOGOUT)
+                await uow.auth.refresh_tokens.revoke_for_session(oldest.id, TokenRevocationReason.LOGOUT)
+
+            now = datetime.now(tz=timezone.utc)
+            session_expires = now + timedelta(seconds=REFRESH_TOKEN_EXPIRY_SECONDS)
+            session_token = generate_token(32)
+
+            session_obj = UserSession(
+                user_id=user.id,
+                session_token=session_token,
+                login_method=login_method,
+                status=SessionStatus.ACTIVE,
+                login_at=now,
+                last_activity_at=now,
+                expires_at=session_expires,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                device_id=device_id,
+                is_active=True,
+                is_revoked=False,
+            )
+            await uow.auth.sessions.create(session_obj)
+
+            access_payload = create_access_token_payload(
+                user.id, session_obj.id, ACCESS_TOKEN_EXPIRY_SECONDS
+            )
+            access_token = encode_jwt(access_payload, settings.SECRET_KEY, settings.ALGORITHM)
+            raw_refresh = generate_token(32)
+            refresh_hash = hash_token(raw_refresh)
+            family_id = uuid.uuid4()
+            jti = access_payload["jti"]
+
+            session_obj.access_jti = jti
+
+            rt_expires = now + timedelta(seconds=REFRESH_TOKEN_EXPIRY_SECONDS)
+            refresh_record = RefreshToken(
+                jti=generate_token(16),
+                user_id=user.id,
+                session_id=session_obj.id,
+                family_id=family_id,
+                token_hash=refresh_hash,
+                device_id=device_id,
+                ip_address=ip_address,
+                issued_at=now,
+                expires_at=rt_expires,
+            )
+            await uow.auth.refresh_tokens.create(refresh_record)
+
+            user_id = user.id
+            session_id = session_obj.id
+
+        return TokenPairResponse(
+            access_token=access_token,
+            refresh_token=raw_refresh,
+            expires_in=ACCESS_TOKEN_EXPIRY_SECONDS,
+            session_id=session_id,
+            user_id=user_id,
+        )
 
     # ── Send OTP ──────────────────────────────────────────────────────────────
 
@@ -180,79 +322,8 @@ class AuthService(BaseService):
             user.last_login_at = datetime.now(tz=timezone.utc)
             await uow.session.flush()  # type: ignore[union-attr]
 
-            # 3. Enforce MAX_ACTIVE_SESSIONS — revoke oldest if over limit
-            active_count = await uow.auth.sessions.count_active_for_user(user.id)
-            if active_count >= MAX_ACTIVE_SESSIONS:
-                active_sessions = await uow.auth.sessions.find_active_for_user(user.id)
-                # Sort by login_at ascending; revoke the oldest
-                active_sessions.sort(key=lambda s: s.login_at)
-                oldest = active_sessions[0]
-                await uow.auth.sessions.revoke_session(
-                    oldest, TokenRevocationReason.LOGOUT
-                )
-                await uow.auth.refresh_tokens.revoke_for_session(
-                    oldest.id, TokenRevocationReason.LOGOUT
-                )
-
-            # 4. Create Session
-            now = datetime.now(tz=timezone.utc)
-            session_expires = now + timedelta(seconds=REFRESH_TOKEN_EXPIRY_SECONDS)
-            session_token = generate_token(32)
-
-            session_obj = UserSession(
-                user_id=user.id,
-                session_token=session_token,
-                login_method=LoginMethod.OTP_PHONE,
-                status=SessionStatus.ACTIVE,
-                login_at=now,
-                last_activity_at=now,
-                expires_at=session_expires,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                device_id=device_id,
-                is_active=True,
-                is_revoked=False,
-            )
-            await uow.auth.sessions.create(session_obj)
-
-            # 5. Generate access JWT + raw refresh token
-            access_payload = create_access_token_payload(
-                user.id, session_obj.id, ACCESS_TOKEN_EXPIRY_SECONDS
-            )
-            access_token = encode_jwt(access_payload, settings.SECRET_KEY, settings.ALGORITHM)
-            raw_refresh = generate_token(32)
-            refresh_hash = hash_token(raw_refresh)
-            family_id = uuid.uuid4()
-            jti = access_payload["jti"]
-
-            # Update session with access_jti
-            session_obj.access_jti = jti
-            await uow.session.flush()  # type: ignore[union-attr]
-
-            # 6. Store RefreshToken (hash only)
-            rt_expires = now + timedelta(seconds=REFRESH_TOKEN_EXPIRY_SECONDS)
-            refresh_record = RefreshToken(
-                jti=generate_token(16),
-                user_id=user.id,
-                session_id=session_obj.id,
-                family_id=family_id,
-                token_hash=refresh_hash,
-                device_id=device_id,
-                ip_address=ip_address,
-                issued_at=now,
-                expires_at=rt_expires,
-            )
-            await uow.auth.refresh_tokens.create(refresh_record)
-
-            user_id = user.id
-            session_id = session_obj.id
-
-        return TokenPairResponse(
-            access_token=access_token,
-            refresh_token=raw_refresh,
-            expires_in=ACCESS_TOKEN_EXPIRY_SECONDS,
-            session_id=session_id,
-            user_id=user_id,
+        return await self._create_user_session(
+            user, ip_address, user_agent, LoginMethod.OTP_PHONE, device_id
         )
 
     # ── Refresh Access Token ──────────────────────────────────────────────────

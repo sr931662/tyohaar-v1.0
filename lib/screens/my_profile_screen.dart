@@ -1,15 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../data/models.dart';
+import '../data/services/user_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 
-class MyProfileScreen extends StatelessWidget {
+class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
+
+  @override
+  State<MyProfileScreen> createState() => _MyProfileScreenState();
+}
+
+class _MyProfileScreenState extends State<MyProfileScreen> {
+  final UserService _userService = UserService();
+  User? _user;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final user = await _userService.getMe();
+      setState(() {
+        _user = user;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    
+    if (_isLoading) {
+      return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: tyAppBar(context, title: 'My Profile'),
@@ -19,12 +56,17 @@ class MyProfileScreen extends StatelessWidget {
           Center(
             child: Stack(
               children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle),
-                  child: Text('A', style: TextStyle(color: ty.onPrimary, fontWeight: FontWeight.w800, fontSize: 40)),
+                ClipOval(
+                  child: _user?.profilePhotoUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: _user!.profilePhotoUrl!,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(color: ty.saffronSoft, width: 100, height: 100),
+                        errorWidget: (context, url, error) => _buildInitials(ty),
+                      )
+                    : _buildInitials(ty),
                 ),
                 Positioned(
                   bottom: 0,
@@ -39,15 +81,26 @@ class MyProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
-          _field(context, 'Full Name', 'Aarav Sharma'),
-          _field(context, 'Email Address', 'aarav.sharma@gmail.com'),
-          _field(context, 'Phone Number', '+91 98765 43210'),
-          _field(context, 'Gender', 'Male'),
-          _field(context, 'Date of Birth', '12 June 1995'),
+          _field(context, 'Full Name', _user?.displayName ?? 'Not set'),
+          _field(context, 'Email Address', _user?.email ?? 'Not set'),
+          _field(context, 'Phone Number', _user?.phone ?? 'Not set'),
+          _field(context, 'Role', _user?.role.toUpperCase() ?? 'CUSTOMER'),
+          _field(context, 'Account Status', _user?.status.toUpperCase() ?? 'ACTIVE'),
           const SizedBox(height: 40),
           TyButton('Save Changes', full: true, onTap: () => Navigator.pop(context)),
         ],
       ),
+    );
+  }
+
+  Widget _buildInitials(TyColors ty) {
+    final initial = _user?.displayName.substring(0, 1).toUpperCase() ?? '?';
+    return Container(
+      width: 100,
+      height: 100,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle),
+      child: Text(initial, style: TextStyle(color: ty.onPrimary, fontWeight: FontWeight.w800, fontSize: 40)),
     );
   }
 

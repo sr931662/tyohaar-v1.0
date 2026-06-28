@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
@@ -33,15 +35,12 @@ class OccasionDetailScreen extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Background: Image or Placeholder
-                  occasion.heroImage != null
-                      ? Image.asset(
-                          occasion.heroImage!,
-                          fit: BoxFit.cover,
-                        )
-                      : PhotoPlaceholder(tint: occasion.tint, arch: false),
-
-                  // Overlay Gradients for Readability
+                  CachedNetworkImage(
+                    imageUrl: occasion.heroImageUrl ?? '',
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => PhotoPlaceholder(tint: occasion.tint, arch: false),
+                    errorWidget: (context, url, error) => PhotoPlaceholder(tint: occasion.tint, arch: false),
+                  ),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -56,16 +55,6 @@ class OccasionDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  // Optional: Icon as a watermark if no hero image is present
-                  if (occasion.heroImage == null)
-                    Center(
-                      child: Icon(
-                        occasion.icon,
-                        color: color.withOpacity(0.4),
-                        size: 100,
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -80,15 +69,15 @@ class OccasionDetailScreen extends StatelessWidget {
                     background: color.withOpacity(0.12), 
                     foreground: color),
                   const SizedBox(height: 12),
-                  Text(occasion.en, style: TyType.display(32, color: ty.ink)),
+                  Text(occasion.name, style: TyType.display(32, color: ty.ink)),
                   const SizedBox(height: 8),
-                  Text(occasion.blurb,
+                  Text(occasion.description ?? '',
                     style: TyType.sans(16, color: ty.ink2, height: 1.5)),
                   const SizedBox(height: 32),
                   const SectionHeader('Curated Packages'),
-                  _mockPackage(context, 'Essential ${occasion.en}', 'Standard decoration & setup', '₹15K', occasion.tint, 
-                      image: occasion.id == 'birthday' ? 'assets/images/birthday banner.png' : null),
-                  _mockPackage(context, 'Premium ${occasion.en}', 'Full floral & light experience', '₹35K', occasion.tint),
+                  // Future: Fetch packages for this occasion
+                  _placeholderPackage(context, 'Essential ${occasion.name}', 'Standard decoration & setup', '₹15K', occasion.tint),
+                  _placeholderPackage(context, 'Premium ${occasion.name}', 'Full floral & light experience', '₹35K', occasion.tint),
                   const SizedBox(height: 32),
                   const SectionHeader('Traditions'),
                   _traditionRow(context, Icons.auto_awesome, 'Vibrant Decor', 'Traditional motifs and bright colors.'),
@@ -105,7 +94,7 @@ class OccasionDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _mockPackage(BuildContext context, String name, String sub, String price, String tint, {String? image}) {
+  Widget _placeholderPackage(BuildContext context, String name, String sub, String price, String tint) {
     final ty = context.ty;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -120,12 +109,7 @@ class OccasionDetailScreen extends StatelessWidget {
           SizedBox(
             width: 60, 
             height: 60, 
-            child: image != null && image.startsWith('assets/')
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(image, fit: BoxFit.cover),
-                )
-              : PhotoPlaceholder(tint: tint, arch: false),
+            child: PhotoPlaceholder(tint: tint, arch: false),
           ),
           const SizedBox(width: 14),
           Expanded(

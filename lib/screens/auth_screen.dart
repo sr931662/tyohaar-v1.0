@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import '../data/auth_manager.dart';
+import '../data/services/auth_service.dart';
 import 'root_nav.dart';
-
-enum AuthMode { login, signup }
 
 class AuthScreen extends StatefulWidget {
   final VoidCallback? onAuthenticated;
@@ -16,50 +17,109 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
-  AuthMode _mode = AuthMode.login;
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  final _loginEmailCtrl = TextEditingController();
+  final _loginPasswordCtrl = TextEditingController();
+
+  final _regNameCtrl = TextEditingController();
+  final _regEmailCtrl = TextEditingController();
+  final _regPasswordCtrl = TextEditingController();
+  final _regConfirmCtrl = TextEditingController();
+
   bool _isLoading = false;
-  bool _obscurePassword = true;
+  String _error = '';
+  bool _loginObscure = true;
+  bool _regObscure = true;
+  bool _regConfirmObscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() => setState(() => _error = ''));
+  }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
+    _tabController.dispose();
+    _loginEmailCtrl.dispose();
+    _loginPasswordCtrl.dispose();
+    _regNameCtrl.dispose();
+    _regEmailCtrl.dispose();
+    _regPasswordCtrl.dispose();
+    _regConfirmCtrl.dispose();
     super.dispose();
   }
 
-  void _toggleMode() {
-    setState(() {
-      _mode = _mode == AuthMode.login ? AuthMode.signup : AuthMode.login;
-    });
-  }
-
-  Future<void> _handleSubmit() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) return;
-    if (_mode == AuthMode.signup && _nameController.text.isEmpty) return;
-
-    setState(() => _isLoading = true);
-    
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
-    
+  void _onSuccess(Map<String, dynamic> data) {
+    final token = data['access_token'] as String?;
+    if (token != null) {
+      AuthManager.instance.login();
+    }
     if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    AuthManager.instance.login();
-
     if (widget.onAuthenticated != null) {
-      widget.onAuthenticated!();
       Navigator.pop(context);
+      widget.onAuthenticated!();
     } else {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const RootNav()),
       );
+    }
+  }
+
+  Future<void> _handleLogin() async {
+    final email = _loginEmailCtrl.text.trim();
+    final password = _loginPasswordCtrl.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Please fill in all fields.');
+      return;
+    }
+
+    setState(() { _isLoading = true; _error = ''; });
+    try {
+      final data = await context.read<AuthService>().login(email, password);
+      if (!mounted) return;
+      _onSuccess(data);
+    } on DioException catch (e) {
+      final msg = e.response?.data?['detail'] ?? e.response?.data?['message'];
+      setState(() { _isLoading = false; _error = msg ?? 'Login failed. Please try again.'; });
+    } catch (_) {
+      setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
+    }
+  }
+
+  Future<void> _handleRegister() async {
+    final name = _regNameCtrl.text.trim();
+    final email = _regEmailCtrl.text.trim();
+    final password = _regPasswordCtrl.text;
+    final confirm = _regConfirmCtrl.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Please fill in all required fields.');
+      return;
+    }
+    if (password != confirm) {
+      setState(() => _error = 'Passwords do not match.');
+      return;
+    }
+    if (password.length < 8) {
+      setState(() => _error = 'Password must be at least 8 characters.');
+      return;
+    }
+
+    setState(() { _isLoading = true; _error = ''; });
+    try {
+      final data = await context.read<AuthService>().register(email, password, name: name);
+      if (!mounted) return;
+      _onSuccess(data);
+    } on DioException catch (e) {
+      final msg = e.response?.data?['detail'] ?? e.response?.data?['message'];
+      setState(() { _isLoading = false; _error = msg ?? 'Registration failed. Please try again.'; });
+    } catch (_) {
+      setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
     }
   }
 
@@ -77,116 +137,168 @@ class _AuthScreenState extends State<AuthScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: _mode == AuthMode.login ? 'Sign In' : 'Create Account'),
+      appBar: tyAppBar(context, title: 'Welcome'),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 32),
-              Text(
-                _mode == AuthMode.login ? 'Welcome Back' : 'Join Tyohaar',
-                style: TyType.display(32, color: ty.ink),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _mode == AuthMode.login 
-                  ? 'Sign in to manage your celebrations and discover new trends.' 
-                  : 'Start your journey of creating unforgettable moments with us.',
-                style: TyType.sans(15, color: ty.ink2, height: 1.5),
-              ),
-              const SizedBox(height: 40),
-              
-              if (_mode == AuthMode.signup) ...[
-                _buildField(ty, 'FULL NAME', 'Aarav Sharma', _nameController, icon: Icons.person_outline_rounded),
-                const SizedBox(height: 20),
-              ],
-              
-              _buildField(ty, 'EMAIL ADDRESS', 'name@example.com', _emailController, icon: Icons.mail_outline_rounded, type: TextInputType.emailAddress),
-              const SizedBox(height: 20),
-              
-              _buildField(
-                ty, 
-                'PASSWORD', 
-                '••••••••', 
-                _passwordController, 
-                icon: Icons.lock_outline_rounded, 
-                isPassword: true,
-                obscure: _obscurePassword,
-                onToggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
-              ),
-              
-              const SizedBox(height: 40),
-              
-              TyButton(
-                _mode == AuthMode.login ? 'Sign In' : 'Create Account',
-                full: true,
-                onTap: _handleSubmit,
-                enabled: !_isLoading,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              Center(
-                child: TextButton(
-                  onPressed: _toggleMode,
-                  child: RichText(
-                    text: TextSpan(
-                      style: TyType.sans(14, color: ty.ink2),
-                      children: [
-                        TextSpan(text: _mode == AuthMode.login ? 'Don\'t have an account? ' : 'Already have an account? '),
-                        TextSpan(
-                          text: _mode == AuthMode.login ? 'Sign Up' : 'Log In',
-                          style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
+        child: Column(
+          children: [
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Join Tyohaar', style: TyType.display(32, color: ty.ink)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start your journey of creating unforgettable moments.',
+                    style: TyType.sans(15, color: ty.ink2, height: 1.5),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: ty.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: ty.line),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicator: BoxDecoration(
+                    color: ty.saffron,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  labelStyle: TyType.sans(14, weight: FontWeight.w700),
+                  unselectedLabelStyle: TyType.sans(14, weight: FontWeight.w500),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: ty.ink2,
+                  tabs: const [Tab(text: 'Login'), Tab(text: 'Register')],
                 ),
               ),
-              
-              if (widget.onAuthenticated == null) ...[
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: ty.line)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('OR', style: TyType.eyebrow(10, color: ty.ink3)),
-                    ),
-                    Expanded(child: Divider(color: ty.line)),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: TextButton(
-                    onPressed: _handleSkip,
-                    child: Text(
-                      'Continue as Guest',
-                      style: TyType.sans(14, color: ty.ink3, weight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 32),
-            ],
-          ),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [_buildLoginTab(ty), _buildRegisterTab(ty)],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
+  Widget _buildLoginTab(TyColors ty) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 28),
+          _buildField(ty, 'EMAIL', 'you@example.com', _loginEmailCtrl,
+              icon: Icons.email_outlined, type: TextInputType.emailAddress),
+          const SizedBox(height: 20),
+          _buildField(ty, 'PASSWORD', '••••••••', _loginPasswordCtrl,
+              icon: Icons.lock_outline_rounded,
+              obscure: _loginObscure,
+              onToggleObscure: () => setState(() => _loginObscure = !_loginObscure)),
+          if (_error.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(_error, style: TyType.sans(13, color: ty.rose, weight: FontWeight.w600)),
+          ],
+          const SizedBox(height: 36),
+          TyButton(
+            _isLoading ? 'Signing in...' : 'Sign In',
+            full: true,
+            onTap: _handleLogin,
+            enabled: !_isLoading,
+          ),
+          if (widget.onAuthenticated == null) ...[
+            const SizedBox(height: 28),
+            _buildDivider(ty),
+            const SizedBox(height: 28),
+            Center(
+              child: TextButton(
+                onPressed: _handleSkip,
+                child: Text('Continue as Guest',
+                    style: TyType.sans(14, color: ty.ink3, weight: FontWeight.w600)),
+              ),
+            ),
+          ],
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRegisterTab(TyColors ty) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 28),
+          _buildField(ty, 'FULL NAME (OPTIONAL)', 'Rahul Sharma', _regNameCtrl,
+              icon: Icons.person_outline_rounded),
+          const SizedBox(height: 20),
+          _buildField(ty, 'EMAIL', 'you@example.com', _regEmailCtrl,
+              icon: Icons.email_outlined, type: TextInputType.emailAddress),
+          const SizedBox(height: 20),
+          _buildField(ty, 'PASSWORD', '••••••••', _regPasswordCtrl,
+              icon: Icons.lock_outline_rounded,
+              obscure: _regObscure,
+              onToggleObscure: () => setState(() => _regObscure = !_regObscure)),
+          const SizedBox(height: 20),
+          _buildField(ty, 'CONFIRM PASSWORD', '••••••••', _regConfirmCtrl,
+              icon: Icons.lock_outline_rounded,
+              obscure: _regConfirmObscure,
+              onToggleObscure: () => setState(() => _regConfirmObscure = !_regConfirmObscure)),
+          if (_error.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(_error, style: TyType.sans(13, color: ty.rose, weight: FontWeight.w600)),
+          ],
+          const SizedBox(height: 36),
+          TyButton(
+            _isLoading ? 'Creating account...' : 'Create Account',
+            full: true,
+            onTap: _handleRegister,
+            enabled: !_isLoading,
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDivider(TyColors ty) {
+    return Row(
+      children: [
+        Expanded(child: Divider(color: ty.line)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text('OR', style: TyType.eyebrow(10, color: ty.ink3)),
+        ),
+        Expanded(child: Divider(color: ty.line)),
+      ],
+    );
+  }
+
   Widget _buildField(
-    TyColors ty, 
-    String label, 
-    String hint, 
+    TyColors ty,
+    String label,
+    String hint,
     TextEditingController ctrl, {
     IconData? icon,
-    bool isPassword = false,
-    bool obscure = false,
-    VoidCallback? onToggleObscure,
     TextInputType type = TextInputType.text,
+    bool? obscure,
+    VoidCallback? onToggleObscure,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,7 +306,7 @@ class _AuthScreenState extends State<AuthScreen> {
         Text(label, style: TyType.eyebrow(11, color: ty.ink3)),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: ty.surface,
             borderRadius: BorderRadius.circular(16),
@@ -209,21 +321,21 @@ class _AuthScreenState extends State<AuthScreen> {
               Expanded(
                 child: TextField(
                   controller: ctrl,
-                  obscureText: obscure,
                   keyboardType: type,
+                  obscureText: obscure ?? false,
                   style: TyType.sans(16, color: ty.ink, weight: FontWeight.w600),
                   decoration: InputDecoration(
                     hintText: hint,
-                    hintStyle: TyType.sans(16, color: ty.ink3.withOpacity(0.5)),
+                    hintStyle: TyType.sans(16, color: ty.ink3.withValues(alpha: 0.5)),
                     border: InputBorder.none,
                   ),
                 ),
               ),
-              if (isPassword)
-                IconButton(
-                  onPressed: onToggleObscure,
-                  icon: Icon(
-                    obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              if (onToggleObscure != null)
+                GestureDetector(
+                  onTap: onToggleObscure,
+                  child: Icon(
+                    (obscure ?? true) ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                     size: 20,
                     color: ty.ink3,
                   ),

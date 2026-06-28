@@ -56,6 +56,7 @@ class LoginMethod(str, enum.Enum):
     """Authentication mechanism used to create a session."""
     OTP_PHONE = "otp_phone"
     OTP_EMAIL = "otp_email"
+    EMAIL_PASSWORD = "email_password"
     GOOGLE = "google"
     APPLE = "apple"
     FACEBOOK = "facebook"

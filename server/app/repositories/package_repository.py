@@ -131,7 +131,7 @@ class PackageCategoryRepository(BaseRepository[PackageCategory]):
     async def find_active(self) -> list[PackageCategory]:
         return await self.find_many(
             PackageCategory.is_active == True,  # noqa: E712
-            order_by=PackageCategory.display_order.asc(),
+            order_by=PackageCategory.sort_order.asc(),
         )
 
     async def find_by_slug(self, slug: str) -> PackageCategory | None:

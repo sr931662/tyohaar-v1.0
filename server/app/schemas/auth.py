@@ -1,13 +1,15 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
-class OTPRequest(BaseModel):
-    phone: str
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: str | None = None
 
 
-class OTPVerify(BaseModel):
-    phone: str
-    otp: str
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 
 class TokenResponse(BaseModel):
@@ -17,9 +19,9 @@ class TokenResponse(BaseModel):
 
 class UserOut(BaseModel):
     id: str
-    phone: str
+    email: str
     name: str | None
-    email: str | None
+    phone: str | None
     profile_photo: str | None
     city: str | None
     state: str | None

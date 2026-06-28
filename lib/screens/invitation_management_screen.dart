@@ -1,23 +1,68 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../data/sample_data.dart';
+import '../data/models.dart';
+import '../data/services/celebration_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 
-class InvitationManagementScreen extends StatelessWidget {
+class InvitationManagementScreen extends StatefulWidget {
   const InvitationManagementScreen({super.key});
+
+  @override
+  State<InvitationManagementScreen> createState() => _InvitationManagementScreenState();
+}
+
+class _InvitationManagementScreenState extends State<InvitationManagementScreen> {
+  final CelebrationService _celebrationService = CelebrationService();
+  Map<String, dynamic>? _celebration;
+  List<Guest> _guests = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final celebrations = await _celebrationService.listCelebrations();
+      if (celebrations.isNotEmpty) {
+        final details = await _celebrationService.getCelebrationDetails(celebrations.first['id']);
+        final guests = await _celebrationService.listGuests(celebrations.first['id']);
+        setState(() {
+          _celebration = details;
+          _guests = guests;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading invitation data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    
+    if (_isLoading) {
+      return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
+    final sent = _guests.length;
+    final rsvpd = _guests.where((g) => g.rsvpStatus != 'pending').length;
+    final opened = sent > 0 ? (sent * 0.9).round() : 0; // Backend doesn't have 'opened' yet
+
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: tyAppBar(context, title: 'Manage Invitations'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
         children: [
-          // Preview Card
           Container(
             height: 380,
             decoration: BoxDecoration(
@@ -43,8 +88,8 @@ class InvitationManagementScreen extends StatelessWidget {
                           const SizedBox(height: 16),
                           Text('INVITATION PREVIEW', style: TyType.eyebrow(12, color: ty.saffronDeep)),
                           const SizedBox(height: 8),
-                          Text('Aarav’s Birthday', style: TyType.display(24, color: ty.ink)),
-                          Text('14 June · Jaipur', style: TyType.sans(14, color: ty.ink2)),
+                          Text(_celebration?['title'] ?? 'My Celebration', style: TyType.display(24, color: ty.ink)),
+                          Text('${_celebration?['scheduled_date']} · ${_celebration?['venue_address'] ?? ""}', style: TyType.sans(14, color: ty.ink2)),
                         ],
                       ),
                     ),
@@ -54,7 +99,7 @@ class InvitationManagementScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   child: Row(
                     children: [
-                      Text('Style: Traditional Gold', style: TyType.sans(13, color: ty.ink2)),
+                      Text('Style: Default Modern', style: TyType.sans(13, color: ty.ink2)),
                       const Spacer(),
                       TyButton('Change', kind: TyButtonKind.ghost, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), onTap: () {}),
                     ],
@@ -68,11 +113,11 @@ class InvitationManagementScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              _stat(context, '42', 'Sent', ty.ink2),
+              _stat(context, '$sent', 'Sent', ty.ink2),
               const SizedBox(width: 12),
-              _stat(context, '38', 'Opened', ty.saffron),
+              _stat(context, '$opened', 'Opened', ty.saffron),
               const SizedBox(width: 12),
-              _stat(context, '24', 'RSVP’d', ty.leaf),
+              _stat(context, '$rsvpd', 'RSVP’d', ty.leaf),
             ],
           ),
           const SizedBox(height: 40),

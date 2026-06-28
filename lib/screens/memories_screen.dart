@@ -2,63 +2,115 @@ import 'package:flutter/material.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../data/sample_data.dart';
 import '../data/models.dart';
+import '../data/services/media_service.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
 
-/// Memories — a living gallery of past celebrations, year by year.
-class MemoriesScreen extends StatelessWidget {
+class MemoriesScreen extends StatefulWidget {
   const MemoriesScreen({super.key});
+
+  @override
+  State<MemoriesScreen> createState() => _MemoriesScreenState();
+}
+
+class _MemoriesScreenState extends State<MemoriesScreen> {
+  final MediaService _mediaService = MediaService();
+  List<Memory> _memories = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMemories();
+  }
+
+  Future<void> _loadMemories() async {
+    try {
+      final memories = await _mediaService.listMemories();
+      setState(() {
+        _memories = memories;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading memories: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: ty.paper,
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : ListView(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+            children: [
+              Row(
                 children: [
-                  Text('Memories', style: TyType.display(26, color: ty.ink)),
-                  const SizedBox(height: 1),
-                  Text('Your family’s story, year by year',
-                      style: TyType.sans(13, color: ty.ink2)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Memories', style: TyType.display(26, color: ty.ink)),
+                        const SizedBox(height: 1),
+                        Text('Your family’s story, year by year',
+                            style: TyType.sans(13, color: ty.ink2)),
+                      ],
+                    ),
+                  ),
+                  const ChromeIconButton(icon: Icons.search_rounded),
                 ],
               ),
-            ),
-            const ChromeIconButton(icon: Icons.search_rounded),
+              const SizedBox(height: 20),
+              if (_memories.isEmpty)
+                _buildEmptyState(context)
+              else
+                _grid(context),
+            ],
+          ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final ty = context.ty;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 80),
+        child: Column(
+          children: [
+            Icon(Icons.photo_library_outlined, size: 64, color: ty.ink3),
+            const SizedBox(height: 16),
+            Text('No memories yet', style: TyType.display(20, color: ty.ink)),
+            const SizedBox(height: 8),
+            Text('Complete your first celebration to start your gallery.', 
+              style: TyType.sans(14, color: ty.ink2)),
           ],
         ),
-        const SizedBox(height: 20),
-        _grid(context),
-      ],
+      ),
     );
   }
 
   Widget _grid(BuildContext context) {
-    // A simple two-column masonry: items with span 2 take the full width.
     final rows = <Widget>[];
-    final items = TyData.memories;
     int i = 0;
-    while (i < items.length) {
-      final m = items[i];
+    while (i < _memories.length) {
+      final m = _memories[i];
       if (m.span == 2) {
         rows.add(_tile(context, m, fullWidth: true));
         i += 1;
       } else {
-        final left = items[i];
-        final hasRight = i + 1 < items.length && items[i + 1].span == 1;
+        final left = _memories[i];
+        final hasRight = i + 1 < _memories.length && _memories[i + 1].span == 1;
         rows.add(Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: _tile(context, left)),
             const SizedBox(width: 12),
             if (hasRight)
-              Expanded(child: _tile(context, items[i + 1]))
+              Expanded(child: _tile(context, _memories[i + 1]))
             else
               const Expanded(child: SizedBox()),
           ],

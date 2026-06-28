@@ -1,21 +1,11 @@
-import random
-import string
+from passlib.context import CryptContext
 
-# In-memory OTP store — replace with Redis in production
-_otp_store: dict[str, str] = {}
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def generate_otp(phone: str) -> str:
-    otp = "".join(random.choices(string.digits, k=6))
-    _otp_store[phone] = otp
-    # TODO: send OTP via SMS gateway (e.g. Twilio, MSG91)
-    print(f"[DEV] OTP for {phone}: {otp}")
-    return otp
+def hash_password(password: str) -> str:
+    return _pwd_context.hash(password)
 
 
-def verify_otp(phone: str, otp: str) -> bool:
-    stored = _otp_store.get(phone)
-    if stored and stored == otp:
-        del _otp_store[phone]
-        return True
-    return False
+def verify_password(plain: str, hashed: str) -> bool:
+    return _pwd_context.verify(plain, hashed)

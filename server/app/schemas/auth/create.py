@@ -34,7 +34,22 @@ __all__ = [
     "OTPVerifyCreate",
     "SessionCreate",
     "RefreshTokenCreate",
+    "UserRegisterCreate",
+    "UserLoginCreate",
 ]
+
+
+class UserRegisterCreate(BaseSchema):
+    """Request body for traditional email/password registration."""
+    email: str = Field(..., description="Valid email address.")
+    password: str = Field(..., min_length=8, description="Password (min 8 chars).")
+    full_name: str | None = Field(default=None, description="Optional full name.")
+
+
+class UserLoginCreate(BaseSchema):
+    """Request body for traditional email/password login."""
+    email: str = Field(..., description="Registered email address.")
+    password: str = Field(..., description="Plaintext password.")
 
 
 class OTPRequestCreate(BaseSchema):

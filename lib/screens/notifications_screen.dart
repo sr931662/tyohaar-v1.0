@@ -2,18 +2,44 @@ import 'package:flutter/material.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../data/sample_data.dart';
 import '../data/models.dart';
+import '../data/services/notification_service.dart';
 import '../widgets/common.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final NotificationService _notificationService = NotificationService();
+  List<NotifItem> _notifications = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      final notifs = await _notificationService.listNotifications();
+      setState(() {
+        _notifications = notifs;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading notifications: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final today = TyData.notifs.take(3).toList();
-    final earlier = TyData.notifs.skip(3).toList();
 
     return Scaffold(
       appBar: tyAppBar(context, title: 'Activity', actions: [
@@ -28,13 +54,34 @@ class NotificationsScreen extends StatelessWidget {
           ),
         ),
       ]),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
-        children: [
-          _group(context, 'Today', today),
-          const SizedBox(height: 22),
-          _group(context, 'Earlier', earlier),
-        ],
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : _notifications.isEmpty 
+          ? _buildEmptyState(context)
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
+              children: [
+                _group(context, 'Recent', _notifications),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final ty = context.ty;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 80),
+        child: Column(
+          children: [
+            Icon(Icons.notifications_none_rounded, size: 64, color: ty.ink3),
+            const SizedBox(height: 16),
+            Text('No activity yet', style: TyType.display(20, color: ty.ink)),
+            const SizedBox(height: 8),
+            Text('We\'ll notify you about your bookings and updates.', 
+              style: TyType.sans(14, color: ty.ink2)),
+          ],
+        ),
       ),
     );
   }

@@ -2,42 +2,79 @@ import 'package:flutter/material.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../data/sample_data.dart';
 import '../data/models.dart';
+import '../data/services/celebration_service.dart';
 import '../widgets/common.dart';
 
-/// Budget — paid / booked / free at a glance, then category by category.
-class BudgetScreen extends StatelessWidget {
+class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
 
-  String _inr(int n) {
-    final s = n.toString();
+  @override
+  State<BudgetScreen> createState() => _BudgetScreenState();
+}
+
+class _BudgetScreenState extends State<BudgetScreen> {
+  final CelebrationService _celebrationService = CelebrationService();
+  double _totalBudget = 0;
+  List<BudgetExpense> _expenses = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBudgetData();
+  }
+
+  Future<void> _loadBudgetData() async {
+    try {
+      final celebrations = await _celebrationService.listCelebrations();
+      if (celebrations.isNotEmpty) {
+        final details = await _celebrationService.getCelebrationDetails(celebrations.first['id']);
+        // Assuming budget details are in celebration details
+        final budget = details['budget'];
+        setState(() {
+          _totalBudget = (budget?['total_amount'] ?? 0).toDouble();
+          _expenses = (budget?['expenses'] as List?)?.map((e) => BudgetExpense.fromJson(e)).toList() ?? [];
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading budget data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  String _inr(double n) {
+    final s = n.toInt().toString();
     final buf = StringBuffer();
     int count = 0;
     for (int i = s.length - 1; i >= 0; i--) {
       buf.write(s[i]);
       count++;
-      // Indian grouping: first 3, then 2s
-      final remaining = i;
-      if (remaining > 0) {
-        if (count == 3 && s.length > 3) buf.write(',');
-        else if (count > 3 && (count - 3) % 2 == 0) buf.write(',');
-      }
+      if (count == 3 && s.length > 3) buf.write(',');
+      else if (count > 3 && (count - 3) % 2 == 0 && i > 0) buf.write(',');
     }
     return '₹${buf.toString().split('').reversed.join()}';
   }
 
-  String _short(int n) => n >= 100000
-      ? '₹${(n / 100000).toStringAsFixed(n % 100000 == 0 ? 1 : 2)}L'
+  String _short(double n) => n >= 100000
+      ? '₹${(n / 100000).toStringAsFixed(1)}L'
       : _inr(n);
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final allocated = TyData.budget.fold<int>(0, (s, l) => s + l.est);
-    final paid = TyData.budget.fold<int>(0, (s, l) => s + l.paid);
-    const total = TyData.budgetTotal;
-    final pct = (allocated / total * 100).round();
+    
+    if (_isLoading) {
+      return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
+    final allocated = _expenses.fold<double>(0, (s, l) => s + l.estimatedAmount);
+    final paid = _expenses.fold<double>(0, (s, l) => s + l.actualAmount);
+    final total = _totalBudget;
+    final pct = total > 0 ? (allocated / total * 100).round() : 0;
 
     return Scaffold(
       appBar: tyAppBar(context, title: 'Budget', actions: const [
@@ -46,7 +83,6 @@ class BudgetScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
         children: [
-          // headline
           Container(
             padding: const EdgeInsets.all(20),
             decoration: _card(ty),
@@ -62,13 +98,16 @@ class BudgetScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                   child: Row(
                     children: [
-                      Expanded(flex: paid, child: Container(height: 10, color: ty.leaf)),
-                      Expanded(
-                          flex: allocated - paid,
-                          child: Container(height: 10, color: ty.saffron)),
-                      Expanded(
-                          flex: total - allocated,
-                          child: Container(height: 10, color: ty.surface2)),
+                      if (paid > 0) Expanded(flex: paid.toInt(), child: Container(height: 10, color: ty.leaf)),
+                      if (allocated - paid > 0)
+                        Expanded(
+                            flex: (allocated - paid).toInt(),
+                            child: Container(height: 10, color: ty.saffron)),
+                      if (total - allocated > 0)
+                        Expanded(
+                            flex: (total - allocated).toInt(),
+                            child: Container(height: 10, color: ty.surface2)),
+                      if (total == 0) Expanded(child: Container(height: 10, color: ty.surface2)),
                     ],
                   ),
                 ),
@@ -95,56 +134,62 @@ class BudgetScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           const SectionHeader('By category'),
-          ...TyData.budget.map((l) {
-            final p = (l.paid / l.est * 100).round();
-            final c = ty.tint(l.tint);
-            return Container(
-              margin: const EdgeInsets.only(bottom: 11),
-              padding: const EdgeInsets.all(14),
-              decoration: _card(ty),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Color.alphaBlend(c.withOpacity(0.16), ty.surface2),
-                          borderRadius: BorderRadius.circular(11),
+          if (_expenses.isEmpty)
+             Center(child: Padding(
+               padding: const EdgeInsets.only(top: 24),
+               child: Text('No expenses added yet', style: TyType.sans(14, color: ty.ink3)),
+             ))
+          else
+            ..._expenses.map((l) {
+              final p = l.estimatedAmount > 0 ? (l.actualAmount / l.estimatedAmount * 100).round() : 0;
+              final c = ty.tint(l.tint);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 11),
+                padding: const EdgeInsets.all(14),
+                decoration: _card(ty),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Color.alphaBlend(c.withOpacity(0.16), ty.surface2),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: Icon(Icons.sell_outlined, color: c, size: 18),
                         ),
-                        child: Icon(Icons.sell_outlined, color: c, size: 18),
-                      ),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(l.cat,
-                                style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
-                            Text(l.paid > 0 ? '${_short(l.paid)} paid' : 'Not paid yet',
-                                style: TyType.sans(11.5, color: ty.ink3)),
-                          ],
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(l.category,
+                                  style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
+                              Text(l.actualAmount > 0 ? '${_short(l.actualAmount)} paid' : 'Not paid yet',
+                                  style: TyType.sans(11.5, color: ty.ink3)),
+                            ],
+                          ),
                         ),
-                      ),
-                      Text(_short(l.est),
-                          style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w800)),
-                    ],
-                  ),
-                  const SizedBox(height: 11),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: p / 100,
-                      minHeight: 6,
-                      backgroundColor: ty.surface2,
-                      color: c,
+                        Text(_short(l.estimatedAmount),
+                            style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w800)),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                    const SizedBox(height: 11),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: p / 100,
+                        minHeight: 6,
+                        backgroundColor: ty.surface2,
+                        color: c,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );

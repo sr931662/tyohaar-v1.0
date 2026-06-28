@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
+import '../data/services/package_service.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
@@ -16,11 +19,13 @@ class PackageDetailScreen extends StatefulWidget {
 }
 
 class _PackageDetailScreenState extends State<PackageDetailScreen> {
+  final PackageService _packageService = PackageService();
   int _guestCount = 20;
   late TextEditingController _guestController;
   final Set<String> _selectedAddons = {};
+  bool _isLoading = true;
+  late Package _fullPackage;
   
-  // Explicitly typed Map to avoid any inference issues
   final Map<String, Product> _selections = {
     'Decoration': const Product(id: 'd1', name: 'Pink and Silver Bliss', price: 2199, tint: 'rose', rating: 4.8, reviews: 398, category: 'Decoration'),
     'Cake': const Product(id: 'c1', name: '1-Tier Vanilla Bliss', price: 899, tint: 'saffron', rating: 4.9, reviews: 120, category: 'Cake'),
@@ -31,6 +36,21 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   void initState() {
     super.initState();
     _guestController = TextEditingController(text: _guestCount.toString());
+    _fullPackage = widget.package;
+    _loadPackageDetails();
+  }
+
+  Future<void> _loadPackageDetails() async {
+    try {
+      final details = await _packageService.getPackageDetails(widget.package.id);
+      setState(() {
+        _fullPackage = details;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading package details: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -49,113 +69,112 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   final List<Map<String, dynamic>> _addons = [
     {'id': 'a1', 'name': 'Drone Photography', 'price': 5000, 'icon': Icons.videocam_rounded},
     {'id': 'a2', 'name': 'Live Food Counters', 'price': 8000, 'icon': Icons.restaurant_rounded},
-    {'id': 'a3', 'name': 'Valet Parking', 'price': 3000, 'icon': Icons.local_parking_rounded},
-    {'id': 'a4', 'name': 'Fireworks Show', 'price': 12000, 'icon': Icons.auto_awesome_rounded},
   ];
 
   int get _totalPrice {
-    int base = widget.package.price;
+    double base = _fullPackage.price;
     int selectionTotal = _selections.values.fold(0, (sum, p) => sum + p.price);
     int addonTotal = _addons
         .where((a) => _selectedAddons.contains(a['id']))
         .fold(0, (sum, item) => sum + (item['price'] as int));
     int guestSurcharge = (_guestCount > 20) ? (_guestCount - 20) * 500 : 0;
-    return base + selectionTotal + addonTotal + guestSurcharge;
+    return (base + selectionTotal + addonTotal + guestSurcharge).toInt();
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final package = widget.package;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            leading: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: _glassIcon(context, Icons.chevron_left_rounded, () => Navigator.pop(context)),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: _verifiedBadge(context),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  package.coverImage.startsWith('assets/')
-                      ? Image.asset(package.coverImage, fit: BoxFit.cover)
-                      : PhotoPlaceholder(tint: package.tint, height: 300, arch: false, radius: BorderRadius.zero),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [ty.paper, Colors.transparent],
-                        stops: const [0.0, 0.4],
-                      ),
-                    ),
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 300,
+                pinned: true,
+                leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: _glassIcon(context, Icons.chevron_left_rounded, () => Navigator.pop(context)),
+                ),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: _verifiedBadge(context),
                   ),
                 ],
-              ),
-            ),
-          ),
-          SliverList(
-            delegate: SliverChildListDelegate([
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        TyPill(package.theme, background: ty.tint(package.tint).withOpacity(0.15), foreground: ty.tint(package.tint)),
-                        const Spacer(),
-                        Text('Base: ₹${(package.price / 1000).toStringAsFixed(0)}K', 
-                            style: TyType.sans(14, color: ty.ink2, weight: FontWeight.w600)),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(package.name, style: TyType.display(32, color: ty.ink)),
-                    const SizedBox(height: 12),
-                    Text(package.description, style: TyType.sans(15, color: ty.ink2, height: 1.5)),
-                    
-                    const SizedBox(height: 32),
-                    Text('Core Inclusions', style: TyType.eyebrow(12, color: ty.ink3)),
-                    const SizedBox(height: 16),
-                    ...package.inclusions.map((item) => _inclusionRow(context, item)),
-
-                    const SizedBox(height: 32),
-                    Text('Customization Catalogue', style: TyType.eyebrow(12, color: ty.ink3)),
-                    const SizedBox(height: 16),
-                    ..._selections.keys.map((cat) => _catalogueRow(context, cat)),
-                    
-                    const SizedBox(height: 32),
-                    Text('Guest Count', style: TyType.eyebrow(12, color: ty.ink3)),
-                    const SizedBox(height: 12),
-                    _guestStepper(context),
-                    
-                    const SizedBox(height: 32),
-                    Text('Popular Add-ons', style: TyType.eyebrow(12, color: ty.ink3)),
-                    const SizedBox(height: 16),
-                    ..._addons.map((addon) => _addonRow(context, addon)),
-                    
-                    const SizedBox(height: 32),
-                    // Removed large _infoCard here as it's now a badge in the AppBar
-                  ],
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: _fullPackage.coverImageUrl ?? '',
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => PhotoPlaceholder(tint: _fullPackage.tint, height: 300, arch: false, radius: BorderRadius.zero),
+                        errorWidget: (context, url, error) => PhotoPlaceholder(tint: _fullPackage.tint, height: 300, arch: false, radius: BorderRadius.zero),
+                      ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [ty.paper, Colors.transparent],
+                            stops: const [0.0, 0.4],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ]),
+              SliverList(
+                delegate: SliverChildListDelegate([
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            TyPill(_fullPackage.theme, background: ty.tint(_fullPackage.tint).withOpacity(0.15), foreground: ty.tint(_fullPackage.tint)),
+                            const Spacer(),
+                            Text('Base: ₹${(_fullPackage.price / 1000).toStringAsFixed(0)}K', 
+                                style: TyType.sans(14, color: ty.ink2, weight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(_fullPackage.name, style: TyType.display(32, color: ty.ink)),
+                        const SizedBox(height: 12),
+                        Text(_fullPackage.description ?? '', style: TyType.sans(15, color: ty.ink2, height: 1.5)),
+                        
+                        const SizedBox(height: 32),
+                        Text('Core Inclusions', style: TyType.eyebrow(12, color: ty.ink3)),
+                        const SizedBox(height: 16),
+                        ..._fullPackage.inclusions.map((item) => _inclusionRow(context, item)),
+
+                        const SizedBox(height: 32),
+                        Text('Customization Catalogue', style: TyType.eyebrow(12, color: ty.ink3)),
+                        const SizedBox(height: 16),
+                        ..._selections.keys.map((cat) => _catalogueRow(context, cat)),
+                        
+                        const SizedBox(height: 32),
+                        Text('Guest Count', style: TyType.eyebrow(12, color: ty.ink3)),
+                        const SizedBox(height: 12),
+                        _guestStepper(context),
+                        
+                        const SizedBox(height: 32),
+                        Text('Popular Add-ons', style: TyType.eyebrow(12, color: ty.ink3)),
+                        const SizedBox(height: 16),
+                        ..._addons.map((addon) => _addonRow(context, addon)),
+                      ],
+                    ),
+                  ),
+                ]),
+              ),
+            ],
           ),
-        ],
-      ),
-      bottomSheet: Container(
+      bottomSheet: _isLoading ? null : Container(
         padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 16),
         decoration: BoxDecoration(
           color: ty.paper,
@@ -177,7 +196,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
             const SizedBox(width: 16),
             Expanded(
               flex: 2,
-              child: TyButton('Select & Continue', full: true, onTap: () => Navigator.pop(context, package)),
+              child: TyButton('Select & Continue', full: true, onTap: () => Navigator.pop(context, _fullPackage)),
             ),
           ],
         ),
@@ -392,33 +411,6 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('Got it', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoCard(BuildContext context, IconData icon, String title, String sub) {
-    final ty = context.ty;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ty.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ty.line),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: ty.saffron, size: 24),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
-                Text(sub, style: TyType.sans(12, color: ty.ink2)),
-              ],
-            ),
           ),
         ],
       ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../data/sample_data.dart';
+import '../data/models.dart';
+import '../data/services/celebration_service.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
@@ -10,30 +12,82 @@ import '../widgets/common.dart';
 import 'budget_screen.dart';
 import 'guests_screen.dart';
 
-/// Event hub — countdown, progress, dream team and the gathering, one home.
-class EventHubScreen extends StatelessWidget {
+class EventHubScreen extends StatefulWidget {
   const EventHubScreen({super.key});
+
+  @override
+  State<EventHubScreen> createState() => _EventHubScreenState();
+}
+
+class _EventHubScreenState extends State<EventHubScreen> {
+  final CelebrationService _celebrationService = CelebrationService();
+  Map<String, dynamic>? _celebration;
+  List<Guest> _guests = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCelebration();
+  }
+
+  Future<void> _loadCelebration() async {
+    try {
+      final celebrations = await _celebrationService.listCelebrations();
+      if (celebrations.isNotEmpty) {
+        final details = await _celebrationService.getCelebrationDetails(celebrations.first['id']);
+        final guests = await _celebrationService.listGuests(celebrations.first['id']);
+        setState(() {
+          _celebration = details;
+          _guests = guests;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading event hub: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final guests = TyData.seedGuests();
-    final totalGuests = guests.fold<int>(0, (s, g) => s + g.count);
-    final phases = TyData.planTemplate();
-    final tasks = phases.expand((p) => p.items).toList();
-    final pct = (tasks.where((t) => t.done).length / tasks.length * 100).round();
-    final next = tasks.firstWhere((t) => !t.done, orElse: () => tasks.first);
-    final team = TyData.vendors.take(3).toList();
+
+    if (_isLoading) {
+      return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
+    if (_celebration == null) {
+      return Scaffold(
+        backgroundColor: ty.paper,
+        appBar: tyAppBar(context, title: 'Event Hub'),
+        body: Center(child: Text('No active celebration', style: TyType.sans(16, color: ty.ink2))),
+      );
+    }
+
+    final totalGuests = _guests.fold<int>(0, (s, g) => s + g.count);
+    final pct = _celebration?['progress_percentage'] ?? 0;
+    
+    // Placeholder for next task
+    const nextTask = 'Confirm the venue';
 
     return Scaffold(
       backgroundColor: ty.paper,
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          // hero
           Stack(
             children: [
-              PhotoPlaceholder(tint: 'saffron', height: 360, arch: false, radius: BorderRadius.zero),
+              CachedNetworkImage(
+                imageUrl: _celebration?['hero_image_url'] ?? '',
+                height: 360,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: 360, arch: false, radius: BorderRadius.zero),
+                errorWidget: (context, url, error) => PhotoPlaceholder(tint: 'saffron', height: 360, arch: false, radius: BorderRadius.zero),
+              ),
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
@@ -65,15 +119,15 @@ class EventHubScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TyPill('Birthday · Janmdin',
+                    TyPill('${_celebration?['category']} · ${_celebration?['occasion']?['name_localized'] ?? ""}',
                         background: ty.saffron, foreground: ty.onPrimary),
                     const SizedBox(height: 12),
-                    Text('Diya turns One', style: TyType.display(38, color: Colors.white)),
+                    Text(_celebration?['title'] ?? '', style: TyType.display(38, color: Colors.white)),
                     const SizedBox(height: 8),
                     Row(children: [
                       const Icon(Icons.event, size: 16, color: Colors.white70),
                       const SizedBox(width: 8),
-                      Text('Sat, 14 June · 6:30 PM',
+                      Text('${_celebration?['scheduled_date']} · ${_celebration?['scheduled_time'] ?? ""}',
                           style: TyType.sans(14, color: Colors.white70)),
                     ]),
                   ],
@@ -88,10 +142,9 @@ class EventHubScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // countdown
                   Row(
                     children: [
-                      _stat(context, '11', 'days'),
+                      _stat(context, '11', 'days'), // Still placeholder for days until
                       const SizedBox(width: 10),
                       _stat(context, '06', 'hrs'),
                       const SizedBox(width: 10),
@@ -119,7 +172,7 @@ class EventHubScreen extends StatelessWidget {
                               Text('On track',
                                   style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
                               const SizedBox(height: 2),
-                              Text('Next: ${next.title}',
+                              Text('Next: $nextTask',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TyType.sans(12.5, color: ty.ink2)),
@@ -139,23 +192,21 @@ class EventHubScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Text('Essential Package',
+                            Text(_celebration?['package']?['name'] ?? 'Custom Package',
                                 style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
                             const Spacer(),
-                            Text('₹29,000',
+                            Text('₹${_celebration?['package']?['base_price'] ?? 0}',
                                 style: TyType.sans(16, color: ty.saffronDeep, weight: FontWeight.w800)),
                           ],
                         ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8, runSpacing: 8,
-                          children: [
-                            'Standard Decor', '2-Tier Cake', 'Photography'
-                          ].map((inc) => Container(
+                          children: (_celebration?['package']?['items'] as List?)?.take(3).map((item) => Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(color: ty.surface2, borderRadius: BorderRadius.circular(6)),
-                            child: Text(inc, style: TyType.sans(11, color: ty.ink)),
-                          )).toList(),
+                            child: Text(item['name'], style: TyType.sans(11, color: ty.ink)),
+                          )).toList() ?? [],
                         ),
                       ],
                     ),
@@ -165,7 +216,7 @@ class EventHubScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: _navCard(context, Icons.account_balance_wallet_outlined,
-                            'Budget', '₹6.0L', const BudgetScreen()),
+                            'Budget', '₹${_celebration?['budget']?['total_amount'] ?? 0}', const BudgetScreen()),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -184,19 +235,20 @@ class EventHubScreen extends StatelessWidget {
                     decoration: _card(ty),
                     child: Row(
                       children: [
-                        SizedBox(
-                          width: 150,
-                          height: 36,
-                          child: Stack(
-                            children: [
-                              for (int i = 0; i < 5; i++)
-                                Positioned(
-                                  left: i * 26.0,
-                                  child: TyAvatar(name: guests[i].name, index: i, size: 36),
-                                ),
-                            ],
+                        if (_guests.isNotEmpty)
+                          SizedBox(
+                            width: 110,
+                            height: 36,
+                            child: Stack(
+                              children: [
+                                for (int i = 0; i < _guests.length.clamp(0, 4); i++)
+                                  Positioned(
+                                    left: i * 20.0,
+                                    child: TyAvatar(name: _guests[i].name, index: i, size: 36),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
@@ -204,7 +256,7 @@ class EventHubScreen extends StatelessWidget {
                             children: [
                               Text('$totalGuests loved ones',
                                   style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
-                              Text('${guests.length} households invited',
+                              Text('${_guests.length} households invited',
                                   style: TyType.sans(12.5, color: ty.ink2)),
                             ],
                           ),

@@ -28,3 +28,7 @@ class InvalidRefreshTokenError(AuthenticationError):
 
 class TokenRevokedError(AuthenticationError):
     default_message = "Token has been revoked."
+
+
+class InvalidCredentialsError(AuthenticationError):
+    default_message = "Invalid email or password."

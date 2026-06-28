@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../data/sample_data.dart';
 import '../data/models.dart';
+import '../data/services/package_service.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_chip.dart';
 import '../widgets/common.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
 import 'package:tyohaar/screens/package_filter_screen.dart';
 
-/// Discover packages — search, filter, and browse curated celebration bundles.
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
@@ -19,9 +19,33 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
+  final PackageService _packageService = PackageService();
   String _catLabel = 'All';
+  String _searchQuery = '';
+  List<Package> _allPackages = [];
+  bool _isLoading = true;
 
   final List<String> _cats = ['All', 'Life Events', 'Major Festivals', 'Minor Festivals'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPackages();
+  }
+
+  Future<void> _loadPackages() async {
+    setState(() => _isLoading = true);
+    try {
+      final packages = await _packageService.listPackages();
+      setState(() {
+        _allPackages = packages;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading packages: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
@@ -33,19 +57,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final topPadding = MediaQuery.of(context).padding.top + 70;
     
     // Filter logic
-    final allPackages = [...TyData.packages, ...TyData.bestSellers];
-    
-    List<Package> list;
-    if (_catLabel == 'All') {
-      list = allPackages;
-    } else {
+    List<Package> list = _allPackages.where((p) {
+      final matchesQuery = p.name.toLowerCase().contains(_searchQuery.toLowerCase()) || 
+                          p.theme.toLowerCase().contains(_searchQuery.toLowerCase());
+      
+      if (_catLabel == 'All') return matchesQuery;
+      
       final categoryKey = _catLabel == 'Life Events' 
           ? 'life' 
           : _catLabel == 'Major Festivals' 
               ? 'major_festival' 
               : 'minor_festival';
-      list = allPackages.where((p) => p.category == categoryKey).toList();
-    }
+      
+      return matchesQuery && p.category == categoryKey;
+    }).toList();
 
     final featured = list.take(3).toList();
 
@@ -53,7 +78,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
       padding: EdgeInsets.only(top: topPadding),
       child: Column(
         children: [
-          // header + search
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
             child: Column(
@@ -83,6 +107,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
+                          onChanged: (v) => setState(() => _searchQuery = v),
                           decoration: InputDecoration(
                             isDense: true,
                             border: InputBorder.none,
@@ -99,7 +124,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ],
             ),
           ),
-          // category chips
           SizedBox(
             height: 40,
             child: ListView.separated(
@@ -116,27 +140,48 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           const SizedBox(height: 6),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-              children: [
-                if (featured.isNotEmpty) ...[
-                  const SectionHeader('Featured for you'),
-                  SizedBox(
-                    height: 230,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: featured.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 13),
-                      itemBuilder: (context, i) => _packageFeatured(context, featured[i]),
-                    ),
+            child: _isLoading 
+              ? const Center(child: CircularProgressIndicator())
+              : list.isEmpty 
+                ? _buildEmptyState(context)
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+                    children: [
+                      if (featured.isNotEmpty && _searchQuery.isEmpty) ...[
+                        const SectionHeader('Featured for you'),
+                        SizedBox(
+                          height: 230,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: featured.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 13),
+                            itemBuilder: (context, i) => _packageFeatured(context, featured[i]),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      const SectionHeader('Available Packages'),
+                      ...list.map((p) => _packageRow(context, p)),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                ],
-                const SectionHeader('Available Packages'),
-                ...list.map((p) => _packageRow(context, p)),
-              ],
-            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final ty = context.ty;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off_rounded, size: 64, color: ty.ink3),
+          const SizedBox(height: 16),
+          Text('No packages found', style: TyType.display(20, color: ty.ink)),
+          const SizedBox(height: 8),
+          Text('Try searching for something else or change categories.', 
+            style: TyType.sans(14, color: ty.ink2)),
         ],
       ),
     );
@@ -153,12 +198,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
           children: [
             Stack(
               children: [
-                p.coverImage.startsWith('assets/')
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Image.asset(p.coverImage, height: 140, width: double.infinity, fit: BoxFit.cover),
-                      )
-                    : PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: CachedNetworkImage(
+                    imageUrl: p.coverImageUrl ?? '',
+                    height: 140,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
+                    errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
+                  ),
+                ),
                 Positioned(top: 10, left: 10, child: TyPill(p.theme)),
                 Positioned(
                   top: 10,
@@ -169,7 +219,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             const SizedBox(height: 9),
             Text(p.name, style: TyType.sans(15.5, color: ty.ink, weight: FontWeight.w700)),
-            Text(p.description,
+            Text(p.description ?? '',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TyType.sans(12.5, color: ty.ink2)),
@@ -197,12 +247,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
             SizedBox(
               width: 88,
               height: 88,
-              child: p.coverImage.startsWith('assets/')
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(p.coverImage, fit: BoxFit.cover),
-                    )
-                  : PhotoPlaceholder(tint: p.tint, arch: false),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: CachedNetworkImage(
+                  imageUrl: p.coverImageUrl ?? '',
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, arch: false),
+                  errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, arch: false),
+                ),
+              ),
             ),
             const SizedBox(width: 13),
             Expanded(

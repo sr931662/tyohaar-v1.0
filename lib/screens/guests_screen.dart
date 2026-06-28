@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../data/sample_data.dart';
 import '../data/models.dart';
+import '../data/services/celebration_service.dart';
 import '../widgets/avatar.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/ty_chip.dart';
 import '../widgets/common.dart';
 
-/// Guest list — RSVP tracking, households, headcounts and invitations.
 class GuestsScreen extends StatefulWidget {
   const GuestsScreen({super.key});
 
@@ -18,22 +17,55 @@ class GuestsScreen extends StatefulWidget {
 }
 
 class _GuestsScreenState extends State<GuestsScreen> {
-  final List<Guest> _guests = TyData.seedGuests();
+  final CelebrationService _celebrationService = CelebrationService();
+  List<Guest> _guests = [];
   String _filter = 'All';
+  bool _isLoading = true;
+  String? _activeCelebrationId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGuests();
+  }
+
+  Future<void> _loadGuests() async {
+    try {
+      final celebrations = await _celebrationService.listCelebrations();
+      if (celebrations.isNotEmpty) {
+        _activeCelebrationId = celebrations.first['id'];
+        final guests = await _celebrationService.listGuests(_activeCelebrationId!);
+        setState(() {
+          _guests = guests;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading guests: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   int _sum(String rsvp) =>
-      _guests.where((g) => g.rsvp == rsvp).fold<int>(0, (s, g) => s + g.count);
+      _guests.where((g) => g.rsvpStatus == rsvp).fold<int>(0, (s, g) => s + g.count);
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    
+    if (_isLoading) {
+      return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
     final total = _guests.fold<int>(0, (s, g) => s + g.count);
-    final yes = _sum('yes'), maybe = _sum('maybe'), pending = _sum('pending');
+    final yes = _sum('attending'), maybe = _sum('maybe'), pending = _sum('pending');
 
     final shown = _filter == 'All'
         ? _guests
         : _guests
-            .where((g) => _filter == 'Coming' ? g.rsvp == 'yes' : g.rsvp == 'pending')
+            .where((g) => _filter == 'Coming' ? g.rsvpStatus == 'attending' : g.rsvpStatus == 'pending')
             .toList();
 
     return Scaffold(
@@ -52,7 +84,6 @@ class _GuestsScreenState extends State<GuestsScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
               children: [
-                // summary
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: _card(ty),
@@ -75,11 +106,16 @@ class _GuestsScreenState extends State<GuestsScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: Row(children: [
-                          Expanded(flex: yes == 0 ? 1 : yes, child: Container(height: 9, color: ty.leaf)),
-                          const SizedBox(width: 2),
-                          Expanded(flex: maybe == 0 ? 1 : maybe, child: Container(height: 9, color: ty.saffron)),
-                          const SizedBox(width: 2),
-                          Expanded(flex: pending == 0 ? 1 : pending, child: Container(height: 9, color: ty.surface2)),
+                          if (yes > 0) Expanded(flex: yes, child: Container(height: 9, color: ty.leaf)),
+                          if (maybe > 0) ...[
+                            const SizedBox(width: 2),
+                            Expanded(flex: maybe, child: Container(height: 9, color: ty.saffron)),
+                          ],
+                          if (pending > 0) ...[
+                            const SizedBox(width: 2),
+                            Expanded(flex: pending, child: Container(height: 9, color: ty.surface2)),
+                          ],
+                          if (total == 0) Expanded(child: Container(height: 9, color: ty.surface2)),
                         ]),
                       ),
                       const SizedBox(height: 11),
@@ -103,7 +139,6 @@ class _GuestsScreenState extends State<GuestsScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // add field
                 Row(
                   children: [
                     Expanded(
@@ -147,11 +182,16 @@ class _GuestsScreenState extends State<GuestsScreen> {
                     ),
                 ]),
                 const SizedBox(height: 14),
-                ...shown.asMap().entries.map((e) => _guestRow(context, e.value, e.key)),
+                if (_guests.isEmpty)
+                  Center(child: Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: Text('No guests in your list', style: TyType.sans(14, color: ty.ink3)),
+                  ))
+                else
+                  ...shown.asMap().entries.map((e) => _guestRow(context, e.value, e.key)),
               ],
             ),
           ),
-          // sticky CTA
           Container(
             padding: EdgeInsets.fromLTRB(
                 18, 12, 18, MediaQuery.of(context).padding.bottom + 14),
@@ -170,12 +210,14 @@ class _GuestsScreenState extends State<GuestsScreen> {
   Widget _guestRow(BuildContext context, Guest g, int i) {
     final ty = context.ty;
     final map = {
-      'yes': [ty.leaf, 'Coming'],
+      'attending': [ty.leaf, 'Coming'],
       'maybe': [ty.saffron, 'Maybe'],
       'pending': [ty.ink3, 'Pending'],
+      'declined': [ty.rose, 'Declined'],
     };
-    final c = map[g.rsvp]![0] as Color;
-    final lbl = map[g.rsvp]![1] as String;
+    final c = (map[g.rsvpStatus]?[0] ?? ty.ink3) as Color;
+    final lbl = (map[g.rsvpStatus]?[1] ?? 'Unknown') as String;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 9),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -193,24 +235,15 @@ class _GuestsScreenState extends State<GuestsScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w600)),
                 const SizedBox(height: 4),
-                GestureDetector(
-                  onTap: () => setState(() {
-                    g.rsvp = g.rsvp == 'yes'
-                        ? 'maybe'
-                        : g.rsvp == 'maybe'
-                            ? 'pending'
-                            : 'yes';
-                  }),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: c.withOpacity(0.16),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(lbl,
-                        style: TextStyle(
-                            color: c, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: c.withOpacity(0.16),
+                    borderRadius: BorderRadius.circular(999),
                   ),
+                  child: Text(lbl,
+                      style: TextStyle(
+                          color: c, fontSize: 11.5, fontWeight: FontWeight.w700)),
                 ),
               ],
             ),

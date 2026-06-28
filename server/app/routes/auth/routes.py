@@ -14,6 +14,28 @@ from app.services.auth.service import TokenPairResponse
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 router.add_api_route(
+    "/register",
+    ctrl.register,
+    methods=["POST"],
+    response_model=SuccessResponse[TokenPairResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="User Registration",
+    description="Create a new customer account using email and password.",
+    operation_id="auth_register",
+)
+
+router.add_api_route(
+    "/login",
+    ctrl.login,
+    methods=["POST"],
+    response_model=SuccessResponse[TokenPairResponse],
+    status_code=status.HTTP_200_OK,
+    summary="User Login",
+    description="Authenticate a customer using email and password.",
+    operation_id="auth_login",
+)
+
+router.add_api_route(
     "/vendor/login",
     ctrl.vendor_login,
     methods=["POST"],

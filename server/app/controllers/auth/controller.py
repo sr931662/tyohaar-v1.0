@@ -16,7 +16,7 @@ from app.core.current_user import CurrentUserDep
 from app.core.dependencies import AuthServiceDep
 from app.core.responses import SuccessResponse
 from app.core.security import create_access_token, get_token_from_header
-from app.schemas.auth.create import OTPRequestCreate, OTPVerifyCreate
+from app.schemas.auth.create import OTPRequestCreate, OTPVerifyCreate, UserRegisterCreate, UserLoginCreate
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
 from app.services.auth.service import TokenPairResponse
 from app.services.admin.helpers import verify_admin_password
@@ -42,25 +42,33 @@ async def vendor_login(
     body: _VendorLoginRequest,
     service: AuthServiceDep,
 ) -> SuccessResponse[dict]:
-    from sqlalchemy import select
-    from app.db.session import AsyncSessionLocal
-    from app.models.users.user import User
-    from app.models.enums import UserRole, AccountStatus
+    # ... (existing code) ...
 
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(User).where(User.email == body.email))
-        user = result.scalar_one_or_none()
+async def register(
+    body: UserRegisterCreate,
+    service: AuthServiceDep,
+    request: Request,
+) -> SuccessResponse[TokenPairResponse]:
+    result = await service.register_user(
+        data=body,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("User-Agent"),
+    )
+    return SuccessResponse(data=result, message="Registration successful.")
 
-    if user is None or user.role != UserRole.VENDOR:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
-    if user.account_status != AccountStatus.ACTIVE:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active.")
-    stored_hash = getattr(user, "password_hash", None) or ""
-    if not stored_hash or not verify_admin_password(body.password, stored_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
 
-    token = create_access_token(str(user.id))
-    return SuccessResponse(data={"access_token": token}, message="Vendor login successful.")
+async def login(
+    body: UserLoginCreate,
+    service: AuthServiceDep,
+    request: Request,
+) -> SuccessResponse[TokenPairResponse]:
+    result = await service.authenticate_user(
+        email=body.email,
+        password=body.password,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("User-Agent"),
+    )
+    return SuccessResponse(data=result, message="Login successful.")
 
 
 async def request_otp(

@@ -1,77 +1,124 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../data/models.dart';
+import '../data/services/wallet_service.dart';
 import '../widgets/common.dart';
 import '../widgets/ty_button.dart';
 
-class WalletScreen extends StatelessWidget {
+class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
+
+  @override
+  State<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  final WalletService _walletService = WalletService();
+  Wallet? _wallet;
+  List<WalletTransaction> _transactions = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWalletData();
+  }
+
+  Future<void> _loadWalletData() async {
+    try {
+      final results = await Future.wait([
+        _walletService.getWallet(),
+        _walletService.listTransactions(),
+      ]);
+      setState(() {
+        _wallet = results[0] as Wallet;
+        _transactions = results[1] as List<WalletTransaction>;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading wallet data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    
     return Scaffold(
       appBar: tyAppBar(context, title: 'Tyohaar Wallet'),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [ty.saffron, ty.saffronDeep],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: ty.saffron.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Available Balance',
-                    style: TyType.sans(14, color: Colors.white.withOpacity(0.8))),
-                const SizedBox(height: 8),
-                Text('₹24,500',
-                    style: TyType.display(36, color: Colors.white)),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Tyohaar Credits: 500',
-                        style: TyType.sans(13, color: Colors.white, weight: FontWeight.w600)),
-                    const Icon(Icons.info_outline, color: Colors.white70, size: 18),
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [ty.saffron, ty.saffronDeep],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: ty.saffron.withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-          SectionHeader('Quick Actions'),
-          Row(
-            children: [
-              _actionButton(context, Icons.add_circle_outline, 'Add Money'),
-              const SizedBox(width: 12),
-              _actionButton(context, Icons.history, 'History'),
-              const SizedBox(width: 12),
-              _actionButton(context, Icons.local_offer_outlined, 'Offers'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Available Balance',
+                        style: TyType.sans(14, color: Colors.white.withOpacity(0.8))),
+                    const SizedBox(height: 8),
+                    Text('₹${_wallet?.availableBalance ?? 0}',
+                        style: TyType.display(36, color: Colors.white)),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Tyohaar Credits: ${_wallet?.rewardPoints ?? 0}',
+                            style: TyType.sans(13, color: Colors.white, weight: FontWeight.w600)),
+                        const Icon(Icons.info_outline, color: Colors.white70, size: 18),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              SectionHeader('Quick Actions'),
+              Row(
+                children: [
+                  _actionButton(context, Icons.add_circle_outline, 'Add Money'),
+                  const SizedBox(width: 12),
+                  _actionButton(context, Icons.history, 'History'),
+                  const SizedBox(width: 12),
+                  _actionButton(context, Icons.local_offer_outlined, 'Offers'),
+                ],
+              ),
+              const SizedBox(height: 32),
+              SectionHeader('Recent Transactions'),
+              if (_transactions.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: Text('No transactions yet', style: TyType.sans(14, color: ty.ink3)),
+                  ),
+                )
+              else
+                ..._transactions.take(5).map((tx) => _transactionItem(context, tx)),
+              const SizedBox(height: 20),
+              if (_transactions.length > 5)
+                TyButton('View All Transactions', kind: TyButtonKind.ghost, full: true, onTap: () {}),
             ],
           ),
-          const SizedBox(height: 32),
-          SectionHeader('Recent Transactions'),
-          _transactionItem(context, 'Package Booking', '12 June 2024', '-₹12,000', ty.rose),
-          _transactionItem(context, 'Refund Processed', '10 June 2024', '+₹2,500', ty.leaf),
-          _transactionItem(context, 'Added to Wallet', '05 June 2024', '+₹5,000', ty.leaf),
-          const SizedBox(height: 20),
-          TyButton('View All Transactions', kind: TyButtonKind.ghost, full: true, onTap: () {}),
-        ],
-      ),
     );
   }
 
@@ -96,8 +143,13 @@ class WalletScreen extends StatelessWidget {
     );
   }
 
-  Widget _transactionItem(BuildContext context, String title, String date, String amount, Color amountColor) {
+  Widget _transactionItem(BuildContext context, WalletTransaction tx) {
     final ty = context.ty;
+    final isCredit = tx.type == 'credit' || tx.type == 'refund' || tx.type == 'reward';
+    final amountColor = isCredit ? ty.leaf : ty.rose;
+    final amountPrefix = isCredit ? '+' : '-';
+    final dateStr = DateFormat('dd MMM yyyy').format(tx.createdAt);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -122,12 +174,12 @@ class WalletScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
-                Text(date, style: TyType.sans(12, color: ty.ink3)),
+                Text(tx.description, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+                Text(dateStr, style: TyType.sans(12, color: ty.ink3)),
               ],
             ),
           ),
-          Text(amount, style: TyType.sans(15, color: amountColor, weight: FontWeight.w800)),
+          Text('$amountPrefix₹${tx.amount}', style: TyType.sans(15, color: amountColor, weight: FontWeight.w800)),
         ],
       ),
     );
