@@ -75,7 +75,7 @@ class ApiClient {
   /// Calls the refresh-token endpoint and stores the new access token.
   /// Returns true on success, false on failure.
   Future<bool> _tryRefreshToken() async {
-    final refreshToken = AuthManager.instance.accessToken; // we store refresh token separately
+    final refreshToken = AuthManager.instance.refreshToken;
     if (refreshToken == null) return false;
     try {
       // Use a separate Dio instance to avoid triggering the auth interceptor again

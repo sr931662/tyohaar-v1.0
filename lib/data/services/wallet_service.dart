@@ -11,7 +11,7 @@ class WalletService {
 
   Future<List<WalletTransaction>> listTransactions() async {
     final response = await _api.dio.get('wallets/me/transactions');
-    final List list = response.data['data']['items'];
+    final List list = response.data['data'];
     return list.map((item) => WalletTransaction.fromJson(item)).toList();
   }
 }

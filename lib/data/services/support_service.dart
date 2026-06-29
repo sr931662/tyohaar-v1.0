@@ -13,6 +13,6 @@ class SupportService {
 
   Future<List<Map<String, dynamic>>> listMyTickets() async {
     final response = await _api.dio.get('support/tickets');
-    return List<Map<String, dynamic>>.from(response.data['data']['items']);
+    return List<Map<String, dynamic>>.from(response.data['data']);
   }
 }

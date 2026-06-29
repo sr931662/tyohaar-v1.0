@@ -12,7 +12,7 @@ class PackageService {
         if (query != null) 'search': query,
       },
     );
-    final List list = response.data['data']['items'];
+    final List list = response.data['data'];
     return list.map((item) => Package.fromJson(item)).toList();
   }
 

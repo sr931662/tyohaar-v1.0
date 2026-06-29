@@ -49,7 +49,7 @@ class OccasionResponse(BaseSchema):
     id: uuid.UUID
     name: str
     slug: str
-    category: OccasionCategory
+    category: OccasionCategory | None = None
     description: str | None = None
     cover_image_url: str | None = None
     icon_url: str | None = None

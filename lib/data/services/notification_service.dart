@@ -6,7 +6,7 @@ class NotificationService {
 
   Future<List<NotifItem>> listNotifications() async {
     final response = await _api.dio.get('notifications');
-    final List list = response.data['data']['items'];
+    final List list = response.data['data'];
     return list.map<NotifItem>((item) {
       return NotifItem(
         icon: _getIconForType(item['notification_type'] ?? ''),

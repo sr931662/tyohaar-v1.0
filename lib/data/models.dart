@@ -73,9 +73,9 @@ class Occasion {
       name: json['name'],
       nameLocalized: json['name_localized'],
       icon: _parseIcon(json['icon_name']),
-      tint: json['tint'] ?? _getCategoryTint(json['category']),
+      tint: json['tint'] ?? _getCategoryTint(json['category']?.toString()),
       description: json['description'],
-      category: json['category'],
+      category: json['category']?.toString() ?? 'other',
       heroImageUrl: json['hero_image_url'],
     );
   }
@@ -91,7 +91,7 @@ class Occasion {
     }
   }
 
-  static String _getCategoryTint(String category) {
+  static String _getCategoryTint(String? category) {
     if (category == 'life_event') return 'rose';
     if (category == 'major_festival') return 'gold';
     return 'saffron';

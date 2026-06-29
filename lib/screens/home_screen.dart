@@ -46,9 +46,18 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     try {
       final results = await Future.wait([
-        _packageService.listPackages(),
-        _packageService.listOccasions(),
-        _celebrationService.listCelebrations(),
+        _packageService.listPackages().catchError((e) {
+          debugPrint('Error loading packages: $e');
+          return <Package>[];
+        }),
+        _packageService.listOccasions().catchError((e) {
+          debugPrint('Error loading occasions: $e');
+          return <Occasion>[];
+        }),
+        _celebrationService.listCelebrations().catchError((e) {
+          debugPrint('Error loading celebrations: $e');
+          return <Map<String, dynamic>>[];
+        }),
       ]);
 
       setState(() {
@@ -60,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _loadGuests(_activeCelebration!['id']);
         }
         _isLoading = false;
+        _error = null;
       });
     } catch (e) {
       if (mounted) setState(() { _error = 'Could not load home data.'; _isLoading = false; });

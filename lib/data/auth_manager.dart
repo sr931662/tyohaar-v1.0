@@ -31,6 +31,7 @@ class AuthManager extends ChangeNotifier {
   bool get isGuest => _isGuest;
   bool get isInitializing => _isInitializing;
   String? get accessToken => _accessToken;
+  String? get refreshToken => _refreshToken;
   User? get currentUser => _currentUser;
 
   /// Called once at app startup to restore a persisted session.

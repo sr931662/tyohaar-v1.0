@@ -156,6 +156,15 @@
   z-index: 2;
 }
 
+.screenshot {
+  width: 390px;
+  height: auto;
+  display: block;
+  border-radius: 52px;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.25s ease;
+}
+
 /*
  * CSS zoom scales both the visual size AND pointer-event coordinates,
  * unlike transform:scale which only scales visually.

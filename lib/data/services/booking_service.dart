@@ -6,7 +6,7 @@ class BookingService {
 
   Future<List<Booking>> listMyBookings() async {
     final response = await _api.dio.get('bookings');
-    final List list = response.data['data']['items'];
+    final List list = response.data['data'];
     return list.map((item) => Booking.fromJson(item)).toList();
   }
 

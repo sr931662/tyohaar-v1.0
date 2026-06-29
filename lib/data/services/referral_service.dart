@@ -79,7 +79,7 @@ class ReferralService {
 
   Future<List<ReferralItem>> listReferrals() async {
     final response = await _api.dio.get('referrals/');
-    final List list = (response.data['data']?['items'] ?? response.data['data'] ?? []) as List;
+    final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => ReferralItem.fromJson(item as Map<String, dynamic>)).toList();
   }
 }

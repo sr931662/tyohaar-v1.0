@@ -6,7 +6,7 @@ class MediaService {
 
   Future<List<Memory>> listMemories() async {
     final response = await _api.dio.get('media/memories');
-    final List list = response.data['data']['items'];
+    final List list = response.data['data'];
     return list.map<Memory>((item) {
       return Memory(
         title: item['title'] ?? '',

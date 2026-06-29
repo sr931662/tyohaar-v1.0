@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
 import Button from '../ui/Button.jsx';
 import Diya from '../ui/Diya.jsx';
-import TyohaarApp from '../../app-demo/Screens.jsx';
 import HeroOrnament from '../ui/HeroOrnament.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { fadeUp, stagger, EASE } from '../../lib/motion';
+import darkScreenshot from '../../assets/screenshots/dark mode SS tyohaar.jpeg';
+import lightScreenshot from '../../assets/screenshots/light mode SS tyohaar.jpeg';
 import styles from './Hero.module.css';
 
 const floatFast = {
@@ -88,10 +89,13 @@ export default function Hero() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.9, ease: EASE, delay: 0.25 }}
         >
-          {/* iOS app demo — CSS zoom scales visuals AND pointer events correctly */}
           <div className={styles.phoneWrap}>
             <div className={styles.phoneZoom}>
-              <TyohaarApp width={390} height={844} initialView="home" theme={theme} />
+              <img
+                src={theme === 'dark' ? darkScreenshot : lightScreenshot}
+                alt="Tyohaar app"
+                className={styles.screenshot}
+              />
             </div>
           </div>
 

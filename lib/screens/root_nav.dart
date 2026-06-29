@@ -17,6 +17,10 @@ import 'plan_flow/plan_flow_screen.dart';
 import 'wallet_screen.dart';
 
 import 'notifications_screen.dart';
+import 'membership_plan_screen.dart';
+import 'manage_address_screen.dart';
+import 'help_screen.dart';
+import 'privacy_policy_screen.dart';
 
 /// The app's primary shell: five destinations + a raised central
 /// "Start a celebration" button that opens the planning flow.
@@ -345,10 +349,14 @@ class _AppSidebar extends StatelessWidget {
                 _drawerItem(context, Icons.storefront_outlined, 'Packages', 2),
                 _drawerItem(context, Icons.person_outline_rounded, 'Account', 3),
                 const Divider(height: 32, indent: 20, endIndent: 20, color: Colors.black12),
-                _drawerItem(context, Icons.card_membership_rounded, 'Membership', -1),
-                _drawerItem(context, Icons.place_outlined, 'Manage Address', -1),
-                _drawerItem(context, Icons.help_outline_rounded, 'Help & Support', -1),
-                _drawerItem(context, Icons.description_outlined, 'Privacy Policy', -1),
+                _drawerItem(context, Icons.card_membership_rounded, 'Membership', -1,
+                    onTap: () => _push(context, const MembershipPlanScreen())),
+                _drawerItem(context, Icons.place_outlined, 'Manage Address', -1,
+                    onTap: () => _push(context, const ManageAddressScreen())),
+                _drawerItem(context, Icons.help_outline_rounded, 'Help & Support', -1,
+                    onTap: () => _push(context, const HelpScreen())),
+                _drawerItem(context, Icons.description_outlined, 'Privacy Policy', -1,
+                    onTap: () => _push(context, const PrivacyPolicyScreen())),
                 const Divider(height: 32, indent: 20, endIndent: 20, color: Colors.black12),
                 _drawerItem(
                   context, 
