@@ -15,8 +15,9 @@
   top: 0;
   bottom: 0;
   width: clamp(120px, 14vw, 220px);
+  height: 100%;
   object-fit: cover;
-  object-position: top center;
+  object-position: center;
   pointer-events: none;
   opacity: 0.8;
   z-index: 0;
