@@ -131,10 +131,13 @@ export default function PackagesPage() {
                   <td><input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleItem(p.id)} /></td>
                   <td>
                     <div className="admin-user-name">{p.name}</div>
-                    <div className="admin-user-email">{p.category?.name ?? '—'}</div>
+                    {/* PackageResponse sends category_id (UUID) — no nested category object */}
+                    <div className="admin-user-email">{p.category_id ? <code style={{ fontSize: 11 }}>{p.category_id.slice(0, 8)}</code> : '—'}</div>
                   </td>
-                  <td>{p.vendor?.business_name ?? '—'}</td>
-                  <td>{formatCurrency(p.price ?? p.base_price)}</td>
+                  {/* PackageResponse sends vendor_id (UUID) — no nested vendor object */}
+                  <td>{p.vendor_id ? <code style={{ fontSize: 11 }}>{p.vendor_id.slice(0, 8)}</code> : '—'}</td>
+                  {/* was: p.price ?? p.base_price — backend sends base_price only */}
+                  <td>{formatCurrency(p.base_price)}</td>
                   <td><StatusBadge status={p.status} /></td>
                   <td>{timeAgo(p.updated_at)}</td>
                   <td>

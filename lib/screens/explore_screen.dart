@@ -58,8 +58,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     
     // Filter logic
     List<Package> list = _allPackages.where((p) {
-      final matchesQuery = p.name.toLowerCase().contains(_searchQuery.toLowerCase()) || 
-                          p.theme.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesQuery = p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                          (p.slug ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
       
       if (_catLabel == 'All') return matchesQuery;
       
@@ -209,7 +209,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
                   ),
                 ),
-                Positioned(top: 10, left: 10, child: TyPill(p.theme)),
+                Positioned(top: 10, left: 10, child: TyPill(p.slug ?? p.name)),
                 Positioned(
                   top: 10,
                   right: 10,
@@ -262,7 +262,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(p.theme.toUpperCase(),
+                  Text(p.slug ?? p.name.toUpperCase(),
                       style: TyType.eyebrow(11, color: ty.saffronDeep)),
                   const SizedBox(height: 2),
                   Text(p.name, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),

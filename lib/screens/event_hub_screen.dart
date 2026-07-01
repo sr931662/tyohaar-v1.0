@@ -100,7 +100,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
       );
     }
 
-    final totalGuests = _guests.fold<int>(0, (s, g) => s + g.count);
+    final totalGuests = _guests.length;
     final pct = _celebration?['progress_percentage'] ?? 0;
     final nextTask = _checklist.where((t) => !t.isCompleted).map((t) => t.title).firstOrNull ?? 'All tasks complete!';
 

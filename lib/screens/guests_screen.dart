@@ -47,7 +47,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
   }
 
   int _sum(String rsvp) =>
-      _guests.where((g) => g.rsvpStatus == rsvp).fold<int>(0, (s, g) => s + g.count);
+      _guests.where((g) => g.rsvpStatus == rsvp).length;
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +79,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
       );
     }
 
-    final total = _guests.fold<int>(0, (s, g) => s + g.count);
+    final total = _guests.length;
     final yes = _sum('attending'), maybe = _sum('maybe'), pending = _sum('pending');
 
     final shown = _filter == 'All'

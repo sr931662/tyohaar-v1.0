@@ -135,7 +135,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                       children: [
                         Row(
                           children: [
-                            TyPill(_fullPackage.theme, background: ty.tint(_fullPackage.tint).withOpacity(0.15), foreground: ty.tint(_fullPackage.tint)),
+                            TyPill(_fullPackage.slug ?? _fullPackage.name, background: ty.tint(_fullPackage.tint).withOpacity(0.15), foreground: ty.tint(_fullPackage.tint)),
                             const Spacer(),
                             Text('Base: ₹${(_fullPackage.price / 1000).toStringAsFixed(0)}K', 
                                 style: TyType.sans(14, color: ty.ink2, weight: FontWeight.w600)),

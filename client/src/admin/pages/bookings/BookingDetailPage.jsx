@@ -68,21 +68,22 @@ export default function BookingDetailPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="btn btn-ghost" onClick={() => navigate(-1)}>←</button>
             <div>
-              <h1>Booking <code style={{ fontSize: 14, background: 'var(--bg-base)', padding: '2px 8px', borderRadius: 4 }}>{b.id?.slice(0, 8)}</code></h1>
-              <StatusBadge status={b.status} />
+              <h1>Booking <code style={{ fontSize: 14, background: 'var(--bg-base)', padding: '2px 8px', borderRadius: 4 }}>{b.booking_number ?? b.id?.slice(0, 8)}</code></h1>
+              {/* booking_status is the correct field name from BookingResponse */}
+              <StatusBadge status={b.booking_status} />
             </div>
           </div>
         </div>
         <div className="admin-page-header-actions">
-          {b.status === 'pending' && (
+          {b.booking_status === 'pending' && (
             <button className="btn btn-success" onClick={() => confirmMutation.mutate()} disabled={confirmMutation.isPending}>
               Confirm Booking
             </button>
           )}
-          {['pending', 'confirmed'].includes(b.status) && (
+          {['pending', 'confirmed'].includes(b.booking_status) && (
             <button className="btn btn-danger" onClick={() => setCancelOpen(true)}>Cancel</button>
           )}
-          {b.status === 'completed' && (
+          {b.booking_status === 'completed' && (
             <button className="btn btn-secondary" onClick={() => generateInvoiceMutation.mutate()}>Generate Invoice</button>
           )}
         </div>
@@ -96,11 +97,13 @@ export default function BookingDetailPage() {
         </div>
         <div className="admin-metric-card">
           <div className="admin-metric-label">Paid Amount</div>
-          <div className="admin-metric-value">{formatCurrency(b.paid_amount ?? 0)}</div>
+          {/* was: b.paid_amount — backend sends amount_paid */}
+          <div className="admin-metric-value">{formatCurrency(b.amount_paid ?? 0)}</div>
         </div>
         <div className="admin-metric-card">
           <div className="admin-metric-label">Event Date</div>
-          <div className="admin-metric-value" style={{ fontSize: 16 }}>{formatDate(b.event_date)}</div>
+          {/* was: b.event_date — backend sends scheduled_date */}
+          <div className="admin-metric-value" style={{ fontSize: 16 }}>{formatDate(b.scheduled_date)}</div>
         </div>
         <div className="admin-metric-card">
           <div className="admin-metric-label">Created</div>
@@ -122,18 +125,34 @@ export default function BookingDetailPage() {
           <div className="admin-card">
             <div className="admin-card-header"><div className="admin-card-title">Customer</div></div>
             <div className="admin-card-body">
-              <div className="admin-detail-row"><div className="admin-detail-label">Name</div><div className="admin-detail-value">{b.customer_name ?? b.user?.name ?? '—'}</div></div>
-              <div className="admin-detail-row"><div className="admin-detail-label">Email</div><div className="admin-detail-value">{b.user?.email ?? '—'}</div></div>
-              <div className="admin-detail-row"><div className="admin-detail-label">Phone</div><div className="admin-detail-value">{b.user?.phone_number ?? '—'}</div></div>
+              {/* BookingResponse sends customer_id (UUID) only — no nested user object.
+                  Show ID as reference; full name requires a separate /users/{id} call. */}
+              <div className="admin-detail-row"><div className="admin-detail-label">Customer ID</div><div className="admin-detail-value"><code style={{ fontSize: 12 }}>{b.customer_id?.slice(0, 8) ?? '—'}</code></div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Email</div><div className="admin-detail-value">—</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Phone</div><div className="admin-detail-value">—</div></div>
             </div>
           </div>
           <div className="admin-card">
             <div className="admin-card-header"><div className="admin-card-title">Booking Details</div></div>
             <div className="admin-card-body">
-              <div className="admin-detail-row"><div className="admin-detail-label">Occasion</div><div className="admin-detail-value">{b.occasion_name ?? b.occasion?.name ?? '—'}</div></div>
-              <div className="admin-detail-row"><div className="admin-detail-label">Event Date</div><div className="admin-detail-value">{formatDateTime(b.event_date)}</div></div>
-              <div className="admin-detail-row"><div className="admin-detail-label">Guests</div><div className="admin-detail-value">{b.guest_count ?? '—'}</div></div>
-              <div className="admin-detail-row"><div className="admin-detail-label">Special Notes</div><div className="admin-detail-value">{b.special_notes ?? '—'}</div></div>
+              {/* BookingResponse sends celebration_id only — occasion name requires a join */}
+              <div className="admin-detail-row"><div className="admin-detail-label">Celebration ID</div><div className="admin-detail-value"><code style={{ fontSize: 12 }}>{b.celebration_id?.slice(0, 8) ?? '—'}</code></div></div>
+              {/* was: b.event_date — backend sends scheduled_date */}
+              <div className="admin-detail-row"><div className="admin-detail-label">Event Date</div><div className="admin-detail-value">{formatDateTime(b.scheduled_date)}</div></div>
+              {/* guest_count is on CelebrationResponse, not BookingResponse */}
+              <div className="admin-detail-row"><div className="admin-detail-label">Package ID</div><div className="admin-detail-value"><code style={{ fontSize: 12 }}>{b.package_id?.slice(0, 8) ?? '—'}</code></div></div>
+              {/* was: b.special_notes — backend sends special_instructions */}
+              <div className="admin-detail-row"><div className="admin-detail-label">Special Notes</div><div className="admin-detail-value">{b.special_instructions ?? '—'}</div></div>
+            </div>
+          </div>
+          <div className="admin-card">
+            <div className="admin-card-header"><div className="admin-card-title">Financials</div></div>
+            <div className="admin-card-body">
+              <div className="admin-detail-row"><div className="admin-detail-label">Subtotal</div><div className="admin-detail-value">{formatCurrency(b.subtotal ?? 0)}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Discount</div><div className="admin-detail-value">{b.discount_amount ? formatCurrency(b.discount_amount) : '—'}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Tax</div><div className="admin-detail-value">{formatCurrency(b.tax_amount ?? 0)}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Platform Fee</div><div className="admin-detail-value">{formatCurrency(b.platform_fee ?? 0)}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Amount Due</div><div className="admin-detail-value">{formatCurrency(b.amount_due ?? 0)}</div></div>
             </div>
           </div>
         </div>
@@ -144,24 +163,24 @@ export default function BookingDetailPage() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Package</th>
-                <th>Vendor</th>
+                <th>Item</th>
                 <th>Quantity</th>
                 <th>Unit Price</th>
-                <th>Total</th>
+                <th>Final Price</th>
               </tr>
             </thead>
             <tbody>
               {(b.items ?? []).map((item, i) => (
                 <tr key={item.id ?? i}>
-                  <td>{item.package_name ?? item.package?.name ?? `Item ${i+1}`}</td>
-                  <td>{item.vendor_name ?? item.vendor?.business_name ?? '—'}</td>
+                  {/* BookingItemResponse.name is the item name snapshotted at booking time */}
+                  <td>{item.name ?? `Item ${i + 1}`}</td>
                   <td>{item.quantity ?? 1}</td>
                   <td>{formatCurrency(item.unit_price)}</td>
-                  <td>{formatCurrency(item.total_price ?? (item.unit_price * (item.quantity ?? 1)))}</td>
+                  {/* was: item.total_price — backend sends final_price */}
+                  <td>{formatCurrency(item.final_price)}</td>
                 </tr>
               ))}
-              {!b.items?.length && <tr><td colSpan={5} className="admin-table-empty">No items</td></tr>}
+              {!b.items?.length && <tr><td colSpan={4} className="admin-table-empty">No items</td></tr>}
             </tbody>
           </table>
         </div>
@@ -179,7 +198,8 @@ export default function BookingDetailPage() {
                     <div className="admin-activity-text">
                       <StatusBadge status={s.from_status} /> → <StatusBadge status={s.to_status} />
                     </div>
-                    <div className="admin-activity-time">{formatDateTime(s.created_at)} by {s.changed_by ?? 'System'}</div>
+                    {/* changed_by_id is a UUID; show truncated since no name is embedded */}
+                    <div className="admin-activity-time">{formatDateTime(s.changed_at)} by {s.changed_by_id ? s.changed_by_id.slice(0, 8) : 'System'}</div>
                   </div>
                 </div>
               ))}

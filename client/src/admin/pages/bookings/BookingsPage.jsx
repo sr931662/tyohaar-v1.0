@@ -79,14 +79,18 @@ export default function BookingsPage() {
             <tbody>
               {items.map((b) => (
                 <tr key={b.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/bookings/${b.id}`)}>
-                  <td><code style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{b.id?.slice(0, 8)}…</code></td>
-                  <td>{b.customer_name ?? b.user?.name ?? '—'}</td>
+                  <td><code style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{b.booking_number ?? `${b.id?.slice(0, 8)}…`}</code></td>
+                  {/* BookingResponse sends customer_id (UUID) only — no nested customer object */}
+                  <td><code style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{b.customer_id?.slice(0, 8) ?? '—'}</code></td>
+                  {/* BookingResponse sends package_id (UUID) only — no nested package object */}
                   <td style={{ maxWidth: 200 }}>
-                    <span className="truncate">{b.package_name ?? b.packages?.map(p => p.name).join(', ') ?? '—'}</span>
+                    <code className="truncate" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{b.package_id?.slice(0, 8) ?? '—'}</code>
                   </td>
-                  <td>{formatDate(b.event_date)}</td>
+                  {/* was: b.event_date — backend sends scheduled_date */}
+                  <td>{formatDate(b.scheduled_date)}</td>
                   <td>{formatCurrency(b.total_amount)}</td>
-                  <td><StatusBadge status={b.status} /></td>
+                  {/* was: b.status — backend sends booking_status */}
+                  <td><StatusBadge status={b.booking_status} /></td>
                   <td>
                     <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/admin/bookings/${b.id}`); }}>
                       View

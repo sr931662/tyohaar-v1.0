@@ -95,8 +95,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
       );
     }
 
-    final allocated = _expenses.fold<double>(0, (s, l) => s + l.estimatedAmount);
-    final paid = _expenses.fold<double>(0, (s, l) => s + l.actualAmount);
+    final allocated = _expenses.fold<double>(0, (s, l) => s + l.amount);
+    final paid = _expenses.fold<double>(0, (s, l) => s + (l.isPaid ? l.amount : 0.0));
     final total = _totalBudget;
     final pct = total > 0 ? (allocated / total * 100).round() : 0;
 
@@ -165,7 +165,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
              ))
           else
             ..._expenses.map((l) {
-              final p = l.estimatedAmount > 0 ? (l.actualAmount / l.estimatedAmount * 100).round() : 0;
+              final p = (l.isPaid && l.amount > 0) ? 100 : 0;
               final c = ty.tint(l.tint);
               return Container(
                 margin: const EdgeInsets.only(bottom: 11),
@@ -191,12 +191,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             children: [
                               Text(l.category,
                                   style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
-                              Text(l.actualAmount > 0 ? '${_short(l.actualAmount)} paid' : 'Not paid yet',
+                              Text(l.isPaid ? '${_short(l.amount)} paid' : 'Not paid yet',
                                   style: TyType.sans(11.5, color: ty.ink3)),
                             ],
                           ),
                         ),
-                        Text(_short(l.estimatedAmount),
+                        Text(_short(l.amount),
                             style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w800)),
                       ],
                     ),

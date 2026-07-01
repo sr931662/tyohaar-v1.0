@@ -47,7 +47,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: PhotoPlaceholder(
-                tint: CatalogueScreen.tintFor(item.itemType),
+                tint: CatalogueScreen.tintFor(item.unit ?? 'service'),
                 arch: false,
                 radius: BorderRadius.zero,
               ),
@@ -66,7 +66,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      item.itemType.replaceAll('_', ' ').toUpperCase(),
+                      item.unit ?? 'service'.replaceAll('_', ' ').toUpperCase(),
                       style: TyType.eyebrow(10, color: ty.saffron),
                     ),
                   ),

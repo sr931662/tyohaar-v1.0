@@ -134,8 +134,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    final totalGuests = _guests.fold<int>(0, (s, g) => s + g.count);
-    final rsvpdGuests = _guests.where((g) => g.rsvpStatus == 'confirmed').fold<int>(0, (s, g) => s + g.count);
+    final totalGuests = _guests.length;
+    final rsvpdGuests = _guests.where((g) => g.rsvpStatus == 'confirmed').length;
     final pct = _activeCelebration?['progress_percentage'] ?? 0;
     final pendingTasks = _checklist.where((t) => !t.isCompleted).toList();
     final openTasks = pendingTasks.take(2).toList();
@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ...openTasks.map((t) => _taskRow(
                   context,
                   t.title,
-                  [if (t.timing != null) t.timing!, if (t.vendorName != null) t.vendorName!].join(‘ · ‘),
+                  t.timingLabel ?? ‘’,
                 )),
               const SizedBox(height: 12),
               _taskRow(
@@ -450,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   Text(p.name,
                       style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
-                  Text(p.theme, style: TyType.sans(12, color: ty.ink2)),
+                  Text(p.slug ?? p.name, style: TyType.sans(12, color: ty.ink2)),
                 ],
               ),
             ),

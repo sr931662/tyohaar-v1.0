@@ -101,13 +101,13 @@ export default function VendorBookingDetailPage() {
                 </code>
               </h1>
               <div style={{ marginTop: 4 }}>
-                <StatusBadge status={b.status} />
+                <StatusBadge status={b.booking_status} />
               </div>
             </div>
           </div>
         </div>
         <div className="admin-page-header-actions">
-          {b.status === 'confirmed' && (
+          {b.booking_status === 'confirmed' && (
             <button
               className="btn btn-primary"
               onClick={() => setConfirmStart(true)}
@@ -116,7 +116,7 @@ export default function VendorBookingDetailPage() {
               Start Service
             </button>
           )}
-          {b.status === 'in_progress' && (
+          {b.booking_status === 'in_progress' && (
             <button
               className="btn btn-success"
               onClick={() => setConfirmComplete(true)}
@@ -147,7 +147,7 @@ export default function VendorBookingDetailPage() {
           <div className="admin-card">
             <Section title="Booking Details">
               <Row label="Booking Number" value={b.booking_number ?? b.id?.slice(0, 8)} />
-              <Row label="Status" value={<StatusBadge status={b.status} />} />
+              <Row label="Status" value={<StatusBadge status={b.booking_status} />} />
               <Row label="Payment Status" value={<StatusBadge status={b.payment_status} />} />
               <Row label="Scheduled Date" value={b.scheduled_date ? formatDate(b.scheduled_date) : null} />
               <Row label="Start Time" value={b.scheduled_start_time} />
@@ -158,20 +158,17 @@ export default function VendorBookingDetailPage() {
 
           <div className="admin-card">
             <Section title="Customer Info">
-              <Row label="Name" value={b.customer?.name ?? b.customer_name} />
-              <Row label="Phone" value={b.customer?.phone} />
-              <Row label="City" value={b.address?.city ?? b.customer?.city} />
-              <Row label="Full Address" value={b.address?.address_line_1
-                ? [b.address.address_line_1, b.address.address_line_2, b.address.city, b.address.state].filter(Boolean).join(', ')
-                : null} />
+              {/* BookingResponse sends customer_id (UUID) only — no nested customer object */}
+              <Row label="Customer ID" value={b.customer_id ? <code style={{ fontSize: 12 }}>{b.customer_id.slice(0, 8)}</code> : null} />
+              {/* Address fields not in BookingResponse; address_id is available if needed */}
+              <Row label="Address ID" value={b.address_id ? <code style={{ fontSize: 12 }}>{b.address_id.slice(0, 8)}</code> : null} />
             </Section>
           </div>
 
           <div className="admin-card">
             <Section title="Package">
-              <Row label="Package Name" value={b.package?.name ?? b.package_name} />
-              <Row label="Category" value={b.package?.category?.name} />
-              <Row label="Duration" value={b.package?.duration_hours ? `${b.package.duration_hours} hrs` : null} />
+              {/* BookingResponse sends package_id (UUID) only — no nested package object */}
+              <Row label="Package ID" value={b.package_id ? <code style={{ fontSize: 12 }}>{b.package_id.slice(0, 8)}</code> : null} />
             </Section>
           </div>
 
@@ -252,7 +249,8 @@ export default function VendorBookingDetailPage() {
                       <div className="admin-activity-icon" style={{ background: 'var(--bg-raised)' }}>→</div>
                       <div className="admin-activity-content">
                         <div className="admin-activity-text">
-                          <StatusBadge status={h.old_status} /> → <StatusBadge status={h.new_status} />
+                          {/* was: h.old_status / h.new_status — backend sends from_status / to_status */}
+                          <StatusBadge status={h.from_status} /> → <StatusBadge status={h.to_status} />
                         </div>
                         {h.reason && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{h.reason}</div>}
                         <div className="admin-activity-time">{h.changed_at ? formatDateTime(h.changed_at) : ''}</div>

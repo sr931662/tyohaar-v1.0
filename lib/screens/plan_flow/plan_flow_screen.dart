@@ -447,7 +447,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     Positioned(
                       top: 12,
                       left: 12,
-                      child: TyPill(p.theme),
+                      child: TyPill(p.slug ?? p.name),
                     ),
                     Positioned(
                       top: 12,
@@ -474,7 +474,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _summaryCard(context, 'Celebration', '${_occasion?.name} - ${_nameCtrl.text}'),
-        _summaryCard(context, 'Package & Theme', '${_pkg?.name} (${_pkg?.theme})'),
+        _summaryCard(context, 'Package', _pkg?.name ?? ''),
         _summaryCard(context, 'Date & Time', '${_eventDate.day} ${_eventDate.month} · 6:30 PM'),
         _summaryCard(context, 'Guest Count', '$_totalGuests Guests'),
         const SizedBox(height: 16),

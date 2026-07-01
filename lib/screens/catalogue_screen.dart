@@ -86,7 +86,7 @@ class CatalogueScreen extends StatelessWidget {
                     child: Stack(
                       children: [
                         PhotoPlaceholder(
-                          tint: tintFor(item.itemType),
+                          tint: tintFor(item.unit ?? 'service'),
                           arch: false,
                           radius: const BorderRadius.vertical(top: Radius.circular(15)),
                         ),
@@ -111,7 +111,7 @@ class CatalogueScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          item.itemType.replaceAll('_', ' ').toUpperCase(),
+                          item.unit ?? 'service'.replaceAll('_', ' ').toUpperCase(),
                           style: TyType.sans(10, color: ty.ink3, weight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
