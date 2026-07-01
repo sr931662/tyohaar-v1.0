@@ -51,9 +51,11 @@ function CouponSection() {
             {coupons.map((c) => (
               <tr key={c.id}>
                 <td><code style={{ fontSize: 12 }}>{c.code}</code></td>
-                <td>{c.discount_type}</td>
-                <td>{c.discount_type === 'percentage' ? `${c.discount_value}%` : formatCurrency(c.discount_value)}</td>
-                <td>{c.used_count ?? 0} / {c.max_uses ?? '∞'}</td>
+                {/* was: c.discount_type — backend sends coupon_type */}
+                <td>{c.coupon_type}</td>
+                <td>{c.coupon_type === 'percentage' ? `${c.discount_value}%` : formatCurrency(c.discount_value)}</td>
+                {/* was: c.used_count / c.max_uses — backend sends times_used / total_usage_limit */}
+                <td>{c.times_used ?? 0} / {c.total_usage_limit ?? '∞'}</td>
                 <td>{c.valid_until ? formatDateTime(c.valid_until) : 'No expiry'}</td>
                 <td>
                   <button className="btn btn-danger btn-sm" onClick={() => deactivateMutation.mutate(c.id)}>Deactivate</button>
@@ -170,10 +172,13 @@ export default function PaymentsPage() {
                   {items.map((p) => (
                     <tr key={p.id}>
                       <td><code style={{ fontSize: 11 }}>{p.id?.slice(0, 8)}</code></td>
-                      <td>{p.user?.name ?? p.customer_name ?? '—'}</td>
-                      <td><strong>{formatCurrency(p.amount)}</strong></td>
+                      {/* was: p.user?.name — PaymentResponse sends payer_id (UUID) only */}
+                      <td><code style={{ fontSize: 11 }}>{p.payer_id?.slice(0, 8) ?? '—'}</code></td>
+                      {/* was: p.amount — backend sends final_amount */}
+                      <td><strong>{formatCurrency(p.final_amount)}</strong></td>
                       <td>{p.gateway ?? '—'}</td>
-                      <td><StatusBadge status={p.status} /></td>
+                      {/* was: p.status — backend sends payment_status */}
+                      <td><StatusBadge status={p.payment_status} /></td>
                       <td>{formatDateTime(p.created_at)}</td>
                       <td>
                         <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/admin/payments/${p.id}`)}>View</button>

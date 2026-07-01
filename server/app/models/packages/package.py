@@ -197,6 +197,16 @@ class Package(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         comment="Shown in 'Recommended for you' carousels",
     )
 
+    # ── Location ──────────────────────────────────────────────────────────────
+
+    city_slug: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+        index=True,
+        comment="City slug where this package is offered (e.g. 'noida', 'mumbai'). "
+                "Denormalized from the vendor's primary operating city for fast filtering.",
+    )
+
     # ── Discovery ─────────────────────────────────────────────────────────────
 
     popularity_score: Mapped[int] = mapped_column(

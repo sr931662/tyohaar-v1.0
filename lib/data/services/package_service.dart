@@ -4,13 +4,19 @@ import '../models.dart';
 class PackageService {
   final ApiClient _api = ApiClient();
 
-  Future<List<Package>> listPackages({String? categoryId, String? occasionId, String? query}) async {
+  Future<List<Package>> listPackages({
+    String? categoryId,
+    String? occasionId,
+    String? query,
+    String? city,
+  }) async {
     final response = await _api.dio.get(
       'packages',
       queryParameters: {
         if (categoryId != null) 'category_id': categoryId,
         if (occasionId != null) 'occasion_id': occasionId,
         if (query != null) 'search': query,
+        if (city != null) 'city': city,
       },
     );
     final List list = response.data['data'];

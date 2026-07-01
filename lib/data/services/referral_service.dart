@@ -28,11 +28,12 @@ class ReferralStats {
   });
 
   factory ReferralStats.fromJson(Map<String, dynamic> json) {
+    // ReferralStatsResponse fields: signed_up_count, converted_count, rewarded_count, total_earned
     return ReferralStats(
-      totalReferrals: json['total_referrals'] as int? ?? 0,
-      successfulReferrals: json['successful_referrals'] as int? ?? 0,
+      totalReferrals: json['signed_up_count'] as int? ?? 0,
+      successfulReferrals: json['converted_count'] as int? ?? 0,
       totalEarned: (json['total_earned'] ?? 0).toDouble(),
-      pendingRewards: (json['pending_rewards'] ?? 0).toDouble(),
+      pendingRewards: 0, // not in ReferralStatsResponse
     );
   }
 }

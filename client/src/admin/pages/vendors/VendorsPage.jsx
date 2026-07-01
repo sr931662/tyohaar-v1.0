@@ -166,15 +166,18 @@ export default function VendorsPage() {
                       </div>
                       <div>
                         <div className="admin-user-name">{v.business_name ?? v.name}</div>
-                        <div className="admin-user-email">{v.email ?? v.user?.email}</div>
+                        {/* VendorResponse has no email field; show user_id as reference */}
+                        <div className="admin-user-email">{v.user_id ? <code style={{ fontSize: 11 }}>{v.user_id.slice(0, 8)}</code> : '—'}</div>
                       </div>
                     </div>
                   </td>
-                  <td><span className="text-secondary">{v.city ?? '—'}</span></td>
+                  {/* VendorResponse has no city field */}
+                  <td><span className="text-secondary">—</span></td>
                   <td><StatusBadge status={v.status ?? v.verification_status} /></td>
                   <td>
-                    {v.avg_rating != null ? (
-                      <span>⭐ {Number(v.avg_rating).toFixed(1)}</span>
+                    {/* was: v.avg_rating — VendorResponse sends average_rating */}
+                    {v.average_rating != null ? (
+                      <span>⭐ {Number(v.average_rating).toFixed(1)}</span>
                     ) : '—'}
                   </td>
                   <td><span className="text-secondary">{timeAgo(v.created_at)}</span></td>

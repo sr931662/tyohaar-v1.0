@@ -87,6 +87,12 @@ class PackageCreate(BaseSchema):
     base_price: MoneyAmount = Field(description="Starting / reference price")
     currency: Currency = Field(default=Currency.INR, description="ISO 4217 currency code")
     display_order: int = Field(default=0, ge=0, description="Sort order in category listings")
+    city_slug: str | None = Field(
+        default=None,
+        max_length=200,
+        description="City slug where this package is offered (e.g. 'noida', 'mumbai'). "
+                    "Should match one of the vendor's operating_cities.",
+    )
 
     @field_validator("slug", mode="before")
     @classmethod

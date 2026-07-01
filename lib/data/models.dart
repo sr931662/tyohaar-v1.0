@@ -172,6 +172,8 @@ class Package {
   final String? vendorId;
   final String currency;
   final int displayOrder;
+  // City slug where this package is offered (e.g. 'noida', 'mumbai').
+  final String? citySlug;
 
   const Package({
     required this.id,
@@ -196,6 +198,7 @@ class Package {
     this.vendorId,
     this.currency = 'INR',
     this.displayOrder = 0,
+    this.citySlug,
   });
 
   factory Package.fromJson(Map<String, dynamic> json) {
@@ -231,6 +234,7 @@ class Package {
       vendorId: json['vendor_id'] as String?,
       currency: json['currency'] as String? ?? 'INR',
       displayOrder: json['display_order'] as int? ?? 0,
+      citySlug: json['city_slug'] as String?,
     );
   }
 

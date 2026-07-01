@@ -76,6 +76,7 @@ class PackageUpdate(BaseSchema):
     base_price: MoneyAmount | None = None
     currency: Currency | None = None
     display_order: int | None = Field(default=None, ge=0)
+    city_slug: str | None = Field(default=None, max_length=200)
 
     @field_validator("slug", mode="before")
     @classmethod

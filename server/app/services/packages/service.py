@@ -88,8 +88,33 @@ class PackageService(BaseService):
         cursor: str | None,
         limit: int,
     ) -> CursorPage[PackageResponse]:
+        from sqlalchemy import or_
         async with self._uow() as uow:
+            conditions = [
+                Package.is_active == True,  # noqa: E712
+                Package.status == PackageStatus.ACTIVE,
+            ]
+            if filters.category_id is not None:
+                conditions.append(Package.category_id == filters.category_id)
+            if filters.city is not None:
+                conditions.append(Package.city_slug == filters.city)
+            if filters.is_featured is not None:
+                conditions.append(Package.is_featured == filters.is_featured)
+            if filters.is_customizable is not None:
+                conditions.append(Package.is_customizable == filters.is_customizable)
+            if filters.min_price is not None:
+                conditions.append(Package.base_price >= filters.min_price)
+            if filters.max_price is not None:
+                conditions.append(Package.base_price <= filters.max_price)
+            if filters.min_rating is not None:
+                conditions.append(Package.average_rating >= filters.min_rating)
+            if filters.search is not None:
+                term = f"%{filters.search}%"
+                conditions.append(
+                    or_(Package.name.ilike(term), Package.short_description.ilike(term))
+                )
             page = await uow.packages.packages.cursor_paginate(
+                *conditions,
                 cursor=cursor,
                 limit=limit,
             )

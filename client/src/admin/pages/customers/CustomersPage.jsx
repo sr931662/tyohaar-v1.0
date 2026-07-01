@@ -67,16 +67,19 @@ export default function CustomersPage() {
                 <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/customers/${c.id}`)}>
                   <td>
                     <div className="admin-user-row">
-                      <div className="admin-avatar">{initials(c.name ?? c.full_name ?? 'U')}</div>
+                      {/* UserResponse sends full_name, not name */}
+                      <div className="admin-avatar">{initials(c.full_name ?? 'U')}</div>
                       <div>
-                        <div className="admin-user-name">{c.name ?? c.full_name ?? 'Unknown'}</div>
+                        <div className="admin-user-name">{c.full_name ?? 'Unknown'}</div>
                         <div className="admin-user-email">{c.email}</div>
                       </div>
                     </div>
                   </td>
-                  <td>{c.phone_number ?? '—'}</td>
-                  <td>{c.total_bookings ?? 0}</td>
-                  <td>{formatCurrency(c.total_spent ?? 0)}</td>
+                  {/* was: c.phone_number — UserResponse sends phone */}
+                  <td>{c.phone ?? '—'}</td>
+                  {/* total_bookings / total_spent are not on UserResponse */}
+                  <td>—</td>
+                  <td>—</td>
                   <td>{timeAgo(c.created_at)}</td>
                   <td>
                     <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/admin/customers/${c.id}`); }}>

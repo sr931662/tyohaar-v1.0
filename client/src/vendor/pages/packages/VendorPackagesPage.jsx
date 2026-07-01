@@ -48,6 +48,7 @@ function PackageFormModal({ initial, categories, onClose, onSave, saving }) {
     duration_hours: initial?.duration_hours ?? '',
     cover_image_url: initial?.cover_image_url ?? '',
     is_customizable: initial?.is_customizable ?? false,
+    city_slug: initial?.city_slug ?? '',
   });
   const [errors, setErrors] = useState({});
 
@@ -76,6 +77,7 @@ function PackageFormModal({ initial, categories, onClose, onSave, saving }) {
       duration_hours: form.duration_hours !== '' ? Number(form.duration_hours) : undefined,
       cover_image_url: form.cover_image_url.trim() || undefined,
       is_customizable: form.is_customizable,
+      city_slug: form.city_slug.trim().toLowerCase() || undefined,
     };
     onSave(body);
   };
@@ -132,6 +134,23 @@ function PackageFormModal({ initial, categories, onClose, onSave, saving }) {
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Cover Image URL</label>
             <input className="admin-input" type="url" value={form.cover_image_url} onChange={(e) => set('cover_image_url', e.target.value)} placeholder="https://..." />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
+              Service City
+              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+                (city slug, e.g. noida, delhi, mumbai)
+              </span>
+            </label>
+            <input
+              className="admin-input"
+              value={form.city_slug}
+              onChange={(e) => set('city_slug', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+              placeholder="e.g. noida"
+            />
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
+              Customers in this city will see your package. Must match one of your operating cities set in your vendor profile.
+            </p>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
             <input type="checkbox" checked={form.is_customizable} onChange={(e) => set('is_customizable', e.target.checked)} />
@@ -421,6 +440,7 @@ export default function VendorPackagesPage() {
               <tr>
                 <th>Package</th>
                 <th>Category</th>
+                <th>City</th>
                 <th>Price</th>
                 <th>Guests</th>
                 <th>Status</th>
@@ -439,6 +459,9 @@ export default function VendorPackagesPage() {
                     )}
                   </td>
                   <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{p.category?.name ?? '—'}</td>
+                  <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {p.city_slug ? <code style={{ fontSize: 11 }}>{p.city_slug}</code> : <span style={{ color: 'var(--color-error,#ef4444)' }}>Not set</span>}
+                  </td>
                   <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>₹{Number(p.base_price ?? 0).toLocaleString('en-IN')}</td>
                   <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                     {p.min_guests || p.max_guests

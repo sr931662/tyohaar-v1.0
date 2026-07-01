@@ -11,6 +11,30 @@ import '../widgets/common.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
 import 'package:tyohaar/screens/package_filter_screen.dart';
 
+// Session-level city preference. Resets on app restart (no dependency needed).
+class _CityPref {
+  static String? selected;
+}
+
+// Serviceable cities with display name → slug mapping.
+const List<(String, String)> _kCities = [
+  ('All Cities', ''),
+  ('Noida', 'noida'),
+  ('Delhi', 'delhi'),
+  ('Gurgaon', 'gurgaon'),
+  ('Mumbai', 'mumbai'),
+  ('Pune', 'pune'),
+  ('Bengaluru', 'bengaluru'),
+  ('Hyderabad', 'hyderabad'),
+  ('Chennai', 'chennai'),
+  ('Kolkata', 'kolkata'),
+  ('Jaipur', 'jaipur'),
+  ('Ahmedabad', 'ahmedabad'),
+  ('Lucknow', 'lucknow'),
+  ('Chandigarh', 'chandigarh'),
+  ('Indore', 'indore'),
+];
+
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
@@ -27,6 +51,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   final List<String> _cats = ['All', 'Life Events', 'Major Festivals', 'Minor Festivals'];
 
+  String get _selectedCitySlug => _CityPref.selected ?? '';
+  String get _selectedCityLabel {
+    if (_selectedCitySlug.isEmpty) return 'All Cities';
+    final match = _kCities.where((c) => c.$2 == _selectedCitySlug).firstOrNull;
+    return match?.$1 ?? _selectedCitySlug;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +67,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Future<void> _loadPackages() async {
     setState(() => _isLoading = true);
     try {
-      final packages = await _packageService.listPackages();
+      final city = _selectedCitySlug.isEmpty ? null : _selectedCitySlug;
+      final packages = await _packageService.listPackages(city: city);
       setState(() {
         _allPackages = packages;
         _isLoading = false;
@@ -47,6 +79,81 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
+  void _showCityPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final ty = ctx.ty;
+        return Container(
+          decoration: BoxDecoration(
+            color: ty.paper,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: ty.line2, borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Text('Select Your City', style: TyType.display(20, color: ty.ink)),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(Icons.close, color: ty.ink2),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  itemCount: _kCities.length,
+                  itemBuilder: (_, i) {
+                    final (label, slug) = _kCities[i];
+                    final isSelected = slug == _selectedCitySlug;
+                    return ListTile(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        setState(() {
+                          _CityPref.selected = slug.isEmpty ? null : slug;
+                        });
+                        _loadPackages();
+                      },
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      leading: Icon(
+                        slug.isEmpty ? Icons.public_rounded : Icons.location_city_rounded,
+                        color: isSelected ? ty.saffron : ty.ink3,
+                        size: 20,
+                      ),
+                      title: Text(
+                        label,
+                        style: TyType.sans(15, color: isSelected ? ty.saffron : ty.ink,
+                            weight: isSelected ? FontWeight.w700 : FontWeight.normal),
+                      ),
+                      trailing: isSelected
+                          ? Icon(Icons.check_circle_rounded, color: ty.saffron, size: 18)
+                          : null,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
@@ -55,24 +162,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final topPadding = MediaQuery.of(context).padding.top + 70;
-    
-    // Filter logic
+
+    // Client-side category filter (category tabs are best-effort until category UUIDs
+    // are available from the API; city filtering is server-side).
     List<Package> list = _allPackages.where((p) {
-      final matchesQuery = p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                          (p.slug ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
-      
-      if (_catLabel == 'All') return matchesQuery;
-      
-      final categoryKey = _catLabel == 'Life Events' 
-          ? 'life' 
-          : _catLabel == 'Major Festivals' 
-              ? 'major_festival' 
-              : 'minor_festival';
-      
-      return matchesQuery && p.category == categoryKey;
+      return p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          (p.slug ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
-    final featured = list.take(3).toList();
+    if (_catLabel != 'All') {
+      // Category filtering requires category metadata — pass as no-op for now.
+      // TODO: fetch categories and map slugs to UUIDs, then filter server-side.
+    }
+
+    final featured = list.where((p) => p.isFeatured).take(5).toList();
 
     return Padding(
       padding: EdgeInsets.only(top: topPadding),
@@ -87,6 +190,38 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     Expanded(
                         child: Text('Discover packages',
                             style: TyType.display(25, color: ty.ink))),
+                    // City picker button
+                    GestureDetector(
+                      onTap: _showCityPicker,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _selectedCitySlug.isEmpty ? ty.surface2 : ty.saffron.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: _selectedCitySlug.isEmpty ? ty.line : ty.saffron.withOpacity(0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.location_on_rounded,
+                                size: 14,
+                                color: _selectedCitySlug.isEmpty ? ty.ink3 : ty.saffron),
+                            const SizedBox(width: 4),
+                            Text(_selectedCityLabel,
+                                style: TyType.sans(13,
+                                    color: _selectedCitySlug.isEmpty ? ty.ink2 : ty.saffron,
+                                    weight: FontWeight.w600)),
+                            const SizedBox(width: 3),
+                            Icon(Icons.keyboard_arrow_down_rounded,
+                                size: 14,
+                                color: _selectedCitySlug.isEmpty ? ty.ink3 : ty.saffron),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     ChromeIconButton(
                       icon: Icons.tune_rounded,
                       onTap: () => _push(context, const PackageFilterScreen()),
@@ -140,30 +275,35 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           const SizedBox(height: 6),
           Expanded(
-            child: _isLoading 
-              ? const Center(child: CircularProgressIndicator())
-              : list.isEmpty 
-                ? _buildEmptyState(context)
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-                    children: [
-                      if (featured.isNotEmpty && _searchQuery.isEmpty) ...[
-                        const SectionHeader('Featured for you'),
-                        SizedBox(
-                          height: 230,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: featured.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 13),
-                            itemBuilder: (context, i) => _packageFeatured(context, featured[i]),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : list.isEmpty
+                    ? _buildEmptyState(context)
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+                        children: [
+                          if (featured.isNotEmpty && _searchQuery.isEmpty) ...[
+                            const SectionHeader('Featured for you'),
+                            SizedBox(
+                              height: 230,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: featured.length,
+                                separatorBuilder: (_, __) => const SizedBox(width: 13),
+                                itemBuilder: (context, i) =>
+                                    _packageFeatured(context, featured[i]),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                          SectionHeader(
+                            _selectedCitySlug.isEmpty
+                                ? 'Available Packages'
+                                : 'Packages in $_selectedCityLabel',
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                      const SectionHeader('Available Packages'),
-                      ...list.map((p) => _packageRow(context, p)),
-                    ],
-                  ),
+                          ...list.map((p) => _packageRow(context, p)),
+                        ],
+                      ),
           ),
         ],
       ),
@@ -178,10 +318,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
         children: [
           Icon(Icons.search_off_rounded, size: 64, color: ty.ink3),
           const SizedBox(height: 16),
-          Text('No packages found', style: TyType.display(20, color: ty.ink)),
+          Text(
+            _selectedCitySlug.isEmpty
+                ? 'No packages found'
+                : 'No packages in $_selectedCityLabel',
+            style: TyType.display(20, color: ty.ink),
+          ),
           const SizedBox(height: 8),
-          Text('Try searching for something else or change categories.', 
-            style: TyType.sans(14, color: ty.ink2)),
+          Text(
+            _selectedCitySlug.isEmpty
+                ? 'Try searching for something else or change categories.'
+                : 'Try a different city or browse all cities.',
+            style: TyType.sans(14, color: ty.ink2),
+            textAlign: TextAlign.center,
+          ),
+          if (_selectedCitySlug.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () {
+                setState(() => _CityPref.selected = null);
+                _loadPackages();
+              },
+              child: Text('Browse all cities',
+                  style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w600)),
+            ),
+          ],
         ],
       ),
     );
@@ -205,8 +366,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
-                    errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
+                    placeholder: (context, url) =>
+                        PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
+                    errorWidget: (context, url, error) =>
+                        PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
                   ),
                 ),
                 Positioned(top: 10, left: 10, child: TyPill(p.slug ?? p.name)),
@@ -218,7 +381,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ],
             ),
             const SizedBox(height: 9),
-            Text(p.name, style: TyType.sans(15.5, color: ty.ink, weight: FontWeight.w700)),
+            Text(p.name,
+                style: TyType.sans(15.5, color: ty.ink, weight: FontWeight.w700)),
             Text(p.description ?? '',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -252,8 +416,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 child: CachedNetworkImage(
                   imageUrl: p.coverImageUrl ?? '',
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, arch: false),
-                  errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, arch: false),
+                  placeholder: (context, url) =>
+                      PhotoPlaceholder(tint: p.tint, arch: false),
+                  errorWidget: (context, url, error) =>
+                      PhotoPlaceholder(tint: p.tint, arch: false),
                 ),
               ),
             ),
@@ -262,19 +428,46 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(p.slug ?? p.name.toUpperCase(),
-                      style: TyType.eyebrow(11, color: ty.saffronDeep)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(p.slug ?? p.name.toUpperCase(),
+                            style: TyType.eyebrow(11, color: ty.saffronDeep)),
+                      ),
+                      if (p.citySlug != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: ty.surface2,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: ty.line),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.location_on_rounded, size: 10, color: ty.ink3),
+                              const SizedBox(width: 2),
+                              Text(p.citySlug!,
+                                  style: TyType.sans(10, color: ty.ink3)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 2),
-                  Text(p.name, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
+                  Text(p.name,
+                      style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
                   const SizedBox(height: 1),
-                  Text('${p.inclusions.length} Inclusions', style: TyType.sans(12.5, color: ty.ink2)),
+                  Text('${p.inclusions.length} Inclusions',
+                      style: TyType.sans(12.5, color: ty.ink2)),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Text('Starting from', style: TyType.sans(11, color: ty.ink3)),
                       const SizedBox(width: 4),
                       Text('₹${(p.price / 1000).toStringAsFixed(0)}K',
-                          style: TyType.sans(14, color: ty.ink, weight: FontWeight.w800)),
+                          style: TyType.sans(14,
+                              color: ty.ink, weight: FontWeight.w800)),
                       const Spacer(),
                       Icon(Icons.chevron_right_rounded, color: ty.ink3, size: 18),
                     ],

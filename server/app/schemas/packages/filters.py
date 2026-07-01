@@ -66,6 +66,12 @@ class PackageFilters(BaseSchema):
         max_length=200,
         description="Full-text search against name and short_description",
     )
+    city: str | None = Field(
+        default=None,
+        max_length=200,
+        description="City slug to filter packages (e.g. 'noida', 'mumbai'). "
+                    "Returns packages whose city_slug matches exactly.",
+    )
     min_guests: int | None = Field(
         default=None, ge=1, description="Package can accommodate at least this many guests"
     )
