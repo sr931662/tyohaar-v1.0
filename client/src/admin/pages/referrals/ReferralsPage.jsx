@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { referralsApi } from '../../api';
 import Pagination from '../../components/ui/Pagination';
-import Skeleton from '../../components/ui/Skeleton';
+import { SkeletonCard, SkeletonLine } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import StatusBadge from '../../components/ui/StatusBadge';
 
@@ -36,7 +36,7 @@ export default function ReferralsPage() {
       {/* Stats row */}
       <div className="admin-stats-grid" style={{ marginBottom: 24 }}>
         {statsLoading ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} height={80} radius={12} />)
+          Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} height={80} />)
         ) : (
           <>
             <div className="admin-stat-card">
@@ -69,7 +69,7 @@ export default function ReferralsPage() {
         {isLoading ? (
           <div style={{ padding: 24 }}>
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} height={44} radius={8} style={{ marginBottom: 8 }} />
+              <SkeletonLine key={i} height={44} />
             ))}
           </div>
         ) : referrals.length === 0 ? (

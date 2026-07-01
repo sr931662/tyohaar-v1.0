@@ -286,7 +286,7 @@ export default function VendorSupportPage() {
                       <div className="admin-user-email">#{ticket.ticket_number ?? ticket.id?.slice(0, 8)}</div>
                     </td>
                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                      {ticket.ticket_type?.charAt(0) + ticket.ticket_type?.slice(1)?.toLowerCase() ?? '—'}
+                      {(ticket.ticket_type?.charAt(0) + ticket.ticket_type?.slice(1)?.toLowerCase()) ?? '—'}
                     </td>
                     <td>
                       <span style={{ fontSize: 12, fontWeight: 600, color: PRIORITY_COLOR[ticket.priority] }}>
