@@ -118,9 +118,24 @@ class PackageService(BaseService):
                 cursor=cursor,
                 limit=limit,
             )
-            items = [PackageResponse.model_validate(p) for p in page.items]
+            # Batch-load item counts — one query for the whole page, avoids N+1
+            package_ids = [p.id for p in page.items]
+            counts: dict = {}
+            if package_ids:
+                item_rows = await uow.packages.items.find_many(
+                    uow.packages.items._model.package_id.in_(package_ids)
+                )
+                for row in item_rows:
+                    pid = row.package_id
+                    counts[pid] = counts.get(pid, 0) + 1
+            responses = [
+                PackageResponse.model_validate(p).model_copy(
+                    update={"inclusions_count": counts.get(p.id, 0)}
+                )
+                for p in page.items
+            ]
             return CursorPage(
-                items=items,
+                items=responses,
                 next_cursor=page.next_cursor,
                 has_more=page.has_next,
             )

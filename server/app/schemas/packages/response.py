@@ -83,6 +83,7 @@ class PackageResponse(BaseSchema):
     booking_count: int = 0
     vendor_id: uuid.UUID | None = None
     city_slug: str | None = None
+    inclusions_count: int = 0
     created_at: datetime
     updated_at: datetime
 

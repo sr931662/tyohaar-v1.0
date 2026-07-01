@@ -1,6 +1,8 @@
 import '../api_client.dart';
 import '../models.dart';
 
+
+
 class PackageService {
   final ApiClient _api = ApiClient();
 
@@ -32,6 +34,14 @@ class PackageService {
     final response = await _api.dio.get('packages/$packageId/items');
     final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => PackageItem.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<PackageCategory>> listCategories() async {
+    final response = await _api.dio.get('packages/categories');
+    final List list = response.data['data'];
+    return list
+        .map((item) => PackageCategory.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<Occasion>> listOccasions() async {

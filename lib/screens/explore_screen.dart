@@ -44,12 +44,15 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   final PackageService _packageService = PackageService();
-  String _catLabel = 'All';
+
+  // Category state — fetched from API on first load
+  List<PackageCategory> _categories = [];
+  String? _selectedCategoryId;
+
   String _searchQuery = '';
   List<Package> _allPackages = [];
   bool _isLoading = true;
-
-  final List<String> _cats = ['All', 'Life Events', 'Major Festivals', 'Minor Festivals'];
+  bool _categoriesLoaded = false;
 
   String get _selectedCitySlug => _CityPref.selected ?? '';
   String get _selectedCityLabel {
@@ -61,14 +64,33 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCategories();
     _loadPackages();
+  }
+
+  Future<void> _loadCategories() async {
+    if (_categoriesLoaded) return;
+    try {
+      final cats = await _packageService.listCategories();
+      if (mounted) {
+        setState(() {
+          _categories = cats;
+          _categoriesLoaded = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading categories: $e');
+    }
   }
 
   Future<void> _loadPackages() async {
     setState(() => _isLoading = true);
     try {
       final city = _selectedCitySlug.isEmpty ? null : _selectedCitySlug;
-      final packages = await _packageService.listPackages(city: city);
+      final packages = await _packageService.listPackages(
+        city: city,
+        categoryId: _selectedCategoryId,
+      );
       setState(() {
         _allPackages = packages;
         _isLoading = false;
@@ -163,17 +185,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final ty = context.ty;
     final topPadding = MediaQuery.of(context).padding.top + 70;
 
-    // Client-side category filter (category tabs are best-effort until category UUIDs
-    // are available from the API; city filtering is server-side).
-    List<Package> list = _allPackages.where((p) {
+    // Client-side search filter only — category and city are applied server-side.
+    final List<Package> list = _allPackages.where((p) {
       return p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           (p.slug ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
-
-    if (_catLabel != 'All') {
-      // Category filtering requires category metadata — pass as no-op for now.
-      // TODO: fetch categories and map slugs to UUIDs, then filter server-side.
-    }
 
     final featured = list.where((p) => p.isFeatured).take(5).toList();
 
@@ -264,13 +280,33 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 18),
-              itemCount: _cats.length,
+              itemCount: _categories.length + 1,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, i) => TyChip(
-                label: _cats[i],
-                active: _catLabel == _cats[i],
-                onTap: () => setState(() => _catLabel = _cats[i]),
-              ),
+              itemBuilder: (context, i) {
+                if (i == 0) {
+                  return TyChip(
+                    label: 'All',
+                    active: _selectedCategoryId == null,
+                    onTap: () {
+                      if (_selectedCategoryId != null) {
+                        setState(() => _selectedCategoryId = null);
+                        _loadPackages();
+                      }
+                    },
+                  );
+                }
+                final cat = _categories[i - 1];
+                return TyChip(
+                  label: cat.name,
+                  active: _selectedCategoryId == cat.id,
+                  onTap: () {
+                    if (_selectedCategoryId != cat.id) {
+                      setState(() => _selectedCategoryId = cat.id);
+                      _loadPackages();
+                    }
+                  },
+                );
+              },
             ),
           ),
           const SizedBox(height: 6),
@@ -458,7 +494,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   Text(p.name,
                       style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
                   const SizedBox(height: 1),
-                  Text('${p.inclusions.length} Inclusions',
+                  Text('${p.inclusionsCount} Inclusions',
                       style: TyType.sans(12.5, color: ty.ink2)),
                   const SizedBox(height: 12),
                   Row(

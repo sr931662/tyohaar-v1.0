@@ -141,6 +141,39 @@ class Occasion {
 }
 
 // ---------------------------------------------------------------------------
+// PACKAGE CATEGORY  →  PackageCategoryResponse
+// ---------------------------------------------------------------------------
+
+class PackageCategory {
+  final String id;
+  final String name;
+  final String slug;
+  final String? iconUrl;
+  final String? coverImageUrl;
+  final int displayOrder;
+
+  const PackageCategory({
+    required this.id,
+    required this.name,
+    required this.slug,
+    this.iconUrl,
+    this.coverImageUrl,
+    this.displayOrder = 0,
+  });
+
+  factory PackageCategory.fromJson(Map<String, dynamic> json) {
+    return PackageCategory(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      slug: json['slug'] as String,
+      iconUrl: json['icon_url'] as String?,
+      coverImageUrl: json['cover_image_url'] as String?,
+      displayOrder: json['display_order'] as int? ?? 0,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // PACKAGE  →  PackageResponse / PackageDetailResponse
 // ---------------------------------------------------------------------------
 
@@ -149,7 +182,9 @@ class Package {
   final String name;
   // base_price from backend.
   final double price;
-  // Populated only on detail endpoint (PackageDetailResponse.items).
+  // Count returned by the list endpoint (inclusions_count field).
+  final int inclusionsCount;
+  // Full item names — populated only on detail endpoint (PackageDetailResponse.items).
   final List<String> inclusions;
   final String? slug;
   final String? description;
@@ -179,6 +214,7 @@ class Package {
     required this.id,
     required this.name,
     required this.price,
+    this.inclusionsCount = 0,
     this.inclusions = const [],
     this.slug,
     this.description,
@@ -207,6 +243,7 @@ class Package {
       id: json['id'],
       name: json['name'],
       price: (json['base_price'] ?? 0).toDouble(),
+      inclusionsCount: json['inclusions_count'] as int? ?? 0,
       inclusions: (json['items'] as List?)
               ?.map((item) => item['name'] as String)
               .toList() ??
