@@ -1,6 +1,6 @@
 .head {
   max-width: 760px;
-  margin-bottom: clamp(40px, 6vw, 72px);
+  margin-bottom: clamp(16px, 2vw, 28px);
 }
 
 .center { margin-inline: auto; text-align: center; }
@@ -14,7 +14,7 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--saffron-deep);
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 .eyebrow::before {
   content: '';
@@ -26,7 +26,7 @@
 .center .eyebrow::before { display: none; }
 
 .title {
-  font-size: clamp(30px, 4.6vw, 54px);
+  font-size: clamp(24px, 3.5vw, 44px);
   color: var(--ink);
   margin: 0;
 }
@@ -40,9 +40,9 @@
 }
 
 .lede {
-  margin-top: 18px;
-  font-size: clamp(16px, 1.8vw, 20px);
-  line-height: 1.6;
+  margin-top: 10px;
+  font-size: clamp(14px, 1.4vw, 17px);
+  line-height: 1.55;
   color: var(--ink-2);
   max-width: 60ch;
 }

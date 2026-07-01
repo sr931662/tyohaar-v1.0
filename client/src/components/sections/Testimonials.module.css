@@ -1,9 +1,9 @@
-.wrap { background: var(--surface-2); }
+.wrap { background: var(--paper); }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: clamp(16px, 2vw, 24px);
+  gap: clamp(10px, 1.5vw, 16px);
 }
 
 .card {
@@ -11,7 +11,7 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  padding: clamp(26px, 3vw, 38px);
+  padding: clamp(16px, 2vw, 24px);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
@@ -31,34 +31,38 @@
   grid-column: 1 / -1;
   background: var(--ink);
 }
-.feature .quote { color: var(--on-ink); font-size: clamp(22px, 3vw, 32px); }
+.feature .quote { color: var(--on-ink); font-size: clamp(18px, 2.2vw, 26px); }
 .feature .name { color: var(--on-ink); }
 .feature .quoteMark { color: var(--accent-on-ink); }
 
 .quoteMark {
   position: absolute;
-  top: 14px;
-  right: 26px;
+  top: 8px;
+  right: 16px;
   font-family: var(--font-display);
-  font-size: 80px;
+  font-size: 72px;
   line-height: 1;
-  color: color-mix(in srgb, var(--tint) 40%, transparent);
+  color: color-mix(in srgb, var(--tint) 28%, transparent);
   pointer-events: none;
+  z-index: 0;
 }
 
 .quote {
   font-family: var(--font-display);
-  font-size: clamp(18px, 2vw, 23px);
+  font-size: clamp(15px, 1.6vw, 19px);
   line-height: 1.35;
   color: var(--ink);
-  margin: 0 0 26px;
+  margin: 0 0 14px;
   position: relative;
+  z-index: 1;
 }
 
 .cite {
   display: flex;
   align-items: center;
   gap: 14px;
+  position: relative;
+  z-index: 1;
 }
 .avatar {
   width: 44px;

@@ -1,8 +1,10 @@
+.wrap { background: var(--surface-2); }
+
 .layout {
   display: grid;
   grid-template-columns: 0.95fr 1.05fr;
   align-items: center;
-  gap: clamp(40px, 6vw, 88px);
+  gap: clamp(24px, 4vw, 52px);
 }
 
 /* collage */
@@ -11,7 +13,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: auto auto;
-  gap: 18px;
+  gap: 12px;
   align-items: start;
 }
 .m1 { grid-row: span 2; align-self: stretch; }
@@ -21,39 +23,49 @@
 
 /* copy */
 .eyebrow {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--saffron-deep);
-  margin-bottom: 18px;
+  margin-bottom: 10px;
+}
+.eyebrow::before {
+  content: '';
+  width: 26px;
+  height: 1.5px;
+  background: currentColor;
+  opacity: 0.6;
+  flex-shrink: 0;
 }
 .title {
-  font-size: clamp(28px, 4vw, 48px);
+  font-size: clamp(22px, 3vw, 38px);
   color: var(--ink);
   margin: 0;
 }
 .text {
-  margin: 22px 0 26px;
-  font-size: clamp(15px, 1.7vw, 18px);
-  line-height: 1.65;
+  margin: 12px 0 16px;
+  font-size: clamp(14px, 1.4vw, 16px);
+  line-height: 1.6;
   color: var(--ink-2);
   max-width: 52ch;
 }
 .list {
   list-style: none;
   padding: 0;
-  margin: 0 0 32px;
+  margin: 0 0 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 .list li {
   display: flex;
   align-items: center;
   gap: 13px;
-  font-size: 15.5px;
+  font-size: 14.5px;
   color: var(--ink);
 }
 .tick {

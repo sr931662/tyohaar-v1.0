@@ -3,16 +3,15 @@ import SectionHeading from '../ui/SectionHeading.jsx';
 import Flourish from '../ui/Flourish.jsx';
 import { steps } from '../../data/steps.js';
 import { fadeUp, fadeRight, stagger, inView } from '../../lib/motion';
-import panelLeft from '../../assets/ornaments/side-panel-left.svg';
-import panelRight from '../../assets/ornaments/side-panel-right.svg';
+import sidePanel from '../../assets/ornaments/create-a-tall-vertical-decorative-svg-panel-for-th.svg';
 import styles from './HowItWorks.module.css';
 
 export default function HowItWorks() {
   return (
     <section id="how" className={`ty-section ${styles.wrap}`}>
       {/* Tall decorative side panels framing the section */}
-      <img src={panelLeft} alt="" aria-hidden="true" className={styles.panelLeft} />
-      <img src={panelRight} alt="" aria-hidden="true" className={styles.panelRight} />
+      <img src={sidePanel} alt="" aria-hidden="true" className={styles.panelLeft} />
+      <img src={sidePanel} alt="" aria-hidden="true" className={styles.panelRight} />
 
       <div className="ty-container">
         <SectionHeading

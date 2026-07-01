@@ -1,20 +1,43 @@
+/* section-level decoration */
+.section {
+  position: relative;
+  overflow: hidden;
+  background: var(--paper);
+}
+.glow {
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 140%;
+  aspect-ratio: 1 / 1.2;
+  background: radial-gradient(
+    ellipse at 50% 14%,
+    color-mix(in srgb, var(--saffron) 22%, transparent),
+    transparent 60%
+  );
+  filter: blur(40px);
+  z-index: 0;
+  pointer-events: none;
+}
+
 .grid {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: clamp(12px, 1.4vw, 18px);
+  grid-template-columns: repeat(5, 1fr);
+  gap: clamp(8px, 1vw, 12px);
 }
 
 .tile {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  padding: clamp(18px, 2.2vw, 26px);
+  padding: clamp(12px, 1.5vw, 18px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
   position: relative;
   overflow: hidden;
   transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
@@ -38,12 +61,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--tint) 13%, var(--surface-2));
   color: var(--tint);
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   flex-shrink: 0;
 }
 
@@ -60,19 +83,22 @@
 }
 
 .note {
-  margin-top: clamp(32px, 4vw, 48px);
-  font-size: 14px;
-  line-height: 1.6;
+  margin-top: clamp(14px, 2vw, 22px);
+  font-size: 12.5px;
+  line-height: 1.5;
   color: var(--ink-3);
   max-width: 64ch;
-  padding-left: 18px;
+  padding-left: 14px;
   border-left: 2px solid var(--line);
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 1200px) {
+  .grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 900px) {
   .grid { grid-template-columns: repeat(3, 1fr); }
 }
-@media (max-width: 680px) {
+@media (max-width: 600px) {
   .grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 380px) {

@@ -7,8 +7,9 @@ import styles from './PackageServices.module.css';
 
 export default function PackageServices() {
   return (
-    <section id="services" className="ty-section">
-      <div className="ty-container">
+    <section id="services" className={`ty-section ${styles.section}`}>
+      <div className={styles.glow} aria-hidden="true" />
+      <div className="ty-container" style={{ position: 'relative', zIndex: 1 }}>
         <SectionHeading
           eyebrow="What's inside every package"
           title="13 services. One booking."

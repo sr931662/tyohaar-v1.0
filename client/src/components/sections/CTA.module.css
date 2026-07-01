@@ -2,7 +2,7 @@
   position: relative;
   background: var(--ink);
   border-radius: var(--r-xl);
-  padding: clamp(48px, 8vw, 100px) clamp(24px, 5vw, 64px);
+  padding: clamp(28px, 4vw, 56px) clamp(24px, 5vw, 64px);
   text-align: center;
   overflow: hidden;
   box-shadow: var(--shadow-lg);
@@ -42,7 +42,7 @@
 }
 .title {
   position: relative;
-  font-size: clamp(36px, 6vw, 72px);
+  font-size: clamp(28px, 4.5vw, 58px);
   color: var(--on-ink);
   margin: 0;
 }

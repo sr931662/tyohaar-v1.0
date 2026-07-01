@@ -10,7 +10,6 @@ import Marquee from './components/sections/Marquee.jsx';
 import Occasions from './components/sections/Occasions.jsx';
 import HowItWorks from './components/sections/HowItWorks.jsx';
 import PackageServices from './components/sections/PackageServices.jsx';
-import Packages from './components/sections/Packages.jsx';
 import Memories from './components/sections/Memories.jsx';
 import Testimonials from './components/sections/Testimonials.jsx';
 import CTA from './components/sections/CTA.jsx';
@@ -62,6 +61,7 @@ const SettingsPage          = lazy(() => import('./admin/pages/settings/Settings
 const ImportExportPage      = lazy(() => import('./admin/pages/io/ImportExportPage.jsx'));
 const AutomationPage        = lazy(() => import('./admin/pages/automation/AutomationPage.jsx'));
 const GlobalSearchPage      = lazy(() => import('./admin/pages/search/GlobalSearchPage.jsx'));
+const ReferralsPage         = lazy(() => import('./admin/pages/referrals/ReferralsPage.jsx'));
 
 function MarketingSite() {
   return (
@@ -73,7 +73,6 @@ function MarketingSite() {
         <Occasions />
         <HowItWorks />
         <PackageServices />
-        <Packages />
         <Memories />
         <Testimonials />
         <CTA />
@@ -169,6 +168,7 @@ export default function App() {
                 <Route path="io" element={<ImportExportPage />} />
                 <Route path="automation" element={<AutomationPage />} />
                 <Route path="search" element={<GlobalSearchPage />} />
+                <Route path="referrals" element={<ReferralsPage />} />
               </Route>
             </Routes>
           </AdminAuthProvider>

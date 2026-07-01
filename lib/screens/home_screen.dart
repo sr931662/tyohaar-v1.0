@@ -34,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Occasion> _occasions = [];
   Map<String, dynamic>? _activeCelebration;
   List<Guest> _guests = [];
+  List<CelebrationChecklistItem> _checklist = [];
   bool _isLoading = true;
   String? _error;
 
@@ -67,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (celebrations.isNotEmpty) {
           _activeCelebration = celebrations.first;
           _loadGuests(_activeCelebration!['id']);
+          _loadChecklist(_activeCelebration!['id']);
         }
         _isLoading = false;
         _error = null;
@@ -82,6 +84,15 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _guests = guests);
     } catch (e) {
       debugPrint('Error loading guests: $e');
+    }
+  }
+
+  Future<void> _loadChecklist(String celebrationId) async {
+    try {
+      final checklist = await _celebrationService.listChecklist(celebrationId);
+      setState(() => _checklist = checklist);
+    } catch (e) {
+      debugPrint('Error loading checklist: $e');
     }
   }
 
@@ -124,13 +135,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final totalGuests = _guests.fold<int>(0, (s, g) => s + g.count);
+    final rsvpdGuests = _guests.where((g) => g.rsvpStatus == 'confirmed').fold<int>(0, (s, g) => s + g.count);
     final pct = _activeCelebration?['progress_percentage'] ?? 0;
-    
-    // Placeholder for tasks if backend doesn't provide them yet
-    final openTasks = [
-      ['Confirm the venue', 'Now · The Courtyard'],
-      ['Shortlist catering tasting', '8 weeks before · Saffron Table'],
-    ];
+    final pendingTasks = _checklist.where((t) => !t.isCompleted).toList();
+    final openTasks = pendingTasks.take(2).toList();
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -154,51 +162,24 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 26),
 
-              SectionHeader('Up next',
-                  action: 'Timeline',
-                  onAction: () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your timeline')),
-              ...openTasks.map((t) => _taskRow(context, t[0], t[1])),
+              SectionHeader(‘Up next’,
+                  action: ‘Timeline’,
+                  onAction: () => _push(context, const PlanFlowScreen(startStep: 4), authAction: ‘view your timeline’)),
+              if (openTasks.isEmpty)
+                _taskRow(context, ‘All caught up!’, ‘No pending tasks right now’)
+              else
+                ...openTasks.map((t) => _taskRow(
+                  context,
+                  t.title,
+                  [if (t.timing != null) t.timing!, if (t.vendorName != null) t.vendorName!].join(‘ · ‘),
+                )),
               const SizedBox(height: 12),
-              _taskRow(context, 'Manage Invitations', '38 opened · 24 RSVP’d', 
-                  icon: Icons.mail_outline_rounded, 
-                  onTap: () => _push(context, const InvitationManagementScreen(), authAction: 'manage invitations')),
-              const SizedBox(height: 26),
-
-              SectionHeader('From your team'),
-              Container(
-                padding: const EdgeInsets.all(13),
-                decoration: _cardDecoration(ty),
-                child: Row(
-                  children: [
-                    const SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: PhotoPlaceholder(tint: 'rose', arch: false)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Frame Stories',
-                              style: TyType.sans(13.5, color: ty.ink, weight: FontWeight.w700)),
-                          const SizedBox(height: 2),
-                          Text('Shared 3 sample albums for your review ✨',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TyType.sans(12.5, color: ty.ink2)),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                          color: ty.saffron, borderRadius: BorderRadius.circular(11)),
-                      child: Icon(Icons.chat_bubble_outline_rounded,
-                          color: ty.onPrimary, size: 17),
-                    ),
-                  ],
-                ),
+              _taskRow(
+                context,
+                ‘Manage Invitations’,
+                totalGuests > 0 ? ‘$totalGuests invited · $rsvpdGuests RSVP\’d’ : ‘No invitations yet’,
+                icon: Icons.mail_outline_rounded,
+                onTap: () => _push(context, const InvitationManagementScreen(), authAction: ‘manage invitations’),
               ),
               const SizedBox(height: 26),
 
@@ -369,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _stackedAvatars(_guests, totalGuests),
                       const Spacer(),
-                      _progressChip(context, pct, 5), // Hardcoded 5 tasks left for now
+                      _progressChip(context, pct, pendingTasks.length),
                     ],
                   ),
                 ],

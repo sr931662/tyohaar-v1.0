@@ -11,8 +11,8 @@ export default function Packages() {
       <div className="ty-container">
         <SectionHeading
           eyebrow="Built for every scale"
-          title="Choose your celebration package"
-          lede="Three sizes to fit any gathering. Every package is fully customizable — add or remove services, and see your total update in real time."
+          title="Three tiers of celebration"
+          lede="From an intimate home gathering to a grand affair — pick the tier that fits your occasion. Pricing is tailored to your date and venue, shared with you in the app."
         />
 
         <motion.div
@@ -50,23 +50,10 @@ export default function Packages() {
                 {/* Guest count */}
                 <span className={styles.guests}>{pkg.guests}</span>
 
-                {/* Price */}
-                <p className={styles.price}>
-                  <span className={styles.from}>from</span>
-                  {' '}{pkg.from}
-                </p>
-
                 {/* Description */}
                 <p className={styles.desc}>{pkg.description}</p>
 
                 <div className={styles.divider} />
-
-                {/* Included services */}
-                <div className={styles.services}>
-                  {pkg.services.map((s) => (
-                    <span key={s} className={styles.serviceTag}>{s}</span>
-                  ))}
-                </div>
 
                 {/* Best for */}
                 <p className={styles.best}>
@@ -98,11 +85,11 @@ export default function Packages() {
           viewport={inView}
         >
           <p className={styles.customText}>
-            Need something different?{' '}
-            <a href="#download" className={styles.customLink}>Request a custom package →</a>
+            Need something tailor-made?{' '}
+            <a href="#download" className={styles.customLink}>Talk to us in the app →</a>
           </p>
           <p className={styles.customNote}>
-            Available on <strong>App Store</strong> and <strong>Google Play</strong> · Free to download
+            Exact pricing is confirmed after your date, venue and guest count — no surprises.
           </p>
         </motion.div>
       </div>

@@ -76,6 +76,24 @@ class StateOption {
   }
 }
 
+class FaqItem {
+  final String id;
+  final String question;
+  final String answer;
+  final String? category;
+
+  FaqItem({required this.id, required this.question, required this.answer, this.category});
+
+  factory FaqItem.fromJson(Map<String, dynamic> json) {
+    return FaqItem(
+      id: json['id'] as String,
+      question: json['question'] as String? ?? '',
+      answer: json['answer'] as String? ?? '',
+      category: json['faq_category'] as String?,
+    );
+  }
+}
+
 class CommonService {
   final ApiClient _api = ApiClient();
 
@@ -107,5 +125,13 @@ class CommonService {
     final response = await _api.dio.get('common/cities/search', queryParameters: {'q': query});
     final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => CityOption.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<FaqItem>> listFaqs({String? category}) async {
+    final response = await _api.dio.get('common/faqs', queryParameters: {
+      if (category != null) 'category': category,
+    });
+    final List list = (response.data['data'] ?? []) as List;
+    return list.map((item) => FaqItem.fromJson(item as Map<String, dynamic>)).toList();
   }
 }

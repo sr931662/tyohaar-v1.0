@@ -19,4 +19,10 @@ class CelebrationService {
     final List list = response.data['data'];
     return list.map((item) => Guest.fromJson(item)).toList();
   }
+
+  Future<List<CelebrationChecklistItem>> listChecklist(String celebrationId) async {
+    final response = await _api.dio.get('celebrations/$celebrationId/checklist');
+    final List list = response.data['data'] ?? [];
+    return list.map((item) => CelebrationChecklistItem.fromJson(item)).toList();
+  }
 }

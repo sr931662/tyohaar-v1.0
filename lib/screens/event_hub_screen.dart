@@ -24,6 +24,9 @@ class _EventHubScreenState extends State<EventHubScreen> {
   final CelebrationService _celebrationService = CelebrationService();
   Map<String, dynamic>? _celebration;
   List<Guest> _guests = [];
+  List<CelebrationChecklistItem> _checklist = [];
+  String _daysLeft = '--';
+  String _hoursLeft = '--';
   bool _isLoading = true;
 
   @override
@@ -43,12 +46,35 @@ class _EventHubScreenState extends State<EventHubScreen> {
         }
         id = celebrations.first['id'] as String;
       }
-      final details = await _celebrationService.getCelebrationDetails(id);
-      final guests = await _celebrationService.listGuests(id);
+      final detailsFuture = _celebrationService.getCelebrationDetails(id);
+      final guestsFuture = _celebrationService.listGuests(id);
+      final checklistFuture = _celebrationService.listChecklist(id);
+      final details = await detailsFuture;
+      final guests = await guestsFuture;
+      final checklist = await checklistFuture;
+
+      String daysLeft = '--';
+      String hoursLeft = '--';
+      final dateStr = details['scheduled_date'] as String?;
+      if (dateStr != null) {
+        final eventDate = DateTime.tryParse(dateStr);
+        if (eventDate != null && eventDate.isAfter(DateTime.now())) {
+          final diff = eventDate.difference(DateTime.now());
+          daysLeft = diff.inDays.toString().padLeft(2, '0');
+          hoursLeft = (diff.inHours % 24).toString().padLeft(2, '0');
+        } else {
+          daysLeft = '00';
+          hoursLeft = '00';
+        }
+      }
+
       if (mounted) {
         setState(() {
           _celebration = details;
           _guests = guests;
+          _checklist = checklist;
+          _daysLeft = daysLeft;
+          _hoursLeft = hoursLeft;
           _isLoading = false;
         });
       }
@@ -76,9 +102,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
 
     final totalGuests = _guests.fold<int>(0, (s, g) => s + g.count);
     final pct = _celebration?['progress_percentage'] ?? 0;
-    
-    // Placeholder for next task
-    const nextTask = 'Confirm the venue';
+    final nextTask = _checklist.where((t) => !t.isCompleted).map((t) => t.title).firstOrNull ?? 'All tasks complete!';
 
     return Scaffold(
       backgroundColor: ty.paper,
@@ -151,9 +175,9 @@ class _EventHubScreenState extends State<EventHubScreen> {
                 children: [
                   Row(
                     children: [
-                      _stat(context, '11', 'days'), // Still placeholder for days until
+                      _stat(context, _daysLeft, 'days'),
                       const SizedBox(width: 10),
-                      _stat(context, '06', 'hrs'),
+                      _stat(context, _hoursLeft, 'hrs'),
                       const SizedBox(width: 10),
                       _stat(context, '$totalGuests', 'guests'),
                     ],

@@ -423,6 +423,32 @@ class Celebration {
   }
 }
 
+class CelebrationChecklistItem {
+  final String id;
+  final String title;
+  final bool isCompleted;
+  final String? timing;
+  final String? vendorName;
+
+  CelebrationChecklistItem({
+    required this.id,
+    required this.title,
+    required this.isCompleted,
+    this.timing,
+    this.vendorName,
+  });
+
+  factory CelebrationChecklistItem.fromJson(Map<String, dynamic> json) {
+    return CelebrationChecklistItem(
+      id: json['id'],
+      title: json['title'],
+      isCompleted: json['is_completed'] ?? false,
+      timing: json['timing_label'] ?? json['timing'],
+      vendorName: json['vendor_name'] ?? json['vendor']?['name'],
+    );
+  }
+}
+
 // RESTORED UI-ONLY TYPES
 class Membership {
   final String type;

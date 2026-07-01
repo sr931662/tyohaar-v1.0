@@ -6,13 +6,14 @@ import '../../theme/typography.dart';
 import '../../data/models.dart';
 import '../../data/services/package_service.dart';
 import '../../data/services/user_service.dart';
+import '../../data/services/booking_service.dart';
+import 'package:tyohaar/screens/payment_screen.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/emblem.dart';
 import '../../widgets/photo_placeholder.dart';
 import '../../widgets/ty_button.dart';
 import '../../widgets/ty_chip.dart';
 import '../../widgets/common.dart';
-import 'package:tyohaar/screens/booking_confirmation_screen.dart';
 
 class PlanFlowScreen extends StatefulWidget {
   final int startStep;
@@ -25,6 +26,8 @@ class PlanFlowScreen extends StatefulWidget {
 class _PlanFlowScreenState extends State<PlanFlowScreen> {
   final PackageService _packageService = PackageService();
   final UserService _userService = UserService();
+  final BookingService _bookingService = BookingService();
+  bool _isSubmitting = false;
 
   static const _stepCount = 5;
   late int _step = widget.startStep.clamp(0, _stepCount - 1);
@@ -35,13 +38,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   bool _isLoading = true;
 
   Occasion? _occasion;
-  final _nameCtrl = TextEditingController(text: 'My Celebration');
-  final _placeCtrl = TextEditingController(text: 'Jaipur');
-  final Set<String> _vibes = {'Intimate', 'Traditional'};
-  final List<Guest> _guests = [Guest(id: 'g1', name: 'Sharma Family', count: 4, rsvpStatus: 'pending')];
+  final _nameCtrl = TextEditingController();
+  final _placeCtrl = TextEditingController();
+  final Set<String> _vibes = {};
+  final List<Guest> _guests = [];
   Package? _pkg;
   Address? _address;
-  DateTime _eventDate = DateTime.now().add(const Duration(days: 20));
+  DateTime _eventDate = DateTime.now().add(const Duration(days: 30));
 
   @override
   void initState() {
@@ -93,11 +96,39 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     }
   }
 
-  void _finish() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const BookingConfirmationScreen()),
-      (route) => false,
-    );
+  Future<void> _finish() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final booking = await _bookingService.createBooking({
+        'package_id': _pkg?.id,
+        'occasion_id': _occasion?.id,
+        'scheduled_date': _eventDate.toIso8601String().split('T').first,
+        'venue_address': _placeCtrl.text.isNotEmpty ? _placeCtrl.text : null,
+        'title': _nameCtrl.text.isNotEmpty ? _nameCtrl.text : 'My Celebration',
+        'address_id': _address?.id,
+        'notes': _vibes.isNotEmpty ? 'Mood: ${_vibes.join(', ')}' : null,
+      });
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PaymentScreen(
+            bookingId: booking.id,
+            amount: booking.totalAmount,
+            packageName: _pkg?.name ?? 'Celebration Package',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error creating booking: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not create booking. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   int get _totalGuests => _guests.fold<int>(0, (s, g) => s + g.count);
@@ -186,13 +217,18 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _footer(BuildContext context) {
     if (_step == 4) {
-      return TyButton('Proceed To Payment',
-          full: true, icon: Icons.payment_rounded, onTap: _finish);
+      return TyButton(
+        _isSubmitting ? 'Creating Booking...' : 'Proceed To Payment',
+        full: true,
+        icon: Icons.payment_rounded,
+        enabled: !_isSubmitting && _pkg != null,
+        onTap: _finish,
+      );
     }
-    return TyButton('Continue', 
-        full: true, 
+    return TyButton('Continue',
+        full: true,
         enabled: _step == 3 ? _pkg != null : true,
-        icon: Icons.chevron_right_rounded, 
+        icon: Icons.chevron_right_rounded,
         onTap: _next);
   }
 

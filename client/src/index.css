@@ -16,7 +16,7 @@
   --s9: 96px; --s10: 128px;
 
   /* Section vertical rhythm (responsive) */
-  --section-y: clamp(64px, 10vw, 140px);
+  --section-y: clamp(20px, 2vw, 36px);
   --gutter: clamp(20px, 5vw, 64px);
   --maxw: 1240px;
 
@@ -150,6 +150,11 @@ input, textarea, select { font: inherit; color: inherit; }
 .ty-section {
   padding-block: var(--section-y);
   position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-x: clip;
 }
 
 /* Display & headings */

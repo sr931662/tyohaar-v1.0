@@ -97,6 +97,81 @@ class VendorBooking {
   }
 }
 
+class VendorPublicDetail {
+  final String id;
+  final String businessName;
+  final String? businessCategory;
+  final String? bio;
+  final double? rating;
+  final int? totalReviews;
+  final String? location;
+  final bool? isVerified;
+  final int? yearsInBusiness;
+  final String tint;
+  final String? heroImageUrl;
+  final List<String> galleryUrls;
+
+  VendorPublicDetail({
+    required this.id,
+    required this.businessName,
+    this.businessCategory,
+    this.bio,
+    this.rating,
+    this.totalReviews,
+    this.location,
+    this.isVerified,
+    this.yearsInBusiness,
+    this.tint = 'saffron',
+    this.heroImageUrl,
+    this.galleryUrls = const [],
+  });
+
+  factory VendorPublicDetail.fromJson(Map<String, dynamic> json) {
+    final profile = json['vendor_profile'] as Map<String, dynamic>? ?? json;
+    final gallery = (json['gallery'] as List?)?.map((g) => g['image_url'] as String? ?? '').where((u) => u.isNotEmpty).toList() ?? <String>[];
+    return VendorPublicDetail(
+      id: json['id'] as String,
+      businessName: profile['business_name'] as String? ?? 'Vendor',
+      businessCategory: profile['category'] as String?,
+      bio: profile['bio'] as String?,
+      rating: (json['average_rating'] as num?)?.toDouble(),
+      totalReviews: json['total_reviews'] as int?,
+      location: profile['city'] as String? ?? profile['location'] as String?,
+      isVerified: json['is_verified'] as bool? ?? false,
+      yearsInBusiness: profile['years_in_business'] as int?,
+      tint: 'saffron',
+      heroImageUrl: (gallery.isNotEmpty) ? gallery.first : null,
+      galleryUrls: gallery,
+    );
+  }
+}
+
+class VendorReview {
+  final String id;
+  final String reviewerName;
+  final double rating;
+  final String? comment;
+  final DateTime createdAt;
+
+  VendorReview({
+    required this.id,
+    required this.reviewerName,
+    required this.rating,
+    this.comment,
+    required this.createdAt,
+  });
+
+  factory VendorReview.fromJson(Map<String, dynamic> json) {
+    return VendorReview(
+      id: json['id'] as String,
+      reviewerName: json['user']?['full_name'] as String? ?? 'Customer',
+      rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
+      comment: json['comment'] as String?,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
 class VendorService {
   final ApiClient _api = ApiClient();
 
@@ -123,5 +198,22 @@ class VendorService {
     return list
         .map((b) => VendorBooking.fromJson(b as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<VendorPublicDetail> getVendorById(String vendorId) async {
+    final response = await _api.dio.get('vendors/$vendorId');
+    return VendorPublicDetail.fromJson(response.data['data'] as Map<String, dynamic>);
+  }
+
+  Future<List<Map<String, dynamic>>> getVendorPackages(String vendorId) async {
+    final response = await _api.dio.get('vendors/$vendorId/packages');
+    final List list = response.data['data'] ?? [];
+    return List<Map<String, dynamic>>.from(list);
+  }
+
+  Future<List<VendorReview>> getVendorReviews(String vendorId, {int limit = 5}) async {
+    final response = await _api.dio.get('vendors/$vendorId/reviews', queryParameters: {'limit': limit});
+    final List list = response.data['data'] ?? [];
+    return list.map((r) => VendorReview.fromJson(r as Map<String, dynamic>)).toList();
   }
 }

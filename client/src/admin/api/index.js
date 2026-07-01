@@ -17,3 +17,4 @@ export { ioApi } from './endpoints/io';
 export { automationApi } from './endpoints/automation';
 export { searchApi } from './endpoints/search';
 export { budgetsApi } from './endpoints/budgets';
+export { referralsApi } from './endpoints/referrals';

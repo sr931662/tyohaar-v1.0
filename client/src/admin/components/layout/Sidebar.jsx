@@ -39,6 +39,7 @@ const NAV = [
       { to: '/admin/notifications', label: 'Notifications', icon: '🔔' },
       { to: '/admin/support', label: 'Support', icon: '🎧' },
       { to: '/admin/media', label: 'Media', icon: '🖼️' },
+      { to: '/admin/referrals', label: 'Referrals', icon: '🎁' },
     ],
   },
   {
