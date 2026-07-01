@@ -4,6 +4,7 @@ import 'package:shimmer/shimmer.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../data/models.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
 import '../data/auth_manager.dart';
@@ -19,7 +20,7 @@ class PlansScreen extends StatefulWidget {
 }
 
 class _PlansScreenState extends State<PlansScreen> {
-  List<Map<String, dynamic>> _celebrations = [];
+  List<Celebration> _celebrations = [];
   bool _loading = true;
   String? _error;
 
@@ -50,10 +51,9 @@ class _PlansScreenState extends State<PlansScreen> {
     return 'saffron';
   }
 
-  static String _dateLabel(String? raw) {
-    if (raw == null) return '';
+  static String _dateLabel(DateTime? dt) {
+    if (dt == null) return '';
     try {
-      final dt = DateTime.parse(raw);
       const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       return '${dt.day} ${months[dt.month - 1]}';
     } catch (_) {
@@ -165,17 +165,17 @@ class _PlansScreenState extends State<PlansScreen> {
     );
   }
 
-  Widget _celebrationCard(BuildContext context, Map<String, dynamic> c) {
+  Widget _celebrationCard(BuildContext context, Celebration c) {
     final ty = context.ty;
-    final title = c['title'] as String? ?? 'Untitled';
-    final occasionName = c['occasion']?['name'] as String? ?? '';
+    final title = c.title;
+    final occasionName = c.occasionName ?? '';
     final tint = _tintFor(occasionName);
-    final dateStr = _dateLabel(c['celebration_date'] as String?);
-    final status = c['status'] as String? ?? 'planning';
+    final dateStr = _dateLabel(c.celebrationDate);
+    final status = c.status ?? 'planning';
 
     return GestureDetector(
       onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => EventHubScreen(celebrationId: c['id'] as String)))
+          .push(MaterialPageRoute(builder: (_) => EventHubScreen(celebrationId: c.id)))
           .then((_) => _load()),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),

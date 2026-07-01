@@ -5,6 +5,7 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/celebration_service.dart';
+import '../data/services/budget_service.dart' as bs;
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
@@ -22,7 +23,8 @@ class EventHubScreen extends StatefulWidget {
 
 class _EventHubScreenState extends State<EventHubScreen> {
   final CelebrationService _celebrationService = CelebrationService();
-  Map<String, dynamic>? _celebration;
+  final bs.BudgetService _budgetService = bs.BudgetService();
+  Celebration? _celebration;
   List<Guest> _guests = [];
   List<CelebrationChecklistItem> _checklist = [];
   String _daysLeft = '--';
@@ -44,21 +46,23 @@ class _EventHubScreenState extends State<EventHubScreen> {
           setState(() => _isLoading = false);
           return;
         }
-        id = celebrations.first['id'] as String;
+        id = celebrations.first.id;
       }
       final detailsFuture = _celebrationService.getCelebrationDetails(id);
       final guestsFuture = _celebrationService.listGuests(id);
       final checklistFuture = _celebrationService.listChecklist(id);
+      final budgetFuture = _budgetService.getBudgetForCelebration(id);
+      
       final details = await detailsFuture;
       final guests = await guestsFuture;
       final checklist = await checklistFuture;
+      final budget = await budgetFuture;
 
       String daysLeft = '--';
       String hoursLeft = '--';
-      final dateStr = details['scheduled_date'] as String?;
-      if (dateStr != null) {
-        final eventDate = DateTime.tryParse(dateStr);
-        if (eventDate != null && eventDate.isAfter(DateTime.now())) {
+      final eventDate = details.celebrationDate;
+      if (eventDate != null) {
+        if (eventDate.isAfter(DateTime.now())) {
           final diff = eventDate.difference(DateTime.now());
           daysLeft = diff.inDays.toString().padLeft(2, '0');
           hoursLeft = (diff.inHours % 24).toString().padLeft(2, '0');
@@ -101,8 +105,11 @@ class _EventHubScreenState extends State<EventHubScreen> {
     }
 
     final totalGuests = _guests.length;
-    final pct = _celebration?['progress_percentage'] ?? 0;
+    final pct = _celebration?.completionPercentage ?? 0;
     final nextTask = _checklist.where((t) => !t.isCompleted).map((t) => t.title).firstOrNull ?? 'All tasks complete!';
+
+    final dt = _celebration?.celebrationDate;
+    final date = dt != null ? '${dt.day}/${dt.month}/${dt.year}' : '';
 
     return Scaffold(
       backgroundColor: ty.paper,
@@ -112,7 +119,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
           Stack(
             children: [
               CachedNetworkImage(
-                imageUrl: _celebration?['hero_image_url'] ?? '',
+                imageUrl: _celebration?.heroImageUrl ?? '',
                 height: 360,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -150,15 +157,15 @@ class _EventHubScreenState extends State<EventHubScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TyPill('${_celebration?['category']} · ${_celebration?['occasion']?['name_localized'] ?? ""}',
+                    TyPill('${_celebration?.category ?? 'Celebration'} · ${_celebration?.occasionName ?? ""}',
                         background: ty.saffron, foreground: ty.onPrimary),
                     const SizedBox(height: 12),
-                    Text(_celebration?['title'] ?? '', style: TyType.display(38, color: Colors.white)),
+                    Text(_celebration?.title ?? '', style: TyType.display(38, color: Colors.white)),
                     const SizedBox(height: 8),
                     Row(children: [
                       const Icon(Icons.event, size: 16, color: Colors.white70),
                       const SizedBox(width: 8),
-                      Text('${_celebration?['scheduled_date']} · ${_celebration?['scheduled_time'] ?? ""}',
+                      Text('$date',
                           style: TyType.sans(14, color: Colors.white70)),
                     ]),
                   ],
@@ -223,22 +230,13 @@ class _EventHubScreenState extends State<EventHubScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(_celebration?['package']?['name'] ?? 'Custom Package',
+                            Text('Custom Package',
                                 style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
                             const Spacer(),
-                            Text('₹${_celebration?['package']?['base_price'] ?? 0}',
-                                style: TyType.sans(16, color: ty.saffronDeep, weight: FontWeight.w800)),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8, runSpacing: 8,
-                          children: (_celebration?['package']?['items'] as List?)?.take(3).map((item) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: ty.surface2, borderRadius: BorderRadius.circular(6)),
-                            child: Text(item['name'], style: TyType.sans(11, color: ty.ink)),
-                          )).toList() ?? [],
-                        ),
+                        const Text('View details in your plans'),
                       ],
                     ),
                   ),
@@ -247,7 +245,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                     children: [
                       Expanded(
                         child: _navCard(context, Icons.account_balance_wallet_outlined,
-                            'Budget', '₹${_celebration?['budget']?['total_amount'] ?? 0}', const BudgetScreen()),
+                            'Budget', '₹${_celebration?.estimatedBudget ?? 0}', const BudgetScreen()),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

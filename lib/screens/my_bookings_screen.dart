@@ -9,6 +9,7 @@ import '../data/models.dart';
 import '../data/services/booking_service.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
+import '../widgets/state_screens.dart';
 import 'event_hub_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -93,38 +94,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 
   Widget _buildError(BuildContext context) {
-    final ty = context.ty;
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
-          const SizedBox(height: 12),
-          Text(_error!, style: TyType.sans(14, color: ty.ink2)),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: _loadBookings,
-            child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
+    return TyStateScreen.error(onAction: _loadBookings);
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    final ty = context.ty;
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.calendar_today_outlined, size: 64, color: ty.ink3),
-          const SizedBox(height: 16),
-          Text('No bookings yet', style: TyType.display(20, color: ty.ink)),
-          const SizedBox(height: 8),
-          Text('Your upcoming celebrations will appear here.', 
-            style: TyType.sans(14, color: ty.ink2)),
-        ],
-      ),
+    return TyStateScreen.empty(
+      title: 'No bookings yet',
+      message: 'Your upcoming celebrations will appear here once you start planning.',
+      icon: Icons.calendar_today_outlined,
+      actionLabel: 'Start Planning',
+      onAction: () => Navigator.of(context).pop(),
     );
   }
 

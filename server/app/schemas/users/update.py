@@ -36,8 +36,7 @@ class UserUpdate(BaseSchema):
     """
     Partial update schema for the User model.
 
-    Phone, role, and account/verification status are intentionally excluded:
-      - phone changes require a dedicated OTP re-verification flow.
+    Role and account/verification status are intentionally excluded:
       - role/status changes are admin-only operations handled by separate endpoints.
     """
 
@@ -47,6 +46,11 @@ class UserUpdate(BaseSchema):
         default=None,
         max_length=320,
         description="Updated email address. Triggers re-verification flow.",
+    )
+    phone: str | None = Field(
+        default=None,
+        max_length=15,
+        description="Updated phone number. Production-grade usually requires OTP.",
     )
     username: str | None = Field(
         default=None,
@@ -74,6 +78,13 @@ class UserUpdate(BaseSchema):
         if v is None:
             return None
         return v.strip().lower()
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalise_phone_field(cls, v: str | None) -> str | None:
+        if v is None or v.strip() == "":
+            return None
+        return normalize_phone(v)
 
     @field_validator("username", mode="before")
     @classmethod

@@ -45,6 +45,20 @@ export function VendorAuthProvider({ children }) {
     return userData;
   }, []);
 
+  const loginWithGoogle = useCallback(async (idToken, remember = true) => {
+    const data = await vendorAuthApi.loginWithGoogle(idToken);
+    if (!data.access_token) {
+      // New or not-yet-approved account — nothing to log in to yet.
+      return { pending: true };
+    }
+    const store = remember ? localStorage : sessionStorage;
+    store.setItem('vendor_token', data.access_token);
+    const userData = await vendorAuthApi.me();
+    setUser(userData);
+    store.setItem('vendor_user', JSON.stringify(userData));
+    return { pending: false, user: userData };
+  }, []);
+
   const logout = useCallback(async () => {
     try { await vendorAuthApi.logout(); } catch { /* ignore */ }
     localStorage.removeItem('vendor_token');
@@ -55,7 +69,7 @@ export function VendorAuthProvider({ children }) {
   }, []);
 
   return (
-    <VendorAuthContext.Provider value={{ user, loading, loginWithPassword, logout }}>
+    <VendorAuthContext.Provider value={{ user, loading, loginWithPassword, loginWithGoogle, logout }}>
       {children}
     </VendorAuthContext.Provider>
   );

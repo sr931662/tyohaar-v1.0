@@ -25,6 +25,8 @@ import VendorLayout from './vendor/components/layout/VendorLayout.jsx';
 
 // Vendor pages — lazy loaded
 const VendorLoginPage           = lazy(() => import('./vendor/pages/auth/VendorLoginPage.jsx'));
+const VendorRegisterPage        = lazy(() => import('./vendor/pages/auth/VendorRegisterPage.jsx'));
+const VendorForgotPasswordPage  = lazy(() => import('./vendor/pages/auth/VendorForgotPasswordPage.jsx'));
 const VendorOverviewPage        = lazy(() => import('./vendor/pages/overview/VendorOverviewPage.jsx'));
 const VendorProfilePage         = lazy(() => import('./vendor/pages/profile/VendorProfilePage.jsx'));
 const VendorPackagesPage        = lazy(() => import('./vendor/pages/packages/VendorPackagesPage.jsx'));
@@ -107,6 +109,22 @@ export default function App() {
                 element={
                   <Suspense fallback={<AdminFallback />}>
                     <VendorLoginPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="register"
+                element={
+                  <Suspense fallback={<AdminFallback />}>
+                    <VendorRegisterPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="forgot-password"
+                element={
+                  <Suspense fallback={<AdminFallback />}>
+                    <VendorForgotPasswordPage />
                   </Suspense>
                 }
               />

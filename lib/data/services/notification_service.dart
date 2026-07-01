@@ -7,35 +7,15 @@ class NotificationService {
   Future<List<NotifItem>> listNotifications() async {
     final response = await _api.dio.get('notifications');
     final List list = response.data['data'];
-    return list.map<NotifItem>((item) {
-      return NotifItem(
-        icon: _getIconForType(item['notification_type'] ?? ''),
-        tint: _getTintForType(item['notification_type'] ?? ''),
-        who: item['sender_name'] ?? 'System',
-        text: item['body'] ?? '',
-        time: _formatRelativeTime(DateTime.parse(item['created_at'])),
-        unread: item['status'] == 'pending' || item['status'] == 'delivered',
-      );
-    }).toList();
+    return list.map<NotifItem>((item) => NotifItem.fromJson(item)).toList();
   }
 
-  String _getIconForType(String type) {
-    if (type.contains('booking')) return 'check';
-    if (type.contains('payment')) return 'wallet';
-    if (type.contains('chat')) return 'chat';
-    return 'spark';
+  Future<void> markAllAsRead() async {
+    await _api.dio.post('notifications/mark-read');
   }
 
-  String _getTintForType(String type) {
-    if (type.contains('booking')) return 'leaf';
-    if (type.contains('payment')) return 'gold';
-    return 'saffron';
-  }
-
-  String _formatRelativeTime(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    return '${diff.inDays}d';
+  Future<int> getUnreadCount() async {
+    final list = await listNotifications();
+    return list.where((n) => n.unread).length;
   }
 }

@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     # ── Upload ───────────────────────────────────────────────────────────────
     MAX_UPLOAD_SIZE_MB: int = 10
 
+    # ── OAuth ────────────────────────────────────────────────────────────────
+    # Google Cloud Console → APIs & Services → Credentials → OAuth Client ID (Web).
+    # Leave blank in dev; Google Sign-In endpoints return a clear error until set.
+    GOOGLE_CLIENT_ID: str = ""
+
     # ── Properties ───────────────────────────────────────────────────────────
 
     @property

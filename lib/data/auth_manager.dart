@@ -96,7 +96,10 @@ class AuthManager extends ChangeNotifier {
 
   /// Checks if the user is authenticated; shows the login gate if not.
   bool checkAuth(BuildContext context, {required String action, VoidCallback? onAuthenticated}) {
-    if (_isAuthenticated) return true;
+    if (_isAuthenticated) {
+      onAuthenticated?.call();
+      return true;
+    }
     showAuthGate(context, action: action, onAuthenticated: onAuthenticated);
     return false;
   }

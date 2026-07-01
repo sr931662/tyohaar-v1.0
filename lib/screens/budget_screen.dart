@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'package:provider/provider.dart';
+
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/celebration_service.dart';
+import '../data/services/budget_service.dart' as bs;
 import '../widgets/common.dart';
+import '../widgets/state_screens.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -29,21 +33,37 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Future<void> _loadBudgetData() async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      final celebrations = await _celebrationService.listCelebrations();
+      final celebSvc = context.read<CelebrationService>();
+      final budgetSvc = context.read<bs.BudgetService>();
+
+      final celebrations = await celebSvc.listCelebrations();
       if (celebrations.isNotEmpty) {
-        final details = await _celebrationService.getCelebrationDetails(celebrations.first['id']);
-        final budget = details['budget'];
-        if (mounted) {
-          setState(() {
-            _totalBudget = (budget?['total_amount'] ?? 0).toDouble();
-            _expenses = (budget?['expenses'] as List?)?.map((e) => BudgetExpense.fromJson(e)).toList() ?? [];
-            _isLoading = false;
-          });
+        final activeCeleb = celebrations.first;
+        final budget = await budgetSvc.getBudgetForCelebration(activeCeleb.id);
+        
+        if (budget != null) {
+          final expenses = await budgetSvc.listExpenses(budget.id);
+          if (mounted) {
+            setState(() {
+              _totalBudget = budget.totalPlanned;
+              _expenses = expenses;
+              _isLoading = false;
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _totalBudget = activeCeleb.estimatedBudget ?? 0;
+              _expenses = [];
+              _isLoading = false;
+            });
+          }
         }
       } else {
         if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
+      debugPrint('Error loading budget: $e');
       if (mounted) setState(() { _error = 'Could not load budget data.'; _isLoading = false; });
     }
   }
@@ -77,21 +97,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       return Scaffold(
         backgroundColor: ty.paper,
         appBar: tyAppBar(context, title: 'Budget'),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
-              const SizedBox(height: 12),
-              Text(_error!, style: TyType.sans(14, color: ty.ink2)),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: _loadBudgetData,
-                child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
-              ),
-            ],
-          ),
-        ),
+        body: TyStateScreen.error(onAction: _loadBudgetData),
       );
     }
 

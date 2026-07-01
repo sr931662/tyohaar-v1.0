@@ -493,8 +493,9 @@ class Guest {
   String rsvpStatus;
   final String? relation;
   final String? notes;
-  // group_size does not exist in backend — each guest record is one person.
-  // The count field is removed; use a guest list length for totals.
+  // count is a UI-only field used in plan flow to specify party size.
+  // Backend has no group_size; each guest record is one person.
+  int count;
 
   Guest({
     required this.id,
@@ -504,6 +505,7 @@ class Guest {
     required this.rsvpStatus,
     this.relation,
     this.notes,
+    this.count = 1,
   });
 
   factory Guest.fromJson(Map<String, dynamic> json) {
@@ -794,10 +796,11 @@ class Review {
 class Celebration {
   final String id;
   final String title;
-  // Backend sends occasion_id (UUID). occasionName is only available if the
-  // endpoint nests an 'occasion' object (non-standard extension).
+  // Backend sends occasion_id (UUID).
   final String? occasionId;
   final String? occasionName;
+  final String? category;
+  final String? heroImageUrl;
   final String? status;
   final DateTime? celebrationDate;
   final int guestCount;
@@ -811,6 +814,8 @@ class Celebration {
     required this.title,
     this.occasionId,
     this.occasionName,
+    this.category,
+    this.heroImageUrl,
     this.status,
     this.celebrationDate,
     this.guestCount = 0,
@@ -821,12 +826,14 @@ class Celebration {
   });
 
   factory Celebration.fromJson(Map<String, dynamic> json) {
+    final occasion = json['occasion'] as Map?;
     return Celebration(
       id: json['id'] as String,
       title: json['title'] as String? ?? 'Untitled',
       occasionId: json['occasion_id'] as String?,
-      // Backend sends occasion_id only; name available only if endpoint nests occasion.
-      occasionName: (json['occasion'] as Map?)?['name'] as String?,
+      occasionName: occasion?['name'] as String?,
+      category: occasion?['category'] as String?,
+      heroImageUrl: occasion?['cover_image_url'] as String?,
       status: json['status'] as String?,
       celebrationDate: json['celebration_date'] != null
           ? DateTime.tryParse(json['celebration_date'] as String)

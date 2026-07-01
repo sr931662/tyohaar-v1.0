@@ -15,7 +15,7 @@ class InvitationManagementScreen extends StatefulWidget {
 
 class _InvitationManagementScreenState extends State<InvitationManagementScreen> {
   final CelebrationService _celebrationService = CelebrationService();
-  Map<String, dynamic>? _celebration;
+  Celebration? _celebration;
   List<Guest> _guests = [];
   bool _isLoading = true;
 
@@ -29,8 +29,8 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
     try {
       final celebrations = await _celebrationService.listCelebrations();
       if (celebrations.isNotEmpty) {
-        final details = await _celebrationService.getCelebrationDetails(celebrations.first['id']);
-        final guests = await _celebrationService.listGuests(celebrations.first['id']);
+        final details = await _celebrationService.getCelebrationDetails(celebrations.first.id);
+        final guests = await _celebrationService.listGuests(celebrations.first.id);
         setState(() {
           _celebration = details;
           _guests = guests;
@@ -88,8 +88,8 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
                           const SizedBox(height: 16),
                           Text('INVITATION PREVIEW', style: TyType.eyebrow(12, color: ty.saffronDeep)),
                           const SizedBox(height: 8),
-                          Text(_celebration?['title'] ?? 'My Celebration', style: TyType.display(24, color: ty.ink)),
-                          Text('${_celebration?['scheduled_date']} · ${_celebration?['venue_address'] ?? ""}', style: TyType.sans(14, color: ty.ink2)),
+                          Text(_celebration?.title ?? 'My Celebration', style: TyType.display(24, color: ty.ink)),
+                          Text('${_celebration?.celebrationDate != null ? '${_celebration!.celebrationDate!.day}/${_celebration!.celebrationDate!.month}/${_celebration!.celebrationDate!.year}' : ''} · ${_celebration?.venueAddress ?? ""}', style: TyType.sans(14, color: ty.ink2)),
                         ],
                       ),
                     ),

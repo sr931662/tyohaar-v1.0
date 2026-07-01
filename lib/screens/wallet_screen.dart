@@ -193,7 +193,7 @@ class _WalletScreenState extends State<WalletScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(tx.description, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+                Text(tx.description ?? '', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
                 Text(dateStr, style: TyType.sans(12, color: ty.ink3)),
               ],
             ),

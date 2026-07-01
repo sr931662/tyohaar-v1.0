@@ -47,6 +47,39 @@ router.add_api_route(
 )
 
 router.add_api_route(
+    "/vendor/register",
+    ctrl.register_vendor,
+    methods=["POST"],
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_201_CREATED,
+    summary="Vendor Registration",
+    description="Register a new vendor account (pending admin approval) using email and password.",
+    operation_id="auth_vendor_register",
+)
+
+router.add_api_route(
+    "/password/reset",
+    ctrl.reset_password,
+    methods=["POST"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Reset Password",
+    description="Verify an emailed OTP (purpose=password_reset) and set a new password.",
+    operation_id="auth_reset_password",
+)
+
+router.add_api_route(
+    "/vendor/google",
+    ctrl.google_vendor_auth,
+    methods=["POST"],
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Vendor Google Sign-In",
+    description="Authenticate or register a vendor using a Google ID token.",
+    operation_id="auth_vendor_google",
+)
+
+router.add_api_route(
     "/otp/request",
     ctrl.request_otp,
     methods=["POST"],

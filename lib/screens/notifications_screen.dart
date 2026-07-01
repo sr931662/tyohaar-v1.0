@@ -5,6 +5,7 @@ import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/notification_service.dart';
 import '../widgets/common.dart';
+import '../widgets/state_screens.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -45,7 +46,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           padding: const EdgeInsets.only(right: 18),
           child: Center(
             child: GestureDetector(
-              onTap: () {},
+              onTap: () async {
+                await _notificationService.markAllAsRead();
+                _loadNotifications();
+              },
               child: Text('Mark read',
                   style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700)),
             ),
@@ -55,21 +59,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline_rounded, size: 48, color: context.ty.rose),
-                      const SizedBox(height: 12),
-                      Text(_error!, style: TyType.sans(14, color: context.ty.ink2)),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: _loadNotifications,
-                        child: Text('Try Again', style: TyType.sans(14, color: context.ty.saffron, weight: FontWeight.w700)),
-                      ),
-                    ],
-                  ),
-                )
+              ? TyStateScreen.error(onAction: _loadNotifications)
               : _notifications.isEmpty
                   ? _buildEmptyState(context)
                   : ListView(
@@ -82,21 +72,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    final ty = context.ty;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 80),
-        child: Column(
-          children: [
-            Icon(Icons.notifications_none_rounded, size: 64, color: ty.ink3),
-            const SizedBox(height: 16),
-            Text('No activity yet', style: TyType.display(20, color: ty.ink)),
-            const SizedBox(height: 8),
-            Text('We\'ll notify you about your bookings and updates.', 
-              style: TyType.sans(14, color: ty.ink2)),
-          ],
-        ),
-      ),
+    return TyStateScreen.empty(
+      title: 'No activity yet',
+      message: "We'll notify you here about your bookings, payments, and upcoming celebrations.",
+      icon: Icons.notifications_none_rounded,
     );
   }
 

@@ -19,6 +19,7 @@ from app.models.enums import (
     OTPDeliveryChannel,
     OTPPurpose,
     Platform,
+    VendorType,
 )
 from app.schemas.base import BaseSchema
 from app.schemas.auth.common import (
@@ -28,6 +29,7 @@ from app.schemas.auth.common import (
     OTPIdentifier,
     validate_otp_identifier,
 )
+from app.schemas.users.common import normalize_phone
 
 __all__ = [
     "OTPRequestCreate",
@@ -36,6 +38,9 @@ __all__ = [
     "RefreshTokenCreate",
     "UserRegisterCreate",
     "UserLoginCreate",
+    "VendorRegisterCreate",
+    "PasswordResetConfirmCreate",
+    "GoogleAuthCreate",
 ]
 
 
@@ -50,6 +55,58 @@ class UserLoginCreate(BaseSchema):
     """Request body for traditional email/password login."""
     email: str = Field(..., description="Registered email address.")
     password: str = Field(..., description="Plaintext password.")
+
+
+class VendorRegisterCreate(BaseSchema):
+    """
+    Request body for `POST /auth/vendor/register`.
+
+    Creates a User (role=VENDOR) and a stub Vendor business profile in one
+    transaction. The account is created with account_status=PENDING_VERIFICATION
+    and cannot log in until an admin approves it.
+    """
+
+    email: str = Field(..., description="Valid email address.")
+    password: str = Field(..., min_length=8, description="Password (min 8 chars).")
+    full_name: str = Field(..., min_length=2, max_length=200, description="Vendor owner/contact name.")
+    phone: str = Field(..., description="Contact phone number.")
+    business_name: str = Field(..., min_length=2, max_length=200, description="Public-facing trading name.")
+    vendor_type: VendorType = Field(description="Primary service category.")
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalise_email(cls, v: str) -> str:
+        return v.strip().lower()
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalise_phone(cls, v: str) -> str:
+        return normalize_phone(v)
+
+
+class PasswordResetConfirmCreate(BaseSchema):
+    """
+    Request body for `POST /auth/password/reset`.
+
+    Submitted after the user has requested and received an OTP via
+    `POST /auth/otp/request` with purpose=PASSWORD_RESET. Verifies the OTP
+    and sets the new password in one step.
+    """
+
+    email: str = Field(..., description="Email address the OTP was sent to.")
+    otp_code: OTPCode = Field(description="OTP code received via email.")
+    new_password: str = Field(..., min_length=8, description="New password (min 8 chars).")
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalise_email(cls, v: str) -> str:
+        return v.strip().lower()
+
+
+class GoogleAuthCreate(BaseSchema):
+    """Request body for Google Sign-In. `id_token` is the credential returned by Google Identity Services on the client."""
+
+    id_token: str = Field(..., description="Google-issued ID token (JWT) from the client-side Sign-In flow.")
 
 
 class OTPRequestCreate(BaseSchema):

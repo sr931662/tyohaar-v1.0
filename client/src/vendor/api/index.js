@@ -5,6 +5,14 @@ import { vendorClient, extractData, extractList, extractPaginated } from './clie
 export const vendorAuthApi = {
   loginWithPassword: (email, password) =>
     vendorClient.post('/auth/vendor/login', { email, password }).then(extractData),
+  register: (body) =>
+    vendorClient.post('/auth/vendor/register', body).then(extractData),
+  loginWithGoogle: (idToken) =>
+    vendorClient.post('/auth/vendor/google', { id_token: idToken }).then(extractData),
+  requestPasswordResetOtp: (email) =>
+    vendorClient.post('/auth/otp/request', { identifier: email, channel: 'email', purpose: 'password_reset' }).then(extractData),
+  resetPassword: (email, otpCode, newPassword) =>
+    vendorClient.post('/auth/password/reset', { email, otp_code: otpCode, new_password: newPassword }).then(extractData),
   logout: () =>
     vendorClient.post('/auth/logout').then(extractData),
   me: () =>

@@ -19,6 +19,7 @@ import 'data/services/membership_service.dart';
 import 'data/services/referral_service.dart';
 import 'data/services/common_service.dart';
 import 'data/services/vendor_service.dart';
+import 'data/services/budget_service.dart';
 import 'screens/vendor/vendor_root_nav.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/root_nav.dart';
@@ -45,6 +46,7 @@ class TyohaarApp extends StatelessWidget {
         Provider(create: (_) => ReferralService()),
         Provider(create: (_) => CommonService()),
         Provider(create: (_) => VendorService()),
+        Provider(create: (_) => BudgetService()),
       ],
       child: ListenableBuilder(
         listenable: Listenable.merge([themeController, AppState.instance]),
@@ -58,48 +60,7 @@ class TyohaarApp extends StatelessWidget {
             darkTheme: buildTyTheme(Brightness.dark),
             themeMode: themeController.mode,
             builder: (context, child) {
-              return Stack(
-                children: [
-                  if (child != null) child,
-                  Positioned(
-                    right: 16,
-                    bottom: 100,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: GestureDetector(
-                        onTap: () => AppState.instance.togglePOV(),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.8),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 10),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.swap_horiz_rounded,
-                                  color: Colors.white, size: 20),
-                              const SizedBox(height: 4),
-                              Text(
-                                pov == UserPOV.customer ? 'TO VENDOR' : 'TO CUSTOMER',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
+              return child ?? const SizedBox.shrink();
             },
             home: pov == UserPOV.vendor
                 ? const VendorRootNav()

@@ -16,7 +16,15 @@ from app.core.current_user import CurrentUserDep
 from app.core.dependencies import AuthServiceDep
 from app.core.responses import SuccessResponse
 from app.core.security import create_access_token, get_token_from_header
-from app.schemas.auth.create import OTPRequestCreate, OTPVerifyCreate, UserRegisterCreate, UserLoginCreate
+from app.schemas.auth.create import (
+    GoogleAuthCreate,
+    OTPRequestCreate,
+    OTPVerifyCreate,
+    PasswordResetConfirmCreate,
+    UserRegisterCreate,
+    UserLoginCreate,
+    VendorRegisterCreate,
+)
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
 from app.services.auth.service import TokenPairResponse
 from app.services.admin.helpers import verify_admin_password
@@ -50,6 +58,43 @@ async def vendor_login(
         data={"access_token": result.access_token, "token_type": result.token_type},
         message="Vendor login successful.",
     )
+
+async def register_vendor(
+    body: VendorRegisterCreate,
+    service: AuthServiceDep,
+) -> SuccessResponse[dict]:
+    result = await service.register_vendor(body)
+    return SuccessResponse(
+        data=result,
+        message="Vendor registration submitted. You can sign in once an admin approves your account.",
+    )
+
+
+async def reset_password(
+    body: PasswordResetConfirmCreate,
+    service: AuthServiceDep,
+) -> SuccessResponse[None]:
+    await service.reset_password(body)
+    return SuccessResponse(data=None, message="Password reset successfully. You can now log in.")
+
+
+async def google_vendor_auth(
+    body: GoogleAuthCreate,
+    service: AuthServiceDep,
+    request: Request,
+) -> SuccessResponse[dict]:
+    result = await service.authenticate_vendor_google(
+        id_token_str=body.id_token,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("User-Agent"),
+    )
+    message = (
+        "Signed in successfully."
+        if "access_token" in result
+        else "Your vendor account is pending admin approval."
+    )
+    return SuccessResponse(data=result, message=message)
+
 
 async def register(
     body: UserRegisterCreate,

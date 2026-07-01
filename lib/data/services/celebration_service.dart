@@ -4,14 +4,15 @@ import '../models.dart';
 class CelebrationService {
   final ApiClient _api = ApiClient();
 
-  Future<List<Map<String, dynamic>>> listCelebrations() async {
+  Future<List<Celebration>> listCelebrations() async {
     final response = await _api.dio.get('celebrations');
-    return List<Map<String, dynamic>>.from(response.data['data']);
+    final List list = response.data['data'];
+    return list.map((item) => Celebration.fromJson(item)).toList();
   }
 
-  Future<Map<String, dynamic>> getCelebrationDetails(String id) async {
+  Future<Celebration> getCelebrationDetails(String id) async {
     final response = await _api.dio.get('celebrations/$id');
-    return Map<String, dynamic>.from(response.data['data']);
+    return Celebration.fromJson(response.data['data']);
   }
 
   Future<List<Guest>> listGuests(String celebrationId) async {

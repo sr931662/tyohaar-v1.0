@@ -35,7 +35,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
     try {
       final celebrations = await _celebrationService.listCelebrations();
       if (celebrations.isNotEmpty) {
-        _activeCelebrationId = celebrations.first['id'];
+        _activeCelebrationId = celebrations.first.id;
         final guests = await _celebrationService.listGuests(_activeCelebrationId!);
         if (mounted) setState(() { _guests = guests; _isLoading = false; });
       } else {

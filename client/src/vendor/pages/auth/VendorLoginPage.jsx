@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useVendorAuth } from '../../context/VendorAuthContext';
+import GoogleSignInButton from '../../components/GoogleSignInButton';
 import logoSrc from '../../../assets/logo.png';
 import '@/admin/admin.css';
 
@@ -18,7 +19,7 @@ const EyeClosed = () => (
 );
 
 export default function VendorLoginPage() {
-  const { loginWithPassword } = useVendorAuth();
+  const { loginWithPassword, loginWithGoogle } = useVendorAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -39,6 +40,25 @@ export default function VendorLoginPage() {
       navigate('/vendor', { replace: true });
     } catch (err) {
       const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Invalid email or password.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleCredential = async (idToken) => {
+    setError('');
+    setLoading(true);
+    try {
+      const result = await loginWithGoogle(idToken, remember);
+      if (result.pending) {
+        toast.success('Signed up with Google. Your account is awaiting admin approval.');
+      } else {
+        toast.success('Welcome back!');
+        navigate('/vendor', { replace: true });
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Google sign-in failed.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -108,15 +128,18 @@ export default function VendorLoginPage() {
             </div>
           </div>
 
-          <label className="ty-login-remember">
-            <input
-              type="checkbox"
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-              disabled={loading}
-            />
-            Keep me logged in
-          </label>
+          <div className="ty-login-links">
+            <label className="ty-login-remember">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                disabled={loading}
+              />
+              Keep me logged in
+            </label>
+            <Link to="/vendor/forgot-password" className="ty-login-link">Forgot password?</Link>
+          </div>
 
           <button type="submit" className="ty-login-btn" disabled={loading}>
             {loading ? (
@@ -126,6 +149,14 @@ export default function VendorLoginPage() {
             )}
           </button>
         </form>
+
+        <div className="ty-login-divider">or</div>
+        <GoogleSignInButton onCredential={handleGoogleCredential} label="Sign in with Google" disabled={loading} />
+
+        <div className="ty-login-links ty-login-links--center" style={{ marginTop: 20 }}>
+          <span className="ty-login-muted">New vendor?</span>
+          <Link to="/vendor/register" className="ty-login-link">Register your business</Link>
+        </div>
 
         <p className="ty-login-footer">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

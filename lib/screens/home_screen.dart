@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../theme/colors.dart';
@@ -11,6 +11,7 @@ import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/common.dart';
+import '../widgets/state_screens.dart';
 import 'event_hub_screen.dart';
 import 'budget_screen.dart';
 import 'guests_screen.dart';
@@ -32,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Package> _bestSellers = [];
   List<Occasion> _occasions = [];
-  Map<String, dynamic>? _activeCelebration;
+  Celebration? _activeCelebration;
   List<Guest> _guests = [];
   List<CelebrationChecklistItem> _checklist = [];
   bool _isLoading = true;
@@ -57,18 +58,18 @@ class _HomeScreenState extends State<HomeScreen> {
         }),
         _celebrationService.listCelebrations().catchError((e) {
           debugPrint('Error loading celebrations: $e');
-          return <Map<String, dynamic>>[];
+          return <Celebration>[];
         }),
       ]);
 
       setState(() {
         _bestSellers = results[0] as List<Package>;
         _occasions = results[1] as List<Occasion>;
-        final celebrations = results[2] as List<Map<String, dynamic>>;
+        final celebrations = results[2] as List<Celebration>;
         if (celebrations.isNotEmpty) {
           _activeCelebration = celebrations.first;
-          _loadGuests(_activeCelebration!['id']);
-          _loadChecklist(_activeCelebration!['id']);
+          _loadGuests(_activeCelebration!.id);
+          _loadChecklist(_activeCelebration!.id);
         }
         _isLoading = false;
         _error = null;
@@ -117,33 +118,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
-            const SizedBox(height: 12),
-            Text('Something went wrong', style: TyType.sans(14, color: ty.ink2)),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: _loadData,
-              child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
-            ),
-          ],
-        ),
-      );
+      return TyStateScreen.error(onAction: _loadData);
     }
 
     final totalGuests = _guests.length;
     final rsvpdGuests = _guests.where((g) => g.rsvpStatus == 'confirmed').length;
-    final pct = _activeCelebration?['progress_percentage'] ?? 0;
+    final pct = _activeCelebration?.completionPercentage ?? 0;
     final pendingTasks = _checklist.where((t) => !t.isCompleted).toList();
     final openTasks = pendingTasks.take(2).toList();
 
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        _buildHeroCard(context, pct, totalGuests),
+        _buildHeroCard(context, pct, totalGuests, pendingTasks.length),
 
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
@@ -162,24 +149,24 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 26),
 
-              SectionHeader(‘Up next’,
-                  action: ‘Timeline’,
-                  onAction: () => _push(context, const PlanFlowScreen(startStep: 4), authAction: ‘view your timeline’)),
+              SectionHeader('Up next',
+                  action: 'Timeline',
+                  onAction: () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your timeline')),
               if (openTasks.isEmpty)
-                _taskRow(context, ‘All caught up!’, ‘No pending tasks right now’)
+                _taskRow(context, 'All caught up!', 'No pending tasks right now')
               else
                 ...openTasks.map((t) => _taskRow(
                   context,
                   t.title,
-                  t.timingLabel ?? ‘’,
+                  t.timingLabel ?? '',
                 )),
               const SizedBox(height: 12),
               _taskRow(
                 context,
-                ‘Manage Invitations’,
-                totalGuests > 0 ? ‘$totalGuests invited · $rsvpdGuests RSVP\’d’ : ‘No invitations yet’,
+                'Manage Invitations',
+                totalGuests > 0 ? '$totalGuests invited · $rsvpdGuests RSVP\'d' : 'No invitations yet',
                 icon: Icons.mail_outline_rounded,
-                onTap: () => _push(context, const InvitationManagementScreen(), authAction: ‘manage invitations’),
+                onTap: () => _push(context, const InvitationManagementScreen(), authAction: 'manage invitations'),
               ),
               const SizedBox(height: 26),
 
@@ -255,14 +242,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeroCard(BuildContext context, int pct, int totalGuests) {
+  Widget _buildHeroCard(BuildContext context, int pct, int totalGuests, int pendingTaskCount) {
     final ty = context.ty;
     const double radius = 42.0;
     
-    final title = _activeCelebration?['title'] ?? 'Start Planning';
-    final date = _activeCelebration?['scheduled_date'] ?? '';
-    final location = _activeCelebration?['venue_address'] ?? 'Select Location';
+    final title = _activeCelebration?.title ?? 'Start Planning';
+    final dt = _activeCelebration?.celebrationDate;
+    final date = dt != null ? '${dt.day}/${dt.month}/${dt.year}' : '';
+    final location = _activeCelebration?.venueAddress ?? 'Select Location';
     
+    // Resolve hero image and category from occasions list if needed
+    String? heroUrl = _activeCelebration?.heroImageUrl;
+    String category = _activeCelebration?.category ?? 'Celebration';
+    
+    if (heroUrl == null && _activeCelebration?.occasionId != null) {
+      final occ = _occasions.cast<Occasion?>().firstWhere(
+        (o) => o?.id == _activeCelebration?.occasionId,
+        orElse: () => null
+      );
+      if (occ != null) {
+        heroUrl = occ.heroImageUrl;
+        category = occ.category;
+      }
+    }
+
     return GestureDetector(
       onTap: () => _push(context, const EventHubScreen(), authAction: 'view your event hub'),
       child: SizedBox(
@@ -273,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(radius)),
                 child: CachedNetworkImage(
-                  imageUrl: _activeCelebration?['hero_image_url'] ?? '',
+                  imageUrl: heroUrl ?? '',
                   fit: BoxFit.cover,
                   placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: 440, arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius))),
                   errorWidget: (context, url, error) => Image.asset(
@@ -331,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TyType.eyebrow(11.5, color: Colors.white.withOpacity(0.7))),
                   const SizedBox(height: 12),
                   Row(children: [
-                    TyPill(_activeCelebration?['category'] ?? 'Celebration'),
+                    TyPill(category),
                     const SizedBox(width: 8),
                     if (date.isNotEmpty)
                       const TyPill('Upcoming', background: Colors.orange, foreground: Colors.white),
@@ -350,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _stackedAvatars(_guests, totalGuests),
                       const Spacer(),
-                      _progressChip(context, pct, pendingTasks.length),
+                      _progressChip(context, pct, pendingTaskCount),
                     ],
                   ),
                 ],

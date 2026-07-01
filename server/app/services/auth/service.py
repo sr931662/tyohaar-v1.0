@@ -27,7 +27,13 @@ from app.models.enums import (
     VerificationStatus,
     UserRole,
 )
-from app.schemas.auth.create import OTPVerifyCreate, UserRegisterCreate
+from app.schemas.auth.create import (
+    GoogleAuthCreate,
+    OTPVerifyCreate,
+    PasswordResetConfirmCreate,
+    UserRegisterCreate,
+    VendorRegisterCreate,
+)
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
 from app.schemas.users.create import UserCreate
 from app.services.auth.constants import (
@@ -138,6 +144,148 @@ class AuthService(BaseService):
             return await self._create_user_session(
                 user, ip_address, user_agent, LoginMethod.EMAIL_PASSWORD
             )
+
+    # ── Vendor Registration ───────────────────────────────────────────────────
+
+    async def register_vendor(self, data: VendorRegisterCreate) -> dict:
+        """
+        Create a vendor-role user + stub Vendor business profile.
+
+        The account is created as PENDING_VERIFICATION / VendorStatus.PENDING
+        and cannot authenticate until an admin activates it, so no session
+        or token pair is issued here.
+        """
+        from app.core.security import hash_password
+        from app.services.exceptions import ConflictError
+        from app.services.users.exceptions import EmailTakenError
+
+        async with self._uow() as uow:
+            existing_email = await uow.users.users.find_by_email(data.email)
+            if existing_email:
+                raise EmailTakenError(data.email)
+
+            existing_phone = await uow.users.users.find_by_phone(data.phone)
+            if existing_phone:
+                raise ConflictError("This phone number is already registered.")
+
+            user_data = {
+                "email": data.email,
+                "phone": data.phone,
+                "full_name": data.full_name,
+                "password_hash": hash_password(data.password),
+                "primary_login_provider": LoginMethod.EMAIL_PASSWORD,
+                "email_verified": False,
+                "role": UserRole.VENDOR,
+                "account_status": AccountStatus.PENDING_VERIFICATION,
+                "verification_status": VerificationStatus.UNVERIFIED,
+            }
+            user = await uow.users.users.create_from_dict(user_data)
+            await uow.users.profiles.create_from_dict({"user_id": user.id})
+
+            vendor = await uow.vendors.vendors.create_from_dict({
+                "user_id": user.id,
+                "business_name": data.business_name,
+                "vendor_type": data.vendor_type,
+            })
+            await uow.vendors.profiles.create_from_dict({"vendor_id": vendor.id})
+
+        return {"status": "pending_approval"}
+
+    # ── Password Reset (OTP-verified) ─────────────────────────────────────────
+
+    async def reset_password(self, data: PasswordResetConfirmCreate) -> None:
+        """Verify the emailed OTP and set a new password for the account."""
+        from app.core.security import hash_password
+        from app.services.auth.exceptions import InvalidCredentialsError
+
+        async with self._uow() as uow:
+            await validate_otp_for_verification(
+                data.email,
+                data.otp_code,
+                OTPPurpose.PASSWORD_RESET,
+                uow,
+                settings.SECRET_KEY,
+            )
+
+            user = await uow.users.users.find_by_email(data.email)
+            if user is None:
+                raise InvalidCredentialsError("No account found for this email address.")
+
+            user.password_hash = hash_password(data.new_password)
+            user_id = user.id
+
+        # Revoke all existing sessions now that the password has changed.
+        await self.logout_all_devices(user_id=user_id)
+
+    # ── Google Sign-In (Vendor) ───────────────────────────────────────────────
+
+    async def authenticate_vendor_google(
+        self,
+        id_token_str: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> dict:
+        """
+        Verify a Google ID token and either log in an existing, approved
+        vendor or create a new PENDING_VERIFICATION vendor account.
+
+        Returns a dict with `access_token`/`token_type` when login succeeds,
+        or `{"status": "pending_approval"}` when the account is new or
+        still awaiting admin approval.
+        """
+        from app.services.auth.exceptions import InvalidCredentialsError
+        from app.services.exceptions import ExternalServiceError
+
+        if not settings.GOOGLE_CLIENT_ID:
+            raise ExternalServiceError(
+                "Google Sign-In", "Google Sign-In is not configured yet."
+            )
+
+        try:
+            from google.auth.transport import requests as google_requests
+            from google.oauth2 import id_token as google_id_token
+
+            idinfo = google_id_token.verify_oauth2_token(
+                id_token_str, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+            )
+        except ValueError:
+            raise InvalidCredentialsError("Invalid or expired Google token.")
+
+        email = idinfo.get("email")
+        if not email or not idinfo.get("email_verified"):
+            raise InvalidCredentialsError("Google account email is not verified.")
+        full_name = idinfo.get("name")
+
+        async with self._uow() as uow:
+            user = await uow.users.users.find_by_email(email)
+
+            if user is None:
+                user_data = {
+                    "email": email,
+                    "full_name": full_name,
+                    "primary_login_provider": LoginMethod.GOOGLE,
+                    "email_verified": True,
+                    "role": UserRole.VENDOR,
+                    "account_status": AccountStatus.PENDING_VERIFICATION,
+                    "verification_status": VerificationStatus.UNVERIFIED,
+                    "phone": f"TMP-{uuid.uuid4().hex[:10]}",
+                }
+                user = await uow.users.users.create_from_dict(user_data)
+                await uow.users.profiles.create_from_dict({"user_id": user.id})
+                return {"status": "pending_approval"}
+
+            if user.role != UserRole.VENDOR:
+                raise InvalidCredentialsError(
+                    "This Google account is not registered as a vendor."
+                )
+
+            if user.account_status != AccountStatus.ACTIVE:
+                return {"status": "pending_approval"}
+
+            tokens = await self._create_user_session(
+                user, ip_address, user_agent, LoginMethod.GOOGLE
+            )
+            return {"access_token": tokens.access_token, "token_type": tokens.token_type}
 
     async def _create_user_session(
         self,

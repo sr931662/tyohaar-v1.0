@@ -7,6 +7,7 @@ class VendorProfile {
   final double? rating;
   final int? totalReviews;
   final String status;
+  final Map<String, dynamic>? workingHours;
 
   VendorProfile({
     required this.id,
@@ -15,6 +16,7 @@ class VendorProfile {
     this.rating,
     this.totalReviews,
     required this.status,
+    this.workingHours,
   });
 
   factory VendorProfile.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class VendorProfile {
       rating: (json['average_rating'] as num?)?.toDouble(),
       totalReviews: json['total_reviews'] as int?,
       status: json['status'] as String? ?? 'active',
+      workingHours: json['working_hours'] as Map<String, dynamic>?,
     );
   }
 }
@@ -215,5 +218,9 @@ class VendorService {
     final response = await _api.dio.get('vendors/$vendorId/reviews', queryParameters: {'limit': limit});
     final List list = response.data['data'] ?? [];
     return list.map((r) => VendorReview.fromJson(r as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> updateVendorProfile(String vendorId, Map<String, dynamic> data) async {
+    await _api.dio.put('users/$vendorId/profile', data: data);
   }
 }

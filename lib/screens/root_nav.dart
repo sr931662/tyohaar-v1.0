@@ -9,6 +9,7 @@ import '../data/app_state.dart';
 import '../data/auth_manager.dart';
 import '../data/models.dart';
 import '../data/services/user_service.dart';
+import '../data/services/notification_service.dart';
 import 'home_screen.dart';
 import 'plans_screen.dart';
 import 'explore_screen.dart';
@@ -34,6 +35,7 @@ class RootNav extends StatefulWidget {
 class _RootNavState extends State<RootNav> {
   int _index = 0;
   bool _isScrolled = false;
+  int _unreadNotifs = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final _pages = const [
@@ -47,6 +49,15 @@ class _RootNavState extends State<RootNav> {
   void initState() {
     super.initState();
     _ensureUserLoaded();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    if (!AuthManager.instance.isAuthenticated) return;
+    try {
+      final count = await context.read<NotificationService>().getUnreadCount();
+      if (mounted) setState(() => _unreadNotifs = count);
+    } catch (_) {}
   }
 
   Future<void> _ensureUserLoaded() async {
@@ -70,8 +81,8 @@ class _RootNavState extends State<RootNav> {
     );
   }
 
-  void _push(BuildContext context, Widget page) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  Future<void> _push(BuildContext context, Widget page) {
+    return Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
   @override
@@ -122,9 +133,10 @@ class _RootNavState extends State<RootNav> {
                 isTransparent: _index == 0,
                 isScrolled: _isScrolled,
                 onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
-                onOpenNotifications: () => _push(context, const NotificationsScreen()),
+                onOpenNotifications: () => _push(context, const NotificationsScreen()).then((_) => _loadUnreadCount()),
                 onOpenProfile: () => setState(() => _index = 3),
                 user: AuthManager.instance.currentUser,
+                unreadCount: _unreadNotifs,
               ),
             ),
           ),
@@ -162,6 +174,7 @@ class _StickyHeader extends StatelessWidget {
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenProfile;
   final User? user;
+  final int unreadCount;
 
   const _StickyHeader({
     required this.isTransparent,
@@ -170,6 +183,7 @@ class _StickyHeader extends StatelessWidget {
     required this.onOpenNotifications,
     required this.onOpenProfile,
     this.user,
+    this.unreadCount = 0,
   });
 
   @override
@@ -271,19 +285,20 @@ class _StickyHeader extends StatelessWidget {
                 backgroundColor: buttonBgColor,
                 borderColor: borderColor,
               ),
-              Positioned(
-                top: 9,
-                right: 10,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: ty.rose,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: isTransparent ? Colors.transparent : ty.paper, width: 2),
+              if (unreadCount > 0)
+                Positioned(
+                  top: 9,
+                  right: 10,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: ty.rose,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: isTransparent ? Colors.transparent : ty.paper, width: 2),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -331,6 +346,10 @@ class _AppSidebar extends StatelessWidget {
   final User? user;
   const _AppSidebar({required this.onNavigate, this.user});
 
+  Future<void> _push(BuildContext context, Widget page) {
+    return Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
@@ -357,14 +376,6 @@ class _AppSidebar extends StatelessWidget {
                     onTap: () => _push(context, const HelpScreen())),
                 _drawerItem(context, Icons.description_outlined, 'Privacy Policy', -1,
                     onTap: () => _push(context, const PrivacyPolicyScreen())),
-                const Divider(height: 32, indent: 20, endIndent: 20, color: Colors.black12),
-                _drawerItem(
-                  context, 
-                  Icons.swap_horiz_rounded, 
-                  'Switch to Vendor Mode', 
-                  -1, 
-                  onTap: () => AppState.instance.setPOV(UserPOV.vendor),
-                ),
               ],
             ),
           ),
