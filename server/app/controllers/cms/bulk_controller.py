@@ -31,49 +31,49 @@ async def approve_vendors(
     request: BulkVendorActionRequest,
     svc: BulkServiceDep,
 ) -> SuccessResponse[BulkOperationResult]:
-    return SuccessResponse(data=await svc.approve_vendors(request.ids), message="Vendors approved")
+    return SuccessResponse(data=await svc.approve_vendors(request), message="Vendors approved")
 
 
 async def reject_vendors(
     request: BulkVendorActionRequest,
     svc: BulkServiceDep,
 ) -> SuccessResponse[BulkOperationResult]:
-    return SuccessResponse(data=await svc.reject_vendors(request.ids), message="Vendors rejected")
+    return SuccessResponse(data=await svc.reject_vendors(request), message="Vendors rejected")
 
 
 async def suspend_vendors(
     request: BulkVendorActionRequest,
     svc: BulkServiceDep,
 ) -> SuccessResponse[BulkOperationResult]:
-    return SuccessResponse(data=await svc.suspend_vendors(request.ids), message="Vendors suspended")
+    return SuccessResponse(data=await svc.suspend_vendors(request), message="Vendors suspended")
 
 
 async def activate_vendors(
     request: BulkVendorActionRequest,
     svc: BulkServiceDep,
 ) -> SuccessResponse[BulkOperationResult]:
-    return SuccessResponse(data=await svc.activate_vendors(request.ids), message="Vendors activated")
+    return SuccessResponse(data=await svc.activate_vendors(request), message="Vendors activated")
 
 
 async def publish_packages(
     request: BulkPackageActionRequest,
     svc: BulkServiceDep,
 ) -> SuccessResponse[BulkOperationResult]:
-    return SuccessResponse(data=await svc.publish_packages(request.ids), message="Packages published")
+    return SuccessResponse(data=await svc.publish_packages(request), message="Packages published")
 
 
 async def unpublish_packages(
     request: BulkPackageActionRequest,
     svc: BulkServiceDep,
 ) -> SuccessResponse[BulkOperationResult]:
-    return SuccessResponse(data=await svc.unpublish_packages(request.ids), message="Packages unpublished")
+    return SuccessResponse(data=await svc.unpublish_packages(request), message="Packages unpublished")
 
 
 async def archive_packages(
     request: BulkPackageActionRequest,
     svc: BulkServiceDep,
 ) -> SuccessResponse[BulkOperationResult]:
-    return SuccessResponse(data=await svc.archive_packages(request.ids), message="Packages archived")
+    return SuccessResponse(data=await svc.archive_packages(request), message="Packages archived")
 
 
 async def bulk_price_update(
