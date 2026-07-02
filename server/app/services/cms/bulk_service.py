@@ -80,7 +80,9 @@ class BulkService(BaseService):
     async def _bulk_vendor_status_update(
         self,
         request: BulkVendorActionRequest,
-        new_status: VendorVerificationStatus,
+        new_verification_status: VendorVerificationStatus,
+        new_vendor_status: VendorStatus,
+        is_active: bool,
         user_account_status,
         operation: str,
     ) -> BulkOperationResult:
@@ -95,7 +97,11 @@ class BulkService(BaseService):
                     stmt = (
                         update(Vendor)
                         .where(Vendor.id == vendor_id, Vendor.deleted_at.is_(None))
-                        .values(verification_status=new_status)
+                        .values(
+                            verification_status=new_verification_status,
+                            status=new_vendor_status,
+                            is_active=is_active,
+                        )
                         .returning(Vendor.id)
                     )
                     result = await uow.session.execute(stmt)
@@ -119,14 +125,24 @@ class BulkService(BaseService):
         from app.models.enums import AccountStatus
 
         return await self._bulk_vendor_status_update(
-            request, VendorVerificationStatus.VERIFIED, AccountStatus.ACTIVE, "approve_vendors"
+            request,
+            VendorVerificationStatus.VERIFIED,
+            VendorStatus.ACTIVE,
+            True,
+            AccountStatus.ACTIVE,
+            "approve_vendors",
         )
 
     async def reject_vendors(self, request: BulkVendorActionRequest) -> BulkOperationResult:
         from app.models.enums import AccountStatus
 
         return await self._bulk_vendor_status_update(
-            request, VendorVerificationStatus.REJECTED, AccountStatus.SUSPENDED, "reject_vendors"
+            request,
+            VendorVerificationStatus.REJECTED,
+            VendorStatus.REJECTED,
+            False,
+            AccountStatus.SUSPENDED,
+            "reject_vendors",
         )
 
     async def suspend_vendors(self, request: BulkVendorActionRequest) -> BulkOperationResult:
