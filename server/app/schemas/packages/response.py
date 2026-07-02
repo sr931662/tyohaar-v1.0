@@ -45,9 +45,8 @@ class PackageCategoryResponse(BaseSchema):
     slug: str
     description: str | None
     icon_url: str | None
-    cover_image_url: str | None
     is_active: bool
-    display_order: int
+    sort_order: int
     created_at: datetime
     updated_at: datetime
 

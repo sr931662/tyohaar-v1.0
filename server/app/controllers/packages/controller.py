@@ -13,7 +13,7 @@ from fastapi import Depends, Query
 from app.core.current_user import CurrentUserDep
 from app.core.dependencies import PackageServiceDep
 from app.core.pagination import CursorPaginationParams, get_cursor_pagination
-from app.core.permissions import AdminDep, CustomerDep, VendorDep
+from app.core.permissions import AdminDep, CurrentVendorIdDep, CustomerDep
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
 from app.schemas.packages import (
@@ -45,10 +45,10 @@ def _cursor_resp(page: CursorPage, page_size: int) -> CursorPaginatedResponse:
 
 async def create_package(
     body: PackageCreate,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageResponse]:
-    result = await service.create_package(vendor_id=current_user.id, data=body)
+    result = await service.create_package(vendor_id=vendor_id, data=body)
     return SuccessResponse(data=result, message="Package created.")
 
 
@@ -74,30 +74,30 @@ async def list_packages(
 async def update_package(
     package_id: uuid.UUID,
     body: PackageUpdate,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageResponse]:
     result = await service.update_package(
-        package_id=package_id, vendor_id=current_user.id, data=body
+        package_id=package_id, vendor_id=vendor_id, data=body
     )
     return SuccessResponse(data=result, message="Package updated.")
 
 
 async def delete_package(
     package_id: uuid.UUID,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_package(package_id=package_id, vendor_id=current_user.id)
+    await service.delete_package(package_id=package_id, vendor_id=vendor_id)
     return SuccessResponse(data=None, message="Package deleted.")
 
 
 async def publish_package(
     package_id: uuid.UUID,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageResponse]:
-    result = await service.publish_package(package_id=package_id, vendor_id=current_user.id)
+    result = await service.publish_package(package_id=package_id, vendor_id=vendor_id)
     return SuccessResponse(data=result, message="Package submitted for review.")
 
 
@@ -121,21 +121,21 @@ async def reject_package(
 
 async def unpublish_package(
     package_id: uuid.UUID,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageResponse]:
-    result = await service.unpublish_package(package_id=package_id, vendor_id=current_user.id)
+    result = await service.unpublish_package(package_id=package_id, vendor_id=vendor_id)
     return SuccessResponse(data=result, message="Package unpublished.")
 
 
 async def add_item(
     package_id: uuid.UUID,
     body: PackageItemCreate,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageItemResponse]:
     result = await service.add_item(
-        package_id=package_id, vendor_id=current_user.id, data=body
+        package_id=package_id, vendor_id=vendor_id, data=body
     )
     return SuccessResponse(data=result, message="Item added.")
 
@@ -144,11 +144,11 @@ async def update_item(
     package_id: uuid.UUID,
     item_id: uuid.UUID,
     body: PackageItemUpdate,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageItemResponse]:
     result = await service.update_item(
-        package_id=package_id, item_id=item_id, vendor_id=current_user.id, data=body
+        package_id=package_id, item_id=item_id, vendor_id=vendor_id, data=body
     )
     return SuccessResponse(data=result, message="Item updated.")
 
@@ -156,11 +156,11 @@ async def update_item(
 async def delete_item(
     package_id: uuid.UUID,
     item_id: uuid.UUID,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[None]:
     await service.delete_item(
-        package_id=package_id, item_id=item_id, vendor_id=current_user.id
+        package_id=package_id, item_id=item_id, vendor_id=vendor_id
     )
     return SuccessResponse(data=None, message="Item deleted.")
 
@@ -176,11 +176,11 @@ async def list_items(
 async def set_availability(
     package_id: uuid.UUID,
     body: PackageAvailabilityCreate,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageAvailabilityResponse]:
     result = await service.set_availability(
-        package_id=package_id, vendor_id=current_user.id, data=body
+        package_id=package_id, vendor_id=vendor_id, data=body
     )
     return SuccessResponse(data=result, message="Availability set.")
 
@@ -189,11 +189,11 @@ async def update_availability(
     package_id: uuid.UUID,
     avail_id: uuid.UUID,
     body: PackageAvailabilityUpdate,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageAvailabilityResponse]:
     result = await service.update_availability(
-        package_id=package_id, avail_id=avail_id, vendor_id=current_user.id, data=body
+        package_id=package_id, avail_id=avail_id, vendor_id=vendor_id, data=body
     )
     return SuccessResponse(data=result, message="Availability updated.")
 
@@ -201,11 +201,11 @@ async def update_availability(
 async def delete_availability(
     package_id: uuid.UUID,
     avail_id: uuid.UUID,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[None]:
     await service.delete_availability(
-        package_id=package_id, avail_id=avail_id, vendor_id=current_user.id
+        package_id=package_id, avail_id=avail_id, vendor_id=vendor_id
     )
     return SuccessResponse(data=None, message="Availability slot deleted.")
 

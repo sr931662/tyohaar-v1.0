@@ -12,7 +12,7 @@ from fastapi import Depends
 from app.core.current_user import CurrentUserDep
 from app.core.dependencies import BookingServiceDep
 from app.core.pagination import CursorPaginationParams, get_cursor_pagination
-from app.core.permissions import AdminDep, VendorDep
+from app.core.permissions import AdminDep, CurrentVendorIdDep
 from app.models.enums import UserRole
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
@@ -78,13 +78,13 @@ async def list_bookings(
 
 
 async def list_vendor_bookings(
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     filters: Annotated[BookingFilters, Depends()],
     pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     service: BookingServiceDep,
 ) -> CursorPaginatedResponse[BookingResponse]:
     page = await service.list_vendor_bookings(
-        vendor_id=current_user.id,
+        vendor_id=vendor_id,
         filters=filters,
         cursor=pagination.cursor,
         limit=pagination.page_size,
@@ -103,19 +103,19 @@ async def confirm_booking(
 
 async def start_booking(
     booking_id: uuid.UUID,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: BookingServiceDep,
 ) -> SuccessResponse[BookingResponse]:
-    result = await service.start_booking(booking_id=booking_id, vendor_id=current_user.id)
+    result = await service.start_booking(booking_id=booking_id, vendor_id=vendor_id)
     return SuccessResponse(data=result, message="Service started.")
 
 
 async def complete_booking(
     booking_id: uuid.UUID,
-    current_user: VendorDep,
+    vendor_id: CurrentVendorIdDep,
     service: BookingServiceDep,
 ) -> SuccessResponse[BookingResponse]:
-    result = await service.complete_booking(booking_id=booking_id, vendor_id=current_user.id)
+    result = await service.complete_booking(booking_id=booking_id, vendor_id=vendor_id)
     return SuccessResponse(data=result, message="Booking completed.")
 
 

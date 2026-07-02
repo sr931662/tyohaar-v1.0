@@ -42,9 +42,8 @@ class PackageCategoryUpdate(BaseSchema):
     )
     description: str | None = None
     icon_url: str | None = Field(default=None, max_length=2048)
-    cover_image_url: str | None = Field(default=None, max_length=2048)
     is_active: bool | None = None
-    display_order: int | None = Field(default=None, ge=0)
+    sort_order: int | None = Field(default=None, ge=0)
 
     @field_validator("slug", mode="before")
     @classmethod

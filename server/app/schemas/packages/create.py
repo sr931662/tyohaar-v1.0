@@ -44,9 +44,8 @@ class PackageCategoryCreate(BaseSchema):
     )
     description: str | None = Field(default=None, description="Category description")
     icon_url: str | None = Field(default=None, max_length=2048, description="Icon asset URL")
-    cover_image_url: str | None = Field(default=None, max_length=2048, description="Cover image URL")
     is_active: bool = Field(default=True, description="Whether this category is visible")
-    display_order: int = Field(default=0, ge=0, description="Sort order (lower = earlier)")
+    sort_order: int = Field(default=0, ge=0, description="Sort order (lower = earlier)")
 
 
 class PackageCreate(BaseSchema):

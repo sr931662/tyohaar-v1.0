@@ -144,6 +144,35 @@ def require_ownership(path_param: str = "user_id") -> Callable[..., None]:
     return _dep
 
 
+# ── Vendor-entity resolution ───────────────────────────────────────────────────
+
+async def get_current_vendor_id(current_user: CurrentUserDep) -> uuid.UUID:
+    """
+    Dependency — resolves the Vendor business-entity id owned by the
+    authenticated user.
+
+    `current_user.id` is the User row's id, but Package/Booking/etc. all
+    store the Vendor row's id as `vendor_id` (a distinct primary key). Every
+    vendor-scoped write must use this, not `current_user.id` directly.
+    """
+    if current_user.role is not UserRole.VENDOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vendor access required.",
+        )
+
+    from app.repositories.unit_of_work import UnitOfWork
+
+    async with UnitOfWork() as uow:
+        vendor = await uow.vendors.vendors.find_by_user(current_user.id)
+        if vendor is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No vendor profile exists for this account yet.",
+            )
+        return vendor.id
+
+
 # ── Typed aliases ─────────────────────────────────────────────────────────────
 
 AdminDep = Annotated[UserResponse, Depends(require_admin)]
@@ -151,3 +180,4 @@ SuperAdminDep = Annotated[UserResponse, Depends(require_super_admin)]
 VendorDep = Annotated[UserResponse, Depends(require_vendor)]
 CustomerDep = Annotated[UserResponse, Depends(require_customer)]
 StaffDep = Annotated[UserResponse, Depends(require_staff)]
+CurrentVendorIdDep = Annotated[uuid.UUID, Depends(get_current_vendor_id)]
