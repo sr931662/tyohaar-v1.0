@@ -12,10 +12,11 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
+from app.models.enums import BookingStatus
 from app.schemas.cms.crm import (
     CustomerCRMProfile,
     CustomerCRMSummary,
@@ -43,6 +44,7 @@ class CRMService(BaseService):
             assert session is not None
 
             from app.models.bookings.booking import Booking
+            from app.models.bookings.booking_assignment import BookingAssignment
             from app.models.payments.payment import Payment
             from app.models.vendors.vendor import Vendor
             from app.models.vendors.vendor_document import VendorDocument
@@ -75,10 +77,7 @@ class CRMService(BaseService):
             # KYC / Documents
             doc_rows = (
                 await session.execute(
-                    select(VendorDocument).where(
-                        VendorDocument.vendor_id == vendor_id,
-                        VendorDocument.deleted_at.is_(None),
-                    )
+                    select(VendorDocument).where(VendorDocument.vendor_id == vendor_id)
                 )
             ).scalars().all()
 
@@ -96,25 +95,32 @@ class CRMService(BaseService):
                 certificates=[],
             )
 
-            # Financial aggregation
+            # Financial aggregation — Booking has no vendor_id; a vendor's bookings
+            # are the distinct booking_ids referenced by its BookingAssignment rows.
+            vendor_booking_ids = (
+                select(BookingAssignment.booking_id)
+                .where(BookingAssignment.vendor_id == vendor_id)
+                .distinct()
+            )
+
             booking_agg = (
                 await session.execute(
                     select(
                         func.count().label("total"),
                         func.sum(
-                            func.case((Booking.status == "COMPLETED", 1), else_=0)
+                            case((Booking.booking_status == BookingStatus.COMPLETED, 1), else_=0)
                         ).label("completed"),
                         func.sum(
-                            func.case((Booking.status == "CANCELLED", 1), else_=0)
+                            case((Booking.booking_status == BookingStatus.CANCELLED, 1), else_=0)
                         ).label("cancelled"),
                         func.coalesce(func.sum(Booking.total_amount), 0).label("total_rev"),
-                    ).where(Booking.vendor_id == vendor_id, Booking.deleted_at.is_(None))
+                    ).where(Booking.id.in_(vendor_booking_ids), Booking.deleted_at.is_(None))
                 )
             ).one()
 
             wallet_balance = (
                 await session.execute(
-                    select(func.coalesce(Wallet.balance, 0)).where(
+                    select(func.coalesce(Wallet.available_balance, 0)).where(
                         Wallet.user_id == getattr(vendor_row, "user_id", None)
                     )
                 )
@@ -163,16 +169,17 @@ class CRMService(BaseService):
             )
 
             # Monthly performance (last 6 months)
+            month_bucket = func.date_trunc("month", Booking.created_at)
             monthly_rows = (
                 await session.execute(
                     select(
-                        func.date_trunc("month", Booking.created_at).label("month"),
+                        month_bucket.label("month"),
                         func.count().label("cnt"),
                         func.coalesce(func.sum(Booking.total_amount), 0).label("rev"),
                     )
-                    .where(Booking.vendor_id == vendor_id, Booking.deleted_at.is_(None))
-                    .group_by(func.date_trunc("month", Booking.created_at))
-                    .order_by(func.date_trunc("month", Booking.created_at).desc())
+                    .where(Booking.id.in_(vendor_booking_ids), Booking.deleted_at.is_(None))
+                    .group_by(month_bucket)
+                    .order_by(month_bucket.desc())
                     .limit(6)
                 )
             ).fetchall()
@@ -193,8 +200,8 @@ class CRMService(BaseService):
             # Recent bookings (last 5)
             recent_booking_rows = (
                 await session.execute(
-                    select(Booking.id, Booking.status, Booking.total_amount, Booking.created_at)
-                    .where(Booking.vendor_id == vendor_id, Booking.deleted_at.is_(None))
+                    select(Booking.id, Booking.booking_status, Booking.total_amount, Booking.created_at)
+                    .where(Booking.id.in_(vendor_booking_ids), Booking.deleted_at.is_(None))
                     .order_by(Booking.created_at.desc())
                     .limit(5)
                 )
@@ -203,7 +210,7 @@ class CRMService(BaseService):
             recent_bookings = [
                 {
                     "id": str(r.id),
-                    "status": r.status,
+                    "status": r.booking_status.value,
                     "amount": str(r.total_amount),
                     "date": r.created_at.isoformat(),
                 }
@@ -259,7 +266,7 @@ class CRMService(BaseService):
                 full_name=getattr(user_row, "full_name", None),
                 phone=user_row.phone,
                 email=getattr(user_row, "email", None),
-                account_status=str(user_row.account_status),
+                account_status=user_row.account_status.value,
                 registered_at=user_row.created_at,
                 last_login_at=getattr(user_row, "last_login_at", None),
             )
@@ -270,10 +277,10 @@ class CRMService(BaseService):
                     select(
                         func.count().label("total"),
                         func.sum(
-                            func.case((Booking.status == "COMPLETED", 1), else_=0)
+                            case((Booking.booking_status == BookingStatus.COMPLETED, 1), else_=0)
                         ).label("completed"),
                         func.sum(
-                            func.case((Booking.status == "CANCELLED", 1), else_=0)
+                            case((Booking.booking_status == BookingStatus.CANCELLED, 1), else_=0)
                         ).label("cancelled"),
                         func.coalesce(func.sum(Booking.total_amount), 0).label("total_spent"),
                         func.coalesce(func.avg(Booking.total_amount), 0).label("avg_value"),
@@ -294,8 +301,8 @@ class CRMService(BaseService):
                 completed_bookings=int(booking_agg.completed or 0),
                 cancelled_bookings=int(booking_agg.cancelled or 0),
                 avg_booking_value=Decimal(str(booking_agg.avg_value)).quantize(Decimal("0.01")),
-                wallet_balance=Decimal(str(getattr(wallet_row, "balance", 0) or 0)).quantize(Decimal("0.01")),
-                reward_points=Decimal(str(getattr(wallet_row, "reward_balance", 0) or 0)),
+                wallet_balance=Decimal(str(getattr(wallet_row, "available_balance", 0) or 0)).quantize(Decimal("0.01")),
+                reward_points=Decimal(str(getattr(wallet_row, "reward_points", 0) or 0)),
                 total_refunds_received=Decimal("0"),
             )
 
@@ -319,11 +326,15 @@ class CRMService(BaseService):
             ]
 
             # Open tickets
+            from app.models.enums import TicketStatus
+
             open_tickets_count = (
                 await session.execute(
                     select(func.count()).select_from(SupportTicket).where(
-                        SupportTicket.user_id == user_id,
-                        SupportTicket.status.in_(["OPEN", "IN_PROGRESS"]),
+                        SupportTicket.customer_id == user_id,
+                        SupportTicket.ticket_status.in_(
+                            [TicketStatus.OPEN, TicketStatus.IN_PROGRESS]
+                        ),
                     )
                 )
             ).scalar_one_or_none() or 0
@@ -331,7 +342,7 @@ class CRMService(BaseService):
             # Recent bookings
             recent_bookings_rows = (
                 await session.execute(
-                    select(Booking.id, Booking.status, Booking.total_amount, Booking.created_at)
+                    select(Booking.id, Booking.booking_status, Booking.total_amount, Booking.created_at)
                     .where(Booking.customer_id == user_id, Booking.deleted_at.is_(None))
                     .order_by(Booking.created_at.desc())
                     .limit(5)
@@ -341,7 +352,7 @@ class CRMService(BaseService):
             recent_bookings = [
                 {
                     "id": str(r.id),
-                    "status": r.status,
+                    "status": r.booking_status.value,
                     "amount": str(r.total_amount),
                     "date": r.created_at.isoformat(),
                 }
