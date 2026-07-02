@@ -10,7 +10,7 @@ from typing import Annotated
 
 from fastapi import Depends, Query
 
-from app.core.current_user import CurrentUserDep
+from app.core.current_user import CurrentUserDep, OptionalUserDep
 from app.core.dependencies import PackageServiceDep
 from app.core.pagination import CursorPaginationParams, get_cursor_pagination
 from app.core.permissions import AdminDep, CurrentVendorIdDep, CustomerDep
@@ -64,9 +64,15 @@ async def list_packages(
     filters: Annotated[PackageFilters, Depends()],
     pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     service: PackageServiceDep,
+    current_user: OptionalUserDep,
 ) -> CursorPaginatedResponse[PackageResponse]:
+    from app.models.enums import UserRole
+
+    is_admin = current_user is not None and current_user.role in (
+        UserRole.ADMIN, UserRole.SUPER_ADMIN
+    )
     page = await service.list_packages(
-        filters=filters, cursor=pagination.cursor, limit=pagination.page_size
+        filters=filters, cursor=pagination.cursor, limit=pagination.page_size, is_admin=is_admin
     )
     return _cursor_resp(page, pagination.page_size)
 

@@ -87,13 +87,23 @@ class PackageService(BaseService):
         filters: PackageFilters,
         cursor: str | None,
         limit: int,
+        is_admin: bool = False,
     ) -> CursorPage[PackageResponse]:
         from sqlalchemy import or_
         async with self._uow() as uow:
-            conditions = [
-                Package.is_active == True,  # noqa: E712
-                Package.status == PackageStatus.ACTIVE,
-            ]
+            if is_admin:
+                # Admin package management needs to see every lifecycle state
+                # (draft/pending_review/etc.), optionally narrowed by filters.status.
+                conditions = []
+                if filters.status is not None:
+                    conditions.append(Package.status == filters.status)
+            else:
+                # Public/customer browsing must never see unpublished packages,
+                # regardless of what status filter was requested.
+                conditions = [
+                    Package.is_active == True,  # noqa: E712
+                    Package.status == PackageStatus.ACTIVE,
+                ]
             if filters.category_id is not None:
                 conditions.append(Package.category_id == filters.category_id)
             if filters.city is not None:
