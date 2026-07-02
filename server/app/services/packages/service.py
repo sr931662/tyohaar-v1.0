@@ -74,11 +74,31 @@ class PackageService(BaseService):
             return PackageResponse.model_validate(package)
 
     async def get_package(self, package_id: UUID) -> PackageDetailResponse:
+        from app.models.packages.package_pricing import PackagePriceType
+        from app.schemas.packages.response import PackagePricingResponse
+
         async with self._uow() as uow:
             package = await validate_package_exists(package_id, uow)
             items = await uow.packages.items.find_by_package(package_id)
             availability = await uow.packages.availability.find_by_package(package_id)
-            response = PackageDetailResponse.model_validate(package)
+            pricing_rows = await uow.packages.pricings.find_by_package(package_id)
+
+            # Package.pricing is a one-to-many relationship (base + seasonal
+            # overrides), but the detail response surfaces a single "current"
+            # pricing snapshot — prefer the BASE tier, fall back to the first row.
+            pricing_response = None
+            if pricing_rows:
+                base_row = next(
+                    (p for p in pricing_rows if p.price_type == PackagePriceType.BASE),
+                    pricing_rows[0],
+                )
+                pricing_response = PackagePricingResponse.model_validate(base_row)
+
+            # Build from PackageResponse (no `pricing` field) first so the ORM's
+            # list-valued `package.pricing` attribute is never auto-read against
+            # the singular `pricing` field on PackageDetailResponse.
+            base = PackageResponse.model_validate(package)
+            response = PackageDetailResponse(**base.model_dump(), pricing=pricing_response)
             response.items = [PackageItemResponse.model_validate(i) for i in items]
             return response
 

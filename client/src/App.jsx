@@ -49,6 +49,7 @@ const CustomerDetailPage    = lazy(() => import('./admin/pages/customers/Custome
 const BookingsPage          = lazy(() => import('./admin/pages/bookings/BookingsPage.jsx'));
 const BookingDetailPage     = lazy(() => import('./admin/pages/bookings/BookingDetailPage.jsx'));
 const PackagesPage          = lazy(() => import('./admin/pages/packages/PackagesPage.jsx'));
+const PackageDetailPage     = lazy(() => import('./admin/pages/packages/PackageDetailPage.jsx'));
 const PackageCategoriesPage = lazy(() => import('./admin/pages/packages/PackageCategoriesPage.jsx'));
 const PaymentsPage          = lazy(() => import('./admin/pages/payments/PaymentsPage.jsx'));
 const WalletsPage           = lazy(() => import('./admin/pages/payments/WalletsPage.jsx'));
@@ -173,6 +174,7 @@ export default function App() {
                 <Route path="bookings/:bookingId" element={<BookingDetailPage />} />
                 <Route path="packages" element={<PackagesPage />} />
                 <Route path="packages/categories" element={<PackageCategoriesPage />} />
+                <Route path="packages/:packageId" element={<PackageDetailPage />} />
                 <Route path="payments" element={<PaymentsPage />} />
                 <Route path="wallets" element={<WalletsPage />} />
                 <Route path="memberships" element={<MembershipsPage />} />
