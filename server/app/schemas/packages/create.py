@@ -36,11 +36,11 @@ class PackageCategoryCreate(BaseSchema):
     """Payload required to create a new package category."""
 
     name: str = Field(min_length=1, max_length=200, description="Category display name")
-    slug: str = Field(
-        min_length=1,
+    slug: str | None = Field(
+        default=None,
         max_length=100,
         pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
-        description="URL-safe lowercase slug (auto-generated if omitted by service layer)",
+        description="URL-safe lowercase slug (auto-generated from name if omitted)",
     )
     description: str | None = Field(default=None, description="Category description")
     icon_url: str | None = Field(default=None, max_length=2048, description="Icon asset URL")

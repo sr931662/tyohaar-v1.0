@@ -43,6 +43,22 @@ router.add_api_route(
     operation_id="media_list_images_for_entity",
 )
 
+# ── Images — direct upload (multipart) ────────────────────────────────────────
+
+router.add_api_route(
+    "/upload",
+    ctrl.upload_image,
+    methods=["POST"],
+    response_model=SuccessResponse[ImageResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload Image",
+    description=(
+        "Upload an image file directly (multipart/form-data). Stores it via "
+        "Cloudinary and returns the resulting public URL. Requires authentication."
+    ),
+    operation_id="media_upload_image",
+)
+
 # ── Images — upload flow ──────────────────────────────────────────────────────
 
 router.add_api_route(

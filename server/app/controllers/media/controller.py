@@ -7,13 +7,16 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, Query
+from fastapi import Depends, File, Form, HTTPException, Query, UploadFile, status
 
+from app.core.config import settings
 from app.core.current_user import CurrentUserDep
 from app.core.dependencies import MediaServiceDep
 from app.core.pagination import CursorPaginationParams, get_cursor_pagination
 from app.core.permissions import AdminDep
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
+from app.models.enums import MediaUsage, UserRole
+from app.models.media.image import ImageOwnerType
 from app.schemas.base import CursorPage
 from app.schemas.media.create import (
     ImageUploadRegisterCreate,
@@ -37,6 +40,50 @@ def _cursor_resp(page: CursorPage, page_size: int) -> CursorPaginatedResponse:
 
 
 # ── Images ────────────────────────────────────────────────────────────────────
+
+_OWNER_TYPE_BY_ROLE = {
+    UserRole.VENDOR: ImageOwnerType.VENDOR,
+    UserRole.ADMIN: ImageOwnerType.ADMIN,
+    UserRole.SUPER_ADMIN: ImageOwnerType.ADMIN,
+}
+
+
+async def upload_image(
+    current_user: CurrentUserDep,
+    service: MediaServiceDep,
+    file: UploadFile = File(..., description="Image file to upload."),
+    usage: MediaUsage = Form(..., description="Feature context, e.g. package_image."),
+    entity_type: str | None = Form(default=None),
+    entity_id: uuid.UUID | None = Form(default=None),
+) -> SuccessResponse[ImageResponse]:
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Only image files are accepted.",
+        )
+
+    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    file_bytes = await file.read()
+    if len(file_bytes) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Image exceeds the {settings.MAX_UPLOAD_SIZE_MB}MB upload limit.",
+        )
+
+    owner_type = _OWNER_TYPE_BY_ROLE.get(current_user.role, ImageOwnerType.USER)
+
+    result = await service.upload_image(
+        owner_id=current_user.id,
+        owner_type=owner_type,
+        usage=usage,
+        file_bytes=file_bytes,
+        filename=file.filename or "upload",
+        content_type=file.content_type or "application/octet-stream",
+        entity_type=entity_type,
+        entity_id=entity_id,
+    )
+    return SuccessResponse(data=result, message="Image uploaded.")
+
 
 async def register_image_upload(
     body: ImageUploadRegisterCreate,

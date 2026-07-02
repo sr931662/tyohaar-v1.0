@@ -451,8 +451,12 @@ class PackageService(BaseService):
         self,
         data: PackageCategoryCreate,
     ) -> PackageCategoryResponse:
+        import re
+
         async with self._uow() as uow:
             payload = data.model_dump(exclude_unset=True)
+            if not payload.get("slug"):
+                payload["slug"] = re.sub(r"[^a-z0-9]+", "-", payload["name"].lower()).strip("-")
             category = await uow.packages.categories.create_from_dict(payload)
             await uow.commit()
             return PackageCategoryResponse.model_validate(category)

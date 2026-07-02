@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     # Leave blank in dev; Google Sign-In endpoints return a clear error until set.
     GOOGLE_CLIENT_ID: str = ""
 
+    # ── Image Storage (Cloudinary) ──────────────────────────────────────────
+    # cloudinary.com → Dashboard → Product Environment Credentials.
+    # Leave blank in dev; the image upload endpoint returns a clear error until set.
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     # ── Properties ───────────────────────────────────────────────────────────
 
     @property

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { vendorProfileApi, vendorPackagesApi } from '../../api';
 import { ConfirmDialog } from '../../../admin/components/ui/Modal';
+import ImageUploadField from '../../components/ImageUploadField';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -132,8 +133,12 @@ function PackageFormModal({ initial, categories, onClose, onSave, saving }) {
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Cover Image URL</label>
-            <input className="admin-input" type="url" value={form.cover_image_url} onChange={(e) => set('cover_image_url', e.target.value)} placeholder="https://..." />
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Cover Image</label>
+            <ImageUploadField
+              value={form.cover_image_url}
+              onChange={(url) => set('cover_image_url', url)}
+              usage="package_image"
+            />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>

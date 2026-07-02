@@ -89,6 +89,56 @@ class MediaService(BaseService):
     # Images
     # =========================================================================
 
+    async def upload_image(
+        self,
+        owner_id: UUID,
+        owner_type: ImageOwnerType,
+        usage,
+        file_bytes: bytes,
+        filename: str,
+        content_type: str,
+        entity_type: str | None = None,
+        entity_id: UUID | None = None,
+    ) -> ImageResponse:
+        """
+        Upload a raw image file straight to Cloudinary and record it as an
+        immediately-usable Image row. Unlike register/confirm (which models a
+        client-direct-to-storage flow), this proxies the bytes through the
+        backend — simpler, and appropriate for the image sizes vendors/admins
+        upload here.
+        """
+        import hashlib
+
+        from app.services.media.cloudinary_client import upload_image_bytes
+
+        content_hash = hashlib.sha256(file_bytes).hexdigest()
+        result = await upload_image_bytes(file_bytes, folder=f"tyohaar/{usage.value}")
+
+        async with self._uow() as uow:
+            image = Image(
+                owner_id=owner_id,
+                owner_type=owner_type,
+                url=result["secure_url"],
+                storage_path=result["public_id"],
+                original_filename=filename,
+                file_size_bytes=result.get("bytes") or len(file_bytes),
+                mime_type=content_type,
+                image_format=result.get("format"),
+                width=result.get("width") or 1,
+                height=result.get("height") or 1,
+                usage=usage,
+                media_status=MediaStatus.ACTIVE,
+                moderation_status=ModerationStatus.APPROVED,
+                content_hash=content_hash,
+                cdn_provider="cloudinary",
+                entity_type=entity_type,
+                entity_id=entity_id,
+                uploaded_at=datetime.now(tz=timezone.utc),
+            )
+            image = await uow.media.images.create(image)
+            await uow.commit()
+        return ImageResponse.model_validate(image)
+
     async def register_image_upload(
         self,
         owner_id: UUID,

@@ -19,6 +19,19 @@ export const vendorAuthApi = {
     vendorClient.get('/users/me').then(extractData),
 };
 
+// ── Media ─────────────────────────────────────────────────────────────────────
+
+export const vendorMediaApi = {
+  uploadImage: (file, usage, { entityType, entityId } = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('usage', usage);
+    if (entityType) formData.append('entity_type', entityType);
+    if (entityId) formData.append('entity_id', entityId);
+    return vendorClient.post('/media/upload', formData).then(extractData);
+  },
+};
+
 // ── Vendor Profile ────────────────────────────────────────────────────────────
 
 export const vendorProfileApi = {

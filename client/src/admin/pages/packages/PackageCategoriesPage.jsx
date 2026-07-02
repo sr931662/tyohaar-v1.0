@@ -5,6 +5,7 @@ import { packagesApi } from '../../api';
 import { formatDate } from '../../utils/format';
 import EmptyState from '../../components/ui/EmptyState';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
+import ImageUploadField from '../../components/ui/ImageUploadField';
 
 export default function PackageCategoriesPage() {
   const qc = useQueryClient();
@@ -13,6 +14,7 @@ export default function PackageCategoriesPage() {
   const [deleteId, setDeleteId] = useState(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [iconUrl, setIconUrl] = useState('');
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['packages', 'categories'],
@@ -27,7 +29,7 @@ export default function PackageCategoriesPage() {
       toast.success(editItem ? 'Category updated' : 'Category created');
       qc.invalidateQueries(['packages', 'categories']);
       setModalOpen(false);
-      setEditItem(null); setName(''); setDescription('');
+      setEditItem(null); setName(''); setDescription(''); setIconUrl('');
     },
     onError: () => toast.error('Save failed'),
   });
@@ -39,12 +41,12 @@ export default function PackageCategoriesPage() {
   });
 
   const openEdit = (cat) => {
-    setEditItem(cat); setName(cat.name); setDescription(cat.description ?? '');
+    setEditItem(cat); setName(cat.name); setDescription(cat.description ?? ''); setIconUrl(cat.icon_url ?? '');
     setModalOpen(true);
   };
 
   const openNew = () => {
-    setEditItem(null); setName(''); setDescription('');
+    setEditItem(null); setName(''); setDescription(''); setIconUrl('');
     setModalOpen(true);
   };
 
@@ -71,7 +73,14 @@ export default function PackageCategoriesPage() {
             <tbody>
               {categories.map((cat) => (
                 <tr key={cat.id}>
-                  <td><div className="admin-user-name">{cat.name}</div></td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {cat.icon_url && (
+                        <img src={cat.icon_url} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
+                      )}
+                      <div className="admin-user-name">{cat.name}</div>
+                    </div>
+                  </td>
                   <td><span className="text-secondary">{cat.description ?? '—'}</span></td>
                   <td>{cat.package_count ?? 0}</td>
                   <td>{formatDate(cat.created_at)}</td>
@@ -95,7 +104,7 @@ export default function PackageCategoriesPage() {
         footer={
           <>
             <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={() => saveMutation.mutate({ name, description })} disabled={!name || saveMutation.isPending}>
+            <button className="btn btn-primary" onClick={() => saveMutation.mutate({ name, description, icon_url: iconUrl || undefined })} disabled={!name || saveMutation.isPending}>
               {saveMutation.isPending ? 'Saving…' : 'Save'}
             </button>
           </>
@@ -108,6 +117,10 @@ export default function PackageCategoriesPage() {
         <div className="form-group">
           <label className="form-label">Description</label>
           <textarea className="form-control" value={description} onChange={e => setDescription(e.target.value)} rows={3} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Icon</label>
+          <ImageUploadField value={iconUrl} onChange={setIconUrl} usage="product_image" />
         </div>
       </Modal>
 
