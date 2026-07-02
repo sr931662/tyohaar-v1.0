@@ -19,6 +19,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
+from app.models.enums import VendorStatus, VendorVerificationStatus
 from app.schemas.cms.bulk import (
     BulkAvailabilityUpdateRequest,
     BulkCouponGenerateRequest,
@@ -58,10 +59,29 @@ class BulkService(BaseService):
 
     # ── Vendor Bulk Actions ───────────────────────────────────────────────────
 
+    async def _sync_user_account_status(self, uow, vendor_ids: list[uuid.UUID], account_status) -> None:
+        """
+        Mirror a vendor-status change onto the owning User row.
+
+        Vendor.status/verification_status govern the business profile; the
+        User.account_status column is what auth actually gates on login, so
+        every vendor status transition must keep both in sync.
+        """
+        from sqlalchemy import select as sa_select
+
+        from app.models.users.user import User
+        from app.models.vendors.vendor import Vendor
+
+        subq = sa_select(Vendor.user_id).where(Vendor.id.in_(vendor_ids))
+        await uow.session.execute(
+            update(User).where(User.id.in_(subq)).values(account_status=account_status)
+        )
+
     async def _bulk_vendor_status_update(
         self,
         request: BulkVendorActionRequest,
-        new_status: str,
+        new_status: VendorVerificationStatus,
+        user_account_status,
         operation: str,
     ) -> BulkOperationResult:
         from app.models.vendors.vendor import Vendor
@@ -86,17 +106,31 @@ class BulkService(BaseService):
                         failed.append({"id": str(vendor_id), "error": "Vendor not found"})
                 except Exception as exc:
                     failed.append({"id": str(vendor_id), "error": str(exc)})
+
+            if succeeded:
+                await self._sync_user_account_status(
+                    uow, [uuid.UUID(v) for v in succeeded], user_account_status
+                )
             await uow.commit()
 
         return self._make_result(operation, request.ids, succeeded, failed)
 
     async def approve_vendors(self, request: BulkVendorActionRequest) -> BulkOperationResult:
-        return await self._bulk_vendor_status_update(request, "VERIFIED", "approve_vendors")
+        from app.models.enums import AccountStatus
+
+        return await self._bulk_vendor_status_update(
+            request, VendorVerificationStatus.VERIFIED, AccountStatus.ACTIVE, "approve_vendors"
+        )
 
     async def reject_vendors(self, request: BulkVendorActionRequest) -> BulkOperationResult:
-        return await self._bulk_vendor_status_update(request, "REJECTED", "reject_vendors")
+        from app.models.enums import AccountStatus
+
+        return await self._bulk_vendor_status_update(
+            request, VendorVerificationStatus.REJECTED, AccountStatus.SUSPENDED, "reject_vendors"
+        )
 
     async def suspend_vendors(self, request: BulkVendorActionRequest) -> BulkOperationResult:
+        from app.models.enums import AccountStatus
         from app.models.vendors.vendor import Vendor
 
         succeeded: list[str] = []
@@ -107,7 +141,7 @@ class BulkService(BaseService):
                     stmt = (
                         update(Vendor)
                         .where(Vendor.id == vendor_id, Vendor.deleted_at.is_(None))
-                        .values(account_status="SUSPENDED")
+                        .values(status=VendorStatus.SUSPENDED, is_active=False)
                         .returning(Vendor.id)
                     )
                     result = await uow.session.execute(stmt)
@@ -117,10 +151,16 @@ class BulkService(BaseService):
                         failed.append({"id": str(vendor_id), "error": "Vendor not found"})
                 except Exception as exc:
                     failed.append({"id": str(vendor_id), "error": str(exc)})
+
+            if succeeded:
+                await self._sync_user_account_status(
+                    uow, [uuid.UUID(v) for v in succeeded], AccountStatus.SUSPENDED
+                )
             await uow.commit()
         return self._make_result("suspend_vendors", request.ids, succeeded, failed)
 
     async def activate_vendors(self, request: BulkVendorActionRequest) -> BulkOperationResult:
+        from app.models.enums import AccountStatus
         from app.models.vendors.vendor import Vendor
 
         succeeded: list[str] = []
@@ -131,7 +171,11 @@ class BulkService(BaseService):
                     stmt = (
                         update(Vendor)
                         .where(Vendor.id == vendor_id, Vendor.deleted_at.is_(None))
-                        .values(account_status="ACTIVE", verification_status="VERIFIED")
+                        .values(
+                            status=VendorStatus.ACTIVE,
+                            is_active=True,
+                            verification_status=VendorVerificationStatus.VERIFIED,
+                        )
                         .returning(Vendor.id)
                     )
                     result = await uow.session.execute(stmt)
@@ -141,6 +185,11 @@ class BulkService(BaseService):
                         failed.append({"id": str(vendor_id), "error": "Vendor not found"})
                 except Exception as exc:
                     failed.append({"id": str(vendor_id), "error": str(exc)})
+
+            if succeeded:
+                await self._sync_user_account_status(
+                    uow, [uuid.UUID(v) for v in succeeded], AccountStatus.ACTIVE
+                )
             await uow.commit()
         return self._make_result("activate_vendors", request.ids, succeeded, failed)
 

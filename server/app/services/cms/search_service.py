@@ -152,7 +152,7 @@ class SearchService(BaseService):
                 entity_type="vendor",
                 title=r.business_name,
                 subtitle=getattr(r, "city", None),
-                badge=str(r.verification_status),
+                badge=r.verification_status.value,
                 created_at=r.created_at,
             )
             for r in rows

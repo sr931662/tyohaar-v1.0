@@ -4,25 +4,25 @@ const BASE = '/admin/cms/bulk';
 
 export const bulkApi = {
   approveVendors: (vendorIds) =>
-    apiClient.post(`${BASE}/vendors/approve`, { vendor_ids: vendorIds }).then(extractData),
+    apiClient.post(`${BASE}/vendors/approve`, { ids: vendorIds }).then(extractData),
 
   rejectVendors: (vendorIds, reason) =>
-    apiClient.post(`${BASE}/vendors/reject`, { vendor_ids: vendorIds, reason }).then(extractData),
+    apiClient.post(`${BASE}/vendors/reject`, { ids: vendorIds, reason }).then(extractData),
 
   suspendVendors: (vendorIds, reason) =>
-    apiClient.post(`${BASE}/vendors/suspend`, { vendor_ids: vendorIds, reason }).then(extractData),
+    apiClient.post(`${BASE}/vendors/suspend`, { ids: vendorIds, reason }).then(extractData),
 
   activateVendors: (vendorIds) =>
-    apiClient.post(`${BASE}/vendors/activate`, { vendor_ids: vendorIds }).then(extractData),
+    apiClient.post(`${BASE}/vendors/activate`, { ids: vendorIds }).then(extractData),
 
   publishPackages: (packageIds) =>
-    apiClient.post(`${BASE}/packages/publish`, { package_ids: packageIds }).then(extractData),
+    apiClient.post(`${BASE}/packages/publish`, { ids: packageIds }).then(extractData),
 
   unpublishPackages: (packageIds) =>
-    apiClient.post(`${BASE}/packages/unpublish`, { package_ids: packageIds }).then(extractData),
+    apiClient.post(`${BASE}/packages/unpublish`, { ids: packageIds }).then(extractData),
 
   archivePackages: (packageIds) =>
-    apiClient.post(`${BASE}/packages/archive`, { package_ids: packageIds }).then(extractData),
+    apiClient.post(`${BASE}/packages/archive`, { ids: packageIds }).then(extractData),
 
   bulkPriceUpdate: (body) =>
     apiClient.post(`${BASE}/packages/price`, body).then(extractData),

@@ -67,8 +67,8 @@ class CRMService(BaseService):
                 email=getattr(vendor_row, "email", None),
                 city=getattr(vendor_row, "city", None),
                 state=getattr(vendor_row, "state", None),
-                verification_status=str(vendor_row.verification_status),
-                account_status=str(getattr(vendor_row, "account_status", "ACTIVE")),
+                verification_status=vendor_row.verification_status.value,
+                account_status=vendor_row.status.value,
                 onboarded_at=vendor_row.created_at,
             )
 
@@ -83,7 +83,7 @@ class CRMService(BaseService):
             ).scalars().all()
 
             kyc = VendorKYC(
-                kyc_status=str(vendor_row.verification_status),
+                kyc_status=vendor_row.verification_status.value,
                 documents=[
                     {
                         "id": str(d.id),
@@ -408,7 +408,8 @@ class CRMService(BaseService):
                     "id": str(v.id),
                     "business_name": v.business_name,
                     "city": getattr(v, "city", None),
-                    "verification_status": str(v.verification_status),
+                    "status": v.status.value,
+                    "verification_status": v.verification_status.value,
                     "avg_rating": float(getattr(v, "average_rating", 0) or 0),
                     "created_at": v.created_at.isoformat(),
                 }

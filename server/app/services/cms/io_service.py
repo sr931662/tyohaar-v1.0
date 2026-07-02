@@ -535,7 +535,7 @@ class IOService(BaseService):
                         "id": str(v.id),
                         "business_name": v.business_name,
                         "city": getattr(v, "city", ""),
-                        "verification_status": str(v.verification_status),
+                        "verification_status": v.verification_status.value,
                         "created_at": str(v.created_at),
                     }
                     for v in rows
