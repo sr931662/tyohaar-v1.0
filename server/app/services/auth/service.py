@@ -285,7 +285,12 @@ class AuthService(BaseService):
             tokens = await self._create_user_session(
                 user, ip_address, user_agent, LoginMethod.GOOGLE
             )
-            return {"access_token": tokens.access_token, "token_type": tokens.token_type}
+            return {
+                "access_token": tokens.access_token,
+                "refresh_token": tokens.refresh_token,
+                "token_type": tokens.token_type,
+                "expires_in": tokens.expires_in,
+            }
 
     async def _create_user_session(
         self,
@@ -474,6 +479,28 @@ class AuthService(BaseService):
 
         return await self._create_user_session(
             user, ip_address, user_agent, LoginMethod.OTP_PHONE, device_id
+        )
+
+    # ── Session Creation for Other Auth Flows (admin, etc.) ───────────────────
+
+    async def create_session_for_user_id(
+        self,
+        user_id: uuid.UUID,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        login_method: LoginMethod = LoginMethod.EMAIL_PASSWORD,
+    ) -> TokenPairResponse:
+        """
+        Issue a real access/refresh token pair (with a revocable UserSession)
+        for a user who has already been authenticated by another flow (e.g.
+        admin_login, which validates credentials against the Admin table).
+        """
+        class _UserRef:
+            def __init__(self, uid: uuid.UUID) -> None:
+                self.id = uid
+
+        return await self._create_user_session(
+            _UserRef(user_id), ip_address, user_agent, login_method
         )
 
     # ── Refresh Access Token ──────────────────────────────────────────────────

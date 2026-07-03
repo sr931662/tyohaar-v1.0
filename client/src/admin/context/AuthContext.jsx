@@ -3,6 +3,15 @@ import { authApi } from '../api';
 
 const AuthContext = createContext(null);
 
+function clearStoredSession() {
+  localStorage.removeItem('admin_token');
+  localStorage.removeItem('admin_refresh_token');
+  localStorage.removeItem('admin_user');
+  sessionStorage.removeItem('admin_token');
+  sessionStorage.removeItem('admin_refresh_token');
+  sessionStorage.removeItem('admin_user');
+}
+
 export function AdminAuthProvider({ children }) {
   const [admin, setAdmin] = useState(() => {
     try {
@@ -25,10 +34,9 @@ export function AdminAuthProvider({ children }) {
         store.setItem('admin_user', JSON.stringify(data));
       })
       .catch(() => {
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_user');
-        sessionStorage.removeItem('admin_token');
-        sessionStorage.removeItem('admin_user');
+        // Note: a 401 here is already handled by the apiClient interceptor,
+        // which tries a token refresh before this .catch ever sees a rejection.
+        clearStoredSession();
         setAdmin(null);
       })
       .finally(() => setLoading(false));
@@ -39,6 +47,7 @@ export function AdminAuthProvider({ children }) {
     const token = data.access_token ?? data.token;
     const store = remember ? localStorage : sessionStorage;
     if (token) store.setItem('admin_token', token);
+    if (data.refresh_token) store.setItem('admin_refresh_token', data.refresh_token);
     const adminData = data.admin ?? data;
     setAdmin(adminData);
     store.setItem('admin_user', JSON.stringify(adminData));
@@ -47,11 +56,18 @@ export function AdminAuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try { await authApi.logout(); } catch { /* ignore */ }
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    sessionStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_user');
+    clearStoredSession();
     setAdmin(null);
+  }, []);
+
+  // Re-fetch the current admin (e.g. after updating the profile photo) so
+  // the topbar avatar reflects the change without a full page reload.
+  const refreshAdmin = useCallback(async () => {
+    const data = await authApi.me();
+    setAdmin(data);
+    const store = localStorage.getItem('admin_token') ? localStorage : sessionStorage;
+    store.setItem('admin_user', JSON.stringify(data));
+    return data;
   }, []);
 
   const hasPermission = useCallback((permission) => {
@@ -65,7 +81,7 @@ export function AdminAuthProvider({ children }) {
   const isAdmin = !!admin;
 
   return (
-    <AuthContext.Provider value={{ admin, loading, login, logout, hasPermission, isSuperAdmin, isAdmin }}>
+    <AuthContext.Provider value={{ admin, loading, login, logout, hasPermission, isSuperAdmin, isAdmin, refreshAdmin }}>
       {children}
     </AuthContext.Provider>
   );

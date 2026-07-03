@@ -58,6 +58,11 @@ class AdminResponse(IDSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     user_id: uuid.UUID = Field(description="Associated user account ID")
+    full_name: str | None = Field(default=None, description="Display name, from the linked User account")
+    email: str | None = Field(default=None, description="Login email, from the linked User account")
+    profile_photo_url: str | None = Field(
+        default=None, description="Personal avatar, from the linked User's profile"
+    )
     role_id: uuid.UUID = Field(description="Assigned admin role ID")
     employee_id: str | None = Field(default=None, description="Internal employee ID")
     department: str | None = Field(default=None, description="Department assignment")

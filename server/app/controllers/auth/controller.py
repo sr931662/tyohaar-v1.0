@@ -49,13 +49,21 @@ def _client_ip(request: Request) -> str | None:
 async def vendor_login(
     body: _VendorLoginRequest,
     service: AuthServiceDep,
+    request: Request,
 ) -> SuccessResponse[dict]:
     result = await service.authenticate_user(
         email=body.email,
         password=body.password,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("User-Agent"),
     )
     return SuccessResponse(
-        data={"access_token": result.access_token, "token_type": result.token_type},
+        data={
+            "access_token": result.access_token,
+            "refresh_token": result.refresh_token,
+            "token_type": result.token_type,
+            "expires_in": result.expires_in,
+        },
         message="Vendor login successful.",
     )
 

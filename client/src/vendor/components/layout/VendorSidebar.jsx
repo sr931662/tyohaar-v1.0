@@ -158,8 +158,10 @@ export default function VendorSidebar({ collapsed, onToggle }) {
       <div className="admin-sidebar-footer">
         {!collapsed && user && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', marginBottom: 4 }}>
-            <div className="admin-avatar" style={{ background: 'var(--brand-700)', color: 'white', fontSize: 11, flexShrink: 0 }}>
-              {initials}
+            <div className="admin-avatar" style={{ background: 'var(--brand-700)', color: 'white', fontSize: 11, flexShrink: 0, overflow: 'hidden' }}>
+              {user.profile_photo_url ? (
+                <img src={user.profile_photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : initials}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12.5, fontWeight: 600, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

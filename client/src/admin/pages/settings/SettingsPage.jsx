@@ -5,6 +5,7 @@ import { settingsApi, budgetsApi } from '../../api';
 import { formatDate } from '../../utils/format';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
 import { SkeletonTable } from '../../components/ui/Skeleton';
+import ImageUploadField from '../../components/ui/ImageUploadField';
 
 function AppSettingsTab() {
   const qc = useQueryClient();
@@ -131,7 +132,10 @@ function BannersTab() {
         }
       >
         <div className="form-group"><label className="form-label required">Title</label><input className="form-control" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
-        <div className="form-group"><label className="form-label">Image URL</label><input className="form-control" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} /></div>
+        <div className="form-group">
+          <label className="form-label">Image</label>
+          <ImageUploadField value={form.image_url} onChange={(url) => setForm(f => ({ ...f, image_url: url }))} usage="banner" />
+        </div>
         <div className="form-group"><label className="form-label">Link URL</label><input className="form-control" value={form.link_url} onChange={e => setForm(f => ({ ...f, link_url: e.target.value }))} /></div>
         <div className="form-group"><label className="form-label">Position</label><input className="form-control" type="number" value={form.position} onChange={e => setForm(f => ({ ...f, position: parseInt(e.target.value) || 0 }))} /></div>
         <div className="form-check">

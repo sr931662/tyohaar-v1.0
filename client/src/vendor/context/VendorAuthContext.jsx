@@ -3,6 +3,32 @@ import { vendorAuthApi } from '../api';
 
 const VendorAuthContext = createContext(null);
 
+function clearStoredSession() {
+  localStorage.removeItem('vendor_token');
+  localStorage.removeItem('vendor_refresh_token');
+  localStorage.removeItem('vendor_user');
+  sessionStorage.removeItem('vendor_token');
+  sessionStorage.removeItem('vendor_refresh_token');
+  sessionStorage.removeItem('vendor_user');
+}
+
+function storeTokens(store, data) {
+  if (data.access_token) store.setItem('vendor_token', data.access_token);
+  if (data.refresh_token) store.setItem('vendor_refresh_token', data.refresh_token);
+}
+
+// Merge the personal-profile photo (stored on UserProfile, not User) onto the
+// user object so sidebars/avatars can read `user.profile_photo_url` directly.
+async function fetchFullUser() {
+  const userData = await vendorAuthApi.me();
+  try {
+    const profile = await vendorAuthApi.getUserProfile(userData.id);
+    return { ...userData, profile_photo_url: profile?.profile_photo_url ?? null };
+  } catch {
+    return userData;
+  }
+}
+
 export function VendorAuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
@@ -14,21 +40,21 @@ export function VendorAuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(true);
 
+  const getStore = () => (localStorage.getItem('vendor_token') ? localStorage : sessionStorage);
+
   useEffect(() => {
     const token = localStorage.getItem('vendor_token') || sessionStorage.getItem('vendor_token');
     if (!token) { setLoading(false); return; }
 
-    const store = localStorage.getItem('vendor_token') ? localStorage : sessionStorage;
-    vendorAuthApi.me()
+    fetchFullUser()
       .then((data) => {
         setUser(data);
-        store.setItem('vendor_user', JSON.stringify(data));
+        getStore().setItem('vendor_user', JSON.stringify(data));
       })
       .catch(() => {
-        localStorage.removeItem('vendor_token');
-        localStorage.removeItem('vendor_user');
-        sessionStorage.removeItem('vendor_token');
-        sessionStorage.removeItem('vendor_user');
+        // Note: a 401 here is already handled by the vendorClient interceptor,
+        // which tries a token refresh before this .catch ever sees a rejection.
+        clearStoredSession();
         setUser(null);
       })
       .finally(() => setLoading(false));
@@ -36,10 +62,9 @@ export function VendorAuthProvider({ children }) {
 
   const loginWithPassword = useCallback(async (email, password, remember = true) => {
     const data = await vendorAuthApi.loginWithPassword(email, password);
-    const token = data.access_token;
     const store = remember ? localStorage : sessionStorage;
-    if (token) store.setItem('vendor_token', token);
-    const userData = await vendorAuthApi.me();
+    storeTokens(store, data);
+    const userData = await fetchFullUser();
     setUser(userData);
     store.setItem('vendor_user', JSON.stringify(userData));
     return userData;
@@ -52,8 +77,8 @@ export function VendorAuthProvider({ children }) {
       return { pending: true };
     }
     const store = remember ? localStorage : sessionStorage;
-    store.setItem('vendor_token', data.access_token);
-    const userData = await vendorAuthApi.me();
+    storeTokens(store, data);
+    const userData = await fetchFullUser();
     setUser(userData);
     store.setItem('vendor_user', JSON.stringify(userData));
     return { pending: false, user: userData };
@@ -61,15 +86,21 @@ export function VendorAuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try { await vendorAuthApi.logout(); } catch { /* ignore */ }
-    localStorage.removeItem('vendor_token');
-    localStorage.removeItem('vendor_user');
-    sessionStorage.removeItem('vendor_token');
-    sessionStorage.removeItem('vendor_user');
+    clearStoredSession();
     setUser(null);
   }, []);
 
+  // Re-fetch the current user (e.g. after updating the profile photo) so
+  // sidebars/avatars reflect the change without a full page reload.
+  const refreshUser = useCallback(async () => {
+    const userData = await fetchFullUser();
+    setUser(userData);
+    getStore().setItem('vendor_user', JSON.stringify(userData));
+    return userData;
+  }, []);
+
   return (
-    <VendorAuthContext.Provider value={{ user, loading, loginWithPassword, loginWithGoogle, logout }}>
+    <VendorAuthContext.Provider value={{ user, loading, loginWithPassword, loginWithGoogle, logout, refreshUser }}>
       {children}
     </VendorAuthContext.Provider>
   );

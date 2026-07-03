@@ -99,20 +99,26 @@ class MediaService(BaseService):
         content_type: str,
         entity_type: str | None = None,
         entity_id: UUID | None = None,
+        resource_type: str = "image",
     ) -> ImageResponse:
         """
-        Upload a raw image file straight to Cloudinary and record it as an
-        immediately-usable Image row. Unlike register/confirm (which models a
-        client-direct-to-storage flow), this proxies the bytes through the
-        backend — simpler, and appropriate for the image sizes vendors/admins
-        upload here.
+        Upload a raw file (image or document) straight to Cloudinary and
+        record it as an immediately-usable Image row. Unlike register/confirm
+        (which models a client-direct-to-storage flow), this proxies the bytes
+        through the backend — simpler, and appropriate for the file sizes
+        vendors/admins upload here.
+
+        `resource_type` is Cloudinary's own classification: "image" for
+        photos, "raw" for PDFs/Word docs (no image transforms apply to those).
         """
         import hashlib
 
         from app.services.media.cloudinary_client import upload_image_bytes
 
         content_hash = hashlib.sha256(file_bytes).hexdigest()
-        result = await upload_image_bytes(file_bytes, folder=f"tyohaar/{usage.value}")
+        result = await upload_image_bytes(
+            file_bytes, folder=f"tyohaar/{usage.value}", resource_type=resource_type
+        )
 
         async with self._uow() as uow:
             image = Image(

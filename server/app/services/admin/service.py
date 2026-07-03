@@ -53,7 +53,7 @@ from app.services.admin.exceptions import (
     RoleInUseError,
     RoleNotFoundError,
 )
-from app.core.security import create_access_token, decode_access_token
+from app.core.security import decode_access_token
 from app.services.admin.helpers import (
     hash_admin_password,
     verify_admin_password,
@@ -76,6 +76,7 @@ class AdminTokenResponse:
     """Returned by admin_login — contains the raw (unhashed) session token."""
 
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
     expires_in: int = 28800  # 8 hours
     admin_id: UUID | None = None
@@ -130,8 +131,8 @@ class AdminService(BaseService):
                 await uow.admin.admins.reset_failed_login(admin.id)
                 await uow.admin.admins.update_last_login(admin.id, ip_address=ip_address)
 
-                access_token = create_access_token(str(admin.user_id))
                 admin_id = admin.id
+                admin_user_id = admin.user_id
 
                 await uow.commit()
         except (AdminLoginFailedError, AdminLockedError):
@@ -139,6 +140,16 @@ class AdminService(BaseService):
         except Exception as exc:
             logger.error("admin_login DB error for %s: %s", email, exc)
             raise AdminLoginFailedError("Login service temporarily unavailable. Please try again.") from exc
+
+        # Issue a real, revocable session (access + refresh token pair) via the
+        # shared AuthService rather than a bare stateless JWT, so admin sessions
+        # can be silently refreshed the same way vendor/customer sessions are.
+        from app.models.enums import LoginMethod
+        from app.services.auth.service import AuthService
+
+        tokens = await AuthService().create_session_for_user_id(
+            admin_user_id, ip_address=ip_address, login_method=LoginMethod.EMAIL_PASSWORD
+        )
 
         await self.write_audit_log(
             admin_id=admin_id,
@@ -151,7 +162,9 @@ class AdminService(BaseService):
         )
 
         return AdminTokenResponse(
-            access_token=access_token,
+            access_token=tokens.access_token,
+            refresh_token=tokens.refresh_token,
+            expires_in=tokens.expires_in,
         )
 
     async def admin_logout(self, admin_id: UUID) -> None:
@@ -217,7 +230,15 @@ class AdminService(BaseService):
             admin = await uow.admin.admins.find_by_user(user_id)
             if admin is None:
                 raise AdminNotFoundError(f"Admin not found for user {user_id}.")
-            return AdminResponse.model_validate(admin)
+
+            response = AdminResponse.model_validate(admin)
+            user = await uow.users.users.get_with_profile(user_id)
+            if user is not None:
+                response.full_name = user.full_name
+                response.email = user.email
+                profile = getattr(user, "profile", None)
+                response.profile_photo_url = getattr(profile, "profile_photo_url", None)
+            return response
 
     async def list_admins(
         self,

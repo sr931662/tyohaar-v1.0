@@ -8,6 +8,19 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+function getStore() {
+  return localStorage.getItem('admin_token') ? localStorage : sessionStorage;
+}
+
+function clearSession() {
+  localStorage.removeItem('admin_token');
+  localStorage.removeItem('admin_refresh_token');
+  localStorage.removeItem('admin_user');
+  sessionStorage.removeItem('admin_token');
+  sessionStorage.removeItem('admin_refresh_token');
+  sessionStorage.removeItem('admin_user');
+}
+
 // Attach admin token to every request
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
@@ -15,15 +28,49 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Single shared in-flight refresh so concurrent 401s only trigger one refresh call.
+let refreshPromise = null;
+
+function refreshAccessToken() {
+  if (!refreshPromise) {
+    const refreshToken = localStorage.getItem('admin_refresh_token') || sessionStorage.getItem('admin_refresh_token');
+    if (!refreshToken) {
+      refreshPromise = Promise.reject(new Error('No refresh token available.'));
+    } else {
+      refreshPromise = axios
+        .post(`${BASE_URL}/auth/token/refresh`, { refresh_token: refreshToken })
+        .then((res) => {
+          const data = res.data?.data ?? res.data;
+          const store = getStore();
+          store.setItem('admin_token', data.access_token);
+          if (data.refresh_token) store.setItem('admin_refresh_token', data.refresh_token);
+          return data.access_token;
+        });
+    }
+    refreshPromise.finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
 // Normalize API responses — backend always wraps in { data, success, message }
 apiClient.interceptors.response.use(
   (res) => res,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-      sessionStorage.removeItem('admin_token');
-      sessionStorage.removeItem('admin_user');
+  async (error) => {
+    const { config, response } = error;
+    if (response?.status === 401 && config && !config._retried && !config.url?.includes('/auth/')) {
+      config._retried = true;
+      try {
+        const newToken = await refreshAccessToken();
+        config.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(config);
+      } catch {
+        clearSession();
+        window.location.href = '/admin/login';
+        return Promise.reject(error);
+      }
+    }
+    if (response?.status === 401) {
+      clearSession();
       window.location.href = '/admin/login';
     }
     return Promise.reject(error);

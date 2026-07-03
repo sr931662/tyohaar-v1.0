@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { vendorProfileApi } from '../../api';
 import { useVendorAuth } from '../../context/VendorAuthContext';
+import ImageUploadField from '../../components/ImageUploadField';
 
 const DOC_TYPE_LABELS = {
   gst_certificate: 'GST Certificate',
@@ -115,6 +116,44 @@ function TagsInput({ value = [], onChange, placeholder }) {
           style={{ flex: 1 }}
         />
         <button type="button" className="btn btn-secondary btn-sm" onClick={add}>Add</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Profile Photo Card ────────────────────────────────────────────────────────
+
+function ProfilePhotoCard() {
+  const { user, refreshUser } = useVendorAuth();
+  const [photoUrl, setPhotoUrl] = useState(user?.profile_photo_url ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await vendorProfileApi.updateUserProfile(user.id, { profile_photo_url: photoUrl || undefined });
+      await refreshUser();
+      toast.success('Profile photo updated.');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail ?? 'Failed to update profile photo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="admin-card" style={{ marginBottom: 20 }}>
+      <div style={{ padding: '18px 20px 0' }}>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Profile Photo</h3>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-tertiary)' }}>Your personal avatar, shown in the sidebar and to Tyohaar staff</p>
+      </div>
+      <div style={{ padding: '16px 20px 20px', display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+        <div style={{ flex: 1 }}>
+          <ImageUploadField value={photoUrl} onChange={setPhotoUrl} usage="profile_photo" />
+        </div>
+        <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
       </div>
     </div>
   );
@@ -305,6 +344,8 @@ export default function VendorProfilePage() {
           </div>
         )}
       </div>
+
+      <ProfilePhotoCard />
 
       <form onSubmit={handleSubmit}>
         {/* Business Info — always shown */}
@@ -516,8 +557,8 @@ function GallerySection({ vendor }) {
         )}
 
         <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-            <input className="admin-input" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="Image URL (https://...)" type="url" />
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, alignItems: 'start' }}>
+            <ImageUploadField value={mediaUrl} onChange={setMediaUrl} usage="vendor_gallery" placeholder="Image URL (https://...)" />
             <input className="admin-input" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption (optional)" />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -629,7 +670,14 @@ function DocumentsSection({ vendor }) {
             </select>
           </div>
           <div style={{ flex: 1, minWidth: 220 }}>
-            <input className="admin-input" value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="Document URL (https://...)" type="url" />
+            <ImageUploadField
+              value={docUrl}
+              onChange={setDocUrl}
+              usage="vendor_document"
+              placeholder="Document URL (https://...)"
+              accept="application/pdf,image/*"
+              label="Upload"
+            />
           </div>
           <button type="submit" className="btn btn-primary btn-sm" disabled={addMutation.isPending} style={{ whiteSpace: 'nowrap' }}>
             {addMutation.isPending ? 'Uploading…' : '+ Add Document'}

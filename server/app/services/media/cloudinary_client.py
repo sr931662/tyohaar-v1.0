@@ -40,12 +40,12 @@ def _ensure_configured() -> None:
         _configured = True
 
 
-async def upload_image_bytes(file_bytes: bytes, folder: str) -> dict:
-    """Upload raw image bytes to Cloudinary and return its response dict."""
+async def upload_image_bytes(file_bytes: bytes, folder: str, resource_type: str = "image") -> dict:
+    """Upload raw file bytes to Cloudinary and return its response dict."""
     _ensure_configured()
 
     def _upload() -> dict:
-        return cloudinary.uploader.upload(file_bytes, folder=folder, resource_type="image")
+        return cloudinary.uploader.upload(file_bytes, folder=folder, resource_type=resource_type)
 
     return await run_in_threadpool(_upload)
 

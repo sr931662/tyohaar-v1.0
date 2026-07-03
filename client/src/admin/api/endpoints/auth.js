@@ -9,4 +9,7 @@ export const authApi = {
 
   me: () =>
     apiClient.get('/admin/auth/me').then(extractData),
+
+  updateUserProfile: (userId, body) =>
+    apiClient.put(`/users/${userId}/profile`, body).then(extractData),
 };

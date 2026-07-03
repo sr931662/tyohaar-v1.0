@@ -48,18 +48,28 @@ _OWNER_TYPE_BY_ROLE = {
 }
 
 
+_ALLOWED_DOCUMENT_TYPES = {
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+
+
 async def upload_image(
     current_user: CurrentUserDep,
     service: MediaServiceDep,
-    file: UploadFile = File(..., description="Image file to upload."),
+    file: UploadFile = File(..., description="Image or document file to upload."),
     usage: MediaUsage = Form(..., description="Feature context, e.g. package_image."),
     entity_type: str | None = Form(default=None),
     entity_id: uuid.UUID | None = Form(default=None),
 ) -> SuccessResponse[ImageResponse]:
-    if not (file.content_type or "").startswith("image/"):
+    content_type = file.content_type or ""
+    is_image = content_type.startswith("image/")
+    is_document = content_type in _ALLOWED_DOCUMENT_TYPES
+    if not (is_image or is_document):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Only image files are accepted.",
+            detail="Only image or document (PDF/Word) files are accepted.",
         )
 
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
@@ -67,7 +77,7 @@ async def upload_image(
     if len(file_bytes) > max_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Image exceeds the {settings.MAX_UPLOAD_SIZE_MB}MB upload limit.",
+            detail=f"File exceeds the {settings.MAX_UPLOAD_SIZE_MB}MB upload limit.",
         )
 
     owner_type = _OWNER_TYPE_BY_ROLE.get(current_user.role, ImageOwnerType.USER)
@@ -78,11 +88,12 @@ async def upload_image(
         usage=usage,
         file_bytes=file_bytes,
         filename=file.filename or "upload",
-        content_type=file.content_type or "application/octet-stream",
+        content_type=content_type or "application/octet-stream",
         entity_type=entity_type,
         entity_id=entity_id,
+        resource_type="image" if is_image else "raw",
     )
-    return SuccessResponse(data=result, message="Image uploaded.")
+    return SuccessResponse(data=result, message="File uploaded.")
 
 
 async def register_image_upload(

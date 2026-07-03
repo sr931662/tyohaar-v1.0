@@ -17,6 +17,10 @@ export const vendorAuthApi = {
     vendorClient.post('/auth/logout').then(extractData),
   me: () =>
     vendorClient.get('/users/me').then(extractData),
+  getUserProfile: (userId) =>
+    vendorClient.get(`/users/${userId}/profile`).then(extractData),
+  updateUserProfile: (userId, body) =>
+    vendorClient.put(`/users/${userId}/profile`, body).then(extractData),
 };
 
 // ── Media ─────────────────────────────────────────────────────────────────────

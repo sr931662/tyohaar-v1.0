@@ -1,18 +1,44 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useAdminAuth } from '../../context/AuthContext';
 import { useAdminTheme } from '../../hooks/useTheme';
+import { authApi } from '../../api';
+import Modal from '../ui/Modal';
+import ImageUploadField from '../ui/ImageUploadField';
 
 export default function Topbar({ sidebarCollapsed, onToggleSidebar }) {
-  const { admin } = useAdminAuth();
+  const { admin, refreshAdmin } = useAdminAuth();
   const { theme, toggle } = useAdminTheme();
   const [search, setSearch] = useState('');
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   const handleSearch = (e) => {
     if (e.key === 'Enter' && search.trim()) {
       navigate(`/admin/search?q=${encodeURIComponent(search.trim())}`);
       setSearch('');
+    }
+  };
+
+  const openPhotoModal = () => {
+    setPhotoUrl(admin?.profile_photo_url ?? '');
+    setPhotoModalOpen(true);
+  };
+
+  const handleSavePhoto = async () => {
+    setSaving(true);
+    try {
+      await authApi.updateUserProfile(admin.user_id, { profile_photo_url: photoUrl || undefined });
+      await refreshAdmin();
+      toast.success('Profile photo updated.');
+      setPhotoModalOpen(false);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail ?? 'Failed to update profile photo.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -50,9 +76,17 @@ export default function Topbar({ sidebarCollapsed, onToggleSidebar }) {
 
         {/* User avatar */}
         {admin && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 4, cursor: 'pointer' }}>
-            <div className="admin-avatar" style={{ background: 'var(--brand-600)', color: 'white', fontSize: 12 }}>
-              {admin.full_name?.[0] ?? admin.email?.[0]?.toUpperCase() ?? 'A'}
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 4, cursor: 'pointer' }}
+            onClick={openPhotoModal}
+            title="Change profile photo"
+          >
+            <div className="admin-avatar" style={{ background: 'var(--brand-600)', color: 'white', fontSize: 12, overflow: 'hidden' }}>
+              {admin.profile_photo_url ? (
+                <img src={admin.profile_photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                admin.full_name?.[0] ?? admin.email?.[0]?.toUpperCase() ?? 'A'
+              )}
             </div>
             <div style={{ display: 'none' }} className="topbar-user-name">
               <span style={{ fontSize: 13, fontWeight: 600 }}>{admin.full_name ?? 'Admin'}</span>
@@ -60,6 +94,22 @@ export default function Topbar({ sidebarCollapsed, onToggleSidebar }) {
           </div>
         )}
       </div>
+
+      <Modal
+        open={photoModalOpen}
+        onClose={() => setPhotoModalOpen(false)}
+        title="Profile Photo"
+        footer={
+          <>
+            <button className="btn btn-secondary" onClick={() => setPhotoModalOpen(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSavePhoto} disabled={saving}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </>
+        }
+      >
+        <ImageUploadField value={photoUrl} onChange={setPhotoUrl} usage="profile_photo" />
+      </Modal>
     </header>
   );
 }
