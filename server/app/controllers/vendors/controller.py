@@ -30,6 +30,8 @@ from app.schemas.vendors import (
     VendorReviewCreate,
     VendorReviewResponse,
     VendorReviewUpdate,
+    VendorSelfResponse,
+    VendorUpdate,
 )
 from app.services.vendors.service import (
     VendorAvailabilityCreate,
@@ -75,9 +77,21 @@ async def get_vendor(
 async def get_my_vendor(
     current_user: VendorDep,
     service: VendorServiceDep,
-) -> SuccessResponse[VendorResponse]:
+) -> SuccessResponse[VendorSelfResponse]:
     result = await service.get_vendor_by_user(user_id=current_user.id)
     return SuccessResponse(data=result, message="Vendor profile retrieved.")
+
+
+async def update_vendor(
+    vendor_id: uuid.UUID,
+    body: VendorUpdate,
+    current_user: VendorDep,
+    service: VendorServiceDep,
+) -> SuccessResponse[VendorSelfResponse]:
+    result = await service.update_vendor(
+        vendor_id=vendor_id, user_id=current_user.id, data=body
+    )
+    return SuccessResponse(data=result, message="Vendor details updated.")
 
 
 async def update_vendor_profile(

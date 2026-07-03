@@ -41,6 +41,8 @@ export const vendorProfileApi = {
     vendorClient.get('/vendors/me').then(extractData),
   get: (vendorId) =>
     vendorClient.get(`/vendors/${vendorId}`).then(extractData),
+  update: (vendorId, body) =>
+    vendorClient.put(`/vendors/${vendorId}`, body).then(extractData),
   updateProfile: (vendorId, body) =>
     vendorClient.put(`/vendors/${vendorId}/profile`, body).then(extractData),
 

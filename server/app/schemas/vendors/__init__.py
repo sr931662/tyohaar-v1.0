@@ -47,6 +47,7 @@ from app.schemas.vendors.update import (
 # ── response ──────────────────────────────────────────────────────────────────
 from app.schemas.vendors.response import (
     VendorResponse,
+    VendorSelfResponse,
     VendorProfileResponse,
     VendorServiceResponse,
     VendorCategoryResponse,
@@ -105,6 +106,7 @@ __all__ = [
     "VendorReviewUpdate",
     # response
     "VendorResponse",
+    "VendorSelfResponse",
     "VendorProfileResponse",
     "VendorServiceResponse",
     "VendorCategoryResponse",

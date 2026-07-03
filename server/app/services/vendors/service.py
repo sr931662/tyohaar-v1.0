@@ -35,6 +35,8 @@ from app.schemas.vendors import (
     VendorReviewCreate,
     VendorReviewResponse,
     VendorReviewUpdate,
+    VendorSelfResponse,
+    VendorUpdate,
 )
 from app.services.base import BaseService
 from app.services.vendors.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
@@ -154,12 +156,25 @@ class VendorService(BaseService):
             vendor = await validate_vendor_exists(vendor_id, uow)
             return VendorResponse.model_validate(vendor)
 
-    async def get_vendor_by_user(self, user_id: UUID) -> VendorResponse:
+    async def get_vendor_by_user(self, user_id: UUID) -> VendorSelfResponse:
         async with self._uow() as uow:
             vendor = await uow.vendors.vendors.find_by_user(user_id)
             if vendor is None:
                 raise VendorNotFoundError(str(user_id))
-            return VendorResponse.model_validate(vendor)
+            return VendorSelfResponse.model_validate(vendor)
+
+    async def update_vendor(
+        self,
+        vendor_id: UUID,
+        user_id: UUID,
+        data: VendorUpdate,
+    ) -> VendorSelfResponse:
+        async with self._uow() as uow:
+            vendor = await validate_vendor_ownership(vendor_id, user_id, uow)
+            vendor = await uow.vendors.vendors.update(
+                vendor, data.model_dump(exclude_unset=True)
+            )
+            return VendorSelfResponse.model_validate(vendor)
 
     async def update_vendor_profile(
         self,

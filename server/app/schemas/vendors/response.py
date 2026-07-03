@@ -33,6 +33,7 @@ from app.models.enums import (
 
 __all__ = [
     "VendorResponse",
+    "VendorSelfResponse",
     "VendorProfileResponse",
     "VendorServiceResponse",
     "VendorCategoryResponse",
@@ -77,6 +78,20 @@ class VendorResponse(BaseSchema):
     avg_response_time_minutes: int | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class VendorSelfResponse(VendorResponse):
+    """
+    Vendor's own view of their record — returned only by `GET /vendors/me`.
+
+    Unlike VendorResponse (public/listing-safe), this includes the vendor's
+    own compliance fields so they can see and edit what they submitted.
+    Never use this for any endpoint another user's request can reach.
+    """
+
+    legal_name: str | None = None
+    gst_number: str | None = None
+    pan_number: str | None = None
 
 
 class VendorProfileResponse(BaseSchema):

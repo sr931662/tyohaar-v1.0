@@ -47,9 +47,24 @@ class VendorUpdate(BaseSchema):
         default=None,
         description="Updated primary service category",
     )
+    legal_name: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Registered legal entity name as per government documents",
+    )
     registration_number: str | None = Field(
         default=None,
         max_length=100,
+    )
+    gst_number: str | None = Field(
+        default=None,
+        max_length=20,
+        description="15-character GST Identification Number (GSTIN)",
+    )
+    pan_number: str | None = Field(
+        default=None,
+        max_length=10,
+        description="10-character Permanent Account Number",
     )
     service_radius_km: Decimal | None = Field(
         default=None,

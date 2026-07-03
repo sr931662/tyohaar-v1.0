@@ -14,6 +14,7 @@ from app.schemas.vendors import (
     VendorProfileResponse,
     VendorResponse,
     VendorReviewResponse,
+    VendorSelfResponse,
 )
 from app.services.vendors.service import (
     VendorAvailabilityResponse,
@@ -50,7 +51,7 @@ router.add_api_route(
     "/me",
     ctrl.get_my_vendor,
     methods=["GET"],
-    response_model=SuccessResponse[VendorResponse],
+    response_model=SuccessResponse[VendorSelfResponse],
     status_code=status.HTTP_200_OK,
     summary="Get My Vendor Profile",
     description="Return the vendor profile associated with the authenticated vendor user.",
@@ -66,6 +67,21 @@ router.add_api_route(
     summary="Get Vendor",
     description="Return a single vendor profile by ID. Public endpoint.",
     operation_id="vendors_get_vendor",
+)
+
+router.add_api_route(
+    "/{vendor_id}",
+    ctrl.update_vendor,
+    methods=["PUT"],
+    response_model=SuccessResponse[VendorSelfResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Vendor",
+    description=(
+        "Update core business details for a vendor (legal name, GST/PAN, "
+        "years of experience, established year, service radius). "
+        "Vendor ownership required."
+    ),
+    operation_id="vendors_update_vendor",
 )
 
 router.add_api_route(

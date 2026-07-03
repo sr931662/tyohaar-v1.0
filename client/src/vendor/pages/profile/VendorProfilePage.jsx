@@ -137,6 +137,7 @@ export default function VendorProfilePage() {
   const [businessName, setBusinessName] = useState('');
   const [vendorType, setVendorType] = useState('');
   const [legalName, setLegalName] = useState('');
+  const [registrationNumber, setRegistrationNumber] = useState('');
   const [gstNumber, setGstNumber] = useState('');
   const [panNumber, setPanNumber] = useState('');
   const [yearsExp, setYearsExp] = useState('');
@@ -164,6 +165,7 @@ export default function VendorProfilePage() {
     setBusinessName(vendor.business_name ?? '');
     setVendorType(vendor.vendor_type ?? '');
     setLegalName(vendor.legal_name ?? '');
+    setRegistrationNumber(vendor.registration_number ?? '');
     setGstNumber(vendor.gst_number ?? '');
     setPanNumber(vendor.pan_number ?? '');
     setYearsExp(vendor.years_of_experience ?? '');
@@ -203,13 +205,18 @@ export default function VendorProfilePage() {
     },
   });
 
+  // Update core vendor fields (legal name, GST/PAN, experience, etc.)
+  const updateVendorMutation = useMutation({
+    mutationFn: ({ vendorId, body }) => vendorProfileApi.update(vendorId, body),
+    onError: (err) => {
+      const msg = err?.response?.data?.detail ?? 'Failed to update business details.';
+      toast.error(msg);
+    },
+  });
+
   // Update profile mutation (extended profile fields)
   const updateProfileMutation = useMutation({
     mutationFn: ({ vendorId, body }) => vendorProfileApi.updateProfile(vendorId, body),
-    onSuccess: () => {
-      toast.success('Profile updated.');
-      qc.invalidateQueries(['vendor', 'me']);
-    },
     onError: (err) => {
       const msg = err?.response?.data?.detail ?? 'Failed to update profile.';
       toast.error(msg);
@@ -226,30 +233,51 @@ export default function VendorProfilePage() {
         business_name: businessName.trim(),
         vendor_type: vendorType,
         legal_name: legalName.trim() || undefined,
+        registration_number: registrationNumber.trim() || undefined,
         gst_number: gstNumber.trim().toUpperCase() || undefined,
         pan_number: panNumber.trim().toUpperCase() || undefined,
         years_of_experience: yearsExp !== '' ? Number(yearsExp) : undefined,
         established_year: establishedYear !== '' ? Number(establishedYear) : undefined,
         service_radius_km: serviceRadius !== '' ? Number(serviceRadius) : undefined,
       });
-    } else {
-      // Update extended profile
-      updateProfileMutation.mutate({
-        vendorId: vendor.id,
-        body: {
-          tagline: tagline.trim() || undefined,
-          about: about.trim() || undefined,
-          specialties: specialties.length ? specialties : undefined,
-          operating_cities: operatingCities.length ? operatingCities : undefined,
-          operating_pincodes: operatingPincodes.length ? operatingPincodes : undefined,
-          website_url: websiteUrl.trim() || undefined,
-          social_links: Object.keys(socialLinks).length ? socialLinks : undefined,
-        },
-      });
+      return;
+    }
+
+    try {
+      await Promise.all([
+        updateVendorMutation.mutateAsync({
+          vendorId: vendor.id,
+          body: {
+            legal_name: legalName.trim() || undefined,
+            registration_number: registrationNumber.trim() || undefined,
+            gst_number: gstNumber.trim().toUpperCase() || undefined,
+            pan_number: panNumber.trim().toUpperCase() || undefined,
+            years_of_experience: yearsExp !== '' ? Number(yearsExp) : undefined,
+            established_year: establishedYear !== '' ? Number(establishedYear) : undefined,
+            service_radius_km: serviceRadius !== '' ? Number(serviceRadius) : undefined,
+          },
+        }),
+        updateProfileMutation.mutateAsync({
+          vendorId: vendor.id,
+          body: {
+            tagline: tagline.trim() || undefined,
+            about: about.trim() || undefined,
+            specialties: specialties.length ? specialties : undefined,
+            operating_cities: operatingCities.length ? operatingCities : undefined,
+            operating_pincodes: operatingPincodes.length ? operatingPincodes : undefined,
+            website_url: websiteUrl.trim() || undefined,
+            social_links: Object.keys(socialLinks).length ? socialLinks : undefined,
+          },
+        }),
+      ]);
+      toast.success('Profile updated.');
+      qc.invalidateQueries(['vendor', 'me']);
+    } catch {
+      // individual mutation onError handlers already surfaced a toast
     }
   };
 
-  const isSaving = createMutation.isPending || updateProfileMutation.isPending;
+  const isSaving = createMutation.isPending || updateVendorMutation.isPending || updateProfileMutation.isPending;
 
   if (isLoading) {
     return (
@@ -313,10 +341,10 @@ export default function VendorProfilePage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Legal Name">
-              <Input value={legalName} onChange={setLegalName} placeholder="Registered company name" disabled={!isNew} />
+              <Input value={legalName} onChange={setLegalName} placeholder="Registered company name" />
             </Field>
             <Field label="Registration Number">
-              <Input value="" onChange={() => {}} placeholder="LLP / Company reg. no." disabled={!isNew} />
+              <Input value={registrationNumber} onChange={setRegistrationNumber} placeholder="LLP / Company reg. no." />
             </Field>
           </div>
 
@@ -327,7 +355,6 @@ export default function VendorProfilePage() {
                 onChange={(v) => setGstNumber(v.toUpperCase())}
                 placeholder="22AAAAA0000A1Z5"
                 maxLength={15}
-                disabled={!isNew}
               />
             </Field>
             <Field label="PAN Number" error={errors.panNumber}>
@@ -336,20 +363,19 @@ export default function VendorProfilePage() {
                 onChange={(v) => setPanNumber(v.toUpperCase())}
                 placeholder="AAAAA9999A"
                 maxLength={10}
-                disabled={!isNew}
               />
             </Field>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
             <Field label="Years of Experience">
-              <Input value={yearsExp} onChange={setYearsExp} type="number" min="0" max="100" placeholder="e.g. 8" disabled={!isNew} />
+              <Input value={yearsExp} onChange={setYearsExp} type="number" min="0" max="100" placeholder="e.g. 8" />
             </Field>
             <Field label="Established Year">
-              <Input value={establishedYear} onChange={setEstablishedYear} type="number" min="1900" max="2025" placeholder="e.g. 2015" disabled={!isNew} />
+              <Input value={establishedYear} onChange={setEstablishedYear} type="number" min="1900" max="2025" placeholder="e.g. 2015" />
             </Field>
             <Field label="Service Radius (km)">
-              <Input value={serviceRadius} onChange={setServiceRadius} type="number" min="0" placeholder="e.g. 50" disabled={!isNew} />
+              <Input value={serviceRadius} onChange={setServiceRadius} type="number" min="0" placeholder="e.g. 50" />
             </Field>
           </div>
         </SectionCard>
