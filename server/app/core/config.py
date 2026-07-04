@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +11,15 @@ class Environment(str, Enum):
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
+
+
+def _parse_list_env(v: str) -> list[str]:
+    """Accept comma-separated string or JSON array from an environment variable."""
+    v = v.strip()
+    if v.startswith("["):
+        import json
+        return json.loads(v)
+    return [item.strip() for item in v.split(",") if item.strip()]
 
 
 class Settings(BaseSettings):
@@ -37,24 +46,24 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # ── CORS ─────────────────────────────────────────────────────────────────
-    ALLOWED_ORIGINS: list[str] = ["*"]
+    # ── CORS / Trusted Hosts ──────────────────────────────────────────────────
+    # Stored as raw strings (not list[str]) deliberately: pydantic-settings
+    # attempts to JSON-decode any list-typed field's raw env value *before*
+    # field validators run, so a plain comma-separated string — our documented
+    # format — would fail at the settings-source level with a
+    # JSONDecodeError, never reaching a `mode="before"` validator. Parsing
+    # into a list ourselves via the properties below sidesteps that entirely.
+    ALLOWED_ORIGINS_RAW: str = Field(default="*", alias="ALLOWED_ORIGINS")
+    # Set to specific hostnames in production, e.g. tyohaar.co,www.tyohaar.co
+    ALLOWED_HOSTS_RAW: str = Field(default="*", alias="ALLOWED_HOSTS")
 
-    # ── Trusted Hosts ────────────────────────────────────────────────────────
-    # Set to specific hostnames in production, e.g. ["api.tyohaar.com"].
-    ALLOWED_HOSTS: list[str] = ["*"]
+    @property
+    def ALLOWED_ORIGINS(self) -> list[str]:  # noqa: N802
+        return _parse_list_env(self.ALLOWED_ORIGINS_RAW)
 
-    @field_validator("ALLOWED_ORIGINS", "ALLOWED_HOSTS", mode="before")
-    @classmethod
-    def parse_list_from_env(cls, v: object) -> object:
-        """Accept comma-separated string or JSON array from environment variables."""
-        if isinstance(v, str):
-            v = v.strip()
-            if v.startswith("["):
-                import json
-                return json.loads(v)
-            return [item.strip() for item in v.split(",") if item.strip()]
-        return v
+    @property
+    def ALLOWED_HOSTS(self) -> list[str]:  # noqa: N802
+        return _parse_list_env(self.ALLOWED_HOSTS_RAW)
 
     # ── Pagination ───────────────────────────────────────────────────────────
     DEFAULT_PAGE_SIZE: int = 20

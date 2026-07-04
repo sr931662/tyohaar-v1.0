@@ -282,9 +282,12 @@ def create_app() -> FastAPI:
         ),
         version=settings.APP_VERSION,
         openapi_tags=_OPENAPI_TAGS,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+        # Swagger/ReDoc expose the full API surface (including admin endpoint
+        # shapes) to anyone — keep them available in dev/staging but off in
+        # production. Health/liveness/readiness probes still work either way.
+        docs_url=None if settings.is_production else "/docs",
+        redoc_url=None if settings.is_production else "/redoc",
+        openapi_url=None if settings.is_production else "/openapi.json",
         lifespan=lifespan,
         # Suppress the default 422 responses from FastAPI's own schema so our
         # custom error envelope is the canonical shape in docs.
