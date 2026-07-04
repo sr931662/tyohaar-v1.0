@@ -36,24 +36,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.critical("Database unreachable on startup: %s", health["database"])
 
-    # Run pending Alembic migrations so schema is always in sync with code.
-    try:
-        import asyncio
-        import pathlib
-        from alembic import command
-        from alembic.config import Config as AlembicConfig
-
-        _alembic_ini = pathlib.Path(__file__).parent.parent.parent / "alembic.ini"
-
-        def _run_migrations() -> None:
-            cfg = AlembicConfig(str(_alembic_ini))
-            command.upgrade(cfg, "head")
-
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, _run_migrations)
-        logger.info("Alembic migrations applied.")
-    except Exception as exc:
-        logger.error("Alembic migration failed on startup: %s", exc, exc_info=True)
+    # Migrations are NOT run here. Applying `alembic upgrade head` on every
+    # container boot adds unpredictable startup latency (risking startup-probe
+    # timeouts on platforms like Cloud Run) and, if the service ever scales to
+    # multiple instances, every cold start would race to run migrations
+    # concurrently against the same database. Run `alembic upgrade head`
+    # explicitly as its own deploy step instead.
 
     logger.info("%s is ready to serve requests.", app.title)
 
