@@ -39,6 +39,11 @@ class _VendorLoginRequest(BaseModel):
     password: str
 
 
+class _WorkspaceLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 def _client_ip(request: Request) -> str | None:
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
@@ -66,6 +71,21 @@ async def vendor_login(
         },
         message="Vendor login successful.",
     )
+
+
+async def workspace_login(
+    body: _WorkspaceLoginRequest,
+    service: AuthServiceDep,
+    request: Request,
+) -> SuccessResponse[dict]:
+    result = await service.authenticate_workspace_user(
+        email=body.email,
+        password=body.password,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("User-Agent"),
+    )
+    return SuccessResponse(data=result, message="Login successful.")
+
 
 async def register_vendor(
     body: VendorRegisterCreate,

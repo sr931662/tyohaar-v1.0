@@ -45,7 +45,7 @@ export default function AdminLayout() {
   }
 
   if (!admin) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/workspace/login" replace />;
   }
 
   return (

@@ -65,13 +65,13 @@ apiClient.interceptors.response.use(
         return apiClient(config);
       } catch {
         clearSession();
-        window.location.href = '/admin/login';
+        window.location.href = '/workspace/login';
         return Promise.reject(error);
       }
     }
     if (response?.status === 401) {
       clearSession();
-      window.location.href = '/admin/login';
+      window.location.href = '/workspace/login';
     }
     return Promise.reject(error);
   }

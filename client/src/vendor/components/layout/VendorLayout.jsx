@@ -73,7 +73,7 @@ export default function VendorLayout() {
     );
   }
 
-  if (!user) return <Navigate to="/vendor/login" replace />;
+  if (!user) return <Navigate to="/workspace/login" replace />;
 
   return (
     <div className="admin-root">

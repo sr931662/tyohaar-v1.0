@@ -145,6 +145,59 @@ class AuthService(BaseService):
                 user, ip_address, user_agent, LoginMethod.EMAIL_PASSWORD
             )
 
+    # ── Unified Workspace Login (vendor + admin/staff, never customers) ───────
+
+    async def authenticate_workspace_user(
+        self,
+        email: str,
+        password: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> dict:
+        """
+        Single login entry point for the internal "workspace" (vendor portal +
+        admin panel). Authenticates against the same User/password_hash as
+        `authenticate_user`, but additionally gates on role: only VENDOR,
+        ADMIN, and SUPER_ADMIN accounts may pass. Returns the issued token
+        pair plus the caller's role so the frontend can route to the correct
+        portal (customers are rejected outright — they have no business here).
+        """
+        from app.core.security import verify_password
+        from app.services.auth.exceptions import (
+            AccountLockedError,
+            InvalidCredentialsError,
+            WorkspaceAccessDeniedError,
+        )
+
+        async with self._uow() as uow:
+            user = await uow.users.users.find_by_email(email)
+            if not user or not user.password_hash:
+                raise InvalidCredentialsError()
+
+            if not verify_password(password, user.password_hash):
+                raise InvalidCredentialsError()
+
+            if user.role not in (UserRole.VENDOR, UserRole.ADMIN, UserRole.SUPER_ADMIN):
+                raise WorkspaceAccessDeniedError()
+
+            if user.account_status != AccountStatus.ACTIVE:
+                raise AccountLockedError(
+                    "Your account is pending approval or has been suspended."
+                )
+
+            role = user.role
+            tokens = await self._create_user_session(
+                user, ip_address, user_agent, LoginMethod.EMAIL_PASSWORD
+            )
+
+        return {
+            "access_token": tokens.access_token,
+            "refresh_token": tokens.refresh_token,
+            "token_type": tokens.token_type,
+            "expires_in": tokens.expires_in,
+            "role": role.value,
+        }
+
     # ── Vendor Registration ───────────────────────────────────────────────────
 
     async def register_vendor(self, data: VendorRegisterCreate) -> dict:

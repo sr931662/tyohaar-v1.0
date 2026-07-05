@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 import Logo from '../ui/Logo.jsx';
 import Button from '../ui/Button.jsx';
@@ -33,9 +34,15 @@ export default function Navbar() {
 
         <nav className={styles.links} aria-label="Primary">
           {navLinks.map((l) => (
-            <a key={l.href} href={l.href} className={styles.link}>
-              {l.label}
-            </a>
+            l.isRoute ? (
+              <Link key={l.href} to={l.href} className={styles.link}>
+                {l.label}
+              </Link>
+            ) : (
+              <a key={l.href} href={l.href} className={styles.link}>
+                {l.label}
+              </a>
+            )
           ))}
         </nav>
 
@@ -92,9 +99,15 @@ export default function Navbar() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.08 + i * 0.06 }}
                   >
-                    <a href={l.href} onClick={() => setOpen(false)}>
-                      {l.label}
-                    </a>
+                    {l.isRoute ? (
+                      <Link to={l.href} onClick={() => setOpen(false)}>
+                        {l.label}
+                      </Link>
+                    ) : (
+                      <a href={l.href} onClick={() => setOpen(false)}>
+                        {l.label}
+                      </a>
+                    )}
                   </motion.li>
                 ))}
               </ul>

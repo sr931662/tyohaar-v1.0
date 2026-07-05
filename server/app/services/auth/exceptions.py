@@ -32,3 +32,10 @@ class TokenRevokedError(AuthenticationError):
 
 class InvalidCredentialsError(AuthenticationError):
     default_message = "Invalid email or password."
+
+
+class WorkspaceAccessDeniedError(AuthenticationError):
+    default_message = (
+        "This portal is for Tyohaar vendors and staff. "
+        "Customers should use the Tyohaar app."
+    )

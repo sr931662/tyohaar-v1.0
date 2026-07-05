@@ -1,8 +1,11 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
 // Marketing site components
 import Navbar from './components/layout/Navbar.jsx';
+
+// Unified workspace login (vendor + admin/staff — routes to the right portal by role)
+const WorkspaceLoginPage = lazy(() => import('./workspace/pages/WorkspaceLoginPage.jsx'));
 
 import Footer from './components/layout/Footer.jsx';
 import Hero from './components/sections/Hero.jsx';
@@ -24,7 +27,6 @@ import { VendorAuthProvider } from './vendor/context/VendorAuthContext.jsx';
 import VendorLayout from './vendor/components/layout/VendorLayout.jsx';
 
 // Vendor pages — lazy loaded
-const VendorLoginPage           = lazy(() => import('./vendor/pages/auth/VendorLoginPage.jsx'));
 const VendorRegisterPage        = lazy(() => import('./vendor/pages/auth/VendorRegisterPage.jsx'));
 const VendorForgotPasswordPage  = lazy(() => import('./vendor/pages/auth/VendorForgotPasswordPage.jsx'));
 const VendorOverviewPage        = lazy(() => import('./vendor/pages/overview/VendorOverviewPage.jsx'));
@@ -40,7 +42,6 @@ const VendorNotificationsPage   = lazy(() => import('./vendor/pages/notification
 const VendorSupportPage         = lazy(() => import('./vendor/pages/support/VendorSupportPage.jsx'));
 
 // Admin pages — lazy loaded for code splitting
-const LoginPage             = lazy(() => import('./admin/pages/auth/LoginPage.jsx'));
 const DashboardPage         = lazy(() => import('./admin/pages/dashboard/DashboardPage.jsx'));
 const VendorsPage           = lazy(() => import('./admin/pages/vendors/VendorsPage.jsx'));
 const VendorDetailPage      = lazy(() => import('./admin/pages/vendors/VendorDetailPage.jsx'));
@@ -99,20 +100,23 @@ export default function App() {
       {/* Marketing site */}
       <Route path="/" element={<MarketingSite />} />
 
+      {/* Unified workspace login — routes to /vendor or /admin by role */}
+      <Route
+        path="/workspace/login"
+        element={
+          <Suspense fallback={<AdminFallback />}>
+            <WorkspaceLoginPage />
+          </Suspense>
+        }
+      />
+
       {/* Vendor portal */}
       <Route
         path="/vendor/*"
         element={
           <VendorAuthProvider>
             <Routes>
-              <Route
-                path="login"
-                element={
-                  <Suspense fallback={<AdminFallback />}>
-                    <VendorLoginPage />
-                  </Suspense>
-                }
-              />
+              <Route path="login" element={<Navigate to="/workspace/login" replace />} />
               <Route
                 path="register"
                 element={
@@ -153,15 +157,7 @@ export default function App() {
         element={
           <AdminAuthProvider>
             <Routes>
-              {/* Login — own Suspense so layout is never replaced by a blank screen */}
-              <Route
-                path="login"
-                element={
-                  <Suspense fallback={<AdminFallback />}>
-                    <LoginPage />
-                  </Suspense>
-                }
-              />
+              <Route path="login" element={<Navigate to="/workspace/login" replace />} />
 
               {/* Protected layout — AdminLayout owns the inner Suspense + AnimatePresence */}
               <Route element={<AdminLayout />}>

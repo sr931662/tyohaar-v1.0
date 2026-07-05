@@ -47,6 +47,23 @@ router.add_api_route(
 )
 
 router.add_api_route(
+    "/workspace/login",
+    ctrl.workspace_login,
+    methods=["POST"],
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Workspace Login (Vendor + Admin/Staff)",
+    description=(
+        "Single login entry point for the vendor portal and admin panel. "
+        "Authenticates by email/password and returns the user's role "
+        "(vendor | admin | super_admin) alongside the token pair, so the "
+        "frontend can route to the correct portal. Customer accounts are "
+        "rejected outright."
+    ),
+    operation_id="auth_workspace_login",
+)
+
+router.add_api_route(
     "/vendor/register",
     ctrl.register_vendor,
     methods=["POST"],

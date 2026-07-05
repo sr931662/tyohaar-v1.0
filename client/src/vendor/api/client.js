@@ -63,13 +63,13 @@ vendorClient.interceptors.response.use(
         return vendorClient(config);
       } catch {
         clearSession();
-        window.location.href = '/vendor/login';
+        window.location.href = '/workspace/login';
         return Promise.reject(error);
       }
     }
     if (response?.status === 401) {
       clearSession();
-      window.location.href = '/vendor/login';
+      window.location.href = '/workspace/login';
     }
     return Promise.reject(error);
   }

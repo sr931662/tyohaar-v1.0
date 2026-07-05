@@ -4,6 +4,9 @@ export const navLinks = [
   { label: 'How it works', href: '#how' },
   { label: 'Partners', href: '#partners' },
   { label: 'Stories', href: '#stories' },
+  // Vendor/staff login — an app route (not an in-page anchor), rendered as a
+  // React Router Link so switching to it is a client-side transition.
+  { label: 'Workspace', href: '/workspace/login', isRoute: true },
 ];
 
 export const footerColumns = [
