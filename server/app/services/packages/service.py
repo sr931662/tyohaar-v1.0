@@ -75,7 +75,8 @@ class PackageService(BaseService):
 
     async def get_package(self, package_id: UUID) -> PackageDetailResponse:
         from app.models.packages.package_pricing import PackagePriceType
-        from app.schemas.packages.response import PackagePricingResponse
+        from app.schemas.packages.response import PackagePricingResponse, PackageVendorInfo
+        from app.services.vendors.helpers import generate_vendor_slug
 
         async with self._uow() as uow:
             package = await validate_package_exists(package_id, uow)
@@ -94,11 +95,26 @@ class PackageService(BaseService):
                 )
                 pricing_response = PackagePricingResponse.model_validate(base_row)
 
+            vendor_info = None
+            if package.vendor_id:
+                vendor = await uow.vendors.vendors.get_by_id(package.vendor_id)
+                if vendor:
+                    owner = await uow.users.users.get_by_id(vendor.user_id)
+                    vendor_info = PackageVendorInfo(
+                        id=vendor.id,
+                        slug=generate_vendor_slug(vendor.id, vendor.vendor_type, package.city_slug),
+                        business_name=vendor.business_name,
+                        owner_full_name=owner.full_name if owner else None,
+                        vendor_type=vendor.vendor_type,
+                    )
+
             # Build from PackageResponse (no `pricing` field) first so the ORM's
             # list-valued `package.pricing` attribute is never auto-read against
             # the singular `pricing` field on PackageDetailResponse.
             base = PackageResponse.model_validate(package)
-            response = PackageDetailResponse(**base.model_dump(), pricing=pricing_response)
+            response = PackageDetailResponse(
+                **base.model_dump(), pricing=pricing_response, vendor=vendor_info
+            )
             response.items = [PackageItemResponse.model_validate(i) for i in items]
             return response
 

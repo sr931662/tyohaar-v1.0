@@ -18,7 +18,7 @@ from decimal import Decimal
 from pydantic import ConfigDict, Field
 
 from app.schemas.base import BaseSchema, MoneyAmount
-from app.models.enums import Currency, PackagePricingType, PackageStatus
+from app.models.enums import Currency, PackagePricingType, PackageStatus, VendorType
 from app.schemas.packages.common import PriceTierSchema
 
 
@@ -31,8 +31,21 @@ __all__ = [
     "PackageReviewResponse",
     "PackageFAQResponse",
     "PackageAvailabilityResponse",
+    "PackageVendorInfo",
     "PackageDetailResponse",
 ]
+
+
+class PackageVendorInfo(BaseSchema):
+    """Admin-facing summary of the vendor that owns a package."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    slug: str = Field(description='Human-readable code, e.g. "ctrr-noida-04234"')
+    business_name: str
+    owner_full_name: str | None = None
+    vendor_type: VendorType
 
 
 class PackageCategoryResponse(BaseSchema):
@@ -213,4 +226,7 @@ class PackageDetailResponse(PackageResponse):
     )
     faqs: list[PackageFAQResponse] = Field(
         default_factory=list, description="FAQs ordered by display_order"
+    )
+    vendor: PackageVendorInfo | None = Field(
+        default=None, description="Owning vendor's identity summary"
     )

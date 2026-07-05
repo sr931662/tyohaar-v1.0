@@ -4,11 +4,52 @@ Vendors service — pure helper functions (no I/O, no side effects).
 
 from __future__ import annotations
 
+import hashlib
 import html
 import re
+import uuid
 from datetime import date, time
 
+from app.models.enums import VendorType
 from app.services.vendors.constants import MAX_RATING, MIN_RATING
+
+# Short, fixed-width abbreviation used as the first segment of a vendor slug
+# (see `generate_vendor_slug`). Kept as an explicit map rather than a
+# programmatic truncation so each code stays human-readable and stable even
+# if enum member names change wording internally.
+VENDOR_TYPE_ABBREVIATIONS: dict[VendorType, str] = {
+    VendorType.DECORATOR: "dctr",
+    VendorType.CATERER: "ctrr",
+    VendorType.PHOTOGRAPHER: "phtg",
+    VendorType.VIDEOGRAPHER: "vdgr",
+    VendorType.BAKER: "bakr",
+    VendorType.FLORIST: "flrt",
+    VendorType.ENTERTAINER: "entr",
+    VendorType.VENUE: "venu",
+    VendorType.PLANNER: "plnr",
+    VendorType.MAKEUP_ARTIST: "mkup",
+    VendorType.MEHNDI_ARTIST: "mehn",
+    VendorType.MUSIC: "musc",
+    VendorType.MULTI_SERVICE: "mult",
+    VendorType.OTHER: "othr",
+}
+
+
+def generate_vendor_slug(
+    vendor_id: uuid.UUID, vendor_type: VendorType, city_slug: str | None
+) -> str:
+    """Return a human-readable vendor identifier, e.g. "ctrr-noida-04234".
+
+    Format: {vendor type abbreviation}-{city}-{5-digit number}. The number is
+    derived deterministically from the vendor's UUID (stable across calls,
+    effectively collision-resistant) rather than stored, so this requires no
+    schema migration and is safe to compute anywhere the vendor id is known.
+    """
+    type_code = VENDOR_TYPE_ABBREVIATIONS.get(vendor_type, "othr")
+    locality = (city_slug or "unknown").strip().lower().replace(" ", "-")
+    digest = hashlib.md5(str(vendor_id).encode()).hexdigest()
+    number = int(digest, 16) % 100_000
+    return f"{type_code}-{locality}-{number:05d}"
 
 
 def calculate_average_rating(ratings: list) -> float:
