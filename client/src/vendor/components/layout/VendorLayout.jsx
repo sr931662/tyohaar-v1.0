@@ -1,4 +1,4 @@
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useVendorAuth } from '../../context/VendorAuthContext';
@@ -26,7 +26,7 @@ function PageLoader() {
   );
 }
 
-function VendorTopbar({ onToggleSidebar }) {
+function VendorTopbar({ onOpenMobileNav }) {
   const { user } = useVendorAuth();
   const { theme, toggle } = useAdminTheme();
 
@@ -37,7 +37,7 @@ function VendorTopbar({ onToggleSidebar }) {
   return (
     <header className="admin-topbar">
       <div className="admin-topbar-left">
-        <button className="btn btn-ghost btn-icon" onClick={onToggleSidebar} title="Toggle sidebar" style={{ display: 'none' }}>
+        <button className="btn btn-ghost btn-icon mobile-nav-toggle" onClick={onOpenMobileNav} aria-label="Open menu" title="Open menu">
           ☰
         </button>
       </div>
@@ -63,7 +63,11 @@ function VendorTopbar({ onToggleSidebar }) {
 export default function VendorLayout() {
   const { user, loading } = useVendorAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
+
+  // Close the mobile drawer automatically on navigation.
+  useEffect(() => { setMobileNavOpen(false); }, [location.pathname]);
 
   if (loading) {
     return (
@@ -77,9 +81,18 @@ export default function VendorLayout() {
 
   return (
     <div className="admin-root">
-      <VendorSidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+      <VendorSidebar
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((c) => !c)}
+        mobileOpen={mobileNavOpen}
+        onCloseMobile={() => setMobileNavOpen(false)}
+      />
+      <div
+        className={`admin-sidebar-scrim${mobileNavOpen ? ' mobile-open' : ''}`}
+        onClick={() => setMobileNavOpen(false)}
+      />
       <main className={`admin-main${collapsed ? ' sidebar-collapsed' : ''}`}>
-        <VendorTopbar onToggleSidebar={() => setCollapsed((c) => !c)} />
+        <VendorTopbar onOpenMobileNav={() => setMobileNavOpen(true)} />
         <div className="admin-content">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div

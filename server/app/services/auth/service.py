@@ -163,6 +163,7 @@ class AuthService(BaseService):
         portal (customers are rejected outright — they have no business here).
         """
         from app.core.security import verify_password
+        from app.services.admin.helpers import verify_admin_password
         from app.services.auth.exceptions import (
             AccountLockedError,
             InvalidCredentialsError,
@@ -174,11 +175,20 @@ class AuthService(BaseService):
             if not user or not user.password_hash:
                 raise InvalidCredentialsError()
 
-            if not verify_password(password, user.password_hash):
-                raise InvalidCredentialsError()
-
             if user.role not in (UserRole.VENDOR, UserRole.ADMIN, UserRole.SUPER_ADMIN):
                 raise WorkspaceAccessDeniedError()
+
+            # Admin/super-admin passwords are hashed with a different scheme
+            # (HMAC-SHA256, see app.services.admin.helpers) than vendor/customer
+            # passwords (bcrypt, see app.core.security) — verify against the
+            # matching one for this account's role.
+            is_valid = (
+                verify_admin_password(password, user.password_hash)
+                if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+                else verify_password(password, user.password_hash)
+            )
+            if not is_valid:
+                raise InvalidCredentialsError()
 
             if user.account_status != AccountStatus.ACTIVE:
                 raise AccountLockedError(

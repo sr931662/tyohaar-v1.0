@@ -7,7 +7,7 @@ import { authApi } from '../../api';
 import Modal from '../ui/Modal';
 import ImageUploadField from '../ui/ImageUploadField';
 
-export default function Topbar({ sidebarCollapsed, onToggleSidebar }) {
+export default function Topbar({ sidebarCollapsed, onToggleSidebar, onOpenMobileNav }) {
   const { admin, refreshAdmin } = useAdminAuth();
   const { theme, toggle } = useAdminTheme();
   const [search, setSearch] = useState('');
@@ -45,13 +45,13 @@ export default function Topbar({ sidebarCollapsed, onToggleSidebar }) {
   return (
     <header className="admin-topbar">
       <div className="admin-topbar-left">
-        {/* Mobile / extra toggle */}
-        <button className="btn btn-ghost btn-icon" onClick={onToggleSidebar} style={{ display: 'none' }}>
+        {/* Mobile menu — opens the sidebar as a full drawer; hidden on desktop */}
+        <button className="btn btn-ghost btn-icon mobile-nav-toggle" onClick={onOpenMobileNav} aria-label="Open menu" title="Open menu">
           ☰
         </button>
 
         {/* Global search */}
-        <div className="admin-search-bar" style={{ maxWidth: 340 }}>
+        <div className="admin-search-bar admin-search-bar-desktop" style={{ maxWidth: 340 }}>
           <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>⌕</span>
           <input
             value={search}
@@ -61,6 +61,16 @@ export default function Topbar({ sidebarCollapsed, onToggleSidebar }) {
           />
           <span style={{ color: 'var(--text-tertiary)', fontSize: 11, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 5px' }}>⌘K</span>
         </div>
+
+        {/* Compact search entry point for narrow screens — the full bar above is hidden there */}
+        <button
+          className="btn btn-ghost btn-icon admin-search-btn-mobile"
+          onClick={() => navigate('/admin/search')}
+          aria-label="Search"
+          title="Search"
+        >
+          ⌕
+        </button>
       </div>
 
       <div className="admin-topbar-right">

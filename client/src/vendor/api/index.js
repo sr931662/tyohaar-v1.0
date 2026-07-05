@@ -18,7 +18,7 @@ export const vendorAuthApi = {
   me: () =>
     vendorClient.get('/users/me').then(extractData),
   getUserProfile: (userId) =>
-    vendorClient.get(`/users/${userId}/profile`).then(extractData),
+    vendorClient.get(`/users/${userId}`).then(extractData),
   updateUserProfile: (userId, body) =>
     vendorClient.put(`/users/${userId}/profile`, body).then(extractData),
 };

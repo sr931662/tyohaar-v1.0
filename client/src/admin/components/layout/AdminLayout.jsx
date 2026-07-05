@@ -1,4 +1,4 @@
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAdminAuth } from '../../context/AuthContext';
@@ -34,7 +34,11 @@ function PageLoader() {
 export default function AdminLayout() {
   const { admin, loading } = useAdminAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
+
+  // Close the mobile drawer automatically on navigation.
+  useEffect(() => { setMobileNavOpen(false); }, [location.pathname]);
 
   if (loading) {
     return (
@@ -50,9 +54,22 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-root">
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((c) => !c)}
+        mobileOpen={mobileNavOpen}
+        onCloseMobile={() => setMobileNavOpen(false)}
+      />
+      <div
+        className={`admin-sidebar-scrim${mobileNavOpen ? ' mobile-open' : ''}`}
+        onClick={() => setMobileNavOpen(false)}
+      />
       <main className={`admin-main${collapsed ? ' sidebar-collapsed' : ''}`}>
-        <Topbar sidebarCollapsed={collapsed} onToggleSidebar={() => setCollapsed((c) => !c)} />
+        <Topbar
+          sidebarCollapsed={collapsed}
+          onToggleSidebar={() => setCollapsed((c) => !c)}
+          onOpenMobileNav={() => setMobileNavOpen(true)}
+        />
         <div className="admin-content">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div

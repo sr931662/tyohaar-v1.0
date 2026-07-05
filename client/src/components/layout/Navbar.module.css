@@ -132,10 +132,10 @@
 /* Responsive */
 @media (max-width: 960px) {
   .links { display: none; }
+  .burger { display: flex; }
 }
 @media (max-width: 720px) {
   .cta { display: none; }
   .deskToggle { display: none; }
-  .burger { display: flex; }
   .inner { height: 64px; }
 }

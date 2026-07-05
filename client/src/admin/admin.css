@@ -274,6 +274,11 @@
 .admin-main {
   margin-left: var(--sidebar-width);
   flex: 1;
+  min-width: 0; /* flex items default to min-width:auto, which lets any
+                   minmax()-based grid inside (metric cards, data grids)
+                   force this whole column wider than the viewport instead
+                   of shrinking to fit — this override is what allows the
+                   page to actually be responsive. */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -344,6 +349,7 @@
 /* Page content */
 .admin-content {
   flex: 1;
+  min-width: 0;
   padding: 24px;
   overflow: auto;
 }
@@ -1326,6 +1332,28 @@ select.admin-input {
   .grid-3 { grid-template-columns: 1fr 1fr; }
 }
 
+/* Mobile nav toggle — hidden on desktop, shown only under the 768px breakpoint
+   below. Kept in the base stylesheet (not inside the media query) so the
+   `display: none` default doesn't have to be repeated per-component.
+   Compound selector (.sidebar-toggle.mobile-nav-toggle) is needed for the
+   sidebar's own close button, since a plain .sidebar-toggle rule appears
+   later in this file and would otherwise win the tie on equal specificity. */
+.mobile-nav-toggle,
+.sidebar-toggle.mobile-nav-toggle { display: none; }
+
+/* The full topbar search bar is desktop-only (its min-width overflows narrow
+   screens); .admin-search-btn-mobile is the compact stand-in for it. */
+.admin-search-btn-mobile { display: none; }
+
+/* Backdrop behind the sidebar when it's open as a mobile overlay. */
+.admin-sidebar-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 39; /* just under .admin-sidebar's z-index: 40 */
+}
+
 @media (max-width: 768px) {
   .admin-sidebar { transform: translateX(-100%); }
   .admin-sidebar.mobile-open { transform: translateX(0); }
@@ -1334,6 +1362,38 @@ select.admin-input {
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .admin-page-header { flex-direction: column; }
   .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
+
+  .mobile-nav-toggle,
+  .sidebar-toggle.mobile-nav-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .admin-sidebar-scrim.mobile-open { display: block; }
+
+  /* The sidebar always renders at full (non-collapsed) width while open as a
+     mobile overlay — components pass `collapsed={false}` in this case (see
+     Sidebar.jsx / VendorSidebar.jsx), so no collapsed-width override is
+     needed here. */
+  .admin-sidebar.mobile-open { width: var(--sidebar-width); }
+
+  /* The desktop icon-rail collapse toggle doesn't apply to a mobile overlay
+     — the × close button (.mobile-nav-toggle) replaces it there. Compound
+     selector needed: plain .sidebar-toggle (display: flex) is defined later
+     in this file and would otherwise win the tie on equal specificity. */
+  .sidebar-toggle.desktop-collapse-toggle { display: none; }
+
+  /* Swap the full search bar for a compact icon button on narrow screens. */
+  .admin-search-bar-desktop { display: none; }
+  .admin-search-btn-mobile { display: flex; }
+
+  .admin-topbar { padding: 0 12px; gap: 8px; }
+  .admin-content { padding: 16px; }
+}
+
+@media (max-width: 480px) {
+  .admin-metric-grid { grid-template-columns: 1fr; }
 }
 
 /* ============================================================

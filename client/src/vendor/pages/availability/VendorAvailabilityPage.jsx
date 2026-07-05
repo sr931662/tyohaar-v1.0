@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { vendorProfileApi } from '../../api';
 import { SkeletonCard } from '../../../admin/components/ui/Skeleton';
 
+const EMPTY_SLOTS = [];
+
 const DAYS = [
   { key: 'monday', label: 'Monday' },
   { key: 'tuesday', label: 'Tuesday' },
@@ -66,14 +68,15 @@ export default function VendorAvailabilityPage() {
   });
   const vendorId = vendor?.id;
 
-  const { data: slots = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['vendor-availability', vendorId],
     queryFn: () => vendorProfileApi.listAvailability(vendorId),
     enabled: !!vendorId,
   });
+  const slots = data ?? EMPTY_SLOTS;
 
   useEffect(() => {
-    if (slots) setSchedule(buildScheduleFromSlots(slots));
+    setSchedule(buildScheduleFromSlots(slots));
   }, [slots]);
 
   const updateDay = (key, patch) => {

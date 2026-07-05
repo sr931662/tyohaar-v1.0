@@ -59,17 +59,29 @@ const NAV = [
   },
 ];
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }) {
   const { admin, isSuperAdmin, logout } = useAdminAuth();
   const location = useLocation();
 
+  // The desktop "narrow rail" collapse doesn't apply while the sidebar is
+  // shown as a mobile overlay — always render it full-width there.
+  const isCollapsed = collapsed && !mobileOpen;
+
   return (
-    <aside className={`admin-sidebar${collapsed ? ' collapsed' : ''}`}>
+    <aside className={`admin-sidebar${isCollapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}>
       <div className="admin-sidebar-logo">
         <img src={logoSrc} alt="Tyohaar" style={{ height: 28, width: 'auto', flexShrink: 0 }} />
-        {!collapsed && <span className="logo-text">Tyohaar</span>}
-        <button className="sidebar-toggle" onClick={onToggle} title={collapsed ? 'Expand' : 'Collapse'}>
-          {collapsed ? '›' : '‹'}
+        {!isCollapsed && <span className="logo-text">Tyohaar</span>}
+        <button
+          className="sidebar-toggle mobile-nav-toggle"
+          onClick={onCloseMobile}
+          title="Close menu"
+          aria-label="Close menu"
+        >
+          ×
+        </button>
+        <button className="sidebar-toggle desktop-collapse-toggle" onClick={onToggle} title={isCollapsed ? 'Expand' : 'Collapse'}>
+          {isCollapsed ? '›' : '‹'}
         </button>
       </div>
 
@@ -84,13 +96,14 @@ export default function Sidebar({ collapsed, onToggle }) {
                   key={item.to}
                   to={item.to}
                   end={item.exact}
+                  onClick={onCloseMobile}
                   className={({ isActive }) =>
                     `admin-nav-item${isActive ? ' active' : ''}`
                   }
-                  title={collapsed ? item.label : undefined}
+                  title={isCollapsed ? item.label : undefined}
                 >
                   <span className="nav-icon" style={{ fontSize: 16 }}>{item.icon}</span>
-                  {!collapsed && <span className="nav-label">{item.label}</span>}
+                  {!isCollapsed && <span className="nav-label">{item.label}</span>}
                 </NavLink>
               ))}
             </div>
@@ -99,7 +112,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       </nav>
 
       <div className="admin-sidebar-footer">
-        {!collapsed && admin && (
+        {!isCollapsed && admin && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', marginBottom: 4 }}>
             <div className="admin-avatar" style={{ background: 'var(--brand-700)', color: 'white', fontSize: 11 }}>
               {admin.full_name?.[0] ?? admin.email?.[0]?.toUpperCase() ?? 'A'}
@@ -121,7 +134,7 @@ export default function Sidebar({ collapsed, onToggle }) {
           title="Logout"
         >
           <span className="nav-icon" style={{ fontSize: 16 }}>⎋</span>
-          {!collapsed && <span className="nav-label">Logout</span>}
+          {!isCollapsed && <span className="nav-label">Logout</span>}
         </button>
       </div>
     </aside>
