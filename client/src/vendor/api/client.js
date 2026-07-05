@@ -24,6 +24,11 @@ function clearSession() {
 vendorClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('vendor_token') || sessionStorage.getItem('vendor_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  // The instance default 'Content-Type: application/json' would otherwise
+  // stick on FormData requests and stop the browser from setting the
+  // multipart boundary, so the server sees an unparseable body (missing
+  // `file`/`usage` fields → 422). Let the browser set it instead.
+  if (config.data instanceof FormData) delete config.headers['Content-Type'];
   return config;
 });
 
