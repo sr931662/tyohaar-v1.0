@@ -40,15 +40,27 @@ export default function PackagesPage() {
     onError: () => toast.error('Failed to reject package'),
   });
 
+  const reportBulkResult = (result, verb) => {
+    if (result.failed > 0 && result.succeeded === 0) {
+      toast.error(`Failed to ${verb} ${result.failed === 1 ? 'package' : `${result.failed} packages`}.`);
+    } else if (result.failed > 0) {
+      toast.warning(`${verb === 'publish' ? 'Published' : 'Unpublished'} ${result.succeeded}, ${result.failed} failed.`);
+    } else {
+      toast.success(`${verb === 'publish' ? 'Packages published' : 'Packages unpublished'}`);
+    }
+    qc.invalidateQueries(['packages']);
+    setSelected([]);
+  };
+
   const publishMutation = useMutation({
     mutationFn: (ids) => bulkApi.publishPackages(ids),
-    onSuccess: () => { toast.success('Packages published'); qc.invalidateQueries(['packages']); setSelected([]); },
+    onSuccess: (result) => reportBulkResult(result, 'publish'),
     onError: () => toast.error('Failed'),
   });
 
   const unpublishMutation = useMutation({
     mutationFn: (ids) => bulkApi.unpublishPackages(ids),
-    onSuccess: () => { toast.success('Packages unpublished'); qc.invalidateQueries(['packages']); setSelected([]); },
+    onSuccess: (result) => reportBulkResult(result, 'unpublish'),
     onError: () => toast.error('Failed'),
   });
 

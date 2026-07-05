@@ -19,7 +19,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
-from app.models.enums import VendorStatus, VendorVerificationStatus
+from app.models.enums import PackageStatus, VendorStatus, VendorVerificationStatus
 from app.schemas.cms.bulk import (
     BulkAvailabilityUpdateRequest,
     BulkCouponGenerateRequest,
@@ -212,7 +212,7 @@ class BulkService(BaseService):
     # ── Package Bulk Actions ──────────────────────────────────────────────────
 
     async def _bulk_package_status_update(
-        self, request: BulkIDsRequest, is_published: bool, is_archived: bool, operation: str
+        self, request: BulkIDsRequest, status: PackageStatus, is_active: bool, operation: str
     ) -> BulkOperationResult:
         from app.models.packages.package import Package
 
@@ -224,7 +224,7 @@ class BulkService(BaseService):
                     stmt = (
                         update(Package)
                         .where(Package.id == pkg_id, Package.deleted_at.is_(None))
-                        .values(is_published=is_published, is_archived=is_archived)
+                        .values(status=status, is_active=is_active)
                         .returning(Package.id)
                     )
                     result = await uow.session.execute(stmt)
@@ -238,13 +238,19 @@ class BulkService(BaseService):
         return self._make_result(operation, request.ids, succeeded, failed)
 
     async def publish_packages(self, request: BulkIDsRequest) -> BulkOperationResult:
-        return await self._bulk_package_status_update(request, True, False, "publish_packages")
+        return await self._bulk_package_status_update(
+            request, PackageStatus.ACTIVE, True, "publish_packages"
+        )
 
     async def unpublish_packages(self, request: BulkIDsRequest) -> BulkOperationResult:
-        return await self._bulk_package_status_update(request, False, False, "unpublish_packages")
+        return await self._bulk_package_status_update(
+            request, PackageStatus.INACTIVE, False, "unpublish_packages"
+        )
 
     async def archive_packages(self, request: BulkIDsRequest) -> BulkOperationResult:
-        return await self._bulk_package_status_update(request, False, True, "archive_packages")
+        return await self._bulk_package_status_update(
+            request, PackageStatus.ARCHIVED, False, "archive_packages"
+        )
 
     async def bulk_price_update(self, request: BulkPriceUpdateRequest) -> BulkOperationResult:
         from app.models.packages.package import Package
