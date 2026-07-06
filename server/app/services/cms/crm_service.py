@@ -438,10 +438,11 @@ class CRMService(BaseService):
         limit: int = 20,
     ) -> tuple[list[dict[str, Any]], int]:
         from sqlalchemy import or_
+        from app.models.enums import UserRole
         from app.models.users.user import User
 
         async with self._uow() as uow:
-            conditions = [User.deleted_at.is_(None)]
+            conditions = [User.deleted_at.is_(None), User.role == UserRole.CUSTOMER]
             if account_status:
                 conditions.append(User.account_status == account_status)
             if search:
