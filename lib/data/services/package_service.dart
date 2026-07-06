@@ -19,10 +19,11 @@ class PackageService {
         if (occasionId != null) 'occasion_id': occasionId,
         if (query != null) 'search': query,
         if (city != null) 'city': city,
+        'page_size': 100, // Ensure we fetch enough packages for the initial view
       },
     );
     final List list = response.data['data'];
-    return list.map((item) => Package.fromJson(item)).toList();
+    return list.map((item) => Package.fromJson(item as Map<String, dynamic>)).toList();
   }
 
   Future<Package> getPackageDetails(String id) async {

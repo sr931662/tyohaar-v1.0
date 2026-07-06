@@ -242,7 +242,9 @@ class Package {
     return Package(
       id: json['id'],
       name: json['name'],
-      price: (json['base_price'] ?? 0).toDouble(),
+      price: json['base_price'] != null
+          ? double.tryParse(json['base_price'].toString()) ?? 0.0
+          : 0.0,
       inclusionsCount: json['inclusions_count'] as int? ?? 0,
       inclusions: (json['items'] as List?)
               ?.map((item) => item['name'] as String)
