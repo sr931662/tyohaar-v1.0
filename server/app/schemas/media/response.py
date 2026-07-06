@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import ConfigDict, Field
 
@@ -27,16 +27,16 @@ class ImageResponse(BaseSchema):
     owner_id: uuid.UUID
     url: str
     thumbnail_url: str | None = None
-    file_name: str | None = None
+    file_name: str | None = Field(default=None, validation_alias="original_filename")
     file_size_bytes: int | None = None
     width: int | None = None
     height: int | None = None
     mime_type: str | None = None
     usage: MediaUsage
-    status: MediaStatus
+    status: MediaStatus = Field(validation_alias="media_status")
     alt_text: str | None = None
-    display_order: int = 0
-    is_primary: bool = False
+    display_order: int = Field(default=0, validation_alias="sort_order")
+    is_primary: bool = Field(default=False, validation_alias="is_featured")
     created_at: datetime
     updated_at: datetime
 
@@ -52,18 +52,18 @@ class VideoResponse(BaseSchema):
     url: str
     thumbnail_url: str | None = None
     processed_url: str | None = None
-    file_name: str | None = None
+    file_name: str | None = Field(default=None, validation_alias="original_filename")
     file_size_bytes: int | None = None
     duration_seconds: int | None = None
     width: int | None = None
     height: int | None = None
     mime_type: str | None = None
     usage: MediaUsage
-    status: MediaStatus
+    status: MediaStatus = Field(validation_alias="media_status")
     transcoding_status: VideoTranscodingStatus = VideoTranscodingStatus.NOT_STARTED
     title: str | None = None
     description: str | None = None
-    is_primary: bool = False
+    is_primary: bool = Field(default=False, validation_alias="is_featured")
     created_at: datetime
     updated_at: datetime
 
@@ -78,12 +78,12 @@ class MemoryResponse(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
-    user_id: uuid.UUID
+    user_id: uuid.UUID = Field(validation_alias="customer_id")
     celebration_id: uuid.UUID | None = None
     title: str
     description: str | None = None
     visibility: MemoryVisibility
-    memory_date: str | None = None  # ISO date string
+    memory_date: date | None = Field(default=None, validation_alias="event_date")
     location: str | None = None
     image_ids: list[str] | None = None
     video_ids: list[str] | None = None
