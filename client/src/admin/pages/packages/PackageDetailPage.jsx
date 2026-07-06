@@ -6,6 +6,9 @@ import { packagesApi } from '../../api';
 import { formatDate, formatCurrency, initials } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { SkeletonCard } from '../../components/ui/Skeleton';
+import { ConfirmDialog } from '../../components/ui/Modal';
+
+const EMPTY_ITEM = { name: '', description: '', quantity: 1, unit: '', base_price: '', is_mandatory: true };
 
 function Section({ title, children }) {
   return (
@@ -66,6 +69,72 @@ export default function PackageDetailPage() {
     onError: () => toast.error('Failed to reject package'),
   });
 
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [newItem, setNewItem] = useState(EMPTY_ITEM);
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [editItemForm, setEditItemForm] = useState({});
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+
+  const addItemMutation = useMutation({
+    mutationFn: (body) => packagesApi.addItem(packageId, { ...body, package_id: packageId }),
+    onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem(EMPTY_ITEM); setShowAddItem(false); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add item.'),
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: ({ itemId, body }) => packagesApi.updateItem(packageId, itemId, body),
+    onSuccess: () => { toast.success('Item updated.'); invalidate(); setEditingItemId(null); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to update item.'),
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: (itemId) => packagesApi.deleteItem(packageId, itemId),
+    onSuccess: () => { toast.success('Item removed.'); invalidate(); setConfirmDeleteItem(null); },
+    onError: () => toast.error('Failed to remove item.'),
+  });
+
+  const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
+  const setEF = (k, v) => setEditItemForm((f) => ({ ...f, [k]: v }));
+
+  const startEditItem = (item) => {
+    setEditingItemId(item.id);
+    setEditItemForm({
+      name: item.name,
+      description: item.description ?? '',
+      quantity: item.quantity,
+      unit: item.unit ?? '',
+      base_price: item.base_price,
+      is_mandatory: item.is_mandatory,
+    });
+  };
+
+  const handleAddItem = (e) => {
+    e.preventDefault();
+    if (!newItem.name.trim()) return toast.error('Item name is required.');
+    if (!newItem.base_price || isNaN(Number(newItem.base_price))) return toast.error('Enter a valid price.');
+    addItemMutation.mutate({
+      ...newItem,
+      quantity: Number(newItem.quantity),
+      base_price: Number(newItem.base_price),
+      unit: newItem.unit || undefined,
+      description: newItem.description || undefined,
+    });
+  };
+
+  const handleUpdateItem = (itemId) => {
+    if (!editItemForm.name.trim()) return toast.error('Item name is required.');
+    updateItemMutation.mutate({
+      itemId,
+      body: {
+        ...editItemForm,
+        quantity: Number(editItemForm.quantity),
+        base_price: Number(editItemForm.base_price),
+        unit: editItemForm.unit || undefined,
+        description: editItemForm.description || undefined,
+      },
+    });
+  };
+
   if (isLoading) return (
     <div>
       <div className="admin-page-header">
@@ -117,7 +186,7 @@ export default function PackageDetailPage() {
         </div>
       </div>
 
-      <div className="admin-metric-grid" style={{ marginBottom: 20 }}>
+      <div className="admin-metric-grid" style={{ marginBottom: 28 }}>
         <div className="admin-metric-card">
           <div className="admin-metric-label">Base Price</div>
           <div className="admin-metric-value">{formatCurrency(pkg.base_price ?? 0, pkg.currency)}</div>
@@ -142,7 +211,7 @@ export default function PackageDetailPage() {
         </div>
       </div>
 
-      <div className="grid-2">
+      <div className="grid-2" style={{ gap: 24, rowGap: 28 }}>
         <div className="admin-card">
           <div className="admin-card-header"><div className="admin-card-title">Vendor</div></div>
           <div className="admin-card-body">
@@ -205,36 +274,99 @@ export default function PackageDetailPage() {
         </div>
 
         <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
-          <div className="admin-card-header"><div className="admin-card-title">Items</div></div>
-          <div className="admin-table-wrapper">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Quantity</th>
-                  <th>Unit</th>
-                  <th>Price</th>
-                  <th>Mandatory</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.name}</td>
-                    <td>{item.quantity}</td>
-                    <td>{item.unit ?? '—'}</td>
-                    <td>{formatCurrency(item.base_price ?? 0)}</td>
-                    <td>{item.is_mandatory ? 'Yes' : 'No'}</td>
-                  </tr>
+          <div className="admin-card-header">
+            <div className="admin-card-title">Items</div>
+            {!showAddItem && (
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowAddItem(true)}>+ Add Item</button>
+            )}
+          </div>
+          <div className="admin-card-body">
+            {items.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: showAddItem ? 20 : 0 }}>
+                {items.map((item) => editingItemId === item.id ? (
+                  <div key={item.id} className="admin-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+                      <input className="admin-input" value={editItemForm.name} onChange={(e) => setEF('name', e.target.value)} placeholder="Item name" />
+                      <input className="admin-input" type="number" min="0" value={editItemForm.base_price} onChange={(e) => setEF('base_price', e.target.value)} placeholder="Price (₹)" />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                      <input className="admin-input" type="number" min="1" value={editItemForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
+                      <input className="admin-input" value={editItemForm.unit} onChange={(e) => setEF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={editItemForm.is_mandatory} onChange={(e) => setEF('is_mandatory', e.target.checked)} />
+                        Mandatory
+                      </label>
+                    </div>
+                    <input className="admin-input" value={editItemForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setEditingItemId(null)}>Cancel</button>
+                      <button className="btn btn-primary btn-sm" onClick={() => handleUpdateItem(item.id)} disabled={updateItemMutation.isPending}>Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {item.name}
+                        {!item.is_mandatory && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>optional</span>}
+                      </div>
+                      {item.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{item.description}</div>}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      {item.quantity > 1 && `${item.quantity}${item.unit ? ' ' + item.unit : 'x'} · `}
+                      {formatCurrency(item.base_price ?? 0)}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => startEditItem(item)}>Edit</button>
+                      <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDeleteItem(item)}>✕</button>
+                    </div>
+                  </div>
                 ))}
-                {!items.length && (
-                  <tr><td colSpan={5} className="admin-table-empty">No items added yet</td></tr>
-                )}
-              </tbody>
-            </table>
+              </div>
+            )}
+
+            {!items.length && !showAddItem && (
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No items added yet.</p>
+            )}
+
+            {showAddItem && (
+              <div>
+                <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Add New Item</h4>
+                <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+                    <input className="admin-input" value={newItem.name} onChange={(e) => setNF('name', e.target.value)} placeholder="Item name *" />
+                    <input className="admin-input" type="number" min="0" value={newItem.base_price} onChange={(e) => setNF('base_price', e.target.value)} placeholder="Price (₹) *" />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    <input className="admin-input" type="number" min="1" value={newItem.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
+                    <input className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={newItem.is_mandatory} onChange={(e) => setNF('is_mandatory', e.target.checked)} />
+                      Mandatory
+                    </label>
+                  </div>
+                  <input className="admin-input" value={newItem.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => { setShowAddItem(false); setNewItem(EMPTY_ITEM); }}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={addItemMutation.isPending}>
+                      {addItemMutation.isPending ? 'Adding…' : '+ Add Item'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDeleteItem}
+        onClose={() => setConfirmDeleteItem(null)}
+        onConfirm={() => deleteItemMutation.mutate(confirmDeleteItem.id)}
+        title="Remove Item"
+        message={`Remove "${confirmDeleteItem?.name}" from this package?`}
+        loading={deleteItemMutation.isPending}
+      />
     </div>
   );
 }

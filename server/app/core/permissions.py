@@ -146,14 +146,13 @@ def require_ownership(path_param: str = "user_id") -> Callable[..., None]:
 
 # ── Vendor-entity resolution ───────────────────────────────────────────────────
 
-async def get_current_vendor_id(current_user: CurrentUserDep) -> uuid.UUID:
+async def resolve_vendor_id_for_user(current_user: UserResponse) -> uuid.UUID:
     """
-    Dependency — resolves the Vendor business-entity id owned by the
-    authenticated user.
+    Resolve the Vendor business-entity id owned by *current_user*.
 
-    `current_user.id` is the User row's id, but Package/Booking/etc. all
-    store the Vendor row's id as `vendor_id` (a distinct primary key). Every
-    vendor-scoped write must use this, not `current_user.id` directly.
+    Plain async function (not a FastAPI dependency) so call sites that need
+    to branch on role themselves — e.g. an endpoint shared between vendors
+    and admins — can call it directly instead of going through `Depends`.
     """
     if current_user.role is not UserRole.VENDOR:
         raise HTTPException(
@@ -171,6 +170,18 @@ async def get_current_vendor_id(current_user: CurrentUserDep) -> uuid.UUID:
                 detail="No vendor profile exists for this account yet.",
             )
         return vendor.id
+
+
+async def get_current_vendor_id(current_user: CurrentUserDep) -> uuid.UUID:
+    """
+    Dependency — resolves the Vendor business-entity id owned by the
+    authenticated user.
+
+    `current_user.id` is the User row's id, but Package/Booking/etc. all
+    store the Vendor row's id as `vendor_id` (a distinct primary key). Every
+    vendor-scoped write must use this, not `current_user.id` directly.
+    """
+    return await resolve_vendor_id_for_user(current_user)
 
 
 # ── Typed aliases ─────────────────────────────────────────────────────────────

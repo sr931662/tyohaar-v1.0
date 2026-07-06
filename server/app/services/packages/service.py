@@ -311,6 +311,50 @@ class PackageService(BaseService):
             await uow.packages.items.delete(item)
             await uow.commit()
 
+    # ── Package Items (Admin — manages any vendor's package) ──────────────────
+
+    async def admin_add_item(
+        self,
+        package_id: UUID,
+        data: PackageItemCreate,
+    ) -> PackageItemResponse:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            await validate_item_limit(package_id, uow)
+            payload = data.model_dump(exclude_unset=True)
+            payload["package_id"] = package_id
+            item = await uow.packages.items.create_from_dict(payload)
+            await uow.commit()
+            return PackageItemResponse.model_validate(item)
+
+    async def admin_update_item(
+        self,
+        package_id: UUID,
+        item_id: UUID,
+        data: PackageItemUpdate,
+    ) -> PackageItemResponse:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            item = await uow.packages.items.get_by_id(item_id)
+            if item is None or item.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItem", str(item_id))
+            updated = await uow.packages.items.update(
+                item, data.model_dump(exclude_unset=True)
+            )
+            await uow.commit()
+            return PackageItemResponse.model_validate(updated)
+
+    async def admin_delete_item(self, package_id: UUID, item_id: UUID) -> None:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            item = await uow.packages.items.get_by_id(item_id)
+            if item is None or item.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItem", str(item_id))
+            await uow.packages.items.delete(item)
+            await uow.commit()
+
     async def list_items(self, package_id: UUID) -> list[PackageItemResponse]:
         async with self._uow() as uow:
             await validate_package_exists(package_id, uow)

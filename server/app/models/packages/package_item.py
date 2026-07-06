@@ -10,11 +10,14 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+from decimal import Decimal
+
 from sqlalchemy import (
     Boolean,
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
 )
@@ -83,6 +86,13 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         String(50),
         nullable=True,
         comment="Unit of quantity (e.g. 'hours', 'kg', 'pieces', 'persons')",
+    )
+
+    base_price: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        nullable=False,
+        default=0,
+        comment="Price of this item line within the package.",
     )
 
     # ── Flags ─────────────────────────────────────────────────────────────────

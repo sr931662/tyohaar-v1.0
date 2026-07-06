@@ -13,8 +13,14 @@ from fastapi import Depends, Query
 from app.core.current_user import CurrentUserDep, OptionalUserDep
 from app.core.dependencies import PackageServiceDep
 from app.core.pagination import CursorPaginationParams, get_cursor_pagination
-from app.core.permissions import AdminDep, CurrentVendorIdDep, CustomerDep
+from app.core.permissions import (
+    AdminDep,
+    CurrentVendorIdDep,
+    CustomerDep,
+    resolve_vendor_id_for_user,
+)
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
+from app.models.enums import UserRole
 from app.schemas.base import CursorPage
 from app.schemas.packages import (
     PackageAvailabilityCreate,
@@ -137,12 +143,16 @@ async def unpublish_package(
 async def add_item(
     package_id: uuid.UUID,
     body: PackageItemCreate,
-    vendor_id: CurrentVendorIdDep,
+    current_user: CurrentUserDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageItemResponse]:
-    result = await service.add_item(
-        package_id=package_id, vendor_id=vendor_id, data=body
-    )
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        result = await service.admin_add_item(package_id=package_id, data=body)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        result = await service.add_item(
+            package_id=package_id, vendor_id=vendor_id, data=body
+        )
     return SuccessResponse(data=result, message="Item added.")
 
 
@@ -150,24 +160,34 @@ async def update_item(
     package_id: uuid.UUID,
     item_id: uuid.UUID,
     body: PackageItemUpdate,
-    vendor_id: CurrentVendorIdDep,
+    current_user: CurrentUserDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[PackageItemResponse]:
-    result = await service.update_item(
-        package_id=package_id, item_id=item_id, vendor_id=vendor_id, data=body
-    )
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        result = await service.admin_update_item(
+            package_id=package_id, item_id=item_id, data=body
+        )
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        result = await service.update_item(
+            package_id=package_id, item_id=item_id, vendor_id=vendor_id, data=body
+        )
     return SuccessResponse(data=result, message="Item updated.")
 
 
 async def delete_item(
     package_id: uuid.UUID,
     item_id: uuid.UUID,
-    vendor_id: CurrentVendorIdDep,
+    current_user: CurrentUserDep,
     service: PackageServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_item(
-        package_id=package_id, item_id=item_id, vendor_id=vendor_id
-    )
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        await service.admin_delete_item(package_id=package_id, item_id=item_id)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        await service.delete_item(
+            package_id=package_id, item_id=item_id, vendor_id=vendor_id
+        )
     return SuccessResponse(data=None, message="Item deleted.")
 
 

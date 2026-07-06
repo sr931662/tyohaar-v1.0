@@ -12,6 +12,12 @@ import { ConfirmDialog } from '../../components/ui/Modal';
 import { useDebounce } from '../../hooks/useDebounce';
 import { usePagination } from '../../hooks/usePagination';
 
+const VERB_LABELS = {
+  publish: { past: 'published', ing: 'publish' },
+  unpublish: { past: 'unpublished', ing: 'unpublish' },
+  archive: { past: 'archived', ing: 'archive' },
+};
+
 export default function PackagesPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -41,12 +47,14 @@ export default function PackagesPage() {
   });
 
   const reportBulkResult = (result, verb) => {
+    const { past, ing } = VERB_LABELS[verb];
+    const noun = result.total_requested === 1 ? 'package' : 'packages';
     if (result.failed > 0 && result.succeeded === 0) {
-      toast.error(`Failed to ${verb} ${result.failed === 1 ? 'package' : `${result.failed} packages`}.`);
+      toast.error(`Failed to ${ing} ${result.failed === 1 ? 'the package' : `${result.failed} packages`}.`);
     } else if (result.failed > 0) {
-      toast.warning(`${verb === 'publish' ? 'Published' : 'Unpublished'} ${result.succeeded}, ${result.failed} failed.`);
+      toast.warning(`${result.succeeded} ${noun} ${past}, ${result.failed} failed.`);
     } else {
-      toast.success(`${verb === 'publish' ? 'Packages published' : 'Packages unpublished'}`);
+      toast.success(`${result.total_requested === 1 ? 'Package' : 'Packages'} ${past}.`);
     }
     qc.invalidateQueries(['packages']);
     setSelected([]);
@@ -55,13 +63,19 @@ export default function PackagesPage() {
   const publishMutation = useMutation({
     mutationFn: (ids) => bulkApi.publishPackages(ids),
     onSuccess: (result) => reportBulkResult(result, 'publish'),
-    onError: () => toast.error('Failed'),
+    onError: () => toast.error('Failed to publish.'),
   });
 
   const unpublishMutation = useMutation({
     mutationFn: (ids) => bulkApi.unpublishPackages(ids),
     onSuccess: (result) => reportBulkResult(result, 'unpublish'),
-    onError: () => toast.error('Failed'),
+    onError: () => toast.error('Failed to unpublish.'),
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (ids) => bulkApi.archivePackages(ids),
+    onSuccess: (result) => reportBulkResult(result, 'archive'),
+    onError: () => toast.error('Failed to archive.'),
   });
 
   const items = data?.items ?? [];
@@ -74,14 +88,46 @@ export default function PackagesPage() {
   const handleBulk = () => {
     if (confirmBulk === 'publish') publishMutation.mutate(selected);
     else if (confirmBulk === 'unpublish') unpublishMutation.mutate(selected);
+    else if (confirmBulk === 'archive') archiveMutation.mutate(selected);
     setConfirmBulk('');
   };
 
   const handleConfirmAction = () => {
     if (!confirmAction) return;
-    if (confirmAction.type === 'approve') approveMutation.mutate(confirmAction.packageId);
-    else rejectMutation.mutate(confirmAction.packageId);
+    const { type, packageId } = confirmAction;
+    if (type === 'approve') approveMutation.mutate(packageId);
+    else if (type === 'reject') rejectMutation.mutate(packageId);
+    else if (type === 'publish') publishMutation.mutate([packageId]);
+    else if (type === 'unpublish') unpublishMutation.mutate([packageId]);
+    else if (type === 'archive') archiveMutation.mutate([packageId]);
     setConfirmAction(null);
+  };
+
+  const isRowActionPending =
+    approveMutation.isPending || rejectMutation.isPending ||
+    publishMutation.isPending || unpublishMutation.isPending || archiveMutation.isPending;
+
+  const CONFIRM_ACTION_COPY = {
+    approve: {
+      title: 'Approve Package',
+      message: (name) => `Approve "${name}"? It will become publicly visible on the app.`,
+    },
+    reject: {
+      title: 'Reject Package',
+      message: (name) => `Reject "${name}"? It will be returned to draft for the vendor to edit.`,
+    },
+    publish: {
+      title: 'Publish Package',
+      message: (name) => `Publish "${name}"? It will become publicly visible on the app.`,
+    },
+    unpublish: {
+      title: 'Unpublish Package',
+      message: (name) => `Unpublish "${name}"? It will be hidden from customers immediately.`,
+    },
+    archive: {
+      title: 'Archive Package',
+      message: (name) => `Archive "${name}"? It will be hidden from customers and vendor listings.`,
+    },
   };
 
   return (
@@ -113,6 +159,7 @@ export default function PackagesPage() {
           <>
             <button className="btn btn-success btn-sm" onClick={() => setConfirmBulk('publish')}>Publish {selected.length}</button>
             <button className="btn btn-secondary btn-sm" onClick={() => setConfirmBulk('unpublish')}>Unpublish {selected.length}</button>
+            <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulk('archive')}>Archive {selected.length}</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setSelected([])}>Clear</button>
           </>
         )}
@@ -158,19 +205,46 @@ export default function PackagesPage() {
                         <>
                           <button
                             className="btn btn-success btn-sm"
-                            disabled={approveMutation.isPending || rejectMutation.isPending}
+                            disabled={isRowActionPending}
                             onClick={() => setConfirmAction({ type: 'approve', packageId: p.id, name: p.name })}
                           >
                             Approve
                           </button>
                           <button
                             className="btn btn-danger btn-sm"
-                            disabled={approveMutation.isPending || rejectMutation.isPending}
+                            disabled={isRowActionPending}
                             onClick={() => setConfirmAction({ type: 'reject', packageId: p.id, name: p.name })}
                           >
                             Reject
                           </button>
                         </>
+                      )}
+                      {(p.status === 'draft' || p.status === 'inactive' || p.status === 'archived') && (
+                        <button
+                          className="btn btn-success btn-sm"
+                          disabled={isRowActionPending}
+                          onClick={() => setConfirmAction({ type: 'publish', packageId: p.id, name: p.name })}
+                        >
+                          {p.status === 'archived' ? 'Restore' : 'Publish'}
+                        </button>
+                      )}
+                      {p.status === 'active' && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          disabled={isRowActionPending}
+                          onClick={() => setConfirmAction({ type: 'unpublish', packageId: p.id, name: p.name })}
+                        >
+                          Unpublish
+                        </button>
+                      )}
+                      {(p.status === 'active' || p.status === 'inactive') && (
+                        <button
+                          className="btn btn-danger btn-sm"
+                          disabled={isRowActionPending}
+                          onClick={() => setConfirmAction({ type: 'archive', packageId: p.id, name: p.name })}
+                        >
+                          Archive
+                        </button>
                       )}
                       <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/admin/packages/${p.id}`)}>View</button>
                     </div>
@@ -187,22 +261,18 @@ export default function PackagesPage() {
         open={!!confirmBulk}
         onClose={() => setConfirmBulk('')}
         onConfirm={handleBulk}
-        title={`Bulk ${confirmBulk}`}
+        title={confirmBulk ? `Bulk ${confirmBulk.charAt(0).toUpperCase()}${confirmBulk.slice(1)}` : ''}
         message={`${confirmBulk} ${selected.length} package(s)?`}
-        loading={publishMutation.isPending || unpublishMutation.isPending}
+        loading={publishMutation.isPending || unpublishMutation.isPending || archiveMutation.isPending}
       />
 
       <ConfirmDialog
         open={!!confirmAction}
         onClose={() => setConfirmAction(null)}
         onConfirm={handleConfirmAction}
-        title={confirmAction?.type === 'approve' ? 'Approve Package' : 'Reject Package'}
-        message={
-          confirmAction?.type === 'approve'
-            ? `Approve "${confirmAction?.name}"? It will become publicly visible on the app.`
-            : `Reject "${confirmAction?.name}"? It will be returned to draft for the vendor to edit.`
-        }
-        loading={approveMutation.isPending || rejectMutation.isPending}
+        title={confirmAction ? CONFIRM_ACTION_COPY[confirmAction.type].title : ''}
+        message={confirmAction ? CONFIRM_ACTION_COPY[confirmAction.type].message(confirmAction.name) : ''}
+        loading={isRowActionPending}
       />
     </div>
   );

@@ -186,7 +186,7 @@ router.add_api_route(
     response_model=SuccessResponse[PackageItemResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Add Package Item",
-    description="Add a new item to the package. Vendor ownership required.",
+    description="Add a new item to the package. Vendor ownership or admin access required.",
     operation_id="packages_add_item",
 )
 
@@ -197,7 +197,7 @@ router.add_api_route(
     response_model=SuccessResponse[PackageItemResponse],
     status_code=status.HTTP_200_OK,
     summary="Update Package Item",
-    description="Update details on an existing package item. Vendor ownership required.",
+    description="Update details on an existing package item. Vendor ownership or admin access required.",
     operation_id="packages_update_item",
 )
 
@@ -208,7 +208,7 @@ router.add_api_route(
     response_model=SuccessResponse[None],
     status_code=status.HTTP_200_OK,
     summary="Delete Package Item",
-    description="Remove an item from the package. Vendor ownership required.",
+    description="Remove an item from the package. Vendor ownership or admin access required.",
     operation_id="packages_delete_item",
 )
 
