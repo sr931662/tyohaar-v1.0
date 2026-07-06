@@ -19,6 +19,7 @@ from app.repositories.unit_of_work import UnitOfWork
 from app.services.auth.constants import (
     OTP_RATE_LIMIT_MAX_REQUESTS,
     OTP_RATE_LIMIT_WINDOW_SECONDS,
+    REFRESH_TOKEN_REUSE_GRACE_SECONDS,
 )
 from app.services.auth.exceptions import (
     InvalidRefreshTokenError,
@@ -160,7 +161,24 @@ async def validate_refresh_token(
         raise TokenRevokedError("This refresh token has been revoked.")
 
     if record.is_used:
-        # Reuse detected — revoke entire token family
+        # A short grace window absorbs the extremely common case of the same
+        # user having the app open in two tabs: both tabs share one refresh
+        # token via localStorage, and if both are near-expiry at once, both
+        # can fire a refresh within milliseconds of each other. The first
+        # wins and rotates the token; the second arrives here presenting the
+        # now-used token. That is NOT an attack — treat it as a harmless
+        # race and let the caller retry with whatever is currently in
+        # storage, without nuking the legitimate session that just rotated.
+        # Only reuse *outside* this window (a truly stale/stolen token) is
+        # treated as an actual security incident.
+        if record.used_at is not None:
+            age = (datetime.now(tz=timezone.utc) - record.used_at).total_seconds()
+            if age <= REFRESH_TOKEN_REUSE_GRACE_SECONDS:
+                raise InvalidRefreshTokenError(
+                    "Refresh token already used. Retry with the latest token."
+                )
+
+        # Reuse detected outside the grace window — revoke entire token family
         from app.models.enums import TokenRevocationReason
         await uow.auth.refresh_tokens.revoke_family(
             record.family_id,

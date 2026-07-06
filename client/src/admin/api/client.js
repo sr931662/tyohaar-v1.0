@@ -38,18 +38,30 @@ let refreshPromise = null;
 
 function refreshAccessToken() {
   if (!refreshPromise) {
-    const refreshToken = localStorage.getItem('admin_refresh_token') || sessionStorage.getItem('admin_refresh_token');
-    if (!refreshToken) {
+    const attemptedToken = localStorage.getItem('admin_refresh_token') || sessionStorage.getItem('admin_refresh_token');
+    if (!attemptedToken) {
       refreshPromise = Promise.reject(new Error('No refresh token available.'));
     } else {
       refreshPromise = axios
-        .post(`${BASE_URL}/auth/token/refresh`, { refresh_token: refreshToken })
+        .post(`${BASE_URL}/auth/token/refresh`, { refresh_token: attemptedToken })
         .then((res) => {
           const data = res.data?.data ?? res.data;
           const store = getStore();
           store.setItem('admin_token', data.access_token);
           if (data.refresh_token) store.setItem('admin_refresh_token', data.refresh_token);
           return data.access_token;
+        })
+        .catch((err) => {
+          // Two tabs sharing one login can both race to refresh the same
+          // (about-to-expire) token. If another tab already won that race,
+          // storage now holds a newer token than the one we just tried —
+          // use it instead of forcing a logout for what is really a no-op.
+          const currentToken = localStorage.getItem('admin_refresh_token') || sessionStorage.getItem('admin_refresh_token');
+          if (currentToken && currentToken !== attemptedToken) {
+            const currentAccess = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+            if (currentAccess) return currentAccess;
+          }
+          throw err;
         });
     }
     refreshPromise.finally(() => { refreshPromise = null; });
