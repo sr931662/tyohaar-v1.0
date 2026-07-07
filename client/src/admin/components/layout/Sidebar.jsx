@@ -7,7 +7,6 @@ const NAV = [
     section: 'Overview',
     items: [
       { to: '/admin', label: 'Dashboard', icon: '⬡', exact: true },
-      { to: '/admin/search', label: 'Global Search', icon: '⌕' },
     ],
   },
   {

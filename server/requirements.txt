@@ -12,3 +12,4 @@ python-multipart==0.0.12
 httpx==0.28.1
 google-auth==2.36.0
 cloudinary==1.41.0
+razorpay==2.0.1

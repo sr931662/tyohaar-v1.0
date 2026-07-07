@@ -20,6 +20,8 @@ from app.schemas.packages import (
     PackageCategoryUpdate,
     PackageCreate,
     PackageDetailResponse,
+    PackageDiscountResponse,
+    PackageFAQResponse,
     PackageFilters,
     PackageItemCreate,
     PackageItemResponse,
@@ -81,7 +83,8 @@ class PackageService(BaseService):
         async with self._uow() as uow:
             package = await validate_package_exists(package_id, uow)
             items = await uow.packages.items.find_by_package(package_id)
-            availability = await uow.packages.availability.find_by_package(package_id)
+            discounts = await uow.packages.discounts.find_active_for_package(package_id)
+            faqs = await uow.packages.faqs.find_by_package(package_id)
             pricing_rows = await uow.packages.pricings.find_by_package(package_id)
 
             # Package.pricing is a one-to-many relationship (base + seasonal
@@ -116,6 +119,8 @@ class PackageService(BaseService):
                 **base.model_dump(), pricing=pricing_response, vendor=vendor_info
             )
             response.items = [PackageItemResponse.model_validate(i) for i in items]
+            response.discounts = [PackageDiscountResponse.model_validate(d) for d in discounts]
+            response.faqs = [PackageFAQResponse.model_validate(f) for f in faqs]
             return response
 
     async def list_packages(

@@ -25,11 +25,21 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
   }
 
   Future<void> _submit() async {
-    if (_descCtrl.text.isEmpty) return;
-    
+    final description = _descCtrl.text.trim();
+    if (description.length < 20) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please describe your issue in at least 20 characters.')),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
     try {
-      await _supportService.createTicket(_category, _descCtrl.text);
+      await _supportService.createTicket(
+        category: ticketCategoryOptions[_category] ?? 'general',
+        subject: 'Ticket: $_category',
+        description: description,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ticket raised successfully!')),
@@ -95,7 +105,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
             maxLines: 6,
             style: TyType.sans(15, color: ty.ink),
             decoration: InputDecoration(
-              hintText: 'Describe your issue in detail...',
+              hintText: 'Describe your issue in detail (at least 20 characters)...',
               hintStyle: TyType.sans(14, color: ty.ink3),
               filled: true,
               fillColor: ty.surface,

@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import Depends, Query, UploadFile, File, Form
 from fastapi.responses import Response
 
+from app.core.permissions import CurrentAdminIdDep
 from app.core.responses import PaginatedMeta, PaginatedResponse, SuccessResponse
 from app.schemas.cms.io import (
     ExportLogResponse,
@@ -41,6 +42,7 @@ async def get_import_template(
 
 
 async def validate_import(
+    admin_id: CurrentAdminIdDep,
     svc: IOServiceDep,
     file: UploadFile = File(...),
     entity_type: str = Form(...),
@@ -51,7 +53,7 @@ async def validate_import(
         content=content,
         filename=file.filename or "upload.xlsx",
         entity_type=entity_type,
-        admin_id=uuid.uuid4(),  # In production: inject from CurrentUserDep
+        admin_id=admin_id,
         is_dry_run=is_dry_run,
     )
     return SuccessResponse(
@@ -109,9 +111,10 @@ async def get_import_log(log_id: uuid.UUID, svc: IOServiceDep) -> SuccessRespons
 
 async def trigger_export(
     request: ExportRequest,
+    admin_id: CurrentAdminIdDep,
     svc: IOServiceDep,
 ) -> SuccessResponse[ExportTriggerResponse]:
-    result = await svc.trigger_export(request=request, admin_id=uuid.uuid4())
+    result = await svc.trigger_export(request=request, admin_id=admin_id)
     return SuccessResponse(data=result, message="Export triggered")
 
 

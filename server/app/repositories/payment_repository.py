@@ -143,7 +143,7 @@ class PaymentTransactionRepository(BaseRepository[PaymentTransaction]):
         )
 
     async def find_by_gateway_ref(self, gateway_ref: str) -> PaymentTransaction | None:
-        return await self.find_one(PaymentTransaction.gateway_reference == gateway_ref)
+        return await self.find_one(PaymentTransaction.gateway_transaction_id == gateway_ref)
 
 
 class PaymentAttemptRepository(BaseRepository[PaymentAttempt]):
@@ -195,14 +195,19 @@ class PaymentWebhookRepository(BaseRepository[PaymentWebhook]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, PaymentWebhook)
 
-    async def find_by_event_id(self, event_id: str) -> PaymentWebhook | None:
-        return await self.find_one(PaymentWebhook.gateway_event_id == event_id)
+    async def find_by_event_id(self, event_id: str, gateway: str | None = None) -> PaymentWebhook | None:
+        if gateway is not None:
+            return await self.find_one(
+                PaymentWebhook.event_id == event_id,
+                PaymentWebhook.gateway == gateway,
+            )
+        return await self.find_one(PaymentWebhook.event_id == event_id)
 
     async def find_unprocessed(self) -> list[PaymentWebhook]:
         return await self.find_many(PaymentWebhook.is_processed == False)  # noqa: E712
 
     async def find_failed(self) -> list[PaymentWebhook]:
-        return await self.find_many(PaymentWebhook.processing_status == "failed")
+        return await self.find_many(PaymentWebhook.processing_error.is_not(None))
 
 
 class CouponRepository(BaseRepository[Coupon]):

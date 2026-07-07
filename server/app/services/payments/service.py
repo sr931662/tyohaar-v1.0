@@ -16,6 +16,7 @@ from typing import Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.enums import (
     CouponType,
@@ -26,7 +27,7 @@ from app.models.enums import (
 )
 from app.models.payments.payment import PaymentGateway
 from app.models.payments.payment_attempt import PaymentAttemptStatus
-from app.models.payments.refund import RefundType
+from app.models.payments.refund import RefundReason, RefundType
 from app.models.payments.transaction import PartyType, TransactionDirection
 from app.schemas.base import CursorPage
 from app.schemas.payments.create import CouponCreate, PaymentCreate, RefundCreate
@@ -99,6 +100,17 @@ class PaymentSplitResponse:
 
 
 @dataclass
+class WalletTopupInitResponse:
+    """Data returned to the client to open Razorpay checkout for a wallet top-up."""
+
+    gateway_order_id: str
+    receipt: str
+    amount: Decimal
+    currency: str = "INR"
+    gateway: str = "razorpay"
+
+
+@dataclass
 class InvoiceResponse:
     """Minimal invoice response returned from the service."""
 
@@ -128,6 +140,21 @@ def _generate_txn_number() -> str:
     return f"TXN-{year}-{suffix}"
 
 
+def _razorpay_client():
+    """Return a configured Razorpay SDK client, or raise if credentials are unset."""
+    if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
+        raise ExternalServiceError(
+            "razorpay",
+            "Razorpay is not configured yet. Set RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET.",
+        )
+    import razorpay
+    return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+
+
+def _rupees_to_paise(amount: Decimal) -> int:
+    return int((amount * 100).to_integral_value())
+
+
 class PaymentService(BaseService):
     def __init__(self, session_factory: Callable[[], AsyncSession] = AsyncSessionLocal) -> None:
         super().__init__(session_factory)
@@ -145,13 +172,15 @@ class PaymentService(BaseService):
 
         1. Validate amount, gateway, booking ownership.
         2. Calculate platform fee + GST.
-        3. Apply coupon discount if provided.
-        4. Create Payment (PENDING) + PaymentAttempt + Transaction ledger entry.
-        5. Return stubbed gateway order data (replace with real gateway SDK call).
+        3. Create Payment (PENDING) + PaymentAttempt + Transaction ledger entry.
+        4. Create the real order with the gateway (after commit) and persist
+           its gateway_order_id.
         """
         validate_payment_amount(data.subtotal)
-        if data.gateway:
-            validate_gateway_supported(data.gateway.value if hasattr(data.gateway, "value") else str(data.gateway))
+        gateway_value = data.gateway.value if data.gateway and hasattr(data.gateway, "value") else (
+            str(data.gateway) if data.gateway else "razorpay"
+        )
+        validate_gateway_supported(gateway_value)
 
         platform_fee = calculate_platform_fee(data.subtotal)
         gst = calculate_gst(platform_fee)
@@ -177,10 +206,8 @@ class PaymentService(BaseService):
                 "final_amount": data.final_amount,
                 "payment_status": PaymentStatus.PENDING,
                 "payment_method": data.payment_method,
-                "gateway": data.gateway,
+                "gateway": data.gateway or PaymentGateway.RAZORPAY,
                 "payment_number": payment_number,
-                # Stub gateway order id — replace with real gateway call
-                "gateway_order_id": f"order_{payment_number.lower()}",
             })
 
             attempt_count = await uow.payments.attempts.count_for_payment(payment.id)
@@ -209,14 +236,34 @@ class PaymentService(BaseService):
 
             payment_obj = payment
 
-        # Side effects (real gateway order creation) happen here after commit
+        # Side effect (real gateway order creation) happens after commit so a
+        # gateway outage never rolls back the Payment/ledger rows above.
+        gateway_order_id = f"order_{payment_number.lower()}"
+        if gateway_value == "razorpay":
+            client = _razorpay_client()
+            try:
+                order = client.order.create({
+                    "amount": _rupees_to_paise(payment_obj.final_amount),
+                    "currency": payment_obj.currency.value if hasattr(payment_obj.currency, "value") else str(payment_obj.currency),
+                    "receipt": payment_number,
+                    "notes": {"payment_id": str(payment_obj.id), "booking_id": str(booking_id)},
+                })
+            except Exception as exc:
+                logger.exception("Razorpay order creation failed for payment %s", payment_obj.id)
+                raise ExternalServiceError("razorpay", "Could not create gateway order. Please try again.") from exc
+
+            gateway_order_id = order["id"]
+            async with self._uow() as uow:
+                fresh = await uow.payments.payments.get_by_id(payment_obj.id)
+                payment_obj = await uow.payments.payments.update(fresh, {"gateway_order_id": gateway_order_id})
+
         return PaymentInitResponse(
             payment_id=payment_obj.id,
             payment_number=payment_obj.payment_number,
-            gateway_order_id=payment_obj.gateway_order_id or f"order_{payment_obj.payment_number.lower()}",
-            checkout_url=None,  # Populate from gateway SDK response
+            gateway_order_id=gateway_order_id,
+            checkout_url=None,  # Razorpay Checkout is opened client-side with the order_id
             amount=payment_obj.final_amount,
-            gateway=str(payment_obj.gateway.value) if payment_obj.gateway else "razorpay",
+            gateway=gateway_value,
         )
 
     async def initiate_wallet_payment(
@@ -304,6 +351,38 @@ class PaymentService(BaseService):
 
         return result
 
+    async def initiate_wallet_topup(
+        self,
+        customer_id: uuid.UUID,
+        amount: Decimal,
+    ) -> WalletTopupInitResponse:
+        """
+        Create a Razorpay order for a customer to add funds to their wallet.
+
+        No Payment row is created — Payment.booking_id is mandatory and a
+        top-up has no booking. handle_webhook() credits the wallet directly
+        on payment.captured, routed by the order's `notes`.
+        """
+        validate_payment_amount(amount)
+        receipt = generate_payment_reference()
+        client = _razorpay_client()
+        try:
+            order = client.order.create({
+                "amount": _rupees_to_paise(amount),
+                "currency": "INR",
+                "receipt": receipt,
+                "notes": {"type": "wallet_topup", "customer_id": str(customer_id)},
+            })
+        except Exception as exc:
+            logger.exception("Razorpay wallet top-up order creation failed for customer %s", customer_id)
+            raise ExternalServiceError("razorpay", "Could not create gateway order. Please try again.") from exc
+
+        return WalletTopupInitResponse(
+            gateway_order_id=order["id"],
+            receipt=receipt,
+            amount=amount,
+        )
+
     # ── Webhook Handling ──────────────────────────────────────────────────────
 
     async def handle_webhook(
@@ -317,10 +396,13 @@ class PaymentService(BaseService):
         Process a payment gateway webhook (idempotent).
 
         1. Verify HMAC signature — ExternalServiceError on failure.
-        2. Parse payload for gateway_order_id and success/failure status.
-        3. Skip if payment already COMPLETED or FAILED (idempotency).
-        4. On SUCCESS: complete payment, record transaction, write ledger.
-        5. On FAILURE: mark payment FAILED, increment attempt count.
+        2. Store the raw event first (STORE FIRST principle) — skip if this
+           event_id was already delivered (gateway retries duplicates).
+        3. Parse payload for gateway_order_id and success/failure status.
+        4. Skip if payment already COMPLETED or FAILED (idempotency).
+        5. On SUCCESS: complete payment, record transaction, write ledger,
+           sync the booking's payment_status.
+        6. On FAILURE: mark payment FAILED, increment attempt count.
         """
         if not verify_webhook_signature(payload, signature, secret, gateway):
             raise InvalidGatewaySignatureError()
@@ -332,43 +414,64 @@ class PaymentService(BaseService):
         except Exception:
             raise ExternalServiceError(gateway, "Could not parse webhook payload.")
 
-        # Razorpay-style extraction; stub for others
-        gateway_order_id: str | None = None
-        gateway_payment_id: str | None = None
-        is_success = False
-
         event = body.get("event", "")
+        event_id = body.get("id") or ""
+
+        # Razorpay delivers refund events on the same webhook URL as payment
+        # events — dispatch by event prefix rather than a separate endpoint.
+        if event.startswith("refund."):
+            await self._process_refund_webhook_event(gateway, event, event_id, body)
+            return
+
         entity = body.get("payload", {}).get("payment", {}).get("entity", {})
         gateway_order_id = entity.get("order_id")
         gateway_payment_id = entity.get("id")
         is_success = event == "payment.captured"
+        notes = entity.get("notes") or {}
+        is_wallet_topup = notes.get("type") == "wallet_topup" and bool(notes.get("customer_id"))
 
-        if not gateway_order_id:
-            logger.warning("Webhook received without gateway_order_id; skipping.")
-            return
+        now = datetime.now(tz=timezone.utc)
+        topup_credit: tuple[uuid.UUID, Decimal] | None = None
 
         async with self._uow() as uow:
-            payment = await uow.payments.payments.find_by_gateway_order(gateway_order_id)
-            if payment is None:
-                logger.warning("Webhook for unknown gateway_order_id=%s", gateway_order_id)
-                return
+            if event_id:
+                existing_event = await uow.payments.webhooks.find_by_event_id(event_id, gateway=gateway)
+                if existing_event is not None:
+                    logger.info("Duplicate webhook event_id=%s for gateway=%s; skipping.", event_id, gateway)
+                    return
 
-            # Idempotency guard
-            if payment.payment_status in (PaymentStatus.COMPLETED, PaymentStatus.FAILED):
-                return
+            payment = None
+            if gateway_order_id:
+                payment = await uow.payments.payments.find_by_gateway_order(gateway_order_id)
 
-            now = datetime.now(tz=timezone.utc)
-
-            # Store raw webhook — payload bytes stored server-side, never returned to clients
             await uow.payments.webhooks.create({
-                "payment_id": payment.id,
+                "event_id": event_id or f"{gateway}_{now.timestamp()}",
                 "gateway": gateway,
                 "event_type": event,
-                "gateway_event_id": entity.get("id", ""),
-                "is_processed": True,
+                "payment_id": payment.id if payment else None,
+                "is_signature_verified": True,
+                "raw_payload": body,
+                "is_processed": payment is not None or is_wallet_topup,
                 "received_at": now,
-                # raw payload stored internally; signature excluded from any response
+                "processed_at": now if (payment is not None or is_wallet_topup) else None,
             })
+
+            if payment is None:
+                # Orders opened via initiate_wallet_topup() have no Payment row
+                # (Payment.booking_id is mandatory) — credit the wallet directly,
+                # using the gateway order's notes for routing instead.
+                if is_success and is_wallet_topup:
+                    topup_credit = (
+                        uuid.UUID(notes["customer_id"]),
+                        Decimal(str(entity.get("amount", 0))) / Decimal("100"),
+                    )
+                else:
+                    logger.warning("Webhook for unknown gateway_order_id=%s", gateway_order_id)
+                return
+
+            # Idempotency guard — a payment only transitions out of PENDING once
+            if payment.payment_status in (PaymentStatus.COMPLETED, PaymentStatus.FAILED):
+                return
 
             if is_success:
                 await uow.payments.payments.update(payment, {
@@ -403,11 +506,19 @@ class PaymentService(BaseService):
                     "description": f"Payment captured via {gateway}",
                     "transacted_at": now,
                 })
+
+                booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
+                if booking is not None:
+                    await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.COMPLETED})
             else:
                 await uow.payments.payments.update(payment, {
                     "payment_status": PaymentStatus.FAILED,
                     "failed_at": now,
                 })
+
+                booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
+                if booking is not None:
+                    await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.FAILED})
 
                 # Increment attempt counter
                 attempts = await uow.payments.attempts.find_by_payment(payment.id)
@@ -417,6 +528,19 @@ class PaymentService(BaseService):
                         "attempt_status": PaymentAttemptStatus.FAILED,
                         "completed_at": now,
                     })
+
+        if topup_credit is not None:
+            customer_id, amount = topup_credit
+            from app.services.wallets.service import WalletService
+            try:
+                await WalletService(self._session_factory).credit_wallet(
+                    user_id=customer_id,
+                    amount=amount,
+                    description="Wallet top-up via Razorpay",
+                    reference_type="razorpay_topup",
+                )
+            except Exception:
+                logger.exception("Wallet credit failed for razorpay top-up, customer=%s amount=%s", customer_id, amount)
 
     async def verify_payment(
         self,
@@ -453,6 +577,37 @@ class PaymentService(BaseService):
                 "gateway_signature": gateway_signature,
                 "captured_at": now,
             })
+
+            await uow.payments.transactions.create({
+                "payment_id": payment.id,
+                "transaction_type": TransactionType.PAYMENT,
+                "amount": payment.final_amount,
+                "currency": payment.currency,
+                "gateway_transaction_id": gateway_payment_id,
+                "is_success": True,
+                "initiated_at": now,
+                "completed_at": now,
+            })
+
+            await uow.payments.ledger.create({
+                "transaction_number": _generate_txn_number(),
+                "transaction_type": TransactionType.PAYMENT,
+                "direction": TransactionDirection.CREDIT,
+                "amount": payment.final_amount,
+                "currency": payment.currency,
+                "payer_type": PartyType.CUSTOMER,
+                "payer_id": payment.payer_id,
+                "payee_type": PartyType.PLATFORM,
+                "payee_id": None,
+                "booking_id": payment.booking_id,
+                "payment_id": payment.id,
+                "description": f"Payment captured via {gateway} (client verification)",
+                "transacted_at": now,
+            })
+
+            booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
+            if booking is not None:
+                await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.COMPLETED})
 
             result = PaymentResponse.model_validate(payment)
 
@@ -515,8 +670,10 @@ class PaymentService(BaseService):
         admin_id: uuid.UUID,
     ) -> RefundResponse:
         """
-        Create a PENDING refund record and write the ledger entry.
-        Gateway refund API call is a stub — execute after the async with block.
+        Create a PENDING refund record and write the ledger entry, then call
+        the gateway refund API after commit. A gateway failure here leaves
+        the refund PENDING (visible to admins) rather than rolling back the
+        DB record — the SDK call is retried by re-initiating the refund.
         """
         async with self._uow() as uow:
             payment = await validate_payment_exists(payment_id, uow)
@@ -527,11 +684,15 @@ class PaymentService(BaseService):
             validate_refund_amount(payment, data.amount)
 
             now = datetime.now(tz=timezone.utc)
+            # refund_reason is a fixed enum; free-text from the client goes into `notes` instead.
+            valid_reason_values = {r.value for r in RefundReason}
+            refund_reason = data.reason if data.reason in valid_reason_values else RefundReason.CUSTOMER_REQUEST
             refund = await uow.payments.refunds.create({
                 "payment_id": payment_id,
                 "booking_id": payment.booking_id,
                 "refund_type": RefundType.FULL if data.amount == payment.final_amount else RefundType.PARTIAL,
-                "refund_reason": data.reason or "customer_request",
+                "refund_reason": refund_reason,
+                "notes": data.reason,
                 "amount": data.amount,
                 "currency": payment.currency,
                 "refund_status": RefundStatus.PENDING,
@@ -558,44 +719,78 @@ class PaymentService(BaseService):
             })
 
             result = RefundResponse.model_validate(refund)
+            refund_id = refund.id
+            gateway_payment_id = payment.gateway_payment_id
+            gateway_val = payment.gateway.value if payment.gateway and hasattr(payment.gateway, "value") else str(payment.gateway)
 
-        # TODO: call gateway refund API here (side effect after commit)
+        if gateway_val == "razorpay" and gateway_payment_id:
+            try:
+                client = _razorpay_client()
+                gw_refund = client.payment.refund(gateway_payment_id, {
+                    "amount": _rupees_to_paise(data.amount),
+                    "speed": "normal",
+                    "notes": {"reason": data.reason or "customer_request", "refund_id": str(refund_id)},
+                })
+            except Exception:
+                logger.exception("Razorpay refund API call failed for refund %s", refund_id)
+                # Refund stays PENDING; admin can retry — do not raise so the
+                # already-committed refund record isn't hidden from the client.
+            else:
+                async with self._uow() as uow:
+                    fresh = await uow.payments.refunds.get_by_id(refund_id)
+                    updated = await uow.payments.refunds.update(fresh, {"gateway_refund_id": gw_refund.get("id")})
+                    result = RefundResponse.model_validate(updated)
+
         return result
 
-    async def process_refund_webhook(
+    async def _process_refund_webhook_event(
         self,
         gateway: str,
-        payload: bytes,
-        signature: str,
-        secret: str,
+        event: str,
+        event_id: str,
+        body: dict,
     ) -> None:
-        """Process gateway refund webhook; credit wallet if applicable."""
-        if not verify_webhook_signature(payload, signature, secret, gateway):
-            raise InvalidGatewaySignatureError()
-
-        import json
-        try:
-            body = json.loads(payload)
-        except Exception:
-            raise ExternalServiceError(gateway, "Could not parse refund webhook payload.")
-
+        """Handle a refund.* event dispatched from handle_webhook (signature already verified)."""
         entity = body.get("payload", {}).get("refund", {}).get("entity", {})
         gateway_refund_id = entity.get("id")
-        is_processed = body.get("event", "") == "refund.processed"
-
-        if not gateway_refund_id:
-            return
+        now = datetime.now(tz=timezone.utc)
 
         async with self._uow() as uow:
-            refund = await uow.payments.refunds.find_by_gateway_ref(gateway_refund_id)
+            if event_id:
+                existing_event = await uow.payments.webhooks.find_by_event_id(event_id, gateway=gateway)
+                if existing_event is not None:
+                    logger.info("Duplicate refund webhook event_id=%s; skipping.", event_id)
+                    return
+
+            refund = None
+            if gateway_refund_id:
+                refund = await uow.payments.refunds.find_by_gateway_ref(gateway_refund_id)
+
+            await uow.payments.webhooks.create({
+                "event_id": event_id or f"{gateway}_{now.timestamp()}",
+                "gateway": gateway,
+                "event_type": event,
+                "payment_id": refund.payment_id if refund else None,
+                "is_signature_verified": True,
+                "raw_payload": body,
+                "is_processed": refund is not None,
+                "received_at": now,
+                "processed_at": now if refund is not None else None,
+            })
+
             if refund is None:
+                logger.warning("Refund webhook for unknown gateway_refund_id=%s", gateway_refund_id)
                 return
 
-            now = datetime.now(tz=timezone.utc)
-            if is_processed:
+            if event == "refund.processed" and refund.refund_status != RefundStatus.COMPLETED:
                 await uow.payments.refunds.update(refund, {
                     "refund_status": RefundStatus.COMPLETED,
                     "processed_at": now,
+                })
+            elif event == "refund.failed" and refund.refund_status != RefundStatus.FAILED:
+                await uow.payments.refunds.update(refund, {
+                    "refund_status": RefundStatus.FAILED,
+                    "failure_reason": entity.get("error_description") or "Gateway reported refund failure.",
                 })
 
     async def list_refunds(self, booking_id: uuid.UUID) -> list[RefundResponse]:

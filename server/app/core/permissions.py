@@ -184,6 +184,37 @@ async def get_current_vendor_id(current_user: CurrentUserDep) -> uuid.UUID:
     return await resolve_vendor_id_for_user(current_user)
 
 
+# ── Admin-entity resolution ─────────────────────────────────────────────────────
+
+async def get_current_admin_id(current_user: CurrentUserDep) -> uuid.UUID:
+    """
+    Dependency — resolves the Admin business-entity id owned by the
+    authenticated user.
+
+    `current_user.id` is the User row's id, but tables that record "which
+    admin did this" (e.g. cms_import_logs.admin_id, cms_export_logs.admin_id)
+    have a foreign key to `admins.id` — a distinct primary key — not to
+    `users.id`. Passing current_user.id there directly fails with a foreign
+    key violation.
+    """
+    if current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required.",
+        )
+
+    from app.repositories.unit_of_work import UnitOfWork
+
+    async with UnitOfWork() as uow:
+        admin = await uow.admin.admins.find_by_user(current_user.id)
+        if admin is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No admin profile exists for this account yet.",
+            )
+        return admin.id
+
+
 # ── Typed aliases ─────────────────────────────────────────────────────────────
 
 AdminDep = Annotated[UserResponse, Depends(require_admin)]
@@ -192,3 +223,4 @@ VendorDep = Annotated[UserResponse, Depends(require_vendor)]
 CustomerDep = Annotated[UserResponse, Depends(require_customer)]
 StaffDep = Annotated[UserResponse, Depends(require_staff)]
 CurrentVendorIdDep = Annotated[uuid.UUID, Depends(get_current_vendor_id)]
+CurrentAdminIdDep = Annotated[uuid.UUID, Depends(get_current_admin_id)]

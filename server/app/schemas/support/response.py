@@ -86,13 +86,19 @@ class SupportMessageResponse(BaseSchema):
 
     id: uuid.UUID
     ticket_id: uuid.UUID
-    sender_id: uuid.UUID
+    sender_id: uuid.UUID | None = None
+    sender_role: str
     message_type: str
     body: str
-    is_read_by_customer: bool
-    is_read_by_agent: bool
+    # The model tracks a single delivered_at/read_at pair, not separate
+    # per-role flags — these two fields have no matching model attribute.
+    # Defaulting to False (rather than aliasing to something nonexistent)
+    # is enough for from_attributes validation to not crash on a genuinely
+    # absent attribute.
+    is_read_by_customer: bool = False
+    is_read_by_agent: bool = False
     created_at: datetime
-    # NOTE: is_internal intentionally omitted
+    # NOTE: is_internal_note intentionally omitted
 
 
 class SupportAttachmentResponse(BaseSchema):
@@ -105,9 +111,9 @@ class SupportAttachmentResponse(BaseSchema):
     id: uuid.UUID
     ticket_id: uuid.UUID
     message_id: uuid.UUID | None = None
-    uploaded_by_id: uuid.UUID
-    file_name: str
-    file_url: str
-    file_type: str
+    uploaded_by_id: uuid.UUID | None = None
+    file_name: str = Field(validation_alias="filename")
+    file_url: str = Field(validation_alias="storage_url")
+    file_type: str = Field(validation_alias="mime_type")
     file_size_bytes: int | None = None
     created_at: datetime

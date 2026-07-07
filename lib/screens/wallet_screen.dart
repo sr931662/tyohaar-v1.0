@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../data/auth_manager.dart';
 import '../data/models.dart';
+import '../data/services/payment_service.dart';
 import '../data/services/wallet_service.dart';
 import '../widgets/common.dart';
 import '../widgets/ty_button.dart';
@@ -17,15 +20,98 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   final WalletService _walletService = WalletService();
+  final PaymentService _paymentService = PaymentService();
+  late Razorpay _razorpay;
   Wallet? _wallet;
   List<WalletTransaction> _transactions = [];
   bool _isLoading = true;
+  bool _isTopupInFlight = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleTopupSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handleTopupError);
     _loadWalletData();
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
+  }
+
+  Future<void> _startTopup() async {
+    final amountText = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Add Money'),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: false),
+            autofocus: true,
+            decoration: const InputDecoration(prefixText: '₹ ', hintText: 'Amount'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text('Continue')),
+          ],
+        );
+      },
+    );
+    final amount = double.tryParse(amountText ?? '');
+    if (amount == null || amount <= 0 || !mounted) return;
+
+    setState(() => _isTopupInFlight = true);
+    try {
+      final order = await _paymentService.initiateWalletTopup(amount: amount);
+      final user = AuthManager.instance.currentUser;
+      _razorpay.open({
+        'key': kRazorpayKeyId,
+        'amount': order.amountPaise,
+        'currency': order.currency,
+        'order_id': order.orderId,
+        'name': 'Tyohaar Wallet',
+        'description': 'Add money to wallet',
+        'prefill': {
+          'contact': user?.phone ?? '',
+          'email': user?.email ?? '',
+          'name': user?.displayName ?? '',
+        },
+        'theme': {'color': '#F97316'},
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isTopupInFlight = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not start top-up. Please try again.')),
+        );
+      }
+    }
+  }
+
+  void _handleTopupSuccess(PaymentSuccessResponse response) {
+    if (!mounted) return;
+    setState(() => _isTopupInFlight = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment received — your balance will update shortly.')),
+    );
+    // Wallet is credited asynchronously by the gateway webhook; refresh after a short delay.
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) _loadWalletData();
+    });
+  }
+
+  void _handleTopupError(PaymentFailureResponse response) {
+    if (!mounted) return;
+    setState(() => _isTopupInFlight = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(response.message ?? 'Payment failed. Please try again.')),
+    );
   }
 
   Future<void> _loadWalletData() async {
@@ -115,7 +201,8 @@ class _WalletScreenState extends State<WalletScreen> {
               SectionHeader('Quick Actions'),
               Row(
                 children: [
-                  _actionButton(context, Icons.add_circle_outline, 'Add Money'),
+                  _actionButton(context, Icons.add_circle_outline, 'Add Money',
+                      onTap: _isTopupInFlight ? null : _startTopup),
                   const SizedBox(width: 12),
                   _actionButton(context, Icons.history, 'History'),
                   const SizedBox(width: 12),
@@ -141,22 +228,25 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _actionButton(BuildContext context, IconData icon, String label) {
+  Widget _actionButton(BuildContext context, IconData icon, String label, {VoidCallback? onTap}) {
     final ty = context.ty;
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: ty.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ty.line),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: ty.saffron, size: 24),
-            const SizedBox(height: 8),
-            Text(label, style: TyType.sans(12, color: ty.ink, weight: FontWeight.w600)),
-          ],
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: ty.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: ty.line),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: ty.saffron, size: 24),
+              const SizedBox(height: 8),
+              Text(label, style: TyType.sans(12, color: ty.ink, weight: FontWeight.w600)),
+            ],
+          ),
         ),
       ),
     );

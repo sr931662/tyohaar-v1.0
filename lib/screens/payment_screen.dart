@@ -29,6 +29,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   late Razorpay _razorpay;
   bool _isProcessing = false;
   String? _error;
+  String? _paymentId;
 
   @override
   void initState() {
@@ -50,8 +51,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     try {
       final order = await _paymentService.initiatePayment(
         bookingId: widget.bookingId,
-        amount: widget.amount,
+        subtotal: widget.amount,
       );
+      _paymentId = order.paymentId;
 
       final user = AuthManager.instance.currentUser;
 
@@ -81,8 +83,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     setState(() => _isProcessing = true);
     try {
       await _paymentService.verifyPayment(
-        paymentId: response.paymentId ?? '',
-        orderId: response.orderId ?? '',
+        paymentId: _paymentId ?? '',
+        razorpayPaymentId: response.paymentId ?? '',
         signature: response.signature ?? '',
       );
       if (mounted) {

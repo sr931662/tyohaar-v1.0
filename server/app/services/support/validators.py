@@ -14,7 +14,7 @@ from app.services.support.exceptions import (
 )
 from app.services.support.helpers import is_ticket_status_transition_valid
 
-_STAFF_ROLES = {"support", "admin", "agent"}
+_STAFF_ROLES = {"support", "admin", "super_admin", "agent"}
 _OPEN_STATUSES = {TicketStatus.OPEN, TicketStatus.PENDING, TicketStatus.IN_PROGRESS}
 
 

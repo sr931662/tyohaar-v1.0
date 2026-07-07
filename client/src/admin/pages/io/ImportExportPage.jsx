@@ -6,7 +6,22 @@ import { formatDateTime } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 
-const ENTITY_TYPES = ['vendors', 'packages', 'customers', 'bookings', 'products'];
+// Must match the backend's actual column definitions (_ENTITY_COLUMNS in
+// io_service.py) — 'bookings'/'products' aren't recognized there, so
+// picking them would silently download a blank template.
+const ENTITY_TYPES = [
+  'vendors', 'customers', 'packages', 'categories', 'cities', 'states',
+  'coupons', 'faqs', 'notification_templates', 'settings', 'memberships', 'services',
+];
+
+// Of those, only these currently have real row-insert logic on execute —
+// everything else will validate fine but fail per-row at execute time
+// (each row insert isn't wired to its domain service yet).
+const EXECUTABLE_ENTITY_TYPES = new Set(['faqs', 'settings']);
+
+// Export has an entirely separate, narrower set of supported entity types
+// (see _fetch_export_rows in io_service.py) — it does not share Import's list.
+const EXPORT_ENTITY_TYPES = ['vendors', 'customers', 'bookings', 'payments'];
 
 function ImportTab() {
   const qc = useQueryClient();
@@ -16,10 +31,11 @@ function ImportTab() {
   const [validationResult, setValidationResult] = useState(null);
   const [validating, setValidating] = useState(false);
 
-  const { data: logs = [], isLoading: logsLoading } = useQuery({
+  const { data: importLogsData, isLoading: logsLoading } = useQuery({
     queryKey: ['io', 'import-logs'],
     queryFn: () => ioApi.listImportLogs(),
   });
+  const logs = importLogsData?.items ?? [];
 
   const downloadTemplate = async () => {
     try {
@@ -41,10 +57,20 @@ function ImportTab() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('entity_type', entityType);
+      // Backend returns { log_id, preview: { can_proceed, total_rows, valid_rows,
+      // invalid_rows, sample_errors, ... } } — flatten it so the rest of this
+      // component can read plain `valid` / `total_rows` / `errors` etc. fields.
       const result = await ioApi.validateImport(formData);
-      setValidationResult(result);
+      setValidationResult({
+        log_id: result.log_id,
+        valid: result.preview?.can_proceed ?? false,
+        total_rows: result.preview?.total_rows ?? 0,
+        valid_rows: result.preview?.valid_rows ?? 0,
+        error_count: result.preview?.invalid_rows ?? 0,
+        errors: result.preview?.sample_errors ?? [],
+      });
     } catch (err) {
-      toast.error('Validation failed');
+      toast.error(err?.response?.data?.detail ?? 'Validation failed');
     } finally {
       setValidating(false);
     }
@@ -52,9 +78,12 @@ function ImportTab() {
 
   const executeMutation = useMutation({
     mutationFn: async () => {
+      // The backend re-parses the file at execute time rather than storing
+      // the upload from /validate — the same file has to be resent here
+      // alongside the log_id that /validate returned for it.
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('entity_type', entityType);
+      formData.append('log_id', validationResult.log_id);
       return ioApi.executeImport(formData);
     },
     onSuccess: () => {
@@ -63,7 +92,7 @@ function ImportTab() {
       if (fileRef.current) fileRef.current.value = '';
       qc.invalidateQueries(['io', 'import-logs']);
     },
-    onError: () => toast.error('Import failed'),
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Import failed'),
   });
 
   return (
@@ -76,9 +105,18 @@ function ImportTab() {
             <div className="form-group">
               <label className="form-label">Entity Type</label>
               <select className="form-control" value={entityType} onChange={e => { setEntityType(e.target.value); setFile(null); setValidationResult(null); }}>
-                {ENTITY_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                {ENTITY_TYPES.map(t => (
+                  <option key={t} value={t}>
+                    {t.charAt(0).toUpperCase() + t.slice(1)}{!EXECUTABLE_ENTITY_TYPES.has(t) ? ' (validate only — import not wired up yet)' : ''}
+                  </option>
+                ))}
               </select>
             </div>
+            {!EXECUTABLE_ENTITY_TYPES.has(entityType) && (
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 12.5, color: '#f59e0b', marginBottom: 16 }}>
+                You can validate a "{entityType}" file to preview row errors, but executing the import isn't implemented for this entity type yet — only Faqs and Settings actually write rows today.
+              </div>
+            )}
             <button className="btn btn-secondary btn-sm" onClick={downloadTemplate} style={{ marginBottom: 16 }}>
               Download {entityType} template
             </button>
@@ -144,22 +182,25 @@ function ImportTab() {
 }
 
 function ExportTab() {
+  const qc = useQueryClient();
   const [entityType, setEntityType] = useState('vendors');
   const [exporting, setExporting] = useState(false);
   const [format, setFormat] = useState('excel');
 
-  const { data: logs = [], isLoading: logsLoading } = useQuery({
+  const { data: exportLogsData, isLoading: logsLoading } = useQuery({
     queryKey: ['io', 'export-logs'],
     queryFn: () => ioApi.listExportLogs(),
   });
+  const logs = exportLogsData?.items ?? [];
 
   const handleExport = async () => {
     setExporting(true);
     try {
-      const result = await ioApi.triggerExport({ entity_type: entityType, format });
-      toast.success(`Export queued (ID: ${result.export_id ?? result.id ?? 'N/A'})`);
-    } catch {
-      toast.error('Export failed');
+      const result = await ioApi.triggerExport({ entity_type: entityType, format: format === 'excel' ? 'XLSX' : format.toUpperCase() });
+      toast.success(`${result.message ?? 'Export complete'} (${result.estimated_rows ?? 0} rows)`);
+      qc.invalidateQueries(['io', 'export-logs']);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail ?? 'Export failed');
     } finally {
       setExporting(false);
     }
@@ -173,7 +214,7 @@ function ExportTab() {
           <div className="form-group">
             <label className="form-label">Entity Type</label>
             <select className="form-control" value={entityType} onChange={e => setEntityType(e.target.value)}>
-              {ENTITY_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+              {EXPORT_ENTITY_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
             </select>
           </div>
           <div className="form-group">

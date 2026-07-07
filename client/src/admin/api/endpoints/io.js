@@ -7,12 +7,13 @@ export const ioApi = {
     apiClient.get(`${BASE}/import/template`, { params: { entity_type: entityType }, responseType: 'blob' }),
 
   validateImport: (formData) =>
-    apiClient.post(`${BASE}/import/validate`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }).then(extractData),
+    apiClient.post(`${BASE}/import/validate`, formData).then(extractData),
 
-  executeImport: (logId) =>
-    apiClient.post(`${BASE}/import/execute`, { log_id: logId }).then(extractData),
+  // Backend re-parses the file at execute time (it doesn't persist the
+  // upload from /validate), so the same file must be resent here alongside
+  // the log_id from that validation call.
+  executeImport: (formData) =>
+    apiClient.post(`${BASE}/import/execute`, formData).then(extractData),
 
   listImportLogs: (params) =>
     apiClient.get(`${BASE}/import/logs`, { params }).then(extractPaginated),

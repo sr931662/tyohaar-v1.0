@@ -20,7 +20,7 @@ export default function SupportPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['support', { page, perPage, search: debouncedSearch, status }],
-    queryFn: () => supportApi.listAll({ page, per_page: perPage, search: debouncedSearch || undefined, status: status || undefined }),
+    queryFn: () => supportApi.listAll({ page, per_page: perPage, search: debouncedSearch || undefined, ticket_status: status || undefined }),
   });
 
   const items = data?.items ?? [];
@@ -63,8 +63,8 @@ export default function SupportPage() {
                 <tr key={t.id}>
                   <td><code style={{ fontSize: 11 }}>#{t.ticket_number ?? t.id?.slice(0, 8)}</code></td>
                   <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.subject}</td>
-                  <td>{t.user?.name ?? t.customer_name ?? '—'}</td>
-                  <td><StatusBadge status={t.status} /></td>
+                  <td><code style={{ fontSize: 11 }}>{t.customer_id?.slice(0, 8)}</code></td>
+                  <td><StatusBadge status={t.ticket_status} /></td>
                   <td>{formatDateTime(t.created_at)}</td>
                   <td>
                     <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/admin/support/${t.id}`)}>View</button>

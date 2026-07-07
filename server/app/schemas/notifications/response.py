@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field, model_validator
 
 from app.models.enums import (
     NotificationChannel,
@@ -39,24 +39,31 @@ class NotificationResponse(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
-    user_id: uuid.UUID
+    user_id: uuid.UUID = Field(validation_alias="recipient_id")
     notification_type: NotificationType
     channel: NotificationChannel
     priority: NotificationPriority
-    status: NotificationStatus
+    status: NotificationStatus = Field(validation_alias="notification_status")
     title: str
     body: str
     action_url: str | None = None
     image_url: str | None = None
-    data: dict[str, Any] | None = None
+    data: dict[str, Any] | None = Field(default=None, validation_alias="extra_metadata")
     reference_type: str | None = None
     reference_id: uuid.UUID | None = None
     scheduled_at: datetime | None = None
     sent_at: datetime | None = None
     delivered_at: datetime | None = None
     read_at: datetime | None = None
-    is_read: bool
+    is_read: bool = False
     created_at: datetime
+
+    @model_validator(mode="after")
+    def _derive_is_read(self):
+        # The model has no `is_read` column (only `read_at`) — derive it so
+        # from_attributes validation never has to find a matching attribute.
+        self.is_read = self.read_at is not None
+        return self
 
 
 class NotificationTemplateResponse(BaseSchema):

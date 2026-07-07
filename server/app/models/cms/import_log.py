@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -99,6 +99,6 @@ class ImportLog(UUIDPrimaryKeyMixin, TimestampMixin, MetadataMixin, Base):
         nullable=True,
         comment="Inserted IDs for rollback support",
     )
-    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

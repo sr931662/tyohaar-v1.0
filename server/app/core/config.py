@@ -93,6 +93,16 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
 
+    # ── Payment Gateway (Razorpay) ───────────────────────────────────────────
+    # dashboard.razorpay.com → Settings → API Keys, for RAZORPAY_KEY_ID/SECRET.
+    # dashboard.razorpay.com → Settings → Webhooks, for RAZORPAY_WEBHOOK_SECRET
+    # (set when creating the webhook endpoint — a separate secret from the API keys).
+    # Leave blank in dev; payment initiation/webhook endpoints return a clear
+    # error until set. Never log or expose RAZORPAY_KEY_SECRET/WEBHOOK_SECRET.
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+
     # ── Properties ───────────────────────────────────────────────────────────
 
     @property

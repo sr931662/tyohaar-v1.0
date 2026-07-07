@@ -51,11 +51,19 @@ export function VendorAuthProvider({ children }) {
         setUser(data);
         getStore().setItem('vendor_user', JSON.stringify(data));
       })
-      .catch(() => {
-        // Note: a 401 here is already handled by the vendorClient interceptor,
-        // which tries a token refresh before this .catch ever sees a rejection.
-        clearStoredSession();
-        setUser(null);
+      .catch((err) => {
+        // The vendorClient interceptor already tried a token refresh before
+        // this rejection reaches us, so a 401 here means the session is
+        // genuinely dead — sign out. Any OTHER failure (network drop, a
+        // Cloud Run cold-start timeout, a transient 502/503 while the
+        // instance spins back up from zero) is NOT proof the session is
+        // invalid; wiping the stored tokens on those would force a real
+        // login every time the instance had scaled down. Keep the cached
+        // session and let the next successful request confirm it.
+        if (err?.response?.status === 401) {
+          clearStoredSession();
+          setUser(null);
+        }
       })
       .finally(() => setLoading(false));
   }, []);

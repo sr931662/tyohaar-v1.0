@@ -176,8 +176,11 @@ export const vendorSupportApi = {
     vendorClient.get(`/support/tickets/${ticketId}`).then(extractData),
   create: (body) =>
     vendorClient.post('/support/tickets', body).then(extractData),
-  listMessages: (ticketId, params) =>
-    vendorClient.get(`/support/tickets/${ticketId}/messages`, { params }).then(extractPaginated),
+  // Backend returns the full thread as a plain list (not cursor-paginated —
+  // a ticket's message count is naturally bounded), so this uses extractList
+  // rather than extractPaginated.
+  listMessages: (ticketId) =>
+    vendorClient.get(`/support/tickets/${ticketId}/messages`).then(extractList),
   addMessage: (ticketId, body) =>
     vendorClient.post(`/support/tickets/${ticketId}/messages`, body).then(extractData),
 };

@@ -273,6 +273,64 @@ export default function PackageDetailPage() {
           </div>
         </div>
 
+        <div className="admin-card">
+          <div className="admin-card-header"><div className="admin-card-title">Pricing</div></div>
+          <div className="admin-card-body">
+            {pkg.pricing ? (
+              <Section>
+                <Row label="Pricing Type" value={pkg.pricing.pricing_type?.replace(/_/g, ' ')} />
+                <Row label="Base Price" value={formatCurrency(pkg.pricing.base_price ?? 0, pkg.pricing.currency)} />
+                <Row label="Min Price" value={pkg.pricing.min_price != null ? formatCurrency(pkg.pricing.min_price, pkg.pricing.currency) : '—'} />
+                <Row label="Max Price" value={pkg.pricing.max_price != null ? formatCurrency(pkg.pricing.max_price, pkg.pricing.currency) : '—'} />
+                <Row label="Price / Person" value={pkg.pricing.price_per_person != null ? formatCurrency(pkg.pricing.price_per_person, pkg.pricing.currency) : '—'} />
+              </Section>
+            ) : (
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No pricing configuration set.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="admin-card">
+          <div className="admin-card-header"><div className="admin-card-title">Active Discounts</div></div>
+          <div className="admin-card-body">
+            {pkg.discounts?.length ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {pkg.discounts.map((d) => (
+                  <div key={d.id} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>{d.title}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-600)' }}>
+                        {d.discount_type === 'percentage' ? `${d.discount_value}%` : formatCurrency(d.discount_value)}
+                      </div>
+                    </div>
+                    {d.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{d.description}</div>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No active discounts.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
+          <div className="admin-card-header"><div className="admin-card-title">FAQs</div></div>
+          <div className="admin-card-body">
+            {pkg.faqs?.length ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {pkg.faqs.map((f) => (
+                  <div key={f.id}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>{f.question}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{f.answer}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No FAQs added.</p>
+            )}
+          </div>
+        </div>
+
         <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
           <div className="admin-card-header">
             <div className="admin-card-title">Items</div>

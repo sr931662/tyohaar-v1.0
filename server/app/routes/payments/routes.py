@@ -19,6 +19,7 @@ from app.services.payments.service import (
     PaymentInitResponse,
     PaymentSplitResponse,
     PaymentTransactionResponse,
+    WalletTopupInitResponse,
 )
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
@@ -126,6 +127,19 @@ router.add_api_route(
     summary="List Refunds for Booking",
     description="Return all refund records associated with a booking.",
     operation_id="payments_list_refunds",
+)
+
+# ── Wallet top-up ─────────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/wallet/topup",
+    ctrl.initiate_wallet_topup,
+    methods=["POST"],
+    response_model=SuccessResponse[WalletTopupInitResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Initiate Wallet Top-up",
+    description="Create a gateway order to add funds to the authenticated user's wallet. Pass `amount` as a query parameter.",
+    operation_id="payments_initiate_wallet_topup",
 )
 
 # ── Webhooks ──────────────────────────────────────────────────────────────────

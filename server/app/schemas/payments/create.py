@@ -36,13 +36,13 @@ class PaymentCreate(BaseSchema):
     """
     Payload required to initiate a new payment.
 
-    The service layer creates a gateway order from these fields and
-    returns a gateway_order_id to the client for checkout.
+    booking_id is taken from the URL path and payer_id from the authenticated
+    user — neither is accepted here, to avoid a client being able to spoof
+    who is paying for what. The service layer creates a gateway order from
+    these fields and returns a gateway_order_id to the client for checkout.
     gateway_signature is never accepted as input.
     """
 
-    booking_id: uuid.UUID = Field(description="UUID of the booking being paid for")
-    payer_id: uuid.UUID = Field(description="UUID of the user making the payment")
     currency: Currency = Field(default=Currency.INR, description="Payment currency")
     subtotal: MoneyAmount = Field(description="Order subtotal before discounts and fees")
     discount_amount: MoneyAmount = Field(

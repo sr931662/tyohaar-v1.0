@@ -91,10 +91,10 @@ class RefundResponse(BaseSchema):
     amount: MoneyAmount
     currency: Currency
     refund_status: RefundStatus
-    reason: str | None
+    reason: str | None = Field(default=None, validation_alias="refund_reason")
     gateway_refund_id: str | None
-    initiated_at: datetime | None
-    completed_at: datetime | None
+    initiated_at: datetime | None = Field(default=None, validation_alias="requested_at")
+    completed_at: datetime | None = Field(default=None, validation_alias="processed_at")
     initiated_by_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime

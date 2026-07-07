@@ -233,7 +233,7 @@ class IOService(BaseService):
 
         # Create import log
         async with self._uow() as uow:
-            log = await uow.cms.import_logs.create({
+            log = await uow.cms.import_logs.create_from_dict({
                 "admin_id": admin_id,
                 "entity_type": entity_type,
                 "original_filename": filename,
@@ -324,10 +324,18 @@ class IOService(BaseService):
         """Insert a single validated row into the appropriate table."""
         if entity_type == "faqs":
             from app.models.common.faq import FAQ
+            from app.models.enums import FAQCategory
+
+            raw_category = (row.get("category") or "").strip().lower()
+            try:
+                faq_category = FAQCategory(raw_category) if raw_category else FAQCategory.GENERAL
+            except ValueError:
+                faq_category = FAQCategory.GENERAL
+
             obj = FAQ(
                 question=row.get("question", ""),
                 answer=row.get("answer", ""),
-                category=row.get("category"),
+                faq_category=faq_category,
                 display_order=int(row.get("display_order", 0) or 0),
                 is_active=True,
             )
@@ -336,16 +344,31 @@ class IOService(BaseService):
             return obj.id
         elif entity_type == "settings":
             from app.models.common.app_setting import AppSetting
+            key = row.get("key", "")
             obj = AppSetting(
-                key=row.get("key", ""),
+                key=key,
+                # group/label are required with no default; the import
+                # template only asks for key/value/description, so derive
+                # reasonable values rather than crash on every row.
+                group="imported",
+                label=key.replace("_", " ").title() or "Imported Setting",
                 value=row.get("value", ""),
                 description=row.get("description"),
             )
             session.add(obj)
             await session.flush()
             return obj.id
-        # Other entities are handled by their respective services
-        return None
+        # Every other entity_type accepted by /import/validate (vendors,
+        # customers, packages, categories, cities, states, coupons,
+        # notification_templates, memberships, services) has no real insert
+        # path here yet — creating those properly means going through their
+        # own domain services (password hashing + user/vendor linkage for
+        # accounts, pricing/category wiring for packages, etc.), not a raw
+        # row insert. Fail loudly per-row instead of silently reporting 0
+        # rows inserted as if the import had nothing to do.
+        raise NotImplementedError(
+            f"Bulk import for entity_type='{entity_type}' is not implemented yet."
+        )
 
     async def undo_import(self, log_id: uuid.UUID) -> ImportUndoResponse:
         async with self._uow() as uow:
@@ -412,7 +435,7 @@ class IOService(BaseService):
         from datetime import timedelta
 
         async with self._uow() as uow:
-            log = await uow.cms.export_logs.create({
+            log = await uow.cms.export_logs.create_from_dict({
                 "admin_id": admin_id,
                 "entity_type": request.entity_type,
                 "format": request.format,

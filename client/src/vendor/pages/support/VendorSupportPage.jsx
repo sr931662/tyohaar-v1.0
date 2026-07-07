@@ -9,29 +9,33 @@ import Pagination from '../../../admin/components/ui/Pagination';
 import { usePagination } from '../../../admin/hooks/usePagination';
 import { formatDateTime, timeAgo } from '../../../admin/utils/format';
 
-const TICKET_TYPES = ['BOOKING', 'PAYMENT', 'VENDOR', 'ACCOUNT', 'GENERAL'];
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+// Values must match the backend's TicketCategory/TicketPriority/TicketStatus
+// enums exactly (lowercase) — these are Python str enums validated by value.
+const TICKET_CATEGORIES = ['booking', 'payment', 'vendor', 'account', 'technical', 'general'];
+const PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
 const PRIORITY_COLOR = {
-  LOW: 'var(--text-tertiary)',
-  MEDIUM: '#f59e0b',
-  HIGH: '#ef4444',
-  URGENT: '#dc2626',
+  low: 'var(--text-tertiary)',
+  medium: '#f59e0b',
+  high: '#ef4444',
+  critical: '#dc2626',
 };
+
+const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '—');
 
 function NewTicketModal({ onClose, onCreate, saving }) {
   const [form, setForm] = useState({
     subject: '',
     description: '',
-    ticket_type: 'GENERAL',
-    priority: 'MEDIUM',
+    category: 'general',
+    priority: 'medium',
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.subject.trim()) return toast.error('Subject is required.');
-    if (!form.description.trim()) return toast.error('Description is required.');
+    if (form.description.trim().length < 20) return toast.error('Description must be at least 20 characters.');
     onCreate(form);
   };
 
@@ -54,15 +58,15 @@ function NewTicketModal({ onClose, onCreate, saving }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Type</label>
-              <select className="admin-input" value={form.ticket_type} onChange={(e) => set('ticket_type', e.target.value)}>
-                {TICKET_TYPES.map((t) => <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>)}
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Category</label>
+              <select className="admin-input" value={form.category} onChange={(e) => set('category', e.target.value)}>
+                {TICKET_CATEGORIES.map((t) => <option key={t} value={t}>{capitalize(t)}</option>)}
               </select>
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Priority</label>
               <select className="admin-input" value={form.priority} onChange={(e) => set('priority', e.target.value)}>
-                {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>)}
+                {PRIORITIES.map((p) => <option key={p} value={p}>{capitalize(p)}</option>)}
               </select>
             </div>
           </div>
@@ -73,7 +77,7 @@ function NewTicketModal({ onClose, onCreate, saving }) {
               rows={5}
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
-              placeholder="Please describe the issue in detail…"
+              placeholder="Please describe the issue in detail… (min. 20 characters)"
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
@@ -92,13 +96,11 @@ function TicketDetailModal({ ticket, onClose }) {
   const qc = useQueryClient();
   const [message, setMessage] = useState('');
 
-  const { data: messagesData, isLoading } = useQuery({
+  const { data: messages = [], isLoading } = useQuery({
     queryKey: ['vendor-support-messages', ticket.id],
-    queryFn: () => vendorSupportApi.listMessages(ticket.id, { per_page: 50 }),
+    queryFn: () => vendorSupportApi.listMessages(ticket.id),
     refetchInterval: 30_000,
   });
-
-  const messages = messagesData?.items ?? [];
 
   const sendMutation = useMutation({
     mutationFn: (body) => vendorSupportApi.addMessage(ticket.id, body),
@@ -113,7 +115,7 @@ function TicketDetailModal({ ticket, onClose }) {
   const handleSend = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
-    sendMutation.mutate({ message_text: message.trim() });
+    sendMutation.mutate({ body: message.trim() });
   };
 
   return (
@@ -123,9 +125,9 @@ function TicketDetailModal({ ticket, onClose }) {
           <div>
             <h2 className="admin-modal-title" style={{ marginBottom: 4 }}>{ticket.subject}</h2>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <StatusBadge status={ticket.status?.toLowerCase()} />
+              <StatusBadge status={ticket.ticket_status} />
               <span style={{ fontSize: 12, color: PRIORITY_COLOR[ticket.priority], fontWeight: 600 }}>
-                {ticket.priority}
+                {capitalize(ticket.priority)}
               </span>
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>#{ticket.ticket_number ?? ticket.id?.slice(0, 8)}</span>
             </div>
@@ -149,33 +151,39 @@ function TicketDetailModal({ ticket, onClose }) {
               No messages yet. Send a message below.
             </p>
           ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: msg.is_internal ? 'flex-start' : 'flex-end',
-                }}
-              >
-                <div style={{
-                  maxWidth: '80%', padding: '10px 14px', borderRadius: 12,
-                  background: msg.is_internal ? 'var(--bg-raised)' : 'var(--brand-600, #4f46e5)',
-                  color: msg.is_internal ? 'var(--text-primary)' : 'white',
-                  fontSize: 13, lineHeight: 1.5,
-                }}>
-                  {msg.message_text}
+            messages.map((msg) => {
+              // The vendor is the "customer" side of a support thread — a
+              // message sent BY the vendor has sender_role='customer';
+              // anything else (agent/admin/system) is the support team's reply.
+              const isMine = msg.sender_role === 'customer';
+              return (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: isMine ? 'flex-end' : 'flex-start',
+                  }}
+                >
+                  <div style={{
+                    maxWidth: '80%', padding: '10px 14px', borderRadius: 12,
+                    background: isMine ? 'var(--brand-600, #4f46e5)' : 'var(--bg-raised)',
+                    color: isMine ? 'white' : 'var(--text-primary)',
+                    fontSize: 13, lineHeight: 1.5,
+                  }}>
+                    {msg.body}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3, padding: '0 4px' }}>
+                    {isMine ? 'You' : 'Support'} · {msg.created_at ? timeAgo(msg.created_at) : ''}
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3, padding: '0 4px' }}>
-                  {msg.is_internal ? 'Support' : 'You'} · {msg.created_at ? timeAgo(msg.created_at) : ''}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
         {/* Reply box */}
-        {ticket.status !== 'CLOSED' && ticket.status !== 'RESOLVED' && (
+        {ticket.ticket_status !== 'closed' && ticket.ticket_status !== 'resolved' && (
           <form onSubmit={handleSend} style={{ padding: '12px 24px', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 10, flexShrink: 0 }}>
             <input
               className="admin-input"
@@ -189,9 +197,9 @@ function TicketDetailModal({ ticket, onClose }) {
             </button>
           </form>
         )}
-        {(ticket.status === 'CLOSED' || ticket.status === 'RESOLVED') && (
+        {(ticket.ticket_status === 'closed' || ticket.ticket_status === 'resolved') && (
           <div style={{ padding: '12px 24px', borderTop: '1px solid var(--border-subtle)', fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-            This ticket is {ticket.status?.toLowerCase()}. No further replies can be added.
+            This ticket is {ticket.ticket_status}. No further replies can be added.
           </div>
         )}
       </div>
@@ -210,7 +218,7 @@ export default function VendorSupportPage() {
     queryKey: ['vendor-support', { page, perPage, statusFilter }],
     queryFn: () => vendorSupportApi.list({
       page, per_page: perPage,
-      status: statusFilter || undefined,
+      ticket_status: statusFilter || undefined,
     }),
   });
 
@@ -247,11 +255,11 @@ export default function VendorSupportPage() {
           onChange={(e) => { setStatusFilter(e.target.value); reset(); }}
         >
           <option value="">All Statuses</option>
-          <option value="OPEN">Open</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="WAITING_ON_CUSTOMER">Waiting on You</option>
-          <option value="RESOLVED">Resolved</option>
-          <option value="CLOSED">Closed</option>
+          <option value="open">Open</option>
+          <option value="in_progress">In Progress</option>
+          <option value="waiting_on_customer">Waiting on You</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
         </select>
       </div>
 
@@ -286,14 +294,14 @@ export default function VendorSupportPage() {
                       <div className="admin-user-email">#{ticket.ticket_number ?? ticket.id?.slice(0, 8)}</div>
                     </td>
                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                      {(ticket.ticket_type?.charAt(0) + ticket.ticket_type?.slice(1)?.toLowerCase()) ?? '—'}
+                      {capitalize(ticket.category)}
                     </td>
                     <td>
                       <span style={{ fontSize: 12, fontWeight: 600, color: PRIORITY_COLOR[ticket.priority] }}>
-                        {ticket.priority}
+                        {capitalize(ticket.priority)}
                       </span>
                     </td>
-                    <td><StatusBadge status={ticket.status?.toLowerCase()} /></td>
+                    <td><StatusBadge status={ticket.ticket_status} /></td>
                     <td style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                       {ticket.created_at ? timeAgo(ticket.created_at) : '—'}
                     </td>

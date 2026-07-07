@@ -7,14 +7,18 @@ export const supportApi = {
   get: (ticketId) =>
     apiClient.get(`/support/tickets/${ticketId}`).then(extractData),
 
-  updateStatus: (ticketId, status) =>
-    apiClient.patch(`/support/tickets/${ticketId}/status`, { status }).then(extractData),
+  updateStatus: (ticketId, ticketStatus, resolutionSummary) =>
+    apiClient.patch(`/support/tickets/${ticketId}/status`, {
+      ticket_status: ticketStatus,
+      resolution_summary: resolutionSummary || undefined,
+    }).then(extractData),
 
   assign: (ticketId, assigneeId) =>
     apiClient.post(`/support/tickets/${ticketId}/assignments/${assigneeId}`).then(extractData),
 
-  listMessages: (ticketId, params) =>
-    apiClient.get(`/support/tickets/${ticketId}/messages`, { params }).then(extractPaginated),
+  // Backend returns the full thread as a plain list (not cursor-paginated).
+  listMessages: (ticketId) =>
+    apiClient.get(`/support/tickets/${ticketId}/messages`).then(extractList),
 
   addMessage: (ticketId, body) =>
     apiClient.post(`/support/tickets/${ticketId}/messages`, body).then(extractData),

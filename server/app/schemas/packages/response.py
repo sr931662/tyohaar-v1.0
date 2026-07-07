@@ -142,10 +142,10 @@ class PackageDiscountResponse(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
-    package_id: uuid.UUID
+    package_id: uuid.UUID | None
     discount_type: str
     discount_value: Decimal
-    title: str
+    title: str = Field(validation_alias="name")
     description: str | None
     valid_from: datetime | None
     valid_until: datetime | None

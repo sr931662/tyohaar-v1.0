@@ -92,10 +92,10 @@ router.add_api_route(
     "/tickets/{ticket_id}/messages",
     ctrl.list_messages,
     methods=["GET"],
-    response_model=CursorPaginatedResponse[SupportMessageResponse],
+    response_model=SuccessResponse[list[SupportMessageResponse]],
     status_code=status.HTTP_200_OK,
     summary="List Ticket Messages",
-    description="Return a cursor-paginated thread of messages for a support ticket.",
+    description="Return the full message thread for a support ticket (naturally bounded, not paginated).",
     operation_id="support_list_messages",
 )
 

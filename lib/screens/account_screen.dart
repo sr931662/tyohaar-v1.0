@@ -21,7 +21,7 @@ import 'manage_address_screen.dart';
 import 'about_app_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_conditions_screen.dart';
-import 'raise_ticket_screen.dart';
+import 'my_tickets_screen.dart';
 import 'onboarding_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -120,8 +120,8 @@ class _AccountScreenState extends State<AccountScreen> {
               onTap: () => _push(context, const PrivacyPolicyScreen())),
           _menuItem(context, Icons.description_outlined, 'Terms & Conditions',
               onTap: () => _push(context, const TermsConditionsScreen())),
-          _menuItem(context, Icons.confirmation_number_outlined, 'Raise Ticket',
-              onTap: () => _push(context, const RaiseTicketScreen())),
+          _menuItem(context, Icons.confirmation_number_outlined, 'My Tickets',
+              onTap: () => _push(context, const MyTicketsScreen())),
         ]),
         const SizedBox(height: 16),
         _menuGroup(context, [

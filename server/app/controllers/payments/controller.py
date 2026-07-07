@@ -31,6 +31,7 @@ from app.services.payments.service import (
     PaymentSplitCreate,
     PaymentSplitResponse,
     PaymentTransactionResponse,
+    WalletTopupInitResponse,
 )
 
 
@@ -65,6 +66,15 @@ async def initiate_wallet_payment(
     return SuccessResponse(data=result, message="Wallet payment completed.")
 
 
+async def initiate_wallet_topup(
+    current_user: CurrentUserDep,
+    service: PaymentServiceDep,
+    amount: Decimal = Query(...),
+) -> SuccessResponse[WalletTopupInitResponse]:
+    result = await service.initiate_wallet_topup(customer_id=current_user.id, amount=amount)
+    return SuccessResponse(data=result, message="Wallet top-up order created.")
+
+
 async def handle_webhook(
     gateway: str,
     request: Request,
@@ -76,7 +86,7 @@ async def handle_webhook(
     signature = x_razorpay_signature or x_gateway_signature or ""
     from app.core.config import settings
     await service.handle_webhook(
-        gateway=gateway, payload=payload, signature=signature, secret=settings.PAYMENT_WEBHOOK_SECRET
+        gateway=gateway, payload=payload, signature=signature, secret=settings.RAZORPAY_WEBHOOK_SECRET
     )
     return SuccessResponse(data=None, message="Webhook processed.")
 
@@ -94,7 +104,7 @@ async def verify_payment(
         payment_id=payment_id,
         gateway_payment_id=gateway_payment_id,
         gateway_signature=gateway_signature,
-        secret=settings.PAYMENT_WEBHOOK_SECRET,
+        secret=settings.RAZORPAY_KEY_SECRET,
         gateway=gateway,
     )
     return SuccessResponse(data=result, message="Payment verified.")
