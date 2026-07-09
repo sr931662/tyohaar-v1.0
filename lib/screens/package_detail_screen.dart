@@ -11,6 +11,7 @@ import 'package:tyohaar/screens/booking_flow_screen.dart';
 import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../theme/responsive.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../widgets/photo_placeholder.dart';
@@ -137,6 +138,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
 
     return Scaffold(
       backgroundColor: ty.paper,
@@ -145,24 +147,24 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
         : CustomScrollView(
             slivers: [
               SliverAppBar(
-                expandedHeight: 300,
+                expandedHeight: resp.h(300),
                 pinned: true,
                 leading: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: EdgeInsets.all(resp.w(8)),
                   child: _glassIcon(context, Icons.chevron_left_rounded, () => Navigator.pop(context)),
                 ),
                 actions: [
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: EdgeInsets.all(resp.w(8)),
                     child: _isDownloading
-                        ? const Padding(
-                            padding: EdgeInsets.all(10),
-                            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                        ? Padding(
+                            padding: EdgeInsets.all(resp.w(10)),
+                            child: SizedBox(width: resp.w(20), height: resp.w(20), child: const CircularProgressIndicator(strokeWidth: 2)),
                           )
                         : _glassIcon(context, Icons.download_rounded, _downloadCoverImage),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: EdgeInsets.all(resp.w(8)),
                     child: _verifiedBadge(context),
                   ),
                 ],
@@ -173,7 +175,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                       CachedNetworkImage(
                         imageUrl: _fullPackage.coverImageUrl ?? '',
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => PhotoPlaceholder(tint: _fullPackage.tint, height: 300, arch: false, radius: BorderRadius.zero),
+                        placeholder: (context, url) => PhotoPlaceholder(tint: _fullPackage.tint, height: resp.h(300), arch: false, radius: BorderRadius.zero),
                         errorWidget: (context, url, error) => OccasionAssets.getFallback(_fullPackage.name, tint: _fullPackage.tint, arch: false),
                       ),
                       DecoratedBox(
@@ -193,7 +195,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
               SliverList(
                 delegate: SliverChildListDelegate([
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                    padding: EdgeInsets.fromLTRB(resp.w(20), resp.h(12), resp.w(20), resp.h(120)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -202,28 +204,28 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                             TyPill(_fullPackage.slug ?? _fullPackage.name, background: ty.tint(_fullPackage.tint).withOpacity(0.15), foreground: ty.tint(_fullPackage.tint)),
                             const Spacer(),
                             Text('Base: ₹${(_fullPackage.price / 1000).toStringAsFixed(0)}K', 
-                                style: TyType.sans(14, color: ty.ink2, weight: FontWeight.w600)),
+                                style: TyType.sans(resp.sp(14), color: ty.ink2, weight: FontWeight.w600)),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(_fullPackage.name, style: TyType.display(32, color: ty.ink)),
-                        const SizedBox(height: 12),
-                        Text(_fullPackage.description ?? '', style: TyType.sans(15, color: ty.ink2, height: 1.5)),
+                        SizedBox(height: resp.h(16)),
+                        Text(_fullPackage.name, style: TyType.display(resp.sp(32), color: ty.ink)),
+                        SizedBox(height: resp.h(12)),
+                        Text(_fullPackage.description ?? '', style: TyType.sans(resp.sp(15), color: ty.ink2, height: 1.5)),
                         
-                        const SizedBox(height: 32),
-                        Text('Core Inclusions', style: TyType.eyebrow(12, color: ty.ink3)),
-                        const SizedBox(height: 16),
+                        SizedBox(height: resp.h(32)),
+                        Text('Core Inclusions', style: TyType.eyebrow(resp.sp(12), color: ty.ink3)),
+                        SizedBox(height: resp.h(16)),
                         ..._fullPackage.inclusions.map((item) => _inclusionRow(context, item)),
 
-                        const SizedBox(height: 32),
-                        Text('Guest Count', style: TyType.eyebrow(12, color: ty.ink3)),
-                        const SizedBox(height: 12),
+                        SizedBox(height: resp.h(32)),
+                        Text('Guest Count', style: TyType.eyebrow(resp.sp(12), color: ty.ink3)),
+                        SizedBox(height: resp.h(12)),
                         _guestStepper(context),
 
                         if (_optionalItems.isNotEmpty) ...[
-                          const SizedBox(height: 32),
-                          Text('Optional Add-ons', style: TyType.eyebrow(12, color: ty.ink3)),
-                          const SizedBox(height: 16),
+                          SizedBox(height: resp.h(32)),
+                          Text('Optional Add-ons', style: TyType.eyebrow(resp.sp(12), color: ty.ink3)),
+                          SizedBox(height: resp.h(16)),
                           ..._optionalItems.map((item) => _packageItemRow(context, item)),
                         ],
                       ],
@@ -234,11 +236,11 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
             ],
           ),
       bottomSheet: _isLoading ? null : Container(
-        padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 16),
+        padding: EdgeInsets.fromLTRB(resp.w(20), resp.h(16), resp.w(20), MediaQuery.of(context).padding.bottom + resp.h(16)),
         decoration: BoxDecoration(
           color: ty.paper,
           border: Border(top: BorderSide(color: ty.line2)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: resp.w(10), offset: Offset(0, resp.h(-5)))],
         ),
         child: Row(
           children: [
@@ -247,12 +249,12 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Estimated Total', style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
-                  Text('₹${(_totalPrice / 1000).toStringAsFixed(1)}K', style: TyType.display(24, color: ty.ink)),
+                  Text('Estimated Total', style: TyType.sans(resp.sp(12), color: ty.ink3, weight: FontWeight.w600)),
+                  Text('₹${(_totalPrice / 1000).toStringAsFixed(1)}K', style: TyType.display(resp.sp(24), color: ty.ink)),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: resp.w(16)),
             Expanded(
               flex: 2,
               child: TyButton('Select & Continue', full: true, onTap: () {
@@ -274,31 +276,33 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   }
 
   Widget _glassIcon(BuildContext context, IconData icon, VoidCallback onTap) {
+    final resp = context.resp;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
+        width: resp.w(40),
+        height: resp.w(40),
         alignment: Alignment.center,
         decoration: BoxDecoration(color: Colors.black.withOpacity(0.2), shape: BoxShape.circle),
-        child: Icon(icon, color: Colors.white),
+        child: Icon(icon, color: Colors.white, size: resp.sp(20)),
       ),
     );
   }
 
   Widget _inclusionRow(BuildContext context, String text) {
     final ty = context.ty;
+    final resp = context.resp;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: resp.h(12)),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(resp.w(6)),
             decoration: BoxDecoration(color: ty.leaf.withOpacity(0.1), shape: BoxShape.circle),
-            child: Icon(Icons.check_rounded, color: ty.leaf, size: 16),
+            child: Icon(Icons.check_rounded, color: ty.leaf, size: resp.sp(16)),
           ),
-          const SizedBox(width: 12),
-          Text(text, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w600)),
+          SizedBox(width: resp.w(12)),
+          Text(text, style: TyType.sans(resp.sp(14.5), color: ty.ink, weight: FontWeight.w600)),
         ],
       ),
     );
@@ -306,30 +310,31 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
 
   Widget _guestStepper(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: resp.w(16), vertical: resp.h(8)),
       decoration: BoxDecoration(
         color: ty.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(resp.w(16)),
         border: Border.all(color: ty.line),
       ),
       child: Row(
         children: [
           IconButton(
             onPressed: () => _updateGuestCount(_guestCount - 1),
-            icon: Icon(Icons.remove_circle_outline_rounded, color: ty.ink2),
+            icon: Icon(Icons.remove_circle_outline_rounded, color: ty.ink2, size: resp.sp(24)),
           ),
           Expanded(
             child: TextField(
               controller: _guestController,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
-              style: TyType.sans(18, color: ty.ink, weight: FontWeight.w700),
-              decoration: const InputDecoration(
+              style: TyType.sans(resp.sp(18), color: ty.ink, weight: FontWeight.w700),
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
                 suffixText: ' Guests',
-                suffixStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                suffixStyle: TextStyle(fontSize: resp.sp(14), fontWeight: FontWeight.w500),
               ),
               onChanged: (v) {
                 final n = int.tryParse(v);
@@ -341,7 +346,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
           ),
           IconButton(
             onPressed: () => _updateGuestCount(_guestCount + 1),
-            icon: Icon(Icons.add_circle_outline_rounded, color: ty.saffron),
+            icon: Icon(Icons.add_circle_outline_rounded, color: ty.saffron, size: resp.sp(24)),
           ),
         ],
       ),
@@ -350,6 +355,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
 
   Widget _packageItemRow(BuildContext context, PackageItem item) {
     final ty = context.ty;
+    final resp = context.resp;
     final isSelected = _selectedOptionalItemIds.contains(item.id);
     return GestureDetector(
       onTap: () {
@@ -359,32 +365,32 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
         });
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
+        margin: EdgeInsets.only(bottom: resp.h(12)),
+        padding: EdgeInsets.all(resp.w(12)),
         decoration: BoxDecoration(
           color: isSelected ? ty.saffron.withOpacity(0.05) : ty.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(resp.w(16)),
           border: Border.all(color: isSelected ? ty.saffron : ty.line, width: isSelected ? 1.5 : 1),
         ),
         child: Row(
           children: [
-            Icon(Icons.add_circle_outline_rounded, color: isSelected ? ty.saffron : ty.ink3, size: 20),
-            const SizedBox(width: 16),
+            Icon(Icons.add_circle_outline_rounded, color: isSelected ? ty.saffron : ty.ink3, size: resp.sp(20)),
+            SizedBox(width: resp.w(16)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                  Text(item.name, style: TyType.sans(resp.sp(14), color: ty.ink, weight: FontWeight.w600)),
                   if (item.description != null && item.description!.isNotEmpty)
-                    Text(item.description!, style: TyType.sans(12, color: ty.ink3)),
+                    Text(item.description!, style: TyType.sans(resp.sp(12), color: ty.ink3)),
                 ],
               ),
             ),
             Text('+₹${(item.unitPrice / 1000).toStringAsFixed(1)}K',
-                style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w700)),
-            const SizedBox(width: 12),
+                style: TyType.sans(resp.sp(13), color: ty.ink2, weight: FontWeight.w700)),
+            SizedBox(width: resp.w(12)),
             Icon(isSelected ? Icons.check_box_rounded : Icons.add_box_outlined,
-                color: isSelected ? ty.saffron : ty.ink3),
+                color: isSelected ? ty.saffron : ty.ink3, size: resp.sp(24)),
           ],
         ),
       ),
@@ -393,23 +399,24 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
 
   Widget _verifiedBadge(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     return GestureDetector(
       onTap: () => _showVerifiedInfo(context),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: resp.w(10), vertical: resp.h(6)),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(resp.w(20)),
           border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.verified_user_rounded, color: Colors.white, size: 14),
-            const SizedBox(width: 6),
+            Icon(Icons.verified_user_rounded, color: Colors.white, size: resp.sp(14)),
+            SizedBox(width: resp.w(6)),
             Text(
               'Tyohaar Verified',
-              style: TyType.sans(11, color: Colors.white, weight: FontWeight.w700),
+              style: TyType.sans(resp.sp(11), color: Colors.white, weight: FontWeight.w700),
             ),
           ],
         ),
@@ -419,26 +426,27 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
 
   void _showVerifiedInfo(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: ty.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(resp.w(24))),
         title: Row(
           children: [
-            Icon(Icons.verified_user_rounded, color: ty.saffron, size: 24),
-            const SizedBox(width: 12),
-            Text('Tyohaar Verified', style: TyType.display(20, color: ty.ink)),
+            Icon(Icons.verified_user_rounded, color: ty.saffron, size: resp.sp(24)),
+            SizedBox(width: resp.w(12)),
+            Text('Tyohaar Verified', style: TyType.display(resp.sp(20), color: ty.ink)),
           ],
         ),
         content: Text(
           'Every vendor in this package is hand-picked and vetted for quality, ensuring your celebration is handled by true professionals.',
-          style: TyType.sans(14.5, color: ty.ink2, height: 1.5),
+          style: TyType.sans(resp.sp(14.5), color: ty.ink2, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Got it', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+            child: Text('Got it', style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
           ),
         ],
       ),

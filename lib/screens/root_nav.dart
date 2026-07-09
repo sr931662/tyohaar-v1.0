@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/theme_controller.dart';
+import '../theme/responsive.dart';
 import '../data/app_state.dart';
 import '../data/auth_manager.dart';
 import '../data/models.dart';
@@ -188,6 +189,7 @@ class _StickyHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     final bool useBlur = isTransparent && isScrolled;
     final bool isDark = themeController.isDark;
     
@@ -208,7 +210,7 @@ class _StickyHeader extends StatelessWidget {
         : ty.line;
 
     Widget header = Container(
-      padding: EdgeInsets.fromLTRB(18, MediaQuery.of(context).padding.top + 8, 18, 12),
+      padding: EdgeInsets.fromLTRB(resp.w(18), MediaQuery.of(context).padding.top + resp.h(8), resp.w(18), resp.h(12)),
       decoration: BoxDecoration(
         color: useBlur 
             ? ty.paper.withOpacity(0.75) 
@@ -227,7 +229,7 @@ class _StickyHeader extends StatelessWidget {
             backgroundColor: buttonBgColor,
             borderColor: borderColor,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: resp.w(12)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,21 +237,21 @@ class _StickyHeader extends StatelessWidget {
                 Row(
                   children: [
                     Icon(Icons.location_on_rounded, 
-                      size: 10, 
+                      size: resp.sp(10), 
                       color: isTransparent 
                           ? (isDark ? Colors.white.withOpacity(0.8) : ty.saffronDeep) 
                           : ty.saffronDeep),
-                    const SizedBox(width: 4),
+                    SizedBox(width: resp.w(4)),
                     Text('INDIA',
-                        style: TyType.eyebrow(10, color: isTransparent
+                        style: TyType.eyebrow(resp.sp(10), color: isTransparent
                             ? (isDark ? Colors.white.withOpacity(0.8) : ty.saffronDeep)
                             : ty.saffronDeep)),
                   ],
                 ),
-                const SizedBox(height: 1),
+                SizedBox(height: resp.h(1)),
                 Text(
                   'Namaste, ${user?.firstName ?? user?.displayName.split(' ').first ?? 'there'}',
-                  style: TyType.display(22, color: foregroundColor),
+                  style: TyType.display(resp.sp(22), color: foregroundColor),
                 ),
               ],
             ),
@@ -262,7 +264,7 @@ class _StickyHeader extends StatelessWidget {
             backgroundColor: buttonBgColor,
             borderColor: borderColor,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: resp.w(10)),
           // Wallet feature is suppressed for now (kept dormant — see wallet_screen.dart).
           Stack(
             children: [
@@ -276,11 +278,11 @@ class _StickyHeader extends StatelessWidget {
               ),
               if (unreadCount > 0)
                 Positioned(
-                  top: 9,
-                  right: 10,
+                  top: resp.h(9),
+                  right: resp.w(10),
                   child: Container(
-                    width: 8,
-                    height: 8,
+                    width: resp.w(8),
+                    height: resp.w(8),
                     decoration: BoxDecoration(
                       color: ty.rose,
                       shape: BoxShape.circle,
@@ -314,17 +316,18 @@ class _StickyHeader extends StatelessWidget {
     required Color backgroundColor,
     required Color borderColor,
   }) {
+    final resp = context.resp;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 42,
-        height: 42,
+        width: resp.w(42),
+        height: resp.w(42),
         decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(resp.w(14)),
           border: Border.all(color: borderColor),
         ),
-        child: Icon(icon, size: 21, color: foregroundColor),
+        child: Icon(icon, size: resp.sp(21), color: foregroundColor),
       ),
     );
   }
@@ -466,14 +469,15 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     return Container(
       decoration: BoxDecoration(
         color: ty.paper.withOpacity(0.96),
         border: Border(top: BorderSide(color: ty.line2)),
       ),
       padding: EdgeInsets.only(
-        top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + 8,
+        top: resp.h(8),
+        bottom: MediaQuery.of(context).padding.bottom + resp.h(8),
       ),
       child: Row(
         children: [
@@ -489,6 +493,7 @@ class _BottomBar extends StatelessWidget {
 
   Widget _navItem(BuildContext context, int i, IconData icon, IconData active, String label) {
     final ty = context.ty;
+    final resp = context.resp;
     final selected = index == i;
     final color = selected ? ty.saffron : ty.ink3;
     return Expanded(
@@ -498,12 +503,12 @@ class _BottomBar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(selected ? active : icon, color: color, size: 24),
-            const SizedBox(height: 4),
+            Icon(selected ? active : icon, color: color, size: resp.sp(24)),
+            SizedBox(height: resp.h(4)),
             Text(
               label,
               style: TextStyle(
-                fontSize: 10.5,
+                fontSize: resp.sp(10.5),
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                 color: color,
               ),
@@ -516,25 +521,26 @@ class _BottomBar extends StatelessWidget {
 
   Widget _centerButton(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     return GestureDetector(
       onTap: onCreate,
       child: Transform.translate(
-        offset: const Offset(0, -12),
+        offset: Offset(0, resp.h(-12)),
         child: Container(
-          width: 56,
-          height: 56,
+          width: resp.w(56),
+          height: resp.w(56),
           decoration: BoxDecoration(
             color: ty.saffron,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(resp.w(20)),
             boxShadow: [
               BoxShadow(
                 color: ty.saffron.withOpacity(0.55),
-                blurRadius: 22,
-                offset: const Offset(0, 8),
+                blurRadius: resp.w(22),
+                offset: Offset(0, resp.h(8)),
               ),
             ],
           ),
-          child: Icon(Icons.add_rounded, color: ty.onPrimary, size: 30),
+          child: Icon(Icons.add_rounded, color: ty.onPrimary, size: resp.sp(30)),
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../theme/responsive.dart';
 import '../data/api_client.dart';
 import '../data/models.dart';
 import '../data/services/celebration_service.dart';
@@ -145,6 +146,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
 
     if (_isLoading) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
@@ -158,13 +160,13 @@ class _GuestsScreenState extends State<GuestsScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
-              const SizedBox(height: 12),
-              Text(_error!, style: TyType.sans(14, color: ty.ink2)),
-              const SizedBox(height: 16),
+              Icon(Icons.error_outline_rounded, size: resp.sp(48), color: ty.rose),
+              SizedBox(height: resp.h(12)),
+              Text(_error!, style: TyType.sans(resp.sp(14), color: ty.ink2)),
+              SizedBox(height: resp.h(16)),
               TextButton(
                 onPressed: _loadGuests,
-                child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+                child: Text('Try Again', style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
               ),
             ],
           ),
@@ -186,7 +188,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
     return Scaffold(
       appBar: tyAppBar(context, title: 'Guest list', actions: [
         Padding(
-          padding: const EdgeInsets.only(right: 16),
+          padding: EdgeInsets.only(right: resp.w(16)),
           child: ChromeIconButton(
             icon: Icons.qr_code_rounded,
             onTap: () => _showQRCheckin(context),
@@ -197,44 +199,44 @@ class _GuestsScreenState extends State<GuestsScreen> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
+              padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(4), resp.w(18), resp.h(20)),
               children: [
                 Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: _card(ty),
+                  padding: EdgeInsets.all(resp.w(18)),
+                  decoration: _card(ty, resp),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('$total', style: TyType.display(42, color: ty.ink)),
-                          const SizedBox(width: 6),
+                          Text('$total', style: TyType.display(resp.sp(42), color: ty.ink)),
+                          SizedBox(width: resp.w(6)),
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
+                            padding: EdgeInsets.only(bottom: resp.h(6)),
                             child: Text('guests invited',
-                                style: TyType.sans(13, color: ty.ink2)),
+                                style: TyType.sans(resp.sp(13), color: ty.ink2)),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: resp.h(14)),
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(resp.w(6)),
                         child: Row(children: [
-                          if (yes > 0) Expanded(flex: yes, child: Container(height: 9, color: ty.leaf)),
+                          if (yes > 0) Expanded(flex: yes, child: Container(height: resp.h(9), color: ty.leaf)),
                           if (maybe > 0) ...[
-                            const SizedBox(width: 2),
-                            Expanded(flex: maybe, child: Container(height: 9, color: ty.saffron)),
+                            SizedBox(width: resp.w(2)),
+                            Expanded(flex: maybe, child: Container(height: resp.h(9), color: ty.saffron)),
                           ],
                           if (pending > 0) ...[
-                            const SizedBox(width: 2),
-                            Expanded(flex: pending, child: Container(height: 9, color: ty.surface2)),
+                            SizedBox(width: resp.w(2)),
+                            Expanded(flex: pending, child: Container(height: resp.h(9), color: ty.surface2)),
                           ],
-                          if (total == 0) Expanded(child: Container(height: 9, color: ty.surface2)),
+                          if (total == 0) Expanded(child: Container(height: resp.h(9), color: ty.surface2)),
                         ]),
                       ),
-                      const SizedBox(height: 11),
-                      Wrap(spacing: 16, runSpacing: 6, children: [
+                      SizedBox(height: resp.h(11)),
+                      Wrap(spacing: resp.w(16), runSpacing: resp.h(6), children: [
                         _legend(context, ty.leaf, '$yes coming'),
                         _legend(context, ty.saffron, '$maybe maybe'),
                         _legend(context, ty.ink3, '$pending pending'),
@@ -242,20 +244,20 @@ class _GuestsScreenState extends State<GuestsScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: resp.h(16)),
                 Row(
                   children: [
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        padding: EdgeInsets.symmetric(horizontal: resp.w(14)),
                         decoration: BoxDecoration(
                           color: ty.surface2,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(resp.w(14)),
                           border: Border.all(color: ty.line),
                         ),
                         child: Row(children: [
-                          Icon(Icons.search_rounded, size: 17, color: ty.ink3),
-                          const SizedBox(width: 8),
+                          Icon(Icons.search_rounded, size: resp.sp(17), color: ty.ink3),
+                          SizedBox(width: resp.w(8)),
                           Expanded(
                             child: TextField(
                               onChanged: (v) => setState(() => _search = v),
@@ -263,37 +265,37 @@ class _GuestsScreenState extends State<GuestsScreen> {
                                 isDense: true,
                                 border: InputBorder.none,
                                 hintText: 'Search a guest…',
-                                hintStyle: TyType.sans(14, color: ty.ink3),
+                                hintStyle: TyType.sans(resp.sp(14), color: ty.ink3),
                               ),
-                              style: TyType.sans(14, color: ty.ink),
+                              style: TyType.sans(resp.sp(14), color: ty.ink),
                             ),
                           ),
                         ]),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: resp.w(10)),
                     TyButton('', icon: Icons.add_rounded, enabled: !_isMutating, onTap: _openAddGuestDialog),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: resp.h(16)),
                 Row(children: [
                   for (final f in const ['All', 'Coming', 'Pending'])
                     Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: EdgeInsets.only(right: resp.w(8)),
                       child: TyChip(
                           label: f,
                           active: _filter == f,
                           onTap: () => setState(() => _filter = f)),
                     ),
                 ]),
-                const SizedBox(height: 14),
+                SizedBox(height: resp.h(14)),
                 if (_guests.isEmpty)
                   Center(child: Padding(
-                    padding: const EdgeInsets.only(top: 40),
-                    child: Text('No guests in your list yet — tap + to add one', style: TyType.sans(14, color: ty.ink3)),
+                    padding: EdgeInsets.only(top: resp.h(40)),
+                    child: Text('No guests in your list yet — tap + to add one', style: TyType.sans(resp.sp(14), color: ty.ink3)),
                   ))
                 else
-                  ...shown.asMap().entries.map((e) => _guestRow(context, e.value, e.key)),
+                  ...shown.asMap().entries.map((e) => _guestRow(context, e.value, e.key, resp)),
               ],
             ),
           ),
@@ -302,7 +304,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
     );
   }
 
-  Widget _guestRow(BuildContext context, Guest g, int i) {
+  Widget _guestRow(BuildContext context, Guest g, int i, TyResponsive resp) {
     final ty = context.ty;
     final map = {
       'attending': [ty.leaf, 'Coming'],
@@ -323,19 +325,19 @@ class _GuestsScreenState extends State<GuestsScreen> {
       },
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        margin: const EdgeInsets.only(bottom: 9),
-        decoration: BoxDecoration(color: ty.rose, borderRadius: BorderRadius.circular(18)),
+        padding: EdgeInsets.only(right: resp.w(20)),
+        margin: EdgeInsets.only(bottom: resp.h(9)),
+        decoration: BoxDecoration(color: ty.rose, borderRadius: BorderRadius.circular(resp.w(18))),
         child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
       ),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 9),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: _card(ty),
+        margin: EdgeInsets.only(bottom: resp.h(9)),
+        padding: EdgeInsets.symmetric(horizontal: resp.w(14), vertical: resp.h(12)),
+        decoration: _card(ty, resp),
         child: Row(
           children: [
-            TyAvatar(name: g.name, index: i, size: 40),
-            const SizedBox(width: 12),
+            TyAvatar(name: g.name, index: i, size: resp.w(40)),
+            SizedBox(width: resp.w(12)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,23 +345,23 @@ class _GuestsScreenState extends State<GuestsScreen> {
                   Text(g.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w600)),
-                  const SizedBox(height: 4),
+                      style: TyType.sans(resp.sp(14.5), color: ty.ink, weight: FontWeight.w600)),
+                  SizedBox(height: resp.h(4)),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    padding: EdgeInsets.symmetric(horizontal: resp.w(10), vertical: resp.h(3)),
                     decoration: BoxDecoration(
                       color: c.withOpacity(0.16),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(lbl,
                         style: TextStyle(
-                            color: c, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                            color: c, fontSize: resp.sp(11.5), fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
             ),
             IconButton(
-              icon: Icon(Icons.ios_share_rounded, size: 20, color: ty.saffron),
+              icon: Icon(Icons.ios_share_rounded, size: resp.sp(20), color: ty.saffron),
               tooltip: 'Share invite',
               onPressed: () => _shareInvite(g),
             ),
@@ -371,54 +373,56 @@ class _GuestsScreenState extends State<GuestsScreen> {
 
   void _showQRCheckin(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: ty.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(resp.w(28))),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(resp.w(20)),
               decoration: BoxDecoration(
                 color: ty.saffron.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(resp.w(24)),
               ),
-              child: Icon(Icons.qr_code_2_rounded, size: 200, color: ty.ink),
+              child: Icon(Icons.qr_code_2_rounded, size: resp.w(200), color: ty.ink),
             ),
-            const SizedBox(height: 24),
-            Text('Digital Check-in', style: TyType.display(24, color: ty.ink)),
-            const SizedBox(height: 12),
+            SizedBox(height: resp.h(24)),
+            Text('Digital Check-in', style: TyType.display(resp.sp(24), color: ty.ink)),
+            SizedBox(height: resp.h(12)),
             Text(
               'Share this QR with your guests for quick entry and live RSVP tracking at the venue.',
               textAlign: TextAlign.center,
-              style: TyType.sans(14, color: ty.ink2, height: 1.5),
+              style: TyType.sans(resp.sp(14), color: ty.ink2, height: 1.5),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+            child: Text('Close', style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
           ),
         ],
       ),
     );
   }
 
-  BoxDecoration _card(TyColors ty) => BoxDecoration(
+  BoxDecoration _card(TyColors ty, TyResponsive resp) => BoxDecoration(
         color: ty.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(resp.w(18)),
         border: Border.all(color: ty.line),
       );
 
   Widget _legend(BuildContext context, Color c, String t) {
     final ty = context.ty;
+    final resp = context.resp;
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Container(width: 9, height: 9, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
-      const SizedBox(width: 6),
-      Text(t, style: TyType.sans(12, color: ty.ink2)),
+      Container(width: resp.w(9), height: resp.w(9), decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+      SizedBox(width: resp.w(6)),
+      Text(t, style: TyType.sans(resp.sp(12), color: ty.ink2)),
     ]);
   }
 }

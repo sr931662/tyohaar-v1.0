@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../theme/responsive.dart';
 
 /// A row with a serif section title and an optional trailing action.
 class SectionHeader extends StatelessWidget {
@@ -12,21 +13,22 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: resp.h(12)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
           Expanded(
-            child: Text(title, style: TyType.display(21, color: ty.ink)),
+            child: Text(title, style: TyType.display(resp.sp(21), color: ty.ink)),
           ),
           if (action != null)
             GestureDetector(
               onTap: onAction,
               child: Text(
                 action!,
-                style: TyType.sans(13, color: ty.saffron, weight: FontWeight.w700),
+                style: TyType.sans(resp.sp(13), color: ty.saffron, weight: FontWeight.w700),
               ),
             ),
         ],
@@ -44,8 +46,9 @@ class TyPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resp = context.resp;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: resp.w(11), vertical: resp.h(5)),
       decoration: BoxDecoration(
         color: background ?? Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(999),
@@ -53,7 +56,7 @@ class TyPill extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: resp.sp(12),
           fontWeight: FontWeight.w700,
           color: foreground ?? const Color(0xFF2A2018),
         ),
@@ -89,6 +92,7 @@ AppBar tyAppBar(
   List<Widget>? actions,
 }) {
   final ty = context.ty;
+  final resp = context.resp;
   return AppBar(
     backgroundColor: ty.paper,
     surfaceTintColor: Colors.transparent,
@@ -97,19 +101,19 @@ AppBar tyAppBar(
     centerTitle: true,
     leading: Navigator.of(context).canPop()
         ? Padding(
-            padding: const EdgeInsets.only(left: 14),
+            padding: EdgeInsets.only(left: resp.w(14)),
             child: _ChromeButton(
               icon: Icons.chevron_left_rounded,
               onTap: () => Navigator.of(context).maybePop(),
             ),
           )
         : null,
-    leadingWidth: 70,
+    leadingWidth: resp.w(70),
     title: title == null
         ? null
         : Text(title,
             style: TextStyle(
-                color: ty.ink, fontWeight: FontWeight.w700, fontSize: 16)),
+                color: ty.ink, fontWeight: FontWeight.w700, fontSize: resp.sp(16))),
     actions: actions,
   );
 }
@@ -122,17 +126,20 @@ class _ChromeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: ty.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ty.line),
+    final resp = context.resp;
+    return Center(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: resp.w(42),
+          height: resp.w(42),
+          decoration: BoxDecoration(
+            color: ty.surface,
+            borderRadius: BorderRadius.circular(resp.w(14)),
+            border: Border.all(color: ty.line),
+          ),
+          child: Icon(icon, size: resp.w(24), color: ty.ink),
         ),
-        child: Icon(icon, size: 24, color: ty.ink),
       ),
     );
   }

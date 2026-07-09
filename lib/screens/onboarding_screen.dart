@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../theme/responsive.dart';
 import '../widgets/ty_button.dart';
 import '../data/auth_manager.dart';
 import 'root_nav.dart';
@@ -47,6 +48,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
 
     return Scaffold(
       backgroundColor: ty.paper,
@@ -79,9 +81,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
           // Bottom Navigation Area
           Positioned(
-            bottom: 60,
-            left: 24,
-            right: 24,
+            bottom: resp.h(60),
+            left: resp.w(24),
+            right: resp.w(24),
             child: Column(
               children: [
                 // Page Indicator
@@ -91,9 +93,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     _screens.length,
                     (index) => AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      height: 8,
-                      width: _currentPage == index ? 24 : 8,
+                      margin: EdgeInsets.symmetric(horizontal: resp.w(4)),
+                      height: resp.h(8),
+                      width: _currentPage == index ? resp.w(24) : resp.w(8),
                       decoration: BoxDecoration(
                         color: _currentPage == index ? ty.tint(_screens[_currentPage].tint) : ty.line,
                         borderRadius: BorderRadius.circular(4),
@@ -101,7 +103,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: resp.h(32)),
                 
                 // Primary Action Button
                 TyButton(
@@ -134,7 +136,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         MaterialPageRoute(builder: (_) => const AuthScreen()),
                       );
                     },
-                    child: Text('Skip', style: TyType.sans(14, color: ty.ink3, weight: FontWeight.w600)),
+                    child: Text('Skip', style: TyType.sans(resp.sp(14), color: ty.ink3, weight: FontWeight.w600)),
                   ),
               ],
             ),
@@ -164,69 +166,74 @@ class _OnboardingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Animated Icon Container
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.elasticOut,
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: value,
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: ty.tint(data.tint).withOpacity(0.1),
-                    shape: BoxShape.circle,
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(), // Managed by PageView
+      child: Container(
+        height: MediaQuery.of(context).size.height,
+        padding: EdgeInsets.symmetric(horizontal: resp.w(40)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Animated Icon Container
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: Container(
+                    width: resp.w(160),
+                    height: resp.w(160),
+                    decoration: BoxDecoration(
+                      color: ty.tint(data.tint).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      data.icon,
+                      size: resp.w(80),
+                      color: ty.tint(data.tint),
+                    ),
                   ),
-                  child: Icon(
-                    data.icon,
-                    size: 80,
-                    color: ty.tint(data.tint),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 60),
-          
-          // Animated Text Content
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 600),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Transform.translate(
-                  offset: Offset(0, 20 * (1 - value)),
-                  child: child,
-                ),
-              );
-            },
-            child: Column(
-              children: [
-                Text(
-                  data.title,
-                  textAlign: TextAlign.center,
-                  style: TyType.display(32, color: ty.ink),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  data.subtitle,
-                  textAlign: TextAlign.center,
-                  style: TyType.sans(16, color: ty.ink2, height: 1.5),
-                ),
-              ],
+                );
+              },
             ),
-          ),
-          const SizedBox(height: 100), // Space for bottom buttons
-        ],
+            SizedBox(height: resp.h(60)),
+            
+            // Animated Text Content
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 600),
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, 20 * (1 - value)),
+                    child: child,
+                  ),
+                );
+              },
+              child: Column(
+                children: [
+                  Text(
+                    data.title,
+                    textAlign: TextAlign.center,
+                    style: TyType.display(resp.sp(32), color: ty.ink),
+                  ),
+                  SizedBox(height: resp.h(16)),
+                  Text(
+                    data.subtitle,
+                    textAlign: TextAlign.center,
+                    style: TyType.sans(resp.sp(16), color: ty.ink2, height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: resp.h(100)), // Space for bottom buttons
+          ],
+        ),
       ),
     );
   }

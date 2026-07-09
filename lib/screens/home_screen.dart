@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../theme/responsive.dart';
 import '../data/auth_manager.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
@@ -125,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
 
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -146,14 +148,14 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildHeroCard(context, pct, totalGuests, pendingTasks.length),
 
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+          padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(18), resp.w(18), resp.h(28)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (_bestSellers.isNotEmpty) ...[
                 SectionHeader('Best Selling Packages'),
                 _packageRail(context, _bestSellers),
-                const SizedBox(height: 26),
+                SizedBox(height: resp.h(26)),
               ],
 
               Row(
@@ -167,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your plans')),
                 ],
               ),
-              const SizedBox(height: 26),
+              SizedBox(height: resp.h(26)),
 
               SectionHeader('Up next',
                   action: 'Timeline',
@@ -180,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   t.title,
                   t.timingLabel ?? '',
                 )),
-              const SizedBox(height: 12),
+              SizedBox(height: resp.h(12)),
               _taskRow(
                 context,
                 'Manage Invitations',
@@ -188,21 +190,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.mail_outline_rounded,
                 onTap: () => _push(context, const InvitationManagementScreen(), authAction: 'manage invitations'),
               ),
-              const SizedBox(height: 26),
+              SizedBox(height: resp.h(26)),
 
               _membershipBanner(context),
-              const SizedBox(height: 26),
+              SizedBox(height: resp.h(26)),
 
               if (_occasions.any((o) => o.category == 'major_festival')) ...[
                 SectionHeader('Popular Festivals'),
                 _festivalRail(context, _occasions.where((o) => o.category == 'major_festival').toList()),
-                const SizedBox(height: 26),
+                SizedBox(height: resp.h(26)),
               ],
 
               if (_occasions.any((o) => o.category == 'life_event')) ...[
                 SectionHeader('Life Moments'),
                 _festivalRail(context, _occasions.where((o) => o.category == 'life_event').toList()),
-                const SizedBox(height: 26),
+                SizedBox(height: resp.h(26)),
               ],
 
               if (_occasions.any((o) => o.category == 'minor_festival')) ...[
@@ -218,7 +220,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeroCard(BuildContext context, int pct, int totalGuests, int pendingTaskCount) {
     final ty = context.ty;
-    const double radius = 42.0;
+    final resp = context.resp;
+    final double radius = resp.w(42.0);
     
     final title = _activeCelebration?.title ?? 'Start Planning';
     final dt = _activeCelebration?.celebrationDate;
@@ -265,16 +268,16 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: () => _push(context, const EventHubScreen(), authAction: 'view your event hub'),
       child: SizedBox(
-        height: 440,
+        height: resp.h(440),
         child: Stack(
           children: [
             Positioned.fill(
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(radius)),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
                 child: CachedNetworkImage(
                   imageUrl: heroUrl ?? '',
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: 440, arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius))),
+                  placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: resp.h(440), arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius))),
                   errorWidget: (context, url, error) {
                     final local = _activeCelebration?.occasionName != null 
                         ? OccasionAssets.getRelatedBackground(_activeCelebration!.occasionName!) 
@@ -291,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
               top: 0,
               left: 0,
               right: 0,
-              height: 200,
+              height: resp.h(200),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -310,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(radius)),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
@@ -325,34 +328,34 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Positioned(
-              left: 18,
-              right: 18,
-              bottom: 32,
+              left: resp.w(18),
+              right: resp.w(18),
+              bottom: resp.h(32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('YOUR NEXT CELEBRATION',
-                      style: TyType.eyebrow(11.5, color: Colors.white.withOpacity(0.7))),
-                  const SizedBox(height: 12),
+                      style: TyType.eyebrow(resp.sp(11.5), color: Colors.white.withOpacity(0.7))),
+                  SizedBox(height: resp.h(12)),
                   Row(children: [
                     TyPill(category),
-                    const SizedBox(width: 8),
+                    SizedBox(width: resp.w(8)),
                     if (statusLabel != null)
                       TyPill(statusLabel, background: statusColor, foreground: Colors.white),
                   ]),
-                  const SizedBox(height: 14),
-                  Text(title, style: TyType.display(34, color: Colors.white)),
-                  const SizedBox(height: 6),
+                  SizedBox(height: resp.h(14)),
+                  Text(title, style: TyType.display(resp.sp(34), color: Colors.white)),
+                  SizedBox(height: resp.h(6)),
                   Row(children: [
-                    const Icon(Icons.event, size: 15, color: Colors.white70),
-                    const SizedBox(width: 6),
+                    Icon(Icons.event, size: resp.sp(15), color: Colors.white70),
+                    SizedBox(width: resp.w(6)),
                     Text('$date · $location',
-                        style: TyType.sans(14, color: Colors.white70)),
+                        style: TyType.sans(resp.sp(14), color: Colors.white70)),
                   ]),
-                  const SizedBox(height: 20),
+                  SizedBox(height: resp.h(20)),
                   Row(
                     children: [
-                      _stackedAvatars(_guests, totalGuests),
+                      _stackedAvatars(context, _guests, totalGuests),
                       const Spacer(),
                       _progressChip(context, pct, pendingTaskCount),
                     ],
@@ -368,20 +371,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _membershipBanner(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(resp.w(20)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [ty.saffron, ty.saffronDeep],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(resp.w(24)),
         boxShadow: [
           BoxShadow(
             color: ty.saffron.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            blurRadius: resp.w(15),
+            offset: Offset(0, resp.h(8)),
           ),
         ],
       ),
@@ -392,22 +396,22 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Upgrade to Gold',
-                    style: TyType.display(20, color: Colors.white)),
-                const SizedBox(height: 4),
+                    style: TyType.display(resp.sp(20), color: Colors.white)),
+                SizedBox(height: resp.h(4)),
                 Text('Get exclusive access to premium themes and early bird discounts.',
-                    style: TyType.sans(12, color: Colors.white.withOpacity(0.9))),
+                    style: TyType.sans(resp.sp(12), color: Colors.white.withOpacity(0.9))),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: resp.w(12)),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: resp.w(16), vertical: resp.h(8)),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(resp.w(12)),
             ),
             child: Text('Join Now',
-                style: TyType.sans(13, color: ty.saffronDeep, weight: FontWeight.w700)),
+                style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w700)),
           ),
         ],
       ),
@@ -416,44 +420,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _packageRail(BuildContext context, List<Package> packages) {
     final ty = context.ty;
+    final resp = context.resp;
     return SizedBox(
-      height: 210,
+      height: resp.h(210),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: packages.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 16),
+        separatorBuilder: (_, __) => SizedBox(width: resp.w(16)),
         itemBuilder: (context, i) {
           final p = packages[i];
           return GestureDetector(
             onTap: () => _push(context, PackageDetailScreen(package: p)),
             child: SizedBox(
-              width: 180,
+              width: resp.w(180),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Stack(
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(resp.w(20)),
                         child: CachedNetworkImage(
                           imageUrl: p.coverImageUrl ?? '',
-                          height: 130,
+                          height: resp.h(130),
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: 130, arch: false),
-                          errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: 130, arch: false),
+                          placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: resp.h(130), arch: false),
+                          errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: resp.h(130), arch: false),
                         ),
                       ),
                       Positioned(
-                        top: 10,
-                        right: 10,
+                        top: resp.h(10),
+                        right: resp.w(10),
                         child: TyPill('₹${(p.price / 1000).toStringAsFixed(0)}K'),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: resp.h(10)),
                   Text(p.name,
-                      style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+                      style: TyType.sans(resp.sp(15), color: ty.ink, weight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -465,23 +470,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _festivalRail(BuildContext context, List<Occasion> festivals) {
     final ty = context.ty;
+    final resp = context.resp;
     return SizedBox(
-      height: 140,
+      height: resp.h(140),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: festivals.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, __) => SizedBox(width: resp.w(12)),
         itemBuilder: (context, i) {
           final f = festivals[i];
           return GestureDetector(
             onTap: () => _push(context, OccasionDetailScreen(occasion: f)),
             child: SizedBox(
-              width: 110,
+              width: resp.w(110),
               child: Column(
                 children: [
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: resp.w(80),
+                    height: resp.w(80),
                     decoration: BoxDecoration(
                       color: ty.tint(f.tint).withOpacity(0.12),
                       shape: BoxShape.circle,
@@ -490,15 +496,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Icon(
                         f.icon,
                         color: ty.tint(f.tint),
-                        size: 32,
+                        size: resp.sp(32),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: resp.h(8)),
                   Text(f.name,
                       textAlign: TextAlign.center,
                       maxLines: 2,
-                      style: TyType.sans(12, color: ty.ink, weight: FontWeight.w600)),
+                      style: TyType.sans(resp.sp(12), color: ty.ink, weight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -508,24 +514,25 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _stackedAvatars(List<Guest> guests, int total) {
+  Widget _stackedAvatars(BuildContext context, List<Guest> guests, int total) {
+    final resp = context.resp;
     if (guests.isEmpty) return const SizedBox();
     return SizedBox(
-      width: 112,
-      height: 30,
+      width: resp.w(112),
+      height: resp.h(30),
       child: Stack(
         children: [
           for (int i = 0; i < guests.length.clamp(0, 4); i++)
             Positioned(
-              left: i * 20.0,
-              child: TyAvatar(name: guests[i].name, index: i, size: 30),
+              left: i * resp.w(20.0),
+              child: TyAvatar(name: guests[i].name, index: i, size: resp.w(30)),
             ),
           if (total > 4)
             Positioned(
-              left: 4 * 20.0 - 10,
+              left: 4 * resp.w(20.0) - resp.w(10),
               child: Container(
-                width: 30,
-                height: 30,
+                width: resp.w(30),
+                height: resp.w(30),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.22),
@@ -533,8 +540,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
                 ),
                 child: Text('+${total - 4}',
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                    style: TextStyle(
+                        color: Colors.white, fontSize: resp.sp(10.5), fontWeight: FontWeight.w700)),
               ),
             ),
         ],
@@ -543,8 +550,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _progressChip(BuildContext context, int pct, int left) {
+    final resp = context.resp;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: EdgeInsets.symmetric(horizontal: resp.w(10), vertical: resp.h(7)),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.16),
         borderRadius: BorderRadius.circular(14),
@@ -553,22 +561,22 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           ProgressRing(
             percent: pct.toDouble(),
-            size: 36,
+            size: resp.w(36),
             stroke: 4,
             color: Colors.white,
             center: Text('$pct%',
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                style: TextStyle(color: Colors.white, fontSize: resp.sp(10), fontWeight: FontWeight.w700)),
           ),
-          const SizedBox(width: 9),
+          SizedBox(width: resp.w(9)),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('on track',
-                  style: TextStyle(color: Colors.white, fontSize: 11)),
+              Text('on track',
+                  style: TextStyle(color: Colors.white, fontSize: resp.sp(11))),
               Text('$left tasks left',
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                  style: TextStyle(
+                      color: Colors.white, fontSize: resp.sp(11), fontWeight: FontWeight.w700)),
             ],
           ),
         ],
@@ -579,28 +587,29 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _quickAction(
       BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
     final ty = context.ty;
+    final resp = context.resp;
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4.5),
+        padding: EdgeInsets.symmetric(horizontal: resp.w(4.5)),
         child: GestureDetector(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(6, 14, 6, 11),
-            decoration: _cardDecoration(ty),
+            padding: EdgeInsets.fromLTRB(resp.w(6), resp.h(14), resp.w(6), resp.h(11)),
+            decoration: _cardDecoration(ty, resp),
             child: Column(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: resp.w(38),
+                  height: resp.w(38),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.14),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 20),
+                  child: Icon(icon, color: color, size: resp.w(20)),
                 ),
-                const SizedBox(height: 7),
+                SizedBox(height: resp.h(7)),
                 Text(label,
-                    style: TyType.sans(11.5, color: ty.ink, weight: FontWeight.w700)),
+                    style: TyType.sans(resp.sp(11.5), color: ty.ink, weight: FontWeight.w700)),
               ],
             ),
           ),
@@ -611,24 +620,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _taskRow(BuildContext context, String title, String meta, {IconData? icon, VoidCallback? onTap}) {
     final ty = context.ty;
+    final resp = context.resp;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 9),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: _cardDecoration(ty),
+        margin: EdgeInsets.only(bottom: resp.h(9)),
+        padding: EdgeInsets.symmetric(horizontal: resp.w(14), vertical: resp.h(12)),
+        decoration: _cardDecoration(ty, resp),
         child: Row(
           children: [
             Container(
-              width: 34,
-              height: 34,
+              width: resp.w(34),
+              height: resp.w(34),
               decoration: BoxDecoration(
                 color: ty.saffronSoft,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon ?? Icons.schedule_rounded, color: ty.saffronDeep, size: 17),
+              child: Icon(icon ?? Icons.schedule_rounded, color: ty.saffronDeep, size: resp.w(17)),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: resp.w(12)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,22 +646,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
-                  const SizedBox(height: 1),
-                  Text(meta, style: TyType.sans(11.5, color: ty.ink3)),
+                      style: TyType.sans(resp.sp(14), color: ty.ink, weight: FontWeight.w600)),
+                  SizedBox(height: resp.h(1)),
+                  Text(meta, style: TyType.sans(resp.sp(11.5), color: ty.ink3)),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: ty.ink3, size: 18),
+            Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.w(18)),
           ],
         ),
       ),
     );
   }
 
-  BoxDecoration _cardDecoration(TyColors ty) => BoxDecoration(
+  BoxDecoration _cardDecoration(TyColors ty, TyResponsive resp) => BoxDecoration(
         color: ty.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(resp.w(18)),
         border: Border.all(color: ty.line),
       );
 }

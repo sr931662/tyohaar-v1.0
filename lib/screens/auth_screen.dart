@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../theme/responsive.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import '../data/auth_manager.dart';
@@ -146,86 +147,95 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
 
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: tyAppBar(context, title: 'Welcome'),
       body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Join Tyohaar', style: TyType.display(32, color: ty.ink)),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Start your journey of creating unforgettable moments.',
-                    style: TyType.sans(15, color: ty.ink2, height: 1.5),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Smart height calculation: if the screen is too short, 
+            // we'll make the header section smaller and the overall layout more compact.
+            final isSmall = constraints.maxHeight < 600;
+            
+            return Column(
+              children: [
+                SizedBox(height: resp.h(isSmall ? 12 : 24)),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Join Tyohaar', style: TyType.display(resp.sp(32), color: ty.ink)),
+                      SizedBox(height: resp.h(8)),
+                      Text(
+                        'Start your journey of creating unforgettable moments.',
+                        style: TyType.sans(resp.sp(15), color: ty.ink2, height: 1.4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: ty.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: ty.line),
                 ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicator: BoxDecoration(
-                    color: ty.saffron,
-                    borderRadius: BorderRadius.circular(10),
+                SizedBox(height: resp.h(isSmall ? 16 : 32)),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
+                  child: Container(
+                    height: resp.h(44),
+                    decoration: BoxDecoration(
+                      color: ty.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ty.line),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      indicator: BoxDecoration(
+                        color: ty.saffron,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: Colors.transparent,
+                      labelStyle: TyType.sans(resp.sp(14), weight: FontWeight.w700),
+                      unselectedLabelStyle: TyType.sans(resp.sp(14), weight: FontWeight.w500),
+                      labelColor: Colors.white,
+                      unselectedLabelColor: ty.ink2,
+                      tabs: const [Tab(text: 'Login'), Tab(text: 'Register')],
+                    ),
                   ),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: Colors.transparent,
-                  labelStyle: TyType.sans(14, weight: FontWeight.w700),
-                  unselectedLabelStyle: TyType.sans(14, weight: FontWeight.w500),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: ty.ink2,
-                  tabs: const [Tab(text: 'Login'), Tab(text: 'Register')],
                 ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [_buildLoginTab(ty), _buildRegisterTab(ty)],
-              ),
-            ),
-          ],
+                SizedBox(height: resp.h(4)),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [_buildLoginTab(ty, resp), _buildRegisterTab(ty, resp)],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildLoginTab(TyColors ty) {
+  Widget _buildLoginTab(TyColors ty, TyResponsive resp) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 28),
-          _buildField(ty, 'EMAIL', 'you@example.com', _loginEmailCtrl,
+          SizedBox(height: resp.h(28)),
+          _buildField(ty, resp, 'EMAIL', 'you@example.com', _loginEmailCtrl,
               icon: Icons.email_outlined, type: TextInputType.emailAddress),
-          const SizedBox(height: 20),
-          _buildField(ty, 'PASSWORD', '••••••••', _loginPasswordCtrl,
+          SizedBox(height: resp.h(20)),
+          _buildField(ty, resp, 'PASSWORD', '••••••••', _loginPasswordCtrl,
               icon: Icons.lock_outline_rounded,
               obscure: _loginObscure,
               onToggleObscure: () => setState(() => _loginObscure = !_loginObscure)),
           if (_error.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(_error, style: TyType.sans(13, color: ty.rose, weight: FontWeight.w600)),
+            SizedBox(height: resp.h(16)),
+            Text(_error, style: TyType.sans(resp.sp(13), color: ty.rose, weight: FontWeight.w600)),
           ],
-          const SizedBox(height: 36),
+          SizedBox(height: resp.h(36)),
           TyButton(
             _isLoading ? 'Signing in...' : 'Sign In',
             full: true,
@@ -233,69 +243,69 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             enabled: !_isLoading,
           ),
           if (widget.onAuthenticated == null) ...[
-            const SizedBox(height: 28),
-            _buildDivider(ty),
-            const SizedBox(height: 28),
+            SizedBox(height: resp.h(28)),
+            _buildDivider(ty, resp),
+            SizedBox(height: resp.h(28)),
             Center(
               child: TextButton(
                 onPressed: _handleSkip,
                 child: Text('Continue as Guest',
-                    style: TyType.sans(14, color: ty.ink3, weight: FontWeight.w600)),
+                    style: TyType.sans(resp.sp(14), color: ty.ink3, weight: FontWeight.w600)),
               ),
             ),
           ],
-          const SizedBox(height: 32),
+          SizedBox(height: resp.h(32)),
         ],
       ),
     );
   }
 
-  Widget _buildRegisterTab(TyColors ty) {
+  Widget _buildRegisterTab(TyColors ty, TyResponsive resp) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 28),
-          _buildField(ty, 'FULL NAME (OPTIONAL)', 'Rahul Sharma', _regNameCtrl,
+          SizedBox(height: resp.h(28)),
+          _buildField(ty, resp, 'FULL NAME (OPTIONAL)', 'Rahul Sharma', _regNameCtrl,
               icon: Icons.person_outline_rounded),
-          const SizedBox(height: 20),
-          _buildField(ty, 'EMAIL', 'you@example.com', _regEmailCtrl,
+          SizedBox(height: resp.h(20)),
+          _buildField(ty, resp, 'EMAIL', 'you@example.com', _regEmailCtrl,
               icon: Icons.email_outlined, type: TextInputType.emailAddress),
-          const SizedBox(height: 20),
-          _buildField(ty, 'PASSWORD', '••••••••', _regPasswordCtrl,
+          SizedBox(height: resp.h(20)),
+          _buildField(ty, resp, 'PASSWORD', '••••••••', _regPasswordCtrl,
               icon: Icons.lock_outline_rounded,
               obscure: _regObscure,
               onToggleObscure: () => setState(() => _regObscure = !_regObscure)),
-          const SizedBox(height: 20),
-          _buildField(ty, 'CONFIRM PASSWORD', '••••••••', _regConfirmCtrl,
+          SizedBox(height: resp.h(20)),
+          _buildField(ty, resp, 'CONFIRM PASSWORD', '••••••••', _regConfirmCtrl,
               icon: Icons.lock_outline_rounded,
               obscure: _regConfirmObscure,
               onToggleObscure: () => setState(() => _regConfirmObscure = !_regConfirmObscure)),
           if (_error.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(_error, style: TyType.sans(13, color: ty.rose, weight: FontWeight.w600)),
+            SizedBox(height: resp.h(16)),
+            Text(_error, style: TyType.sans(resp.sp(13), color: ty.rose, weight: FontWeight.w600)),
           ],
-          const SizedBox(height: 36),
+          SizedBox(height: resp.h(36)),
           TyButton(
             _isLoading ? 'Creating account...' : 'Create Account',
             full: true,
             onTap: _handleRegister,
             enabled: !_isLoading,
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: resp.h(32)),
         ],
       ),
     );
   }
 
-  Widget _buildDivider(TyColors ty) {
+  Widget _buildDivider(TyColors ty, TyResponsive resp) {
     return Row(
       children: [
         Expanded(child: Divider(color: ty.line)),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('OR', style: TyType.eyebrow(10, color: ty.ink3)),
+          padding: EdgeInsets.symmetric(horizontal: resp.w(16)),
+          child: Text('OR', style: TyType.eyebrow(resp.sp(10), color: ty.ink3)),
         ),
         Expanded(child: Divider(color: ty.line)),
       ],
@@ -304,6 +314,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
   Widget _buildField(
     TyColors ty,
+    TyResponsive resp,
     String label,
     String hint,
     TextEditingController ctrl, {
@@ -315,10 +326,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TyType.eyebrow(11, color: ty.ink3)),
-        const SizedBox(height: 12),
+        Text(label, style: TyType.eyebrow(resp.sp(11), color: ty.ink3)),
+        SizedBox(height: resp.h(12)),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: resp.w(16), vertical: resp.h(8)),
           decoration: BoxDecoration(
             color: ty.surface,
             borderRadius: BorderRadius.circular(16),
@@ -327,19 +338,21 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           child: Row(
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 20, color: ty.ink3),
-                const SizedBox(width: 12),
+                Icon(icon, size: resp.w(20), color: ty.ink3),
+                SizedBox(width: resp.w(12)),
               ],
               Expanded(
                 child: TextField(
                   controller: ctrl,
                   keyboardType: type,
                   obscureText: obscure ?? false,
-                  style: TyType.sans(16, color: ty.ink, weight: FontWeight.w600),
+                  style: TyType.sans(resp.sp(16), color: ty.ink, weight: FontWeight.w600),
                   decoration: InputDecoration(
                     hintText: hint,
-                    hintStyle: TyType.sans(16, color: ty.ink3.withValues(alpha: 0.5)),
+                    hintStyle: TyType.sans(resp.sp(16), color: ty.ink3.withValues(alpha: 0.5)),
                     border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: resp.h(10)),
                   ),
                 ),
               ),
@@ -348,7 +361,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   onTap: onToggleObscure,
                   child: Icon(
                     (obscure ?? true) ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    size: 20,
+                    size: resp.w(20),
                     color: ty.ink3,
                   ),
                 ),

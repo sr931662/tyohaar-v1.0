@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../theme/responsive.dart';
 import '../data/models.dart';
 import '../data/services/celebration_service.dart';
 import '../data/services/budget_service.dart' as bs;
@@ -88,6 +89,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     
     if (_isLoading) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
@@ -111,40 +113,40 @@ class _BudgetScreenState extends State<BudgetScreen> {
         Padding(padding: EdgeInsets.only(right: 16), child: ChromeIconButton(icon: Icons.add_rounded)),
       ]),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
+        padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(4), resp.w(18), resp.h(28)),
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: _card(ty),
+            padding: EdgeInsets.all(resp.w(20)),
+            decoration: _card(ty, resp),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Total budget',
-                    style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(_inr(total), style: TyType.display(40, color: ty.ink)),
-                const SizedBox(height: 16),
+                    style: TyType.sans(resp.sp(12.5), color: ty.ink2, weight: FontWeight.w600)),
+                SizedBox(height: resp.h(2)),
+                Text(_inr(total), style: TyType.display(resp.sp(40), color: ty.ink)),
+                SizedBox(height: resp.h(16)),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(resp.w(6)),
                   child: Row(
                     children: [
-                      if (paid > 0) Expanded(flex: paid.toInt(), child: Container(height: 10, color: ty.leaf)),
+                      if (paid > 0) Expanded(flex: paid.toInt(), child: Container(height: resp.h(10), color: ty.leaf)),
                       if (allocated - paid > 0)
                         Expanded(
                             flex: (allocated - paid).toInt(),
-                            child: Container(height: 10, color: ty.saffron)),
+                            child: Container(height: resp.h(10), color: ty.saffron)),
                       if (total - allocated > 0)
                         Expanded(
                             flex: (total - allocated).toInt(),
-                            child: Container(height: 10, color: ty.surface2)),
-                      if (total == 0) Expanded(child: Container(height: 10, color: ty.surface2)),
+                            child: Container(height: resp.h(10), color: ty.surface2)),
+                      if (total == 0) Expanded(child: Container(height: resp.h(10), color: ty.surface2)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: resp.h(12)),
                 Wrap(
-                  spacing: 16,
-                  runSpacing: 6,
+                  spacing: resp.w(16),
+                  runSpacing: resp.h(6),
                   children: [
                     _legend(context, ty.leaf, 'Paid ${_short(paid)}'),
                     _legend(context, ty.saffron, 'Booked ${_short(allocated - paid)}'),
@@ -154,64 +156,64 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: resp.h(18)),
           Row(
             children: [
               _stat(context, 'Allocated', _short(allocated), '$pct% of budget'),
-              const SizedBox(width: 10),
+              SizedBox(width: resp.w(10)),
               _stat(context, 'Remaining', _short(total - paid), 'after payments'),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: resp.h(24)),
           const SectionHeader('By category'),
           if (_expenses.isEmpty)
              Center(child: Padding(
-               padding: const EdgeInsets.only(top: 24),
-               child: Text('No expenses added yet', style: TyType.sans(14, color: ty.ink3)),
+               padding: EdgeInsets.only(top: resp.h(24)),
+               child: Text('No expenses added yet', style: TyType.sans(resp.sp(14), color: ty.ink3)),
              ))
           else
             ..._expenses.map((l) {
               final p = (l.isPaid && l.amount > 0) ? 100 : 0;
               final c = ty.tint(l.tint);
               return Container(
-                margin: const EdgeInsets.only(bottom: 11),
-                padding: const EdgeInsets.all(14),
-                decoration: _card(ty),
+                margin: EdgeInsets.only(bottom: resp.h(11)),
+                padding: EdgeInsets.all(resp.w(14)),
+                decoration: _card(ty, resp),
                 child: Column(
                   children: [
                     Row(
                       children: [
                         Container(
-                          width: 36,
-                          height: 36,
+                          width: resp.w(36),
+                          height: resp.w(36),
                           decoration: BoxDecoration(
                             color: Color.alphaBlend(c.withOpacity(0.16), ty.surface2),
-                            borderRadius: BorderRadius.circular(11),
+                            borderRadius: BorderRadius.circular(resp.w(11)),
                           ),
-                          child: Icon(Icons.sell_outlined, color: c, size: 18),
+                          child: Icon(Icons.sell_outlined, color: c, size: resp.sp(18)),
                         ),
-                        const SizedBox(width: 11),
+                        SizedBox(width: resp.w(11)),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(l.category,
-                                  style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
+                                  style: TyType.sans(resp.sp(14.5), color: ty.ink, weight: FontWeight.w700)),
                               Text(l.isPaid ? '${_short(l.amount)} paid' : 'Not paid yet',
-                                  style: TyType.sans(11.5, color: ty.ink3)),
+                                  style: TyType.sans(resp.sp(11.5), color: ty.ink3)),
                             ],
                           ),
                         ),
                         Text(_short(l.amount),
-                            style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w800)),
+                            style: TyType.sans(resp.sp(14.5), color: ty.ink, weight: FontWeight.w800)),
                       ],
                     ),
-                    const SizedBox(height: 11),
+                    SizedBox(height: resp.h(11)),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(resp.w(4)),
                       child: LinearProgressIndicator(
                         value: p / 100,
-                        minHeight: 6,
+                        minHeight: resp.h(6),
                         backgroundColor: ty.surface2,
                         color: c,
                       ),
@@ -225,38 +227,40 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  BoxDecoration _card(TyColors ty) => BoxDecoration(
+  BoxDecoration _card(TyColors ty, TyResponsive resp) => BoxDecoration(
         color: ty.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(resp.w(20)),
         border: Border.all(color: ty.line),
       );
 
   Widget _legend(BuildContext context, Color c, String t) {
     final ty = context.ty;
+    final resp = context.resp;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 9, height: 9, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
-        const SizedBox(width: 6),
-        Text(t, style: TyType.sans(12, color: ty.ink2)),
+        Container(width: resp.w(9), height: resp.w(9), decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+        SizedBox(width: resp.w(6)),
+        Text(t, style: TyType.sans(resp.sp(12), color: ty.ink2)),
       ],
     );
   }
 
   Widget _stat(BuildContext context, String l, String v, String s) {
     final ty = context.ty;
+    final resp = context.resp;
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: _card(ty),
+        padding: EdgeInsets.all(resp.w(14)),
+        decoration: _card(ty, resp),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l, style: TyType.sans(11.5, color: ty.ink3, weight: FontWeight.w600)),
-            const SizedBox(height: 3),
-            Text(v, style: TyType.display(24, color: ty.ink)),
-            const SizedBox(height: 2),
-            Text(s, style: TyType.sans(11, color: ty.ink2)),
+            Text(l, style: TyType.sans(resp.sp(11.5), color: ty.ink3, weight: FontWeight.w600)),
+            SizedBox(height: resp.h(3)),
+            Text(v, style: TyType.display(resp.sp(24), color: ty.ink)),
+            SizedBox(height: resp.h(2)),
+            Text(s, style: TyType.sans(resp.sp(11), color: ty.ink2)),
           ],
         ),
       ),

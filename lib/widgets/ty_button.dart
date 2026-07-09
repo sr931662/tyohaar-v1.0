@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
+import '../theme/responsive.dart';
 
 enum TyButtonKind { primary, ghost, soft }
 
@@ -35,6 +36,7 @@ class _TyButtonState extends State<TyButton> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     Color bg;
     Color fg;
     BoxBorder? border;
@@ -59,8 +61,8 @@ class _TyButtonState extends State<TyButton> {
           shadow = [
             BoxShadow(
               color: ty.saffron.withOpacity(0.38),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
+              blurRadius: resp.w(18),
+              offset: Offset(0, resp.h(6)),
             )
           ];
         }
@@ -77,11 +79,11 @@ class _TyButtonState extends State<TyButton> {
         child: Container(
           width: widget.full ? double.infinity : null,
           padding: widget.padding ??
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
+              EdgeInsets.symmetric(horizontal: resp.w(24), vertical: resp.h(15)),
           decoration: BoxDecoration(
             color: bg,
             border: border,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(resp.w(16)),
             boxShadow: shadow,
           ),
           child: Row(
@@ -89,8 +91,8 @@ class _TyButtonState extends State<TyButton> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (widget.leadingIcon != null) ...[
-                Icon(widget.leadingIcon, size: 18, color: fg),
-                const SizedBox(width: 9),
+                Icon(widget.leadingIcon, size: resp.w(18), color: fg),
+                SizedBox(width: resp.w(9)),
               ],
               Flexible(
                 child: Text(
@@ -99,14 +101,14 @@ class _TyButtonState extends State<TyButton> {
                   style: TextStyle(
                     color: fg,
                     fontWeight: FontWeight.w700,
-                    fontSize: 15.5,
+                    fontSize: resp.sp(15.5),
                     letterSpacing: -0.1,
                   ),
                 ),
               ),
               if (widget.icon != null) ...[
-                const SizedBox(width: 9),
-                Icon(widget.icon, size: 18, color: fg),
+                SizedBox(width: resp.w(9)),
+                Icon(widget.icon, size: resp.w(18), color: fg),
               ],
             ],
           ),
