@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
@@ -10,6 +11,7 @@ import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/common.dart';
+import '../widgets/tutorial/tutorial_overlay.dart';
 import 'budget_screen.dart';
 import 'guests_screen.dart';
 
@@ -30,6 +32,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
   String _daysLeft = '--';
   String _hoursLeft = '--';
   bool _isLoading = true;
+  final GlobalKey _heroKey = GlobalKey();
 
   @override
   void initState() {
@@ -81,6 +84,16 @@ class _EventHubScreenState extends State<EventHubScreen> {
           _hoursLeft = hoursLeft;
           _isLoading = false;
         });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          TutorialOverlay.show(context, screenKey: 'event_hub', steps: [
+            TutorialStep(
+              targetKey: _heroKey,
+              title: 'Your celebration, at a glance',
+              description: 'Track the countdown, guest RSVPs, and checklist progress for this event right here.',
+            ),
+          ]);
+        });
       }
     } catch (e) {
       debugPrint('Error loading event hub: $e');
@@ -117,6 +130,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
         padding: EdgeInsets.zero,
         children: [
           Stack(
+            key: _heroKey,
             children: [
               CachedNetworkImage(
                 imageUrl: _celebration?.heroImageUrl ?? '',
@@ -124,7 +138,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                 width: double.infinity,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: 360, arch: false, radius: BorderRadius.zero),
-                errorWidget: (context, url, error) => PhotoPlaceholder(tint: 'saffron', height: 360, arch: false, radius: BorderRadius.zero),
+                errorWidget: (context, url, error) => OccasionAssets.getFallback(_celebration?.occasionName ?? _celebration?.title ?? '', arch: false),
               ),
               Positioned.fill(
                 child: DecoratedBox(

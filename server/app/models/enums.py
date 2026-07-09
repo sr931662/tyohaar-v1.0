@@ -579,6 +579,16 @@ class TicketCategory(str, enum.Enum):
     GENERAL = "general"
 
 
+class FeedbackCategory(str, enum.Enum):
+    """Free-standing app feedback, distinct from support tickets (no case to work)."""
+    GENERAL = "general"
+    BUG_REPORT = "bug_report"
+    FEATURE_REQUEST = "feature_request"
+    VENDOR_EXPERIENCE = "vendor_experience"
+    APP_EXPERIENCE = "app_experience"
+    OTHER = "other"
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Media
 # ──────────────────────────────────────────────────────────────────────────────

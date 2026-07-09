@@ -1,7 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
+import 'package:gal/gal.dart';
+import 'package:permission_handler/permission_handler.dart';
 
+import 'package:tyohaar/screens/booking_flow_screen.dart';
+import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
@@ -23,6 +30,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   late TextEditingController _guestController;
   final Set<String> _selectedOptionalItemIds = {};
   bool _isLoading = true;
+  bool _isDownloading = false;
   late Package _fullPackage;
   List<PackageItem> _allItems = [];
 
@@ -70,6 +78,53 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
     });
   }
 
+  // The served image URL already has the Tyohaar watermark baked in
+  // server-side (see cloudinary_client.py) — saving it is enough, no
+  // client-side watermarking needed.
+  Future<void> _downloadCoverImage() async {
+    final url = _fullPackage.coverImageUrl;
+    if (url == null || url.isEmpty) return;
+
+    setState(() => _isDownloading = true);
+    try {
+      final hasAccess = await Gal.hasAccess();
+      if (!hasAccess) {
+        final granted = await Gal.requestAccess();
+        if (!granted) {
+          if (await Permission.photos.request().isDenied && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Photo library access is needed to save images.')),
+            );
+            return;
+          }
+        }
+      }
+      final response = await Dio().get<List<int>>(
+        url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = response.data;
+      if (bytes == null) throw Exception('Empty image response');
+      await Gal.putImageBytes(
+        Uint8List.fromList(bytes),
+        name: '${_fullPackage.name}_tyohaar',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image saved to your gallery.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save the image. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
   int get _totalPrice {
     double base = _fullPackage.price;
     double optionalTotal = _allItems
@@ -99,6 +154,15 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                 actions: [
                   Padding(
                     padding: const EdgeInsets.all(8.0),
+                    child: _isDownloading
+                        ? const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                          )
+                        : _glassIcon(context, Icons.download_rounded, _downloadCoverImage),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
                     child: _verifiedBadge(context),
                   ),
                 ],
@@ -110,7 +174,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                         imageUrl: _fullPackage.coverImageUrl ?? '',
                         fit: BoxFit.cover,
                         placeholder: (context, url) => PhotoPlaceholder(tint: _fullPackage.tint, height: 300, arch: false, radius: BorderRadius.zero),
-                        errorWidget: (context, url, error) => PhotoPlaceholder(tint: _fullPackage.tint, height: 300, arch: false, radius: BorderRadius.zero),
+                        errorWidget: (context, url, error) => OccasionAssets.getFallback(_fullPackage.name, tint: _fullPackage.tint, arch: false),
                       ),
                       DecoratedBox(
                         decoration: BoxDecoration(
@@ -191,7 +255,17 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
             const SizedBox(width: 16),
             Expanded(
               flex: 2,
-              child: TyButton('Select & Continue', full: true, onTap: () => Navigator.pop(context, _fullPackage)),
+              child: TyButton('Select & Continue', full: true, onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BookingFlowScreen(
+                      package: _fullPackage,
+                      initialGuestCount: _guestCount,
+                    ),
+                  ),
+                );
+              }),
             ),
           ],
         ),

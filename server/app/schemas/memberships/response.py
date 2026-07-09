@@ -14,7 +14,6 @@ from typing import Any
 from pydantic import ConfigDict, Field, computed_field
 
 from app.models.enums import (
-    Currency,
     MembershipBillingCycle,
     MembershipStatus,
     MembershipTier,
@@ -72,8 +71,13 @@ class UserMembershipResponse(BaseSchema):
     """
     Customer-facing view of an active or historical membership subscription.
 
-    payment_reference is excluded — it is an internal gateway identifier
-    that should never appear in customer-facing responses.
+    Field names mirror the UserMembership model directly (membership_status,
+    activated_at, ...) except `tier`, which is denormalized from the related
+    MembershipPlan since UserMembership itself has no tier column. Built via
+    MembershipService._to_membership_response() — never via a bare
+    model_validate(membership), since `tier` cannot come from attribute access
+    alone and the `plan` relationship is lazy="noload" (unsafe to touch under
+    the async engine without an explicit eager-load).
     """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -81,17 +85,22 @@ class UserMembershipResponse(BaseSchema):
     id: uuid.UUID
     user_id: uuid.UUID
     plan_id: uuid.UUID
-    tier: MembershipTier
+    tier: MembershipTier | None = None
     billing_cycle: MembershipBillingCycle
-    status: MembershipStatus
-    started_at: datetime
-    expires_at: datetime
-    cancelled_at: datetime | None = None
-    cancellation_reason: str | None = None
+    membership_status: MembershipStatus
+    is_lifetime: bool
+    activated_at: datetime | None = None
+    expires_at: datetime | None = None
+    next_renewal_at: datetime | None = None
+    grace_period_until: datetime | None = None
     auto_renew: bool
-    amount_paid: Decimal | None = Field(default=None, decimal_places=2)
-    currency: Currency | None = None
-    invitations_remaining: int | None = None
+    renewal_count: int
+    payment_id: uuid.UUID | None = None
+    upgraded_from_plan_id: uuid.UUID | None = None
+    upgrade_reason: str | None = None
+    cancellation_reason: str | None = None
+    cancellation_notes: str | None = None
+    cancelled_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -100,7 +109,7 @@ class UserMembershipResponse(BaseSchema):
     def is_active(self) -> bool:
         """Convenience flag: True when status is ACTIVE or GRACE_PERIOD."""
         from app.models.enums import MembershipStatus as MS
-        return self.status in (MS.ACTIVE, MS.GRACE_PERIOD)
+        return self.membership_status in (MS.ACTIVE, MS.GRACE_PERIOD)
 
 
 # Alias consumed by the memberships controller

@@ -15,7 +15,6 @@ import 'plans_screen.dart';
 import 'explore_screen.dart';
 import 'account_screen.dart';
 import 'plan_flow/plan_flow_screen.dart';
-import 'wallet_screen.dart';
 
 import 'notifications_screen.dart';
 import 'membership_plan_screen.dart';
@@ -264,17 +263,7 @@ class _StickyHeader extends StatelessWidget {
             borderColor: borderColor,
           ),
           const SizedBox(width: 10),
-          _circleButton(
-            context,
-            Icons.account_balance_wallet_outlined,
-            () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const WalletScreen()),
-            ),
-            foregroundColor: foregroundColor,
-            backgroundColor: buttonBgColor,
-            borderColor: borderColor,
-          ),
-          const SizedBox(width: 10),
+          // Wallet feature is suppressed for now (kept dormant — see wallet_screen.dart).
           Stack(
             children: [
               _circleButton(

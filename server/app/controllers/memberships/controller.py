@@ -1,5 +1,5 @@
 """
-Memberships Controller — plans, subscriptions, renewals, and feature access.
+Memberships Controller — plans, subscriptions, renewals, upgrades/downgrades, and feature access.
 """
 
 from __future__ import annotations
@@ -15,7 +15,15 @@ from app.core.pagination import CursorPaginationParams, get_cursor_pagination
 from app.core.permissions import AdminDep
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
-from app.schemas.memberships.create import MembershipPlanCreate, SubscribeCreate
+from app.schemas.memberships.create import (
+    MembershipCancelRequest,
+    MembershipDowngradeRequest,
+    MembershipPlanCreate,
+    MembershipRenewRequest,
+    MembershipUpgradeRequest,
+    SubscribeCreate,
+)
+from app.schemas.memberships.filters import UserMembershipFilters
 from app.schemas.memberships.response import (
     MembershipPlanResponse,
     MembershipResponse,
@@ -118,24 +126,57 @@ async def list_user_memberships(
 
 async def cancel_membership(
     membership_id: uuid.UUID,
+    body: MembershipCancelRequest,
     current_user: CurrentUserDep,
     service: MembershipServiceDep,
 ) -> SuccessResponse[MembershipResponse]:
     result = await service.cancel_membership(
-        membership_id=membership_id, user_id=current_user.id
+        membership_id=membership_id, user_id=current_user.id, reason=body.reason
     )
     return SuccessResponse(data=result, message="Membership cancelled.")
 
 
 async def renew_membership(
     membership_id: uuid.UUID,
+    body: MembershipRenewRequest,
     current_user: CurrentUserDep,
     service: MembershipServiceDep,
 ) -> SuccessResponse[MembershipResponse]:
     result = await service.renew_membership(
-        membership_id=membership_id, user_id=current_user.id
+        membership_id=membership_id, user_id=current_user.id, payment_id=body.payment_id
     )
     return SuccessResponse(data=result, message="Membership renewed.")
+
+
+async def upgrade_membership(
+    membership_id: uuid.UUID,
+    body: MembershipUpgradeRequest,
+    current_user: CurrentUserDep,
+    service: MembershipServiceDep,
+) -> SuccessResponse[MembershipResponse]:
+    result = await service.upgrade_membership(
+        membership_id=membership_id,
+        user_id=current_user.id,
+        new_plan_id=body.new_plan_id,
+        payment_id=body.payment_id,
+        reason=body.reason,
+    )
+    return SuccessResponse(data=result, message="Membership upgraded.")
+
+
+async def downgrade_membership(
+    membership_id: uuid.UUID,
+    body: MembershipDowngradeRequest,
+    current_user: CurrentUserDep,
+    service: MembershipServiceDep,
+) -> SuccessResponse[MembershipResponse]:
+    result = await service.downgrade_membership(
+        membership_id=membership_id,
+        user_id=current_user.id,
+        new_plan_id=body.new_plan_id,
+        reason=body.reason,
+    )
+    return SuccessResponse(data=result, message="Membership downgraded.")
 
 
 async def check_membership_feature_access(
@@ -143,19 +184,20 @@ async def check_membership_feature_access(
     current_user: CurrentUserDep,
     service: MembershipServiceDep,
 ) -> SuccessResponse[bool]:
-    has_access = await service.check_feature_access(user_id=current_user.id, feature=feature)
+    has_access = await service.check_feature_access(user_id=current_user.id, feature_key=feature)
     return SuccessResponse(data=has_access, message="Feature access checked.")
 
 
 # ── Admin membership ops ──────────────────────────────────────────────────────
 
 async def list_all_memberships(
+    filters: Annotated[UserMembershipFilters, Depends()],
     pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     _admin: AdminDep,
     service: MembershipServiceDep,
 ) -> CursorPaginatedResponse[MembershipResponse]:
     page = await service.list_all_memberships(
-        cursor=pagination.cursor, limit=pagination.page_size
+        filters=filters, cursor=pagination.cursor, limit=pagination.page_size
     )
     return _cursor_resp(page, pagination.page_size)
 
@@ -169,3 +211,11 @@ async def force_expire_membership(
         membership_id=membership_id, admin_id=current_user.id
     )
     return SuccessResponse(data=result, message="Membership expired.")
+
+
+async def sweep_lifecycle(
+    _admin: AdminDep,
+    service: MembershipServiceDep,
+) -> SuccessResponse[int]:
+    count = await service.sweep_expired_memberships()
+    return SuccessResponse(data=count, message=f"{count} membership(s) transitioned.")

@@ -38,6 +38,7 @@ from app.services.bookings.exceptions import (
     BookingNotFoundError,
     BookingOwnershipError,
     BookingStatusTransitionError,
+    CelebrationRequiredError,
     VendorNotAvailableError,
 )
 from app.services.bookings.helpers import (
@@ -124,51 +125,102 @@ class BookingService(BaseService):
         validate_booking_cutoff(event_dt)
 
         async with self._uow() as uow:
-            # Validate package exists, is published, and available on date
-            await validate_package_available(data.package_id, data.scheduled_date, uow)
+            # Validate package exists and is available
+            package = await validate_package_available(data.package_id, data.scheduled_date, uow)
 
-            # Optionally validate vendor availability
-            if data.scheduled_start_time and data.scheduled_end_time:
-                # No specific vendor at create time; vendor is assigned later
-                pass
+            celebration_id = data.celebration_id
+            if celebration_id is None:
+                occasion_id = data.occasion_id
+                if occasion_id is None:
+                    from sqlalchemy import select
+
+                    from app.models.packages.package import package_occasions
+
+                    result = await uow.session.execute(
+                        select(package_occasions.c.occasion_id)
+                        .where(package_occasions.c.package_id == data.package_id)
+                        .limit(1)
+                    )
+                    occasion_id = result.scalar_one_or_none()
+
+                if occasion_id is None:
+                    raise CelebrationRequiredError()
+
+                celebration = await uow.occasions.celebrations.create_from_dict({
+                    "customer_id": customer_id,
+                    "occasion_id": occasion_id,
+                    "title": data.celebration_title or f"{package.name} booking",
+                    "celebration_date": data.scheduled_date,
+                    "venue_address": data.venue_address,
+                    "guest_count": 0,
+                })
+                celebration_id = celebration.id
+
+            # 1. Fetch mandatory items from package
+            package_items = await uow.packages.items.find_by_package(data.package_id)
+            selected_items = [i for i in package_items if i.is_mandatory]
+
+            # 2. Fetch selected optional items (add-ons)
+            if data.item_ids:
+                optional_items = [i for i in package_items if not i.is_mandatory and i.id in data.item_ids]
+                selected_items.extend(optional_items)
+
+            # 3. Calculate financials
+            subtotal = sum((i.base_price * i.quantity) for i in selected_items)
+            platform_fee = Decimal("1500.00")
+            tax_rate = Decimal("0.18")
+            tax_amount = (subtotal * tax_rate).quantize(Decimal("0.01"))
+            total_amount = subtotal + tax_amount + platform_fee
 
             booking_ref = generate_booking_reference()
 
-            booking_payload = {
-                "booking_number": booking_ref,
-                "customer_id": customer_id,
-                "celebration_id": data.celebration_id,
-                "package_id": data.package_id,
-                "address_id": data.address_id,
-                "scheduled_date": data.scheduled_date,
-                "scheduled_start_time": data.scheduled_start_time,
-                "scheduled_end_time": data.scheduled_end_time,
-                "booking_type": data.booking_type,
-                "booking_status": BookingStatus.PENDING,
-                "payment_status": PaymentStatus.PENDING,
-                "currency": data.currency,
-                "subtotal": Decimal("0.00"),
-                "discount_amount": Decimal("0.00"),
-                "tax_amount": Decimal("0.00"),
-                "platform_fee": Decimal("0.00"),
-                "total_amount": Decimal("0.00"),
-                "amount_paid": Decimal("0.00"),
-                "amount_due": Decimal("0.00"),
-                "special_instructions": data.special_instructions,
-            }
-            booking = await uow.bookings.bookings.create(Booking(**booking_payload))
-
-            # Write initial status history (PENDING)
-            await self._write_status_history(
-                uow,
-                booking_id=booking.id,
-                old_status=None,
-                new_status=BookingStatus.PENDING,
-                changed_by_id=customer_id,
-                reason="Booking created",
+            booking = Booking(
+                booking_number=booking_ref,
+                customer_id=customer_id,
+                celebration_id=celebration_id,
+                package_id=data.package_id,
+                address_id=data.address_id,
+                recipient_name=data.recipient_name,
+                recipient_phone=data.recipient_phone,
+                scheduled_date=data.scheduled_date,
+                scheduled_start_time=data.scheduled_start_time,
+                scheduled_end_time=data.scheduled_end_time,
+                booking_type=data.booking_type,
+                booking_status=BookingStatus.PENDING,
+                payment_status=PaymentStatus.PENDING,
+                currency=data.currency,
+                subtotal=subtotal,
+                discount_amount=Decimal("0.00"),
+                tax_amount=tax_amount,
+                platform_fee=platform_fee,
+                total_amount=total_amount,
+                amount_paid=Decimal("0.00"),
+                amount_due=total_amount,
+                special_instructions=data.special_instructions,
             )
+            booking = await uow.bookings.bookings.create(booking)
 
-            # Write booking history event
+            # 4. Create BookingItem records
+            for idx, pi in enumerate(selected_items):
+                item = BookingItem(
+                    booking_id=booking.id,
+                    package_item_id=pi.id,
+                    name=pi.name,
+                    description=pi.description,
+                    quantity=pi.quantity,
+                    unit=pi.unit,
+                    unit_price=pi.base_price,
+                    final_price=pi.base_price * pi.quantity,
+                    is_mandatory=pi.is_mandatory,
+                    is_addon=not pi.is_mandatory,
+                    display_order=idx,
+                )
+                await uow.bookings.items.create(item)
+
+            # Write status and history
+            await self._write_status_history(
+                uow, booking.id, None, BookingStatus.PENDING, customer_id, "Booking created"
+            )
             await self._write_history_event(
                 uow,
                 booking_id=booking.id,
@@ -176,8 +228,7 @@ class BookingService(BaseService):
                 actor_type=BookingActorType.CUSTOMER,
                 actor_id=customer_id,
                 event_label="Booking submitted",
-                description="New booking created and pending confirmation.",
-                context_data={"new_status": BookingStatus.PENDING.value},
+                description=f"Booking for {package.name} created.",
             )
 
             await uow.commit()
@@ -465,8 +516,16 @@ class BookingService(BaseService):
             # Validate that the booking can be cancelled from its current status
             validate_status_transition_allowed(booking, "cancelled")
 
-            fee = calculate_cancellation_fee(
-                booking.total_amount, CANCELLATION_FEE_PERCENTAGE
+            waive_fee = False
+            membership = await uow.memberships.memberships.get_active_for_user(customer_id)
+            if membership is not None:
+                plan = await uow.memberships.plans.get_by_id(membership.plan_id)
+                waive_fee = bool(plan and plan.cancellation_protection)
+
+            fee = (
+                Decimal("0.00")
+                if waive_fee
+                else calculate_cancellation_fee(booking.total_amount, CANCELLATION_FEE_PERCENTAGE)
             )
             refund = calculate_refund_amount(booking.total_amount, fee)
 
@@ -506,6 +565,7 @@ class BookingService(BaseService):
                     "reason": str(data.reason),
                     "cancellation_fee": str(fee),
                     "refund_amount": str(refund),
+                    "fee_waived_by_membership": waive_fee,
                 },
             )
 

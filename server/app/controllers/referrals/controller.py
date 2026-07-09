@@ -16,6 +16,12 @@ from app.core.permissions import AdminDep
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
 from app.schemas.referrals.create import ReferralApplyCreate
+from app.schemas.referrals.milestones import (
+    ReferralMilestoneGrantResponse,
+    ReferralMilestoneRuleCreate,
+    ReferralMilestoneRuleResponse,
+    ReferralMilestoneRuleUpdate,
+)
 from app.schemas.referrals.response import (
     ReferralResponse,
     ReferralRewardResponse,
@@ -46,17 +52,6 @@ async def apply_referral_code(
 ) -> SuccessResponse[ReferralResponse]:
     result = await service.apply_referral_code(user_id=current_user.id, data=body)
     return SuccessResponse(data=result, message="Referral code applied.")
-
-
-async def trigger_referral_rewards(
-    referral_id: uuid.UUID,
-    current_user: AdminDep,
-    service: ReferralServiceDep,
-) -> SuccessResponse[None]:
-    await service.trigger_referral_rewards(
-        referral_id=referral_id, admin_id=current_user.id
-    )
-    return SuccessResponse(data=None, message="Referral rewards triggered.")
 
 
 async def activate_referral_reward(
@@ -107,3 +102,40 @@ async def get_reward(
 ) -> SuccessResponse[ReferralRewardResponse]:
     result = await service.get_reward(reward_id=reward_id, user_id=current_user.id)
     return SuccessResponse(data=result, message="Reward retrieved.")
+
+
+# ── Milestone rules (admin) & grants (customer) ─────────────────────────────────
+
+async def create_milestone_rule(
+    body: ReferralMilestoneRuleCreate,
+    current_user: AdminDep,
+    service: ReferralServiceDep,
+) -> SuccessResponse[ReferralMilestoneRuleResponse]:
+    result = await service.create_milestone_rule(data=body, admin_id=current_user.id)
+    return SuccessResponse(data=result, message="Referral milestone rule created.")
+
+
+async def update_milestone_rule(
+    rule_id: uuid.UUID,
+    body: ReferralMilestoneRuleUpdate,
+    _admin: AdminDep,
+    service: ReferralServiceDep,
+) -> SuccessResponse[ReferralMilestoneRuleResponse]:
+    result = await service.update_milestone_rule(rule_id=rule_id, data=body)
+    return SuccessResponse(data=result, message="Referral milestone rule updated.")
+
+
+async def list_milestone_rules(
+    _admin: AdminDep,
+    service: ReferralServiceDep,
+) -> SuccessResponse[list[ReferralMilestoneRuleResponse]]:
+    result = await service.list_milestone_rules()
+    return SuccessResponse(data=result, message="Referral milestone rules retrieved.")
+
+
+async def list_my_milestone_grants(
+    current_user: CurrentUserDep,
+    service: ReferralServiceDep,
+) -> SuccessResponse[list[ReferralMilestoneGrantResponse]]:
+    result = await service.list_my_milestone_grants(user_id=current_user.id)
+    return SuccessResponse(data=result, message="Referral milestone grants retrieved.")

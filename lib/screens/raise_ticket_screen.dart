@@ -19,6 +19,12 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
   bool _isSubmitting = false;
 
   @override
+  void initState() {
+    super.initState();
+    _descCtrl.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     _descCtrl.dispose();
     super.dispose();

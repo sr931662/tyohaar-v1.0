@@ -50,21 +50,32 @@ class ApiClient {
         },
         onError: (DioException e, handler) async {
           if (e.response?.statusCode == 401) {
-            // Attempt token refresh once
+            // Avoid infinite loops: check if this is already a retry
+            if (e.requestOptions.extra['retry'] == true) {
+              await AuthManager.instance.logout();
+              return handler.next(e);
+            }
+
+            // Attempt token refresh
             final refreshed = await _tryRefreshToken();
             if (refreshed) {
-              // Retry the original request with the new token
               final opts = e.requestOptions;
               opts.headers['Authorization'] = 'Bearer ${AuthManager.instance.accessToken}';
+              opts.extra['retry'] = true; // Mark as retry
+              
               try {
+                // Use the main dio instance to retry the request
                 final retryResp = await dio.fetch(opts);
                 return handler.resolve(retryResp);
               } catch (_) {
-                // Retry also failed — fall through to logout
+                // Retry failed even with new token
+                await AuthManager.instance.logout();
+                return handler.next(e);
               }
+            } else {
+              // Refresh failed: session is truly dead
+              await AuthManager.instance.logout();
             }
-            // Token refresh failed or not possible: force logout
-            await AuthManager.instance.logout();
           }
           return handler.next(e);
         },

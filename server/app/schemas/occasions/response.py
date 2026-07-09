@@ -13,7 +13,7 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, computed_field
 
 from app.schemas.base import BaseSchema
 from app.models.enums import (
@@ -31,6 +31,7 @@ __all__ = [
     "CelebrationResponse",
     "CelebrationGuestResponse",
     "CelebrationChecklistResponse",
+    "GuestRSVPPublicResponse",
 ]
 
 _ORM = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -167,9 +168,49 @@ class CelebrationGuestResponse(BaseSchema):
     phone: str | None = None
     email: str | None = None
     rsvp_status: RSVPStatus
-    relation: str | None = None
+    group_tag: str | None = None
     notes: str | None = None
+    rsvp_token: str | None = Field(
+        default=None,
+        description="Opaque token for the public RSVP link — only meaningful to the celebration owner sharing an invite.",
+    )
+    invitation_opened_at: datetime | None = None
     created_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def display_status(self) -> str:
+        """
+        coming/maybe/declined mirror rsvp_status once the guest has responded.
+        Before any response: 'pending' if the invite link was never opened,
+        'ignored' if it was opened but the guest never submitted a response.
+        Re-opening and responding later (up to the day before the event) just
+        updates rsvp_status normally — this is purely a display computation,
+        not a stored terminal state.
+        """
+        if self.rsvp_status != RSVPStatus.PENDING:
+            return self.rsvp_status.value
+        return "ignored" if self.invitation_opened_at is not None else "pending"
+
+
+class GuestRSVPPublicResponse(BaseSchema):
+    """
+    Public (no-auth) view shown to a guest on their personal RSVP link.
+
+    Deliberately minimal — no other guests, no host phone/email, no
+    celebration owner identity beyond the event details needed to decide
+    whether to attend.
+    """
+
+    guest_name: str
+    rsvp_status: RSVPStatus
+    can_still_respond: bool = Field(
+        description="False once it's past the response cutoff (the day before the event)."
+    )
+    celebration_title: str
+    celebration_date: date
+    venue_name: str | None = None
+    venue_address: str | None = None
 
 
 class CelebrationChecklistResponse(BaseSchema):

@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
-from app.models.enums import NotificationStatus
+from app.models.enums import NotificationChannel, NotificationStatus
 from app.models.notifications.notification import Notification
 from app.schemas.base import CursorPage
 from app.schemas.notifications.create import NotificationCreate, NotificationTemplateCreate
@@ -30,6 +30,17 @@ from app.services.notifications.validators import (
 logger = logging.getLogger(__name__)
 
 
+def _status_for_channel(channel: NotificationChannel) -> NotificationStatus:
+    """
+    IN_APP delivery IS the write to the notifications table — SENT is honest.
+    No dispatcher is wired for PUSH/SMS/EMAIL/WHATSAPP yet, so those channels
+    must not claim SENT; they stay PENDING until a real gateway is added.
+    """
+    if channel == NotificationChannel.IN_APP:
+        return NotificationStatus.SENT
+    return NotificationStatus.PENDING
+
+
 class NotificationService(BaseService):
     def __init__(
         self,
@@ -45,6 +56,7 @@ class NotificationService(BaseService):
         data: NotificationCreate,
     ) -> NotificationResponse:
         channel = data.channel
+        status = _status_for_channel(channel)
         async with self._uow() as uow:
             notification = await uow.notifications.notifications.create_from_dict({
                 "recipient_id": user_id,
@@ -58,16 +70,17 @@ class NotificationService(BaseService):
                 "reference_type": data.reference_type,
                 "reference_id": data.reference_id,
                 "scheduled_at": data.scheduled_at,
-                "notification_status": NotificationStatus.SENT,
-                "sent_at": datetime.now(tz=timezone.utc),
+                "notification_status": status,
+                "sent_at": datetime.now(tz=timezone.utc) if status == NotificationStatus.SENT else None,
             })
             response = NotificationResponse.model_validate(notification)
 
         logger.info(
-            "push_stub user_id=%s notification_id=%s channel=%s",
+            "dispatch_stub (no real channel configured) user_id=%s notification_id=%s channel=%s status=%s",
             user_id,
             notification.id,
             channel,
+            status,
         )
         return response
 
@@ -87,6 +100,7 @@ class NotificationService(BaseService):
                 raise TemplateRenderError(f"Template render failed: {exc}") from exc
 
             channel = template_obj.channel
+            status = _status_for_channel(channel)
             notification = await uow.notifications.notifications.create_from_dict({
                 "recipient_id": user_id,
                 "template_id": template_obj.id,
@@ -94,8 +108,8 @@ class NotificationService(BaseService):
                 "channel": channel,
                 "title": title,
                 "body": body,
-                "notification_status": NotificationStatus.SENT,
-                "sent_at": datetime.now(tz=timezone.utc),
+                "notification_status": status,
+                "sent_at": datetime.now(tz=timezone.utc) if status == NotificationStatus.SENT else None,
             })
             return NotificationResponse.model_validate(notification)
 
@@ -114,6 +128,7 @@ class NotificationService(BaseService):
                 raise TemplateRenderError(f"Template render failed: {exc}") from exc
 
             now = datetime.now(tz=timezone.utc)
+            status = _status_for_channel(template_obj.channel)
             total_sent = 0
 
             for i in range(0, len(user_ids), NOTIFICATION_BATCH_SIZE):
@@ -126,8 +141,8 @@ class NotificationService(BaseService):
                         channel=template_obj.channel,
                         title=title,
                         body=body,
-                        notification_status=NotificationStatus.SENT,
-                        sent_at=now,
+                        notification_status=status,
+                        sent_at=now if status == NotificationStatus.SENT else None,
                     )
                     for uid in batch
                 ]

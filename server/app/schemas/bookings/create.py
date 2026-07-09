@@ -37,15 +37,35 @@ class BookingCreate(BaseSchema):
     via BookingFinancialsUpdate.
     """
 
-    customer_id: uuid.UUID = Field(description="UUID of the customer placing the booking")
-    celebration_id: uuid.UUID = Field(
-        description="UUID of the celebration this booking belongs to"
+    celebration_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "UUID of the celebration this booking belongs to. If omitted, the "
+            "service auto-creates a minimal celebration from occasion_id/title/"
+            "venue_address/scheduled_date so a customer can book a package "
+            "without first walking through a separate celebration-planning step."
+        ),
+    )
+    occasion_id: uuid.UUID | None = Field(
+        default=None,
+        description="Occasion type for celebration auto-creation. Falls back to the package's first linked occasion if omitted.",
+    )
+    celebration_title: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Title for the auto-created celebration (ignored if celebration_id is provided).",
+    )
+    venue_address: str | None = Field(
+        default=None,
+        description="Free-text venue address for the auto-created celebration (ignored if celebration_id is provided).",
     )
     package_id: uuid.UUID = Field(description="UUID of the package being booked")
     address_id: uuid.UUID | None = Field(
         default=None,
         description="UUID of the service-delivery address (optional for venue packages)",
     )
+    recipient_name: str | None = None
+    recipient_phone: str | None = None
     scheduled_date: date = Field(description="Date the service is scheduled to take place")
     scheduled_start_time: time | None = Field(
         default=None, description="Preferred start time (HH:MM:SS)"
@@ -63,6 +83,10 @@ class BookingCreate(BaseSchema):
     special_instructions: str | None = Field(
         default=None,
         description="Free-form customer notes (allergies, decoration preferences, etc.)",
+    )
+    item_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description="IDs of optional PackageItems (add-ons) selected by the user",
     )
 
     @model_validator(mode="after")

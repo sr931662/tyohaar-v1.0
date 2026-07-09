@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
+import '../data/auth_manager.dart';
 import 'root_nav.dart';
 import 'auth_screen.dart';
 
@@ -106,13 +107,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 TyButton(
                   _currentPage == _screens.length - 1 ? 'Start Celebrating' : 'Next',
                   full: true,
-                  onTap: () {
+                  onTap: () async {
                     if (_currentPage < _screens.length - 1) {
                       _pageController.nextPage(
                         duration: const Duration(milliseconds: 400),
                         curve: Curves.easeInOut,
                       );
                     } else {
+                      await AuthManager.instance.completeOnboarding();
+                      if (!mounted) return;
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (_) => const AuthScreen()),
@@ -123,7 +126,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 
                 if (_currentPage < _screens.length - 1)
                   TextButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      await AuthManager.instance.completeOnboarding();
+                      if (!mounted) return;
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (_) => const AuthScreen()),

@@ -204,7 +204,82 @@ class ReferralService(BaseService):
                 "converted_at": now,
                 "first_booking_id": booking_id,
             })
+
+            await self._maybe_grant_milestone(uow, referral.referrer_id)
+
+    async def _maybe_grant_milestone(self, uow, referrer_id: UUID) -> None:
+        """
+        Check whether this referrer's successful-referral count just crossed
+        a fresh multiple of the active rule's referrals_required, and if so,
+        grant the milestone reward. Idempotent via referral_count_at_grant.
+        """
+        rule = await uow.referrals.milestone_rules.find_active()
+        if rule is None:
+            return
+
+        counts = await uow.referrals.referrals.count_by_referrer(referrer_id)
+        successful = counts.get(str(ReferralStatus.CONVERTED), 0) + counts.get(str(ReferralStatus.REWARDED), 0)
+        if successful == 0 or successful % rule.referrals_required != 0:
+            return
+
+        existing = await uow.referrals.milestone_grants.find_by_grant_point(referrer_id, successful)
+        if existing is not None:
+            return
+
+        await uow.referrals.milestone_grants.create_from_dict({
+            "user_id": referrer_id,
+            "rule_id": rule.id,
+            "referral_count_at_grant": successful,
+            "discount_percentage": rule.discount_percentage,
+            "min_plan_price": rule.min_plan_price,
+            "plans_remaining": rule.applicable_plan_count,
+        })
+
+    # =========================================================================
+    # Milestone rules (admin) & grants (customer-facing)
+    # =========================================================================
+
+    async def create_milestone_rule(self, data, admin_id: UUID):
+        from app.schemas.referrals.milestones import ReferralMilestoneRuleResponse
+
+        async with self._uow() as uow:
+            if data.is_active:
+                await uow.referrals.milestone_rules.deactivate_all()
+            rule = await uow.referrals.milestone_rules.create_from_dict({
+                **data.model_dump(),
+                "created_by_id": admin_id,
+            })
             await uow.commit()
+            return ReferralMilestoneRuleResponse.model_validate(rule)
+
+    async def update_milestone_rule(self, rule_id: UUID, data):
+        from app.schemas.referrals.milestones import ReferralMilestoneRuleResponse
+        from app.services.referrals.exceptions import ReferralMilestoneRuleNotFoundError
+
+        async with self._uow() as uow:
+            rule = await uow.referrals.milestone_rules.get_by_id(rule_id)
+            if rule is None:
+                raise ReferralMilestoneRuleNotFoundError(str(rule_id))
+            changes = data.model_dump(exclude_unset=True)
+            if changes.get("is_active") is True:
+                await uow.referrals.milestone_rules.deactivate_all()
+            updated = await uow.referrals.milestone_rules.update(rule, changes)
+            await uow.commit()
+            return ReferralMilestoneRuleResponse.model_validate(updated)
+
+    async def list_milestone_rules(self):
+        from app.schemas.referrals.milestones import ReferralMilestoneRuleResponse
+
+        async with self._uow() as uow:
+            rules = await uow.referrals.milestone_rules.find_all_ordered()
+            return [ReferralMilestoneRuleResponse.model_validate(r) for r in rules]
+
+    async def list_my_milestone_grants(self, user_id: UUID):
+        from app.schemas.referrals.milestones import ReferralMilestoneGrantResponse
+
+        async with self._uow() as uow:
+            grants = await uow.referrals.milestone_grants.find_by_user(user_id)
+            return [ReferralMilestoneGrantResponse.model_validate(g) for g in grants]
 
     async def activate_referral_reward(
         self,

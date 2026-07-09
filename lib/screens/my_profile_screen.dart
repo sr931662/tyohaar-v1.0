@@ -1,11 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/user_service.dart';
 import '../data/services/vendor_service.dart';
+import '../data/services/media_service.dart';
 import '../data/auth_manager.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
@@ -21,10 +25,12 @@ class MyProfileScreen extends StatefulWidget {
 class _MyProfileScreenState extends State<MyProfileScreen> {
   final UserService _userService = UserService();
   final VendorService _vendorService = VendorService();
+  final MediaService _mediaService = MediaService();
   User? _user;
   VendorProfile? _vendorProfile;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isUploading = false;
   String? _error;
 
   final TextEditingController _nameController = TextEditingController();
@@ -67,6 +73,58 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       }
     } catch (e) {
       if (mounted) setState(() { _error = 'Could not load profile.'; _isLoading = false; });
+    }
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image == null) return;
+
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: image.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Edit Profile Picture',
+          toolbarColor: context.ty.ink,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(
+          title: 'Edit Profile Picture',
+        ),
+      ],
+    );
+
+    if (croppedFile == null) return;
+
+    setState(() => _isUploading = true);
+    try {
+      final url = await _mediaService.uploadProfilePicture(File(croppedFile.path));
+      await _userService.updateProfile({'profile_photo_url': url});
+      
+      final updatedUser = await _userService.getMe();
+      AuthManager.instance.setUser(updatedUser);
+      
+      if (mounted) {
+        setState(() {
+          _user = updatedUser;
+          _isUploading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to upload image.')),
+        );
+      }
     }
   }
 
@@ -153,30 +211,41 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
           Center(
-            child: Stack(
-              children: [
-                ClipOval(
-                  child: _user?.profilePhotoUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: _user!.profilePhotoUrl!,
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(color: ty.saffronSoft, width: 100, height: 100),
-                        errorWidget: (context, url, error) => _buildInitials(ty),
-                      )
-                    : _buildInitials(ty),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: ty.ink, shape: BoxShape.circle, border: Border.all(color: ty.paper, width: 2)),
-                    child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+            child: GestureDetector(
+              onTap: _isUploading ? null : _pickAndUploadImage,
+              child: Stack(
+                children: [
+                  ClipOval(
+                    child: _isUploading
+                      ? Container(
+                          width: 100, height: 100,
+                          color: ty.saffronSoft,
+                          child: const Center(child: CircularProgressIndicator()),
+                        )
+                      : (_user?.profilePhotoUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: _user!.profilePhotoUrl!,
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(color: ty.saffronSoft, width: 100, height: 100),
+                              errorWidget: (context, url, error) => _buildInitials(ty),
+                            )
+                          : _buildInitials(ty)),
                   ),
-                ),
-              ],
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: ty.ink, shape: BoxShape.circle, border: Border.all(color: ty.paper, width: 2)),
+                      child: _isUploading
+                          ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 32),

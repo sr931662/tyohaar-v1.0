@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
@@ -8,6 +9,7 @@ import '../data/services/package_service.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_chip.dart';
 import '../widgets/common.dart';
+import '../widgets/tutorial/tutorial_overlay.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
 import 'package:tyohaar/screens/package_filter_screen.dart';
 
@@ -53,6 +55,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   List<Package> _allPackages = [];
   bool _isLoading = true;
   bool _categoriesLoaded = false;
+  final GlobalKey _searchKey = GlobalKey();
 
   String get _selectedCitySlug => _CityPref.selected ?? '';
   String get _selectedCityLabel {
@@ -66,6 +69,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
     super.initState();
     _loadCategories();
     _loadPackages();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      TutorialOverlay.show(context, screenKey: 'explore', steps: [
+        TutorialStep(
+          targetKey: _searchKey,
+          title: 'Find the perfect package',
+          description: 'Search by occasion, or use the filter and city picker above to narrow things down.',
+        ),
+      ]);
+    });
   }
 
   Future<void> _loadCategories() async {
@@ -246,6 +259,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
                 const SizedBox(height: 12),
                 Container(
+                  key: _searchKey,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
                     color: ty.surface2,
@@ -405,10 +419,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     placeholder: (context, url) =>
                         PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
                     errorWidget: (context, url, error) =>
-                        PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
+                        OccasionAssets.getFallback(p.name, tint: p.tint, arch: false),
                   ),
                 ),
-                Positioned(top: 10, left: 10, child: TyPill(p.slug ?? p.name)),
                 Positioned(
                   top: 10,
                   right: 10,
@@ -455,7 +468,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   placeholder: (context, url) =>
                       PhotoPlaceholder(tint: p.tint, arch: false),
                   errorWidget: (context, url, error) =>
-                      PhotoPlaceholder(tint: p.tint, arch: false),
+                      OccasionAssets.getFallback(p.name, tint: p.tint, arch: false),
                 ),
               ),
             ),
@@ -464,32 +477,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(p.slug ?? p.name.toUpperCase(),
-                            style: TyType.eyebrow(11, color: ty.saffronDeep)),
-                      ),
-                      if (p.citySlug != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: ty.surface2,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: ty.line),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.location_on_rounded, size: 10, color: ty.ink3),
-                              const SizedBox(width: 2),
-                              Text(p.citySlug!,
-                                  style: TyType.sans(10, color: ty.ink3)),
-                            ],
-                          ),
+                  if (p.citySlug != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: ty.surface2,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: ty.line),
                         ),
-                    ],
-                  ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.location_on_rounded, size: 10, color: ty.ink3),
+                            const SizedBox(width: 2),
+                            Text(p.citySlug!,
+                                style: TyType.sans(10, color: ty.ink3)),
+                          ],
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 2),
                   Text(p.name,
                       style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),

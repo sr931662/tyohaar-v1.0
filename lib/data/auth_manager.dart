@@ -9,6 +9,7 @@ import 'models.dart';
 
 const _kAccessToken = 'ty_access_token';
 const _kRefreshToken = 'ty_refresh_token';
+const _kSeenOnboarding = 'ty_seen_onboarding';
 
 /// Manages authentication state and persists tokens securely across app restarts.
 class AuthManager extends ChangeNotifier {
@@ -22,6 +23,7 @@ class AuthManager extends ChangeNotifier {
   bool _isAuthenticated = false;
   bool _isGuest = false;
   bool _isInitializing = true;
+  bool _seenOnboarding = false;
 
   String? _accessToken;
   String? _refreshToken;
@@ -30,6 +32,7 @@ class AuthManager extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated;
   bool get isGuest => _isGuest;
   bool get isInitializing => _isInitializing;
+  bool get seenOnboarding => _seenOnboarding;
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
   User? get currentUser => _currentUser;
@@ -39,17 +42,28 @@ class AuthManager extends ChangeNotifier {
     try {
       final access = await _storage.read(key: _kAccessToken);
       final refresh = await _storage.read(key: _kRefreshToken);
+      final onboarding = await _storage.read(key: _kSeenOnboarding);
+
       if (access != null && access.isNotEmpty) {
         _accessToken = access;
         _refreshToken = refresh;
         _isAuthenticated = true;
       }
+      
+      _seenOnboarding = onboarding == 'true';
     } catch (_) {
       // Storage read failure — treat as logged-out
     } finally {
       _isInitializing = false;
       notifyListeners();
     }
+  }
+
+  /// Mark onboarding as completed and persist to storage.
+  Future<void> completeOnboarding() async {
+    _seenOnboarding = true;
+    await _storage.write(key: _kSeenOnboarding, value: 'true');
+    notifyListeners();
   }
 
   /// Called after a successful login or register response from the API.

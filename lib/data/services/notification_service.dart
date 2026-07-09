@@ -15,7 +15,7 @@ class NotificationService {
   }
 
   Future<int> getUnreadCount() async {
-    final list = await listNotifications();
-    return list.where((n) => n.unread).length;
+    final response = await _api.dio.get('notifications/unread-count');
+    return (response.data['data'] as num).toInt();
   }
 }

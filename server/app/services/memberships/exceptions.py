@@ -41,3 +41,15 @@ class MembershipAlreadyCancelledError(ConflictError):
 
 class PaymentRequiredForPaidPlanError(PaymentError):
     default_message = "A valid payment is required to subscribe to a paid plan."
+
+
+class MembershipUpgradeNotAllowedError(BusinessRuleError):
+    default_message = "The current plan does not allow upgrading to the requested plan."
+
+
+class MembershipDowngradeNotAllowedError(BusinessRuleError):
+    default_message = "The current plan does not allow downgrading to the requested plan."
+
+
+class MembershipNotEligibleForChangeError(BusinessRuleError):
+    default_message = "Only active or grace-period memberships can be upgraded, downgraded, or renewed."

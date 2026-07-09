@@ -493,8 +493,14 @@ class Guest {
   final String? phone;
   final String? email;
   String rsvpStatus;
-  final String? relation;
+  // Computed display status from the backend: mirrors rsvpStatus once the
+  // guest has responded; otherwise 'pending' (never opened) or 'ignored'
+  // (opened the RSVP link but didn't respond yet).
+  final String displayStatus;
+  final String? groupTag;
   final String? notes;
+  final String? rsvpToken;
+  final DateTime? invitationOpenedAt;
   // count is a UI-only field used in plan flow to specify party size.
   // Backend has no group_size; each guest record is one person.
   int count;
@@ -505,8 +511,11 @@ class Guest {
     this.phone,
     this.email,
     required this.rsvpStatus,
-    this.relation,
+    this.displayStatus = 'pending',
+    this.groupTag,
     this.notes,
+    this.rsvpToken,
+    this.invitationOpenedAt,
     this.count = 1,
   });
 
@@ -517,8 +526,13 @@ class Guest {
       phone: json['phone'] as String?,
       email: json['email'] as String?,
       rsvpStatus: json['rsvp_status'] as String? ?? 'pending',
-      relation: json['relation'] as String?,
+      displayStatus: json['display_status'] as String? ?? json['rsvp_status'] as String? ?? 'pending',
+      groupTag: json['group_tag'] as String?,
       notes: json['notes'] as String?,
+      rsvpToken: json['rsvp_token'] as String?,
+      invitationOpenedAt: json['invitation_opened_at'] != null
+          ? DateTime.tryParse(json['invitation_opened_at'] as String)
+          : null,
     );
   }
 }

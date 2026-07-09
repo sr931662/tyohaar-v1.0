@@ -10,6 +10,7 @@ import '../data/services/payment_service.dart';
 import '../data/services/wallet_service.dart';
 import '../widgets/common.dart';
 import '../widgets/ty_button.dart';
+import '../widgets/tutorial/tutorial_overlay.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -27,6 +28,7 @@ class _WalletScreenState extends State<WalletScreen> {
   bool _isLoading = true;
   bool _isTopupInFlight = false;
   String? _error;
+  final GlobalKey _addMoneyKey = GlobalKey();
 
   @override
   void initState() {
@@ -127,6 +129,16 @@ class _WalletScreenState extends State<WalletScreen> {
           _transactions = results[1] as List<WalletTransaction>;
           _isLoading = false;
         });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          TutorialOverlay.show(context, screenKey: 'wallet', steps: [
+            TutorialStep(
+              targetKey: _addMoneyKey,
+              title: 'Top up your wallet',
+              description: 'Add money here and use it for instant checkout on any booking.',
+            ),
+          ]);
+        });
       }
     } catch (e) {
       if (mounted) setState(() { _error = 'Could not load wallet data.'; _isLoading = false; });
@@ -202,7 +214,7 @@ class _WalletScreenState extends State<WalletScreen> {
               Row(
                 children: [
                   _actionButton(context, Icons.add_circle_outline, 'Add Money',
-                      onTap: _isTopupInFlight ? null : _startTopup),
+                      onTap: _isTopupInFlight ? null : _startTopup, anchorKey: _addMoneyKey),
                   const SizedBox(width: 12),
                   _actionButton(context, Icons.history, 'History'),
                   const SizedBox(width: 12),
@@ -228,12 +240,13 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _actionButton(BuildContext context, IconData icon, String label, {VoidCallback? onTap}) {
+  Widget _actionButton(BuildContext context, IconData icon, String label, {VoidCallback? onTap, Key? anchorKey}) {
     final ty = context.ty;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
+          key: anchorKey,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
             color: ty.surface,

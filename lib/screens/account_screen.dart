@@ -11,6 +11,7 @@ import '../data/services/user_service.dart';
 import '../data/services/auth_service.dart';
 import '../widgets/common.dart';
 import '../widgets/ty_button.dart';
+import '../widgets/tutorial/tutorial_overlay.dart';
 
 import 'my_bookings_screen.dart';
 import 'refer_earn_screen.dart';
@@ -34,11 +35,22 @@ class AccountScreen extends StatefulWidget {
 class _AccountScreenState extends State<AccountScreen> {
   User? _user;
   bool _loading = true;
+  final GlobalKey _quickActionsKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _loadUser();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      TutorialOverlay.show(context, screenKey: 'account', steps: [
+        TutorialStep(
+          targetKey: _quickActionsKey,
+          title: 'Everything about you, in one place',
+          description: 'Jump to your bookings, referrals, or help from here — and manage your profile and membership below.',
+        ),
+      ]);
+    });
   }
 
   Future<void> _loadUser() async {
@@ -145,7 +157,7 @@ class _AccountScreenState extends State<AccountScreen> {
       return Row(
         children: [
           Container(
-            width: 64, height: 64,
+            width: 80, height: 80,
             decoration: BoxDecoration(color: ty.line, shape: BoxShape.circle),
           ),
           const SizedBox(width: 16),
@@ -172,20 +184,27 @@ class _AccountScreenState extends State<AccountScreen> {
     return Row(
       children: [
         Container(
-          width: 64,
-          height: 64,
+          width: 80,
+          height: 80,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle),
           child: photoUrl != null && photoUrl.isNotEmpty
               ? CachedNetworkImage(
                   imageUrl: photoUrl,
                   fit: BoxFit.cover,
+                  placeholder: (_, __) => Center(
+                    child: Text(initial,
+                        style: TextStyle(
+                            color: ty.onPrimary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 30)),
+                  ),
                   errorWidget: (_, __, ___) => Center(
                     child: Text(initial,
                         style: TextStyle(
                             color: ty.onPrimary,
                             fontWeight: FontWeight.w800,
-                            fontSize: 26)),
+                            fontSize: 30)),
                   ),
                 )
               : Center(
@@ -193,7 +212,7 @@ class _AccountScreenState extends State<AccountScreen> {
                       style: TextStyle(
                           color: ty.onPrimary,
                           fontWeight: FontWeight.w800,
-                          fontSize: 26)),
+                          fontSize: 30)),
                 ),
         ),
         const SizedBox(width: 16),
@@ -211,6 +230,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Widget _buildQuickActions(BuildContext context) {
     return Row(
+      key: _quickActionsKey,
       children: [
         _quickAction(context, Icons.calendar_today_outlined, 'My Bookings',
             () => _push(context, const MyBookingsScreen())),

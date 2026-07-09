@@ -59,6 +59,21 @@ class UserMembershipRepository(BaseRepository[UserMembership]):
             UserMembership.membership_status == MembershipStatus.ACTIVE,
         )
 
+    async def get_active_or_grace_for_user(self, user_id: uuid.UUID) -> UserMembership | None:
+        """
+        Return the user's ACTIVE or GRACE_PERIOD membership, if any.
+
+        Used by callers that must self-heal a membership whose expires_at has
+        silently passed but whose row is still flagged ACTIVE (no cron exists
+        to sweep these) — the caller runs the lifecycle resolver on the result.
+        """
+        return await self.find_one(
+            UserMembership.user_id == user_id,
+            UserMembership.membership_status.in_(
+                [MembershipStatus.ACTIVE, MembershipStatus.GRACE_PERIOD]
+            ),
+        )
+
     async def find_by_plan(
         self,
         plan_id: uuid.UUID,

@@ -46,6 +46,7 @@ from app.services.payments.exceptions import (
     PaymentAlreadyFailedError,
 )
 from app.services.payments.helpers import (
+    apply_membership_discount,
     calculate_coupon_discount,
     calculate_gst,
     calculate_platform_fee,
@@ -155,6 +156,46 @@ def _rupees_to_paise(amount: Decimal) -> int:
     return int((amount * 100).to_integral_value())
 
 
+async def _notify_payment_outcome(
+    payer_id: uuid.UUID,
+    is_success: bool,
+    payment_number: str,
+    amount: Decimal,
+) -> None:
+    """
+    Fire an in-app notification on payment success/failure. Since notifications
+    are fetched from the server on every device signed into the same account,
+    this is what makes "the plan shows up on all my devices" work — no
+    device-specific push wiring needed for that guarantee.
+    """
+    from app.models.enums import NotificationChannel, NotificationType
+    from app.schemas.notifications.create import NotificationCreate
+    from app.services.notifications.service import NotificationService
+
+    try:
+        if is_success:
+            data = NotificationCreate(
+                user_id=payer_id,
+                notification_type=NotificationType.PAYMENT_RECEIVED,
+                channel=NotificationChannel.IN_APP,
+                title="Payment received",
+                body=f"Your payment of ₹{amount} for {payment_number} was successful. Your plan is now active.",
+                reference_type="payment",
+            )
+        else:
+            data = NotificationCreate(
+                user_id=payer_id,
+                notification_type=NotificationType.PAYMENT_FAILED,
+                channel=NotificationChannel.IN_APP,
+                title="Payment failed",
+                body=f"Your payment of ₹{amount} for {payment_number} could not be completed. Please try again.",
+                reference_type="payment",
+            )
+        await NotificationService().send_notification(user_id=payer_id, data=data)
+    except Exception:
+        logger.exception("Failed to send payment outcome notification for payer=%s", payer_id)
+
+
 class PaymentService(BaseService):
     def __init__(self, session_factory: Callable[[], AsyncSession] = AsyncSessionLocal) -> None:
         super().__init__(session_factory)
@@ -172,8 +213,12 @@ class PaymentService(BaseService):
 
         1. Validate amount, gateway, booking ownership.
         2. Calculate platform fee + GST.
-        3. Create Payment (PENDING) + PaymentAttempt + Transaction ledger entry.
-        4. Create the real order with the gateway (after commit) and persist
+        3. Apply the customer's active membership discount, if any, and
+           recompute final_amount server-side (never trust the client's
+           final_amount — it's only used pre-membership for schema
+           self-validation on PaymentCreate).
+        4. Create Payment (PENDING) + PaymentAttempt + Transaction ledger entry.
+        5. Create the real order with the gateway (after commit) and persist
            its gateway_order_id.
         """
         validate_payment_amount(data.subtotal)
@@ -184,6 +229,7 @@ class PaymentService(BaseService):
 
         platform_fee = calculate_platform_fee(data.subtotal)
         gst = calculate_gst(platform_fee)
+        tax_amount = data.tax_amount + gst
         payment_number = generate_payment_reference()
 
         payment_obj: object = None
@@ -195,15 +241,35 @@ class PaymentService(BaseService):
             if booking.customer_id != customer_id:
                 raise BusinessRuleError("Booking does not belong to this customer.")
 
+            discount_amount = data.discount_amount
+            membership = await uow.memberships.memberships.get_active_for_user(customer_id)
+            if membership is not None:
+                plan = await uow.memberships.plans.get_by_id(membership.plan_id)
+                if plan is not None and plan.discount_percentage > 0:
+                    discount_amount += apply_membership_discount(data.subtotal, plan.discount_percentage)
+
+            # Referral milestone discount — first usable grant whose min_plan_price
+            # is met, consumed (decremented) on use, oldest grant first.
+            usable_grants = await uow.referrals.milestone_grants.find_usable_for_user(customer_id)
+            for grant in usable_grants:
+                if data.subtotal >= grant.min_plan_price:
+                    discount_amount += apply_membership_discount(data.subtotal, grant.discount_percentage)
+                    await uow.referrals.milestone_grants.update(grant, {
+                        "plans_remaining": grant.plans_remaining - 1,
+                    })
+                    break
+
+            final_amount = data.subtotal - discount_amount + tax_amount + platform_fee
+
             payment = await uow.payments.payments.create({
                 "booking_id": booking_id,
                 "payer_id": customer_id,
                 "currency": data.currency,
                 "subtotal": data.subtotal,
-                "discount_amount": data.discount_amount,
-                "tax_amount": data.tax_amount + gst,
+                "discount_amount": discount_amount,
+                "tax_amount": tax_amount,
                 "platform_fee": platform_fee,
-                "final_amount": data.final_amount,
+                "final_amount": final_amount,
                 "payment_status": PaymentStatus.PENDING,
                 "payment_method": data.payment_method,
                 "gateway": data.gateway or PaymentGateway.RAZORPAY,
@@ -432,106 +498,136 @@ class PaymentService(BaseService):
 
         now = datetime.now(tz=timezone.utc)
         topup_credit: tuple[uuid.UUID, Decimal] | None = None
+        cashback_credit: tuple[uuid.UUID, Decimal] | None = None
+        payment_outcome: tuple[uuid.UUID, bool, str, Decimal] | None = None
+        referral_trigger: tuple[uuid.UUID, Decimal, uuid.UUID] | None = None
 
         async with self._uow() as uow:
+            already_seen = False
             if event_id:
                 existing_event = await uow.payments.webhooks.find_by_event_id(event_id, gateway=gateway)
-                if existing_event is not None:
-                    logger.info("Duplicate webhook event_id=%s for gateway=%s; skipping.", event_id, gateway)
-                    return
+                already_seen = existing_event is not None
 
             payment = None
-            if gateway_order_id:
+            if not already_seen and gateway_order_id:
                 payment = await uow.payments.payments.find_by_gateway_order(gateway_order_id)
 
-            await uow.payments.webhooks.create({
-                "event_id": event_id or f"{gateway}_{now.timestamp()}",
-                "gateway": gateway,
-                "event_type": event,
-                "payment_id": payment.id if payment else None,
-                "is_signature_verified": True,
-                "raw_payload": body,
-                "is_processed": payment is not None or is_wallet_topup,
-                "received_at": now,
-                "processed_at": now if (payment is not None or is_wallet_topup) else None,
-            })
-
-            if payment is None:
-                # Orders opened via initiate_wallet_topup() have no Payment row
-                # (Payment.booking_id is mandatory) — credit the wallet directly,
-                # using the gateway order's notes for routing instead.
-                if is_success and is_wallet_topup:
-                    topup_credit = (
-                        uuid.UUID(notes["customer_id"]),
-                        Decimal(str(entity.get("amount", 0))) / Decimal("100"),
-                    )
-                else:
-                    logger.warning("Webhook for unknown gateway_order_id=%s", gateway_order_id)
-                return
-
-            # Idempotency guard — a payment only transitions out of PENDING once
-            if payment.payment_status in (PaymentStatus.COMPLETED, PaymentStatus.FAILED):
-                return
-
-            if is_success:
-                await uow.payments.payments.update(payment, {
-                    "payment_status": PaymentStatus.COMPLETED,
-                    "gateway_payment_id": gateway_payment_id,
-                    "captured_at": now,
-                })
-
-                await uow.payments.transactions.create({
-                    "payment_id": payment.id,
-                    "transaction_type": TransactionType.PAYMENT,
-                    "amount": payment.final_amount,
-                    "currency": payment.currency,
-                    "gateway_transaction_id": gateway_payment_id,
-                    "is_success": True,
-                    "initiated_at": now,
-                    "completed_at": now,
-                })
-
-                await uow.payments.ledger.create({
-                    "transaction_number": _generate_txn_number(),
-                    "transaction_type": TransactionType.PAYMENT,
-                    "direction": TransactionDirection.CREDIT,
-                    "amount": payment.final_amount,
-                    "currency": payment.currency,
-                    "payer_type": PartyType.CUSTOMER,
-                    "payer_id": payment.payer_id,
-                    "payee_type": PartyType.PLATFORM,
-                    "payee_id": None,
-                    "booking_id": payment.booking_id,
-                    "payment_id": payment.id,
-                    "description": f"Payment captured via {gateway}",
-                    "transacted_at": now,
-                })
-
-                booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
-                if booking is not None:
-                    await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.COMPLETED})
+            if already_seen:
+                logger.info("Duplicate webhook event_id=%s for gateway=%s; skipping.", event_id, gateway)
             else:
-                await uow.payments.payments.update(payment, {
-                    "payment_status": PaymentStatus.FAILED,
-                    "failed_at": now,
+                await uow.payments.webhooks.create({
+                    "event_id": event_id or f"{gateway}_{now.timestamp()}",
+                    "gateway": gateway,
+                    "event_type": event,
+                    "payment_id": payment.id if payment else None,
+                    "is_signature_verified": True,
+                    "raw_payload": body,
+                    "is_processed": payment is not None or is_wallet_topup,
+                    "received_at": now,
+                    "processed_at": now if (payment is not None or is_wallet_topup) else None,
                 })
 
-                booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
-                if booking is not None:
-                    await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.FAILED})
+                if payment is None:
+                    # Orders opened via initiate_wallet_topup() have no Payment
+                    # row (Payment.booking_id is mandatory) — credit the wallet
+                    # directly, routed by the gateway order's notes.
+                    if is_success and is_wallet_topup:
+                        topup_credit = (
+                            uuid.UUID(notes["customer_id"]),
+                            Decimal(str(entity.get("amount", 0))) / Decimal("100"),
+                        )
+                    else:
+                        logger.warning("Webhook for unknown gateway_order_id=%s", gateway_order_id)
+                # Idempotency guard — a payment only transitions out of PENDING once
+                elif payment.payment_status in (PaymentStatus.COMPLETED, PaymentStatus.FAILED):
+                    pass
+                elif is_success:
+                    await uow.payments.payments.update(payment, {
+                        "payment_status": PaymentStatus.COMPLETED,
+                        "gateway_payment_id": gateway_payment_id,
+                        "captured_at": now,
+                    })
 
-                # Increment attempt counter
-                attempts = await uow.payments.attempts.find_by_payment(payment.id)
-                if attempts:
-                    latest = attempts[-1]
-                    await uow.payments.attempts.update(latest, {
-                        "attempt_status": PaymentAttemptStatus.FAILED,
+                    await uow.payments.transactions.create({
+                        "payment_id": payment.id,
+                        "transaction_type": TransactionType.PAYMENT,
+                        "amount": payment.final_amount,
+                        "currency": payment.currency,
+                        "gateway_transaction_id": gateway_payment_id,
+                        "is_success": True,
+                        "initiated_at": now,
                         "completed_at": now,
                     })
 
+                    await uow.payments.ledger.create({
+                        "transaction_number": _generate_txn_number(),
+                        "transaction_type": TransactionType.PAYMENT,
+                        "direction": TransactionDirection.CREDIT,
+                        "amount": payment.final_amount,
+                        "currency": payment.currency,
+                        "payer_type": PartyType.CUSTOMER,
+                        "payer_id": payment.payer_id,
+                        "payee_type": PartyType.PLATFORM,
+                        "payee_id": None,
+                        "booking_id": payment.booking_id,
+                        "payment_id": payment.id,
+                        "description": f"Payment captured via {gateway}",
+                        "transacted_at": now,
+                    })
+
+                    booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
+                    if booking is not None:
+                        await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.COMPLETED})
+
+                    membership = await uow.memberships.memberships.get_active_for_user(payment.payer_id)
+                    if membership is not None:
+                        plan = await uow.memberships.plans.get_by_id(membership.plan_id)
+                        if plan is not None and plan.cashback_percentage > 0:
+                            cashback_amount = apply_membership_discount(payment.subtotal, plan.cashback_percentage)
+                            if cashback_amount > 0:
+                                cashback_credit = (payment.payer_id, cashback_amount)
+
+                    payment_outcome = (payment.payer_id, True, payment.payment_number, payment.final_amount)
+                    referral_trigger = (payment.payer_id, payment.final_amount, payment.booking_id)
+                else:
+                    await uow.payments.payments.update(payment, {
+                        "payment_status": PaymentStatus.FAILED,
+                        "failed_at": now,
+                    })
+
+                    booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
+                    if booking is not None:
+                        await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.FAILED})
+
+                    # Increment attempt counter
+                    attempts = await uow.payments.attempts.find_by_payment(payment.id)
+                    if attempts:
+                        latest = attempts[-1]
+                        await uow.payments.attempts.update(latest, {
+                            "attempt_status": PaymentAttemptStatus.FAILED,
+                            "completed_at": now,
+                        })
+
+                    payment_outcome = (payment.payer_id, False, payment.payment_number, payment.final_amount)
+
+        if payment_outcome is not None:
+            payer_id, was_success, pay_number, pay_amount = payment_outcome
+            await _notify_payment_outcome(payer_id, was_success, pay_number, pay_amount)
+
+        if referral_trigger is not None:
+            referee_id, booking_amount, booking_id = referral_trigger
+            try:
+                from app.services.referrals.service import ReferralService
+                await ReferralService().trigger_referral_rewards(
+                    referee_id=referee_id, booking_amount=booking_amount, booking_id=booking_id
+                )
+            except Exception:
+                logger.exception("Referral reward trigger failed for referee=%s booking=%s", referee_id, booking_id)
+
+        from app.services.wallets.service import WalletService
+
         if topup_credit is not None:
             customer_id, amount = topup_credit
-            from app.services.wallets.service import WalletService
             try:
                 await WalletService(self._session_factory).credit_wallet(
                     user_id=customer_id,
@@ -541,6 +637,18 @@ class PaymentService(BaseService):
                 )
             except Exception:
                 logger.exception("Wallet credit failed for razorpay top-up, customer=%s amount=%s", customer_id, amount)
+
+        if cashback_credit is not None:
+            customer_id, amount = cashback_credit
+            try:
+                await WalletService(self._session_factory).credit_wallet(
+                    user_id=customer_id,
+                    amount=amount,
+                    description="Membership cashback",
+                    reference_type="payment",
+                )
+            except Exception:
+                logger.exception("Cashback credit failed for customer=%s amount=%s", customer_id, amount)
 
     async def verify_payment(
         self,
@@ -554,6 +662,8 @@ class PaymentService(BaseService):
         Client-side redirect verification (Razorpay checkout flow).
         Verifies the HMAC and marks the payment as COMPLETED.
         """
+        cashback_credit: tuple[uuid.UUID, Decimal] | None = None
+
         async with self._uow() as uow:
             payment = await validate_payment_exists(payment_id, uow)
 
@@ -609,7 +719,43 @@ class PaymentService(BaseService):
             if booking is not None:
                 await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.COMPLETED})
 
+            membership = await uow.memberships.memberships.get_active_for_user(payment.payer_id)
+            if membership is not None:
+                plan = await uow.memberships.plans.get_by_id(membership.plan_id)
+                if plan is not None and plan.cashback_percentage > 0:
+                    cashback_amount = apply_membership_discount(payment.subtotal, plan.cashback_percentage)
+                    if cashback_amount > 0:
+                        cashback_credit = (payment.payer_id, cashback_amount)
+
+            payer_id = payment.payer_id
+            payment_number = payment.payment_number
+            final_amount = payment.final_amount
+            booking_id = payment.booking_id
+
             result = PaymentResponse.model_validate(payment)
+
+        await _notify_payment_outcome(payer_id, True, payment_number, final_amount)
+
+        try:
+            from app.services.referrals.service import ReferralService
+            await ReferralService().trigger_referral_rewards(
+                referee_id=payer_id, booking_amount=final_amount, booking_id=booking_id
+            )
+        except Exception:
+            logger.exception("Referral reward trigger failed for referee=%s booking=%s", payer_id, booking_id)
+
+        if cashback_credit is not None:
+            customer_id, amount = cashback_credit
+            from app.services.wallets.service import WalletService
+            try:
+                await WalletService(self._session_factory).credit_wallet(
+                    user_id=customer_id,
+                    amount=amount,
+                    description="Membership cashback",
+                    reference_type="payment",
+                )
+            except Exception:
+                logger.exception("Cashback credit failed for customer=%s amount=%s", customer_id, amount)
 
         return result
 

@@ -11,7 +11,7 @@ class Emblem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.ty.tint(tint);
+    final c = tint == 'white' ? Colors.white : context.ty.tint(tint);
     return Container(
       width: size,
       height: size,

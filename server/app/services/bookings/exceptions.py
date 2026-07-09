@@ -51,6 +51,13 @@ class BookingItemLimitError(BusinessRuleError):
     default_message = "Booking has reached the maximum number of items."
 
 
+class CelebrationRequiredError(BusinessRuleError):
+    default_message = (
+        "Could not determine which celebration this booking belongs to. "
+        "Pass celebration_id explicitly, or occasion_id so one can be created."
+    )
+
+
 class AssignmentNotFoundError(NotFoundError):
     def __init__(self, assignment_id: str | None = None) -> None:
         super().__init__("BookingAssignment", assignment_id)

@@ -145,6 +145,9 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         comment="Service delivery address. May differ from celebration venue.",
     )
 
+    recipient_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    recipient_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     # ── Scheduling ────────────────────────────────────────────────────────────
 
     scheduled_date: Mapped[date] = mapped_column(

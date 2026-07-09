@@ -6,6 +6,7 @@ import '../theme/typography.dart';
 import '../data/services/common_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import 'feedback_screen.dart';
 import 'raise_ticket_screen.dart';
 
 class HelpScreen extends StatefulWidget {
@@ -177,7 +178,9 @@ class _HelpScreenState extends State<HelpScreen> {
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RaiseTicketScreen()));
                 }),
                 const SizedBox(height: 12),
-                TyButton('Chat with us', kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.chat_bubble_outline_rounded, onTap: () {}),
+                TyButton('Share Feedback', kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.rate_review_outlined, onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
+                }),
               ],
             ),
           ),

@@ -6,11 +6,40 @@ import '../widgets/common.dart';
 import 'root_nav.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
-  const BookingConfirmationScreen({super.key});
+  final String bookingId;
+  final String packageName;
+  final String date;
+
+  const BookingConfirmationScreen({
+    super.key,
+    required this.bookingId,
+    required this.packageName,
+    required this.date,
+  });
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    
+    // Simulate mobile status bar notification
+    Future.delayed(const Duration(seconds: 1), () {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.notifications_active, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Tyohaar: Celebration Confirmed for $packageName on $date!')),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: ty.saffron,
+          ),
+        );
+      }
+    });
+
     return Scaffold(
       backgroundColor: ty.paper,
       body: SafeArea(
@@ -33,7 +62,7 @@ class BookingConfirmationScreen extends StatelessWidget {
               Text('Celebration Confirmed!', style: TyType.display(32, color: ty.ink), textAlign: TextAlign.center),
               const SizedBox(height: 12),
               Text(
-                'We’ve received your booking. Our team will start prepping for your special day right away.',
+                'We’ve received your booking for $packageName. Our team will start prepping for your special day right away.',
                 style: TyType.sans(15, color: ty.ink2, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -47,14 +76,19 @@ class BookingConfirmationScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    _row(context, 'Occasion', 'Birthday'),
+                    _row(context, 'Booking ID', '#${bookingId.substring(0, 8).toUpperCase()}'),
                     const Divider(height: 32),
-                    _row(context, 'Date', '14 June, 2026'),
+                    _row(context, 'Delivery Date', date),
                     const Divider(height: 32),
-                    _row(context, 'Package', 'Premium Package'),
+                    _row(context, 'Package', packageName),
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+              TyButton('Download Invoice', kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.description_outlined, onTap: () {
+                // TODO: Implement invoice download
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Downloading invoice...')));
+              }),
               const Spacer(),
               TyButton('Go to Event Hub', full: true, onTap: () {
                 Navigator.of(context).pushAndRemoveUntil(
@@ -62,8 +96,6 @@ class BookingConfirmationScreen extends StatelessWidget {
                   (route) => false,
                 );
               }),
-              const SizedBox(height: 16),
-              TyButton('Share with Family', kind: TyButtonKind.ghost, full: true, onTap: () {}),
               const SizedBox(height: 16),
             ],
           ),

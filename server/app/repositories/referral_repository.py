@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.enums import ReferralStatus
 from app.models.referrals.referral import Referral, ReferralChannel
+from app.models.referrals.referral_milestone import ReferralMilestoneGrant, ReferralMilestoneRule
 from app.models.referrals.referral_reward import ReferralReward, ReferralRewardStatus, ReferralRewardTrigger
 from app.repositories.base import BaseRepository
 
@@ -323,6 +324,49 @@ class ReferralRewardRepository(BaseRepository[ReferralReward]):
         )
 
 
+class ReferralMilestoneRuleRepository(BaseRepository[ReferralMilestoneRule]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, ReferralMilestoneRule)
+
+    async def find_active(self) -> ReferralMilestoneRule | None:
+        return await self.find_one(ReferralMilestoneRule.is_active == True)  # noqa: E712
+
+    async def find_all_ordered(self) -> list[ReferralMilestoneRule]:
+        return await self.find_many(order_by=ReferralMilestoneRule.created_at.desc())
+
+    async def deactivate_all(self) -> None:
+        from sqlalchemy import update
+        await self._session.execute(
+            update(ReferralMilestoneRule).values(is_active=False)
+        )
+
+
+class ReferralMilestoneGrantRepository(BaseRepository[ReferralMilestoneGrant]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, ReferralMilestoneGrant)
+
+    async def find_by_user(self, user_id: uuid.UUID) -> list[ReferralMilestoneGrant]:
+        return await self.find_many(
+            ReferralMilestoneGrant.user_id == user_id,
+            order_by=ReferralMilestoneGrant.created_at.desc(),
+        )
+
+    async def find_usable_for_user(self, user_id: uuid.UUID) -> list[ReferralMilestoneGrant]:
+        """Grants with plans_remaining > 0, oldest first (use-it-or-lose-it order)."""
+        return await self.find_many(
+            ReferralMilestoneGrant.user_id == user_id,
+            ReferralMilestoneGrant.plans_remaining > 0,
+            order_by=ReferralMilestoneGrant.created_at.asc(),
+        )
+
+    async def find_by_grant_point(self, user_id: uuid.UUID, referral_count: int) -> ReferralMilestoneGrant | None:
+        """Idempotency guard — has this exact milestone already been granted?"""
+        return await self.find_one(
+            ReferralMilestoneGrant.user_id == user_id,
+            ReferralMilestoneGrant.referral_count_at_grant == referral_count,
+        )
+
+
 # ── Aggregate ─────────────────────────────────────────────────────────────────
 
 
@@ -333,3 +377,5 @@ class ReferralRepositoryAggregate:
         self._session = session
         self.referrals = ReferralRepository(session)
         self.rewards = ReferralRewardRepository(session)
+        self.milestone_rules = ReferralMilestoneRuleRepository(session)
+        self.milestone_grants = ReferralMilestoneGrantRepository(session)

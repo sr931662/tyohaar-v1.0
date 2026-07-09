@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/auth_manager.dart';
@@ -12,6 +13,7 @@ import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
+import '../widgets/tutorial/tutorial_overlay.dart';
 import 'event_hub_screen.dart';
 import 'budget_screen.dart';
 import 'guests_screen.dart';
@@ -38,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<CelebrationChecklistItem> _checklist = [];
   bool _isLoading = true;
   String? _error;
+  final GlobalKey _quickActionsKey = GlobalKey();
 
   @override
   void initState() {
@@ -73,6 +76,16 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         _isLoading = false;
         _error = null;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        TutorialOverlay.show(context, screenKey: 'home', steps: [
+          TutorialStep(
+            targetKey: _quickActionsKey,
+            title: 'Everything for your event',
+            description: 'Manage guests, track your budget, and view your plans right from here.',
+          ),
+        ]);
       });
     } catch (e) {
       if (mounted) setState(() { _error = 'Could not load home data.'; _isLoading = false; });
@@ -137,7 +150,14 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_bestSellers.isNotEmpty) ...[
+                SectionHeader('Best Selling Packages'),
+                _packageRail(context, _bestSellers),
+                const SizedBox(height: 26),
+              ],
+
               Row(
+                key: _quickActionsKey,
                 children: [
                   _quickAction(context, Icons.group_outlined, 'Guests', ty.saffron,
                       () => _push(context, const GuestsScreen(), authAction: 'manage guests')),
@@ -170,54 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 26),
 
-              GestureDetector(
-                onTap: () => _push(context, const PlanFlowScreen(), authAction: 'start a celebration'),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: ty.saffronSoft.withOpacity(ty.isDark ? 0.08 : 0.6),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: ty.saffron.withOpacity(0.15)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: ty.saffron.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Icon(Icons.auto_awesome, color: ty.saffron, size: 24),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Start a celebration',
-                                style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
-                            const SizedBox(height: 2),
-                            Text('We build the plan, you enjoy the moment',
-                                style: TyType.sans(12.5, color: ty.ink2)),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.chevron_right_rounded, color: ty.ink3),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 26),
-
               _membershipBanner(context),
               const SizedBox(height: 26),
-
-              if (_bestSellers.isNotEmpty) ...[
-                SectionHeader('Best Selling Packages'),
-                _packageRail(context, _bestSellers),
-                const SizedBox(height: 26),
-              ],
 
               if (_occasions.any((o) => o.category == 'major_festival')) ...[
                 SectionHeader('Popular Festivals'),
@@ -266,6 +240,28 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
+    String? statusLabel;
+    Color statusColor = Colors.orange;
+    if (dt != null) {
+      final today = DateTime.now();
+      final daysLeft = DateTime(dt.year, dt.month, dt.day)
+          .difference(DateTime(today.year, today.month, today.day))
+          .inDays;
+      if (daysLeft < 0) {
+        statusLabel = 'Completed';
+        statusColor = Colors.grey;
+      } else if (daysLeft == 0) {
+        statusLabel = 'Today!';
+        statusColor = ty.rose;
+      } else if (daysLeft == 1) {
+        statusLabel = 'Tomorrow';
+        statusColor = Colors.orange;
+      } else {
+        statusLabel = '$daysLeft days left';
+        statusColor = Colors.orange;
+      }
+    }
+
     return GestureDetector(
       onTap: () => _push(context, const EventHubScreen(), authAction: 'view your event hub'),
       child: SizedBox(
@@ -279,10 +275,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   imageUrl: heroUrl ?? '',
                   fit: BoxFit.cover,
                   placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: 440, arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius))),
-                  errorWidget: (context, url, error) => Image.asset(
-                    'assets/images/Landing page image.png',
-                    fit: BoxFit.cover,
-                  ),
+                  errorWidget: (context, url, error) {
+                    final local = _activeCelebration?.occasionName != null 
+                        ? OccasionAssets.getRelatedBackground(_activeCelebration!.occasionName!) 
+                        : null;
+                    return Image.asset(
+                      local ?? 'assets/images/Landing page image.png',
+                      fit: BoxFit.cover,
+                    );
+                  },
                 ),
               ),
             ),
@@ -336,8 +337,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(children: [
                     TyPill(category),
                     const SizedBox(width: 8),
-                    if (date.isNotEmpty)
-                      const TyPill('Upcoming', background: Colors.orange, foreground: Colors.white),
+                    if (statusLabel != null)
+                      TyPill(statusLabel, background: statusColor, foreground: Colors.white),
                   ]),
                   const SizedBox(height: 14),
                   Text(title, style: TyType.display(34, color: Colors.white)),
@@ -453,7 +454,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   Text(p.name,
                       style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
-                  Text(p.slug ?? p.name, style: TyType.sans(12, color: ty.ink2)),
                 ],
               ),
             ),

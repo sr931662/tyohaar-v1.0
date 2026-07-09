@@ -12,6 +12,7 @@ from app.schemas.occasions import (
     CelebrationChecklistResponse,
     CelebrationGuestResponse,
     CelebrationResponse,
+    GuestRSVPPublicResponse,
     OccasionMoodResponse,
     OccasionResponse,
     OccasionTagResponse,
@@ -294,6 +295,47 @@ router.add_api_route(
     summary="Remove Guest",
     description="Remove a guest from the celebration's guest list.",
     operation_id="occasions_remove_guest",
+    tags=["Celebrations"],
+)
+
+# ── Public RSVP (no auth — reached via the guest's shared WhatsApp/email link) ─
+
+router.add_api_route(
+    "/public/rsvp/{token}/page",
+    ctrl.get_guest_rsvp_page,
+    methods=["GET"],
+    status_code=status.HTTP_200_OK,
+    summary="Guest RSVP Web Page (Public)",
+    description=(
+        "Self-contained mobile web page for guests without the app — the "
+        "WhatsApp/email invite link points here. No authentication required."
+    ),
+    operation_id="occasions_get_guest_rsvp_page",
+    tags=["Celebrations"],
+    include_in_schema=False,
+)
+
+router.add_api_route(
+    "/public/rsvp/{token}",
+    ctrl.get_guest_rsvp,
+    methods=["GET"],
+    response_model=SuccessResponse[GuestRSVPPublicResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get Guest RSVP (Public)",
+    description="Return the event details and current RSVP status for a guest's personal invite link. No authentication required.",
+    operation_id="occasions_get_guest_rsvp",
+    tags=["Celebrations"],
+)
+
+router.add_api_route(
+    "/public/rsvp/{token}",
+    ctrl.submit_guest_rsvp,
+    methods=["POST"],
+    response_model=SuccessResponse[GuestRSVPPublicResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Submit Guest RSVP (Public)",
+    description="Submit or update a guest's RSVP via their personal invite link. Allowed until the day before the event. No authentication required.",
+    operation_id="occasions_submit_guest_rsvp",
     tags=["Celebrations"],
 )
 

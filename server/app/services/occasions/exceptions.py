@@ -31,6 +31,11 @@ class GuestLimitExceededError(BusinessRuleError):
     )
 
 
+class GuestNotFoundError(NotFoundError):
+    def __init__(self, identifier: str | None = None) -> None:
+        super().__init__("Guest", identifier)
+
+
 class ChecklistLimitExceededError(BusinessRuleError):
     default_message = (
         "Checklist limit reached. A celebration may have at most 100 checklist items."

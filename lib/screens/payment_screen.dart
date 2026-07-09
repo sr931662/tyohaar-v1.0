@@ -12,12 +12,14 @@ class PaymentScreen extends StatefulWidget {
   final String bookingId;
   final double amount;
   final String packageName;
+  final String scheduledDate;
 
   const PaymentScreen({
     super.key,
     required this.bookingId,
     required this.amount,
     required this.packageName,
+    this.scheduledDate = 'Upcoming',
   });
 
   @override
@@ -89,7 +91,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
       );
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const BookingConfirmationScreen()),
+          MaterialPageRoute(
+            builder: (_) => BookingConfirmationScreen(
+              bookingId: widget.bookingId,
+              packageName: widget.packageName,
+              date: widget.scheduledDate,
+            ),
+          ),
           (_) => false,
         );
       }

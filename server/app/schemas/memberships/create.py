@@ -20,6 +20,11 @@ from app.schemas.base import BaseSchema, MoneyAmount, Percentage
 __all__ = [
     "MembershipPlanCreate",
     "UserMembershipCreate",
+    "SubscribeCreate",
+    "MembershipCancelRequest",
+    "MembershipRenewRequest",
+    "MembershipUpgradeRequest",
+    "MembershipDowngradeRequest",
 ]
 
 
@@ -139,19 +144,54 @@ class UserMembershipCreate(BaseSchema):
     Input schema for subscribing a user to a membership plan.
 
     Called by the membership checkout service after payment confirmation.
+    The subscribing user is always the authenticated caller (injected
+    server-side from the auth token), never accepted from the request body.
     started_at and expires_at are computed by the service from billing_cycle
     and plan.validity_days.
     """
 
-    user_id: uuid.UUID = Field(description="User being subscribed.")
     plan_id: uuid.UUID = Field(description="MembershipPlan UUID being purchased.")
     billing_cycle: MembershipBillingCycle = Field(
         description="Billing cadence selected at checkout.",
+    )
+    payment_id: uuid.UUID | None = Field(
+        default=None,
+        description="Completed payment UUID. Required unless the plan is free.",
     )
     auto_renew: bool = Field(
         default=True,
         description="Whether to auto-renew at the end of the billing period.",
     )
+
+
+class MembershipCancelRequest(BaseSchema):
+    """Optional free-text reason a customer gives when cancelling."""
+
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+class MembershipRenewRequest(BaseSchema):
+    """Payment reference required to renew a paid plan."""
+
+    payment_id: uuid.UUID | None = Field(default=None)
+
+
+class MembershipUpgradeRequest(BaseSchema):
+    """Input for upgrading to a higher membership tier."""
+
+    new_plan_id: uuid.UUID = Field(description="Target MembershipPlan UUID.")
+    payment_id: uuid.UUID | None = Field(
+        default=None,
+        description="Required when the target plan costs more than the current one.",
+    )
+    reason: str | None = Field(default=None, max_length=300)
+
+
+class MembershipDowngradeRequest(BaseSchema):
+    """Input for downgrading to a lower membership tier."""
+
+    new_plan_id: uuid.UUID = Field(description="Target MembershipPlan UUID.")
+    reason: str | None = Field(default=None, max_length=300)
 
 
 # Alias consumed by the memberships controller

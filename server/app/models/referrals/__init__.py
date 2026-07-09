@@ -12,11 +12,17 @@ from app.models.referrals.referral_reward import (
     ReferralRewardStatus,
     ReferralRewardTrigger,
 )
+from app.models.referrals.referral_milestone import (
+    ReferralMilestoneGrant,
+    ReferralMilestoneRule,
+)
 
 __all__ = [
     # Models
     "Referral",
     "ReferralReward",
+    "ReferralMilestoneRule",
+    "ReferralMilestoneGrant",
     # Local enums (move to enums.py in next enums update)
     "ReferralChannel",
     "ReferralRewardStatus",

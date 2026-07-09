@@ -25,6 +25,7 @@ from app.schemas.occasions.create import (
     CelebrationGuestCreate,
     CelebrationChecklistCreate,
     OccasionCreate,
+    GuestRSVPSubmit,
 )
 
 # ── update ────────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ from app.schemas.occasions.response import (
     CelebrationResponse,
     CelebrationGuestResponse,
     CelebrationChecklistResponse,
+    GuestRSVPPublicResponse,
 )
 
 # ── filters ───────────────────────────────────────────────────────────────────
@@ -77,6 +79,7 @@ __all__ = [
     "CelebrationGuestCreate",
     "CelebrationChecklistCreate",
     "OccasionCreate",
+    "GuestRSVPSubmit",
     # update
     "CelebrationUpdate",
     "CelebrationGuestUpdate",
@@ -89,6 +92,7 @@ __all__ = [
     "CelebrationResponse",
     "CelebrationGuestResponse",
     "CelebrationChecklistResponse",
+    "GuestRSVPPublicResponse",
     # filters
     "CelebrationFilters",
     "OccasionFilters",

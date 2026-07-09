@@ -26,6 +26,7 @@ __all__ = [
     "CelebrationGuestCreate",
     "CelebrationChecklistCreate",
     "OccasionCreate",
+    "GuestRSVPSubmit",
 ]
 
 
@@ -130,7 +131,6 @@ class CelebrationGuestCreate(BaseSchema):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    celebration_id: uuid.UUID = Field(description="FK to the parent Celebration")
     name: str = Field(min_length=1, max_length=200, description="Guest's full name")
     phone: str | None = Field(
         default=None,
@@ -146,10 +146,10 @@ class CelebrationGuestCreate(BaseSchema):
         default=RSVPStatus.PENDING,
         description="Guest's RSVP state",
     )
-    relation: str | None = Field(
+    group_tag: str | None = Field(
         default=None,
         max_length=100,
-        description="Guest's relationship to the host (e.g. 'Uncle', 'Colleague')",
+        description="Informal grouping label (e.g. 'Family', 'Colleagues', 'School Friends').",
     )
     notes: str | None = Field(
         default=None,
@@ -213,3 +213,22 @@ class OccasionCreate(BaseSchema):
         default=False,
         description="Whether this occasion is highlighted on the home screen",
     )
+
+
+class GuestRSVPSubmit(BaseSchema):
+    """
+    Payload a guest submits on the public (no-auth) RSVP page.
+
+    Only ATTENDING/MAYBE/DECLINED are valid guest-submitted responses —
+    PENDING/NO_RESPONSE are system states, never chosen by the guest.
+    """
+
+    rsvp_status: RSVPStatus = Field(description="Guest's response: attending, maybe, or declined.")
+    notes: str | None = Field(default=None, max_length=1000, description="Optional note from the guest (dietary needs, etc.)")
+
+    @field_validator("rsvp_status")
+    @classmethod
+    def validate_guest_choosable_status(cls, v: RSVPStatus) -> RSVPStatus:
+        if v not in (RSVPStatus.ATTENDING, RSVPStatus.MAYBE, RSVPStatus.DECLINED):
+            raise ValueError("rsvp_status must be one of: attending, maybe, declined")
+        return v

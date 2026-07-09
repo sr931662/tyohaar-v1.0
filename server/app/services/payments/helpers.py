@@ -71,6 +71,13 @@ def calculate_coupon_discount(
     return min(raw_discount, amount)
 
 
+def apply_membership_discount(subtotal: Decimal, discount_percentage: Decimal) -> Decimal:
+    """Return the monetary discount from an active membership's discount_percentage (0-100)."""
+    return (subtotal * discount_percentage / Decimal("100")).quantize(
+        Decimal("0.01"), rounding=ROUND_DOWN
+    )
+
+
 def verify_webhook_signature(
     payload: bytes,
     signature: str,

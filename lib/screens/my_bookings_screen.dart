@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
+import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
@@ -10,6 +11,7 @@ import '../data/services/booking_service.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
+import '../widgets/tutorial/tutorial_overlay.dart';
 import 'event_hub_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -24,6 +26,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   List<Booking> _bookings = [];
   bool _isLoading = true;
   String? _error;
+  final GlobalKey _bodyKey = GlobalKey();
 
   @override
   void initState() {
@@ -35,7 +38,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     setState(() { _isLoading = true; _error = null; });
     try {
       final bookings = await _bookingService.listMyBookings();
-      if (mounted) setState(() { _bookings = bookings; _isLoading = false; });
+      if (mounted) {
+        setState(() { _bookings = bookings; _isLoading = false; });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          TutorialOverlay.show(context, screenKey: 'my_bookings', steps: [
+            TutorialStep(
+              targetKey: _bodyKey,
+              title: 'All your bookings, in one place',
+              description: 'Upcoming and past bookings are listed here — tap any booking to see full details.',
+            ),
+          ]);
+        });
+      }
     } catch (e) {
       if (mounted) setState(() { _error = 'Could not load bookings.'; _isLoading = false; });
     }
@@ -55,9 +70,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
           ? _buildSkeleton(context)
           : _error != null
               ? _buildError(context)
-              : _bookings.isEmpty
-                  ? _buildEmptyState(context)
-                  : ListView(
+              : Container(
+                  key: _bodyKey,
+                  child: _bookings.isEmpty
+                      ? _buildEmptyState(context)
+                      : ListView(
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
               children: [
                 if (upcoming.isNotEmpty) ...[
@@ -73,6 +90,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 ],
               ],
             ),
+                ),
     );
   }
 
@@ -133,7 +151,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   imageUrl: b.packageCoverUrl ?? '',
                   fit: BoxFit.cover,
                   placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', arch: false),
-                  errorWidget: (context, url, error) => PhotoPlaceholder(tint: 'saffron', arch: false),
+                  errorWidget: (context, url, error) => OccasionAssets.getFallback(b.packageName ?? '', arch: false),
                 ),
               ),
             ),

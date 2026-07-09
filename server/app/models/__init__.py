@@ -6,6 +6,7 @@ import app.models.auth           # noqa: F401
 import app.models.bookings       # noqa: F401
 import app.models.budgets        # noqa: F401
 import app.models.common         # noqa: F401
+import app.models.feedback       # noqa: F401
 import app.models.invitations    # noqa: F401
 import app.models.media          # noqa: F401
 import app.models.memberships    # noqa: F401

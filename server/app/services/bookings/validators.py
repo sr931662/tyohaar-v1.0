@@ -149,10 +149,10 @@ async def validate_package_available(
     package_id: UUID,
     event_date: date,
     uow: UnitOfWork,
-) -> None:
+):
     """
     Raise PackageNotFoundError if the package does not exist or is not published,
-    or if no availability slot is open for event_date.
+    or if no availability slot is open for event_date. Returns the Package on success.
     """
     from app.services.packages.exceptions import PackageNotPublishedError
     from app.services.packages.helpers import is_package_available_on_date
@@ -174,3 +174,5 @@ async def validate_package_available(
         raise BusinessRuleError(
             f"Package {package_id} has no available slots on {event_date}."
         )
+
+    return package

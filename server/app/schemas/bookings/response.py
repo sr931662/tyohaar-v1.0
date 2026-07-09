@@ -93,6 +93,7 @@ class BookingItemResponse(BaseSchema):
     quantity: int
     unit_price: MoneyAmount
     final_price: MoneyAmount
+    is_addon: bool = False
     notes: str | None
     created_at: datetime
     updated_at: datetime

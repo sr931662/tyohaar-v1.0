@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart';
 
+import 'package:tyohaar/theme/assets.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../data/models.dart';
@@ -105,9 +107,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'occasion_id': _occasion?.id,
         'scheduled_date': _eventDate.toIso8601String().split('T').first,
         'venue_address': _placeCtrl.text.isNotEmpty ? _placeCtrl.text : null,
-        'title': _nameCtrl.text.isNotEmpty ? _nameCtrl.text : 'My Celebration',
+        'celebration_title': _nameCtrl.text.isNotEmpty ? _nameCtrl.text : 'My Celebration',
         'address_id': _address?.id,
-        'notes': _vibes.isNotEmpty ? 'Mood: ${_vibes.join(', ')}' : null,
+        'special_instructions': _vibes.isNotEmpty ? 'Mood: ${_vibes.join(', ')}' : null,
       });
       if (!mounted) return;
       Navigator.of(context).push(
@@ -116,6 +118,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             bookingId: booking.id,
             amount: booking.totalAmount,
             packageName: _pkg?.name ?? 'Celebration Package',
+            scheduledDate: DateFormat('dd MMM yyyy').format(_eventDate),
           ),
         ),
       );
@@ -277,22 +280,67 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           children: list.map((o) {
             final on = _occasion?.id == o.id;
             final c = ty.tint(o.tint);
+            
+            final String? localImage = OccasionAssets.getRelatedBackground(o.name);
+
             return GestureDetector(
               onTap: () => setState(() => _occasion = o),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: on ? Color.alphaBlend(c.withOpacity(0.1), ty.surface) : ty.surface,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: on ? c : ty.line, width: on ? 1.5 : 1),
+                  border: Border.all(color: on ? Colors.transparent : ty.line, width: 1),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                foregroundDecoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: on ? Border.all(color: c, width: 2.5) : null,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
                   children: [
-                    Emblem(icon: o.icon, tint: o.tint, size: 28),
-                    const Spacer(),
-                    Text(o.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                    if (localImage != null)
+                      Positioned.fill(
+                        child: Image.asset(
+                          localImage,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    if (localImage != null)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.15),
+                                Colors.black.withOpacity(0.6),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Emblem(
+                            icon: o.icon,
+                            tint: localImage != null ? 'white' : o.tint,
+                            size: 28,
+                          ),
+                          const Spacer(),
+                          Text(
+                            o.name,
+                            style: TyType.sans(14,
+                                color: localImage != null ? Colors.white : ty.ink,
+                                weight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -441,13 +489,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                         width: double.infinity,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: 160, arch: false),
-                        errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: 160, arch: false),
+                        errorWidget: (context, url, error) {
+                          final local = OccasionAssets.getRelatedBackground(p.name);
+                          if (local != null) return Image.asset(local, fit: BoxFit.cover);
+                          return PhotoPlaceholder(tint: p.tint, height: 160, arch: false);
+                        },
                       ),
-                    ),
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: TyPill(p.slug ?? p.name),
                     ),
                     Positioned(
                       top: 12,

@@ -113,12 +113,31 @@ class MediaService(BaseService):
         """
         import hashlib
 
-        from app.services.media.cloudinary_client import upload_image_bytes
+        from app.models.enums import MediaUsage
+        from app.services.media.cloudinary_client import (
+            upload_image_bytes,
+            upload_profile_photo_bytes,
+        )
 
         content_hash = hashlib.sha256(file_bytes).hexdigest()
-        result = await upload_image_bytes(
-            file_bytes, folder=f"tyohaar/{usage.value}", resource_type=resource_type
-        )
+        # No marketing watermark on the customer's own private memories, on
+        # operational booking-evidence photos, or on anything that isn't a
+        # displayable marketing image (support screenshots, vendor KYC docs).
+        _no_watermark_usages = {
+            MediaUsage.SUPPORT_ATTACHMENT,
+            MediaUsage.VENDOR_DOCUMENT,
+            MediaUsage.BOOKING_EVIDENCE,
+            MediaUsage.MEMORY,
+        }
+        if usage == MediaUsage.PROFILE_PHOTO:
+            result = await upload_profile_photo_bytes(file_bytes, folder=f"tyohaar/{usage.value}")
+        else:
+            result = await upload_image_bytes(
+                file_bytes,
+                folder=f"tyohaar/{usage.value}",
+                resource_type=resource_type,
+                apply_watermark=usage not in _no_watermark_usages,
+            )
 
         async with self._uow() as uow:
             image = Image(

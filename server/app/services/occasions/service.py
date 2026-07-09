@@ -27,6 +27,8 @@ from app.schemas.occasions import (
     CelebrationGuestUpdate,
     CelebrationResponse,
     CelebrationUpdate,
+    GuestRSVPPublicResponse,
+    GuestRSVPSubmit,
     OccasionCreate,
     OccasionFilters,
     OccasionMoodResponse,
@@ -354,11 +356,14 @@ class OccasionService(BaseService):
         user_id: UUID,
         data: CelebrationGuestCreate,
     ) -> CelebrationGuestResponse:
+        import secrets
+
         async with self._uow() as uow:
             await validate_celebration_ownership(celebration_id, user_id, uow)
             await validate_guest_limit(celebration_id, uow)
             payload = data.model_dump(exclude_unset=True)
             payload["celebration_id"] = celebration_id
+            payload["rsvp_token"] = secrets.token_urlsafe(24)
             guest = await uow.occasions.guests.create_from_dict(payload)
             return CelebrationGuestResponse.model_validate(guest)
 
@@ -401,6 +406,82 @@ class OccasionService(BaseService):
             await validate_celebration_ownership(celebration_id, user_id, uow)
             guests = await uow.occasions.guests.find_by_celebration(celebration_id)
             return [CelebrationGuestResponse.model_validate(g) for g in guests]
+
+    # ── Public RSVP (no auth — reached via the guest's shared link) ────────────
+
+    async def get_guest_rsvp(self, token: str) -> GuestRSVPPublicResponse:
+        from datetime import date, datetime, timezone
+
+        from app.services.occasions.exceptions import GuestNotFoundError
+
+        async with self._uow() as uow:
+            guest = await uow.occasions.guests.find_by_rsvp_token(token)
+            if guest is None:
+                raise GuestNotFoundError(token)
+
+            celebration = await uow.occasions.celebrations.get_by_id(guest.celebration_id)
+            if celebration is None:
+                raise GuestNotFoundError(token)
+
+            if guest.invitation_opened_at is None:
+                guest = await uow.occasions.guests.update(
+                    guest, {"invitation_opened_at": datetime.now(tz=timezone.utc)}
+                )
+
+            can_still_respond = date.today() < celebration.celebration_date
+
+            return GuestRSVPPublicResponse(
+                guest_name=guest.name,
+                rsvp_status=guest.rsvp_status,
+                can_still_respond=can_still_respond,
+                celebration_title=celebration.title,
+                celebration_date=celebration.celebration_date,
+                venue_name=celebration.venue_name,
+                venue_address=celebration.venue_address,
+            )
+
+    async def submit_guest_rsvp(self, token: str, data: GuestRSVPSubmit) -> GuestRSVPPublicResponse:
+        from datetime import date, datetime, timezone
+
+        from app.services.exceptions import BusinessRuleError
+        from app.services.occasions.exceptions import GuestNotFoundError
+
+        async with self._uow() as uow:
+            guest = await uow.occasions.guests.find_by_rsvp_token(token)
+            if guest is None:
+                raise GuestNotFoundError(token)
+
+            celebration = await uow.occasions.celebrations.get_by_id(guest.celebration_id)
+            if celebration is None:
+                raise GuestNotFoundError(token)
+
+            # Guests may respond (or change their response) up to the day
+            # before the event — matches the "coming/maybe/pending/ignored,
+            # changeable up to a day before" requirement.
+            if date.today() >= celebration.celebration_date:
+                raise BusinessRuleError("The RSVP window for this event has closed.")
+
+            now = datetime.now(tz=timezone.utc)
+            update_payload = {
+                "rsvp_status": data.rsvp_status,
+                "rsvp_responded_at": now,
+            }
+            if data.notes:
+                update_payload["notes"] = data.notes
+            if guest.invitation_opened_at is None:
+                update_payload["invitation_opened_at"] = now
+
+            guest = await uow.occasions.guests.update(guest, update_payload)
+
+            return GuestRSVPPublicResponse(
+                guest_name=guest.name,
+                rsvp_status=guest.rsvp_status,
+                can_still_respond=date.today() < celebration.celebration_date,
+                celebration_title=celebration.title,
+                celebration_date=celebration.celebration_date,
+                venue_name=celebration.venue_name,
+                venue_address=celebration.venue_address,
+            )
 
     # ── 5. Celebration Checklist ───────────────────────────────────────────────
 

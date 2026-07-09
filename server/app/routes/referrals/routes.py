@@ -8,6 +8,10 @@ from fastapi import APIRouter, status
 
 from app.controllers.referrals import controller as ctrl
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
+from app.schemas.referrals.milestones import (
+    ReferralMilestoneGrantResponse,
+    ReferralMilestoneRuleResponse,
+)
 from app.schemas.referrals.response import (
     ReferralResponse,
     ReferralRewardResponse,
@@ -104,15 +108,49 @@ router.add_api_route(
     operation_id="referrals_list_referrals",
 )
 
-# ── Admin — trigger rewards ───────────────────────────────────────────────────
+# ── Milestone rules (admin) & grants (customer) ─────────────────────────────────
 
 router.add_api_route(
-    "/{referral_id}/rewards/trigger",
-    ctrl.trigger_referral_rewards,
-    methods=["POST"],
-    response_model=SuccessResponse[None],
+    "/milestones/rules",
+    ctrl.list_milestone_rules,
+    methods=["GET"],
+    response_model=SuccessResponse[list[ReferralMilestoneRuleResponse]],
     status_code=status.HTTP_200_OK,
-    summary="Trigger Referral Rewards (Admin)",
-    description="Manually trigger reward distribution for a referral record. Admin access required.",
-    operation_id="referrals_trigger_referral_rewards",
+    summary="List Referral Milestone Rules (Admin)",
+    description="Return all referral milestone rules. Admin access required.",
+    operation_id="referrals_list_milestone_rules",
 )
+
+router.add_api_route(
+    "/milestones/rules",
+    ctrl.create_milestone_rule,
+    methods=["POST"],
+    response_model=SuccessResponse[ReferralMilestoneRuleResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Create Referral Milestone Rule (Admin)",
+    description="Create a new referral milestone rule. Creating an active rule deactivates any previously-active one. Admin access required.",
+    operation_id="referrals_create_milestone_rule",
+)
+
+router.add_api_route(
+    "/milestones/rules/{rule_id}",
+    ctrl.update_milestone_rule,
+    methods=["PATCH"],
+    response_model=SuccessResponse[ReferralMilestoneRuleResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Referral Milestone Rule (Admin)",
+    description="Update a referral milestone rule. Admin access required.",
+    operation_id="referrals_update_milestone_rule",
+)
+
+router.add_api_route(
+    "/milestones/my-grants",
+    ctrl.list_my_milestone_grants,
+    methods=["GET"],
+    response_model=SuccessResponse[list[ReferralMilestoneGrantResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="List My Referral Milestone Grants",
+    description="Return the authenticated user's unlocked referral milestone discounts.",
+    operation_id="referrals_list_my_milestone_grants",
+)
+

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
@@ -68,7 +69,11 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
                     imageUrl: occasion.heroImageUrl ?? '',
                     fit: BoxFit.cover,
                     placeholder: (context, url) => PhotoPlaceholder(tint: occasion.tint, arch: false),
-                    errorWidget: (context, url, error) => PhotoPlaceholder(tint: occasion.tint, arch: false),
+                    errorWidget: (context, url, error) {
+                      final local = OccasionAssets.getRelatedBackground(occasion.name);
+                      if (local != null) return Image.asset(local, fit: BoxFit.cover);
+                      return PhotoPlaceholder(tint: occasion.tint, arch: false);
+                    },
                   ),
                   DecoratedBox(
                     decoration: BoxDecoration(

@@ -166,6 +166,9 @@ class CelebrationGuestRepository(BaseRepository[CelebrationGuest]):
     async def count_for_celebration(self, celebration_id: uuid.UUID) -> int:
         return await self.count(CelebrationGuest.celebration_id == celebration_id)
 
+    async def find_by_rsvp_token(self, token: str) -> CelebrationGuest | None:
+        return await self.find_one(CelebrationGuest.rsvp_token == token)
+
 
 class CelebrationTimelineRepository(BaseRepository[CelebrationTimeline]):
     def __init__(self, session: AsyncSession) -> None:

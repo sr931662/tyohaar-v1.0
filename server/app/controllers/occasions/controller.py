@@ -25,6 +25,8 @@ from app.schemas.occasions import (
     CelebrationGuestUpdate,
     CelebrationResponse,
     CelebrationUpdate,
+    GuestRSVPPublicResponse,
+    GuestRSVPSubmit,
     OccasionCreate,
     OccasionFilters,
     OccasionMoodResponse,
@@ -277,6 +279,121 @@ async def list_guests(
         celebration_id=celebration_id, user_id=current_user.id
     )
     return SuccessResponse(data=guests, message="Guests retrieved.")
+
+
+# ── Public RSVP (no auth) ───────────────────────────────────────────────────────
+
+async def get_guest_rsvp(
+    token: str,
+    service: OccasionServiceDep,
+) -> SuccessResponse[GuestRSVPPublicResponse]:
+    result = await service.get_guest_rsvp(token=token)
+    return SuccessResponse(data=result, message="Invitation retrieved.")
+
+
+async def submit_guest_rsvp(
+    token: str,
+    body: GuestRSVPSubmit,
+    service: OccasionServiceDep,
+) -> SuccessResponse[GuestRSVPPublicResponse]:
+    result = await service.submit_guest_rsvp(token=token, data=body)
+    return SuccessResponse(data=result, message="RSVP recorded.")
+
+
+async def get_guest_rsvp_page(token: str):
+    """
+    A minimal, self-contained mobile web page for guests who don't have the
+    app installed — the WhatsApp/email invite link points here. Renders
+    server-side (no React build) and talks to the JSON RSVP endpoints above
+    via fetch(). Kept deliberately simple: no build step, no dependencies.
+    """
+    from fastapi.responses import HTMLResponse
+
+    html = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>You're Invited — Tyohaar</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: #FFF8F0; margin: 0; padding: 24px 16px; color: #1A1A1A; }
+  .card { max-width: 420px; margin: 0 auto; background: #fff; border-radius: 24px;
+          padding: 28px 22px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+  .eyebrow { font-size: 11px; letter-spacing: 1.5px; color: #F97316; font-weight: 700; text-transform: uppercase; }
+  h1 { font-size: 22px; margin: 8px 0 4px; }
+  .meta { color: #666; font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
+  .status { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px;
+            font-weight: 700; background: #FFF0DE; color: #F97316; margin-bottom: 16px; }
+  .btns { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  button { padding: 14px; border-radius: 14px; border: 1.5px solid #eee; background: #fff;
+           font-size: 15px; font-weight: 700; cursor: pointer; }
+  button.primary { background: #F97316; color: #fff; border: none; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .note { font-size: 13px; color: #999; margin-top: 18px; text-align: center; }
+  .error { color: #E11D48; font-size: 14px; }
+  .thanks { text-align: center; padding: 20px 0; }
+</style>
+</head>
+<body>
+  <div class="card" id="app">Loading…</div>
+  <script>
+    const token = window.location.pathname.split('/').filter(Boolean).slice(-2, -1)[0];
+    const apiBase = window.location.origin + '/api/v1/public/rsvp/' + token;
+
+    async function load() {
+      try {
+        const res = await fetch(apiBase);
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.message || 'This invite link is invalid or has expired.');
+        render(body.data);
+      } catch (e) {
+        document.getElementById('app').innerHTML = '<p class="error">' + e.message + '</p>';
+      }
+    }
+
+    function render(data) {
+      const statusLabel = { attending: "You're coming!", maybe: "You said maybe", declined: "You can't make it" }[data.rsvp_status];
+      const el = document.getElementById('app');
+      el.innerHTML =
+        '<div class="eyebrow">You\\'re invited</div>' +
+        '<h1>' + data.celebration_title + '</h1>' +
+        '<div class="meta">' + data.celebration_date +
+        (data.venue_name ? ' · ' + data.venue_name : '') +
+        (data.venue_address ? '<br>' + data.venue_address : '') + '</div>' +
+        (statusLabel ? '<div class="status">' + statusLabel + '</div>' : '') +
+        (data.can_still_respond
+          ? '<div class="btns">' +
+            '<button class="primary" onclick="submitRsvp(\\'attending\\')">I\\'m coming 🎉</button>' +
+            '<button onclick="submitRsvp(\\'maybe\\')">Maybe</button>' +
+            '<button onclick="submitRsvp(\\'declined\\')">Can\\'t make it</button>' +
+            '</div>' +
+            '<div class="note">Hi ' + data.guest_name + ' — you can change your response any time before the event.</div>'
+          : '<div class="note">The RSVP window for this event has closed.</div>');
+    }
+
+    async function submitRsvp(status) {
+      try {
+        const res = await fetch(apiBase, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rsvp_status: status }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.message || 'Could not save your response.');
+        document.getElementById('app').innerHTML = '<div class="thanks"><h1>Thanks!</h1><p class="meta">Your response has been recorded.</p></div>';
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
 
 
 # ── Checklist ──────────────────────────────────────────────────────────────────

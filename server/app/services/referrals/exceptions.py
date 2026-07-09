@@ -33,3 +33,8 @@ class ReferralRewardAlreadyActivatedError(ConflictError):
 
 class ReferralAlreadyCompletedError(ConflictError):
     default_message = "This referral has already been completed."
+
+
+class ReferralMilestoneRuleNotFoundError(NotFoundError):
+    def __init__(self, rule_id: str | None = None) -> None:
+        super().__init__("ReferralMilestoneRule", rule_id)

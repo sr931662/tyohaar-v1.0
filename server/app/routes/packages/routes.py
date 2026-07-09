@@ -90,6 +90,22 @@ router.add_api_route(
 )
 
 router.add_api_route(
+    "/vendor/mine",
+    ctrl.list_vendor_packages,
+    methods=["GET"],
+    response_model=CursorPaginatedResponse[PackageResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List My Packages (Vendor)",
+    description=(
+        "Return the authenticated vendor's own packages across every lifecycle "
+        "state (draft, pending review, active, ...). Vendor role required. "
+        "Scoped server-side to the caller's vendor_id — never trusts a "
+        "client-supplied vendor filter."
+    ),
+    operation_id="packages_list_vendor_packages",
+)
+
+router.add_api_route(
     "/{package_id}",
     ctrl.get_package,
     methods=["GET"],

@@ -191,6 +191,60 @@ class PackageService(BaseService):
                 has_more=page.has_next,
             )
 
+    async def list_vendor_packages(
+        self,
+        vendor_id: UUID,
+        filters: PackageFilters,
+        cursor: str | None,
+        limit: int,
+    ) -> CursorPage[PackageResponse]:
+        """
+        A vendor's own packages across every lifecycle state (draft, pending
+        review, active, etc.) — scoped to vendor_id from the auth token, never
+        a client-supplied filter, so a vendor can never see another vendor's
+        packages this way.
+        """
+        conditions = [Package.vendor_id == vendor_id]
+        if filters.status is not None:
+            conditions.append(Package.status == filters.status)
+        if filters.category_id is not None:
+            conditions.append(Package.category_id == filters.category_id)
+        if filters.is_customizable is not None:
+            conditions.append(Package.is_customizable == filters.is_customizable)
+        if filters.search is not None:
+            from sqlalchemy import or_
+            term = f"%{filters.search}%"
+            conditions.append(
+                or_(Package.name.ilike(term), Package.short_description.ilike(term))
+            )
+
+        async with self._uow() as uow:
+            page = await uow.packages.packages.cursor_paginate(
+                *conditions,
+                cursor=cursor,
+                limit=limit,
+            )
+            package_ids = [p.id for p in page.items]
+            counts: dict = {}
+            if package_ids:
+                item_rows = await uow.packages.items.find_many(
+                    uow.packages.items._model.package_id.in_(package_ids)
+                )
+                for row in item_rows:
+                    pid = row.package_id
+                    counts[pid] = counts.get(pid, 0) + 1
+            responses = [
+                PackageResponse.model_validate(p).model_copy(
+                    update={"inclusions_count": counts.get(p.id, 0)}
+                )
+                for p in page.items
+            ]
+            return CursorPage(
+                items=responses,
+                next_cursor=page.next_cursor,
+                has_more=page.has_next,
+            )
+
     async def update_package(
         self,
         package_id: UUID,

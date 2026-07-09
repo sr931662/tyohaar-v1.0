@@ -10,6 +10,7 @@ export { membershipsApi } from './endpoints/memberships';
 export { notificationsApi } from './endpoints/notifications';
 export { occasionsApi } from './endpoints/occasions';
 export { supportApi } from './endpoints/support';
+export { feedbackApi } from './endpoints/feedback';
 export { adminMgmtApi } from './endpoints/adminMgmt';
 export { settingsApi } from './endpoints/settings';
 export { bulkApi } from './endpoints/bulk';

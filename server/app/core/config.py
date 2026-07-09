@@ -92,6 +92,14 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
+    # Public ID of the Tyohaar logo asset uploaded to Cloudinary, used as a
+    # subtle watermark overlay on every package/vendor/occasion/banner image
+    # (never on profile photos, support attachments, or vendor KYC documents).
+    # Upload the logo once at this exact public_id — cloudinary.com → Media
+    # Library → upload → set Public ID to "tyohaar/watermark_logo" (or change
+    # this setting to match wherever it's uploaded). Watermarking is skipped
+    # automatically if this asset doesn't exist yet, so uploads keep working.
+    CLOUDINARY_WATERMARK_PUBLIC_ID: str = "tyohaar/watermark_logo"
 
     # ── Payment Gateway (Razorpay) ───────────────────────────────────────────
     # dashboard.razorpay.com → Settings → API Keys, for RAZORPAY_KEY_ID/SECRET.

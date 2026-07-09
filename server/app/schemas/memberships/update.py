@@ -89,8 +89,3 @@ class UserMembershipUpdate(BaseSchema):
         max_length=1000,
         description="Customer-supplied or admin-supplied cancellation reason.",
     )
-    invitations_remaining: int | None = Field(
-        default=None,
-        ge=0,
-        description="Adjusted count of remaining free invitation credits.",
-    )

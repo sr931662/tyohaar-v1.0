@@ -83,6 +83,18 @@ async def list_packages(
     return _cursor_resp(page, pagination.page_size)
 
 
+async def list_vendor_packages(
+    filters: Annotated[PackageFilters, Depends()],
+    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
+    vendor_id: CurrentVendorIdDep,
+    service: PackageServiceDep,
+) -> CursorPaginatedResponse[PackageResponse]:
+    page = await service.list_vendor_packages(
+        vendor_id=vendor_id, filters=filters, cursor=pagination.cursor, limit=pagination.page_size
+    )
+    return _cursor_resp(page, pagination.page_size)
+
+
 async def update_package(
     package_id: uuid.UUID,
     body: PackageUpdate,

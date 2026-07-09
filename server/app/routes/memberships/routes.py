@@ -133,6 +133,21 @@ router.add_api_route(
     operation_id="memberships_force_expire_membership",
 )
 
+router.add_api_route(
+    "/admin/sweep-lifecycle",
+    ctrl.sweep_lifecycle,
+    methods=["POST"],
+    response_model=SuccessResponse[int],
+    status_code=status.HTTP_200_OK,
+    summary="Sweep Membership Lifecycle (Admin)",
+    description=(
+        "Batch-apply the ACTIVE→GRACE_PERIOD→EXPIRED state machine to all due "
+        "memberships. No scheduler exists yet — trigger manually or via an "
+        "external cron hitting this endpoint. Admin access required."
+    ),
+    operation_id="memberships_sweep_lifecycle",
+)
+
 # ── Per-membership operations ─────────────────────────────────────────────────
 
 router.add_api_route(
@@ -177,4 +192,32 @@ router.add_api_route(
     summary="Renew Membership",
     description="Renew the specified membership for another billing cycle. User ownership required.",
     operation_id="memberships_renew_membership",
+)
+
+router.add_api_route(
+    "/{membership_id}/upgrade",
+    ctrl.upgrade_membership,
+    methods=["POST"],
+    response_model=SuccessResponse[MembershipResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Upgrade Membership",
+    description=(
+        "Upgrade to a higher tier per the current plan's can_upgrade_to_tier. "
+        "Allowed during an active grace period. User ownership required."
+    ),
+    operation_id="memberships_upgrade_membership",
+)
+
+router.add_api_route(
+    "/{membership_id}/downgrade",
+    ctrl.downgrade_membership,
+    methods=["POST"],
+    response_model=SuccessResponse[MembershipResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Downgrade Membership",
+    description=(
+        "Downgrade to a lower tier per the current plan's can_downgrade_to_tier. "
+        "Allowed during an active grace period. User ownership required."
+    ),
+    operation_id="memberships_downgrade_membership",
 )

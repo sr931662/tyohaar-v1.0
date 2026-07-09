@@ -59,6 +59,7 @@ const OccasionsPage         = lazy(() => import('./admin/pages/occasions/Occasio
 const NotificationsPage     = lazy(() => import('./admin/pages/notifications/NotificationsPage.jsx'));
 const SupportPage           = lazy(() => import('./admin/pages/support/SupportPage.jsx'));
 const SupportDetailPage     = lazy(() => import('./admin/pages/support/SupportDetailPage.jsx'));
+const FeedbackPage          = lazy(() => import('./admin/pages/feedback/FeedbackPage.jsx'));
 const MediaPage             = lazy(() => import('./admin/pages/media/MediaPage.jsx'));
 const AdminManagementPage   = lazy(() => import('./admin/pages/admin-mgmt/AdminManagementPage.jsx'));
 const SettingsPage          = lazy(() => import('./admin/pages/settings/SettingsPage.jsx'));
@@ -178,6 +179,7 @@ export default function App() {
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="support" element={<SupportPage />} />
                 <Route path="support/:id" element={<SupportDetailPage />} />
+                <Route path="feedback" element={<FeedbackPage />} />
                 <Route path="media" element={<MediaPage />} />
                 <Route path="admin-management" element={<AdminManagementPage />} />
                 <Route path="settings" element={<SettingsPage />} />

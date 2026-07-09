@@ -21,6 +21,41 @@ class CelebrationService {
     return list.map((item) => Guest.fromJson(item)).toList();
   }
 
+  Future<Guest> addGuest(
+    String celebrationId, {
+    required String name,
+    String? phone,
+    String? email,
+    String? groupTag,
+    String? notes,
+  }) async {
+    final response = await _api.dio.post('celebrations/$celebrationId/guests', data: {
+      'name': name,
+      if (phone != null && phone.isNotEmpty) 'phone': phone,
+      if (email != null && email.isNotEmpty) 'email': email,
+      if (groupTag != null && groupTag.isNotEmpty) 'group_tag': groupTag,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+    });
+    return Guest.fromJson(response.data['data']);
+  }
+
+  Future<Guest> updateGuest(
+    String celebrationId,
+    String guestId, {
+    String? rsvpStatus,
+    String? notes,
+  }) async {
+    final response = await _api.dio.put('celebrations/$celebrationId/guests/$guestId', data: {
+      if (rsvpStatus != null) 'rsvp_status': rsvpStatus,
+      if (notes != null) 'notes': notes,
+    });
+    return Guest.fromJson(response.data['data']);
+  }
+
+  Future<void> removeGuest(String celebrationId, String guestId) async {
+    await _api.dio.delete('celebrations/$celebrationId/guests/$guestId');
+  }
+
   Future<List<CelebrationChecklistItem>> listChecklist(String celebrationId) async {
     final response = await _api.dio.get('celebrations/$celebrationId/checklist');
     final List list = response.data['data'] ?? [];

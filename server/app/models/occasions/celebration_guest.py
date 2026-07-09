@@ -141,6 +141,25 @@ class CelebrationGuest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment="True if this guest was added as a companion (+1) by another guest",
     )
 
+    # ── Public RSVP Link ──────────────────────────────────────────────────────
+
+    rsvp_token: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        unique=True,
+        comment="Opaque token for the guest's public (no-auth) RSVP link, shared via WhatsApp/email.",
+    )
+
+    invitation_opened_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment=(
+            "Set the first time the guest opens the public RSVP link. Used to "
+            "distinguish 'never opened' (pending) from 'opened but didn't "
+            "respond' (displayed as ignored) — see CelebrationGuestResponse.display_status."
+        ),
+    )
+
     # ── Relationships ─────────────────────────────────────────────────────────
 
     celebration: Mapped[Celebration] = relationship(

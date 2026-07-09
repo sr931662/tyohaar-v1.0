@@ -26,6 +26,7 @@ from app.repositories.booking_repository import BookingRepositoryAggregate
 from app.repositories.budget_repository import BudgetRepositoryAggregate
 from app.repositories.cms_repository import CMSRepositoryAggregate
 from app.repositories.common_repository import CommonRepositoryAggregate
+from app.repositories.feedback_repository import FeedbackRepositoryAggregate
 from app.repositories.media_repository import MediaRepositoryAggregate
 from app.repositories.membership_repository import MembershipRepositoryAggregate
 from app.repositories.notification_repository import NotificationRepositoryAggregate
@@ -72,6 +73,7 @@ class UnitOfWork:
         self._memberships: MembershipRepositoryAggregate | None = None
         self._notifications: NotificationRepositoryAggregate | None = None
         self._support: SupportRepositoryAggregate | None = None
+        self._feedback: FeedbackRepositoryAggregate | None = None
         self._media: MediaRepositoryAggregate | None = None
         self._referrals: ReferralRepositoryAggregate | None = None
         self._budgets: BudgetRepositoryAggregate | None = None
@@ -194,6 +196,13 @@ class UnitOfWork:
         if self._support is None:
             self._support = SupportRepositoryAggregate(self.session)
         return self._support
+
+    @property
+    def feedback(self) -> FeedbackRepositoryAggregate:
+        assert self.session is not None, "UnitOfWork must be used as an async context manager."
+        if self._feedback is None:
+            self._feedback = FeedbackRepositoryAggregate(self.session)
+        return self._feedback
 
     @property
     def media(self) -> MediaRepositoryAggregate:

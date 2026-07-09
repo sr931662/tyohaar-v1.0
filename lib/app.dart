@@ -23,6 +23,7 @@ import 'data/services/budget_service.dart';
 import 'screens/vendor/vendor_root_nav.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/root_nav.dart';
+import 'screens/auth_screen.dart';
 
 class TyohaarApp extends StatelessWidget {
   const TyohaarApp({super.key});
@@ -103,6 +104,9 @@ class _AppStartupState extends State<_AppStartup> {
         }
         if (AuthManager.instance.isAuthenticated) {
           return const RootNav();
+        }
+        if (AuthManager.instance.seenOnboarding) {
+          return const AuthScreen();
         }
         return const OnboardingScreen();
       },

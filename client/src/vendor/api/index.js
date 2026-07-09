@@ -95,7 +95,7 @@ export const vendorProfileApi = {
 
 export const vendorPackagesApi = {
   list: (params) =>
-    vendorClient.get('/packages', { params }).then(extractPaginated),
+    vendorClient.get('/packages/vendor/mine', { params }).then(extractPaginated),
   get: (packageId) =>
     vendorClient.get(`/packages/${packageId}`).then(extractData),
   create: (body) =>
