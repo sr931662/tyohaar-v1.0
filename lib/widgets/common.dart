@@ -15,7 +15,7 @@ class SectionHeader extends StatelessWidget {
     final ty = context.ty;
     final resp = context.resp;
     return Padding(
-      padding: EdgeInsets.only(bottom: resp.h(12)),
+      padding: EdgeInsets.only(bottom: resp.h(10)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,

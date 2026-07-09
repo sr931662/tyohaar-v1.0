@@ -145,6 +145,10 @@ class _RootNavState extends State<RootNav> {
       bottomNavigationBar: _BottomBar(
         index: _index,
         onTap: (i) {
+          if (_index == i) {
+            // TODO: Scroll to top or refresh
+            return;
+          }
           if (i == 1 || i == 3) {
             AuthManager.instance.checkAuth(
               context, 

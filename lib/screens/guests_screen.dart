@@ -198,13 +198,16 @@ class _GuestsScreenState extends State<GuestsScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(4), resp.w(18), resp.h(20)),
-              children: [
-                Container(
-                  padding: EdgeInsets.all(resp.w(18)),
-                  decoration: _card(ty, resp),
-                  child: Column(
+            child: RefreshIndicator(
+              onRefresh: _loadGuests,
+              color: ty.saffron,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(4), resp.w(18), resp.h(20)),
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(resp.w(18)),
+                    decoration: _card(ty, resp),
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(

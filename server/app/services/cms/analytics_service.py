@@ -106,8 +106,8 @@ class AnalyticsService(BaseService):
         year_start = today.replace(month=1, day=1)
         prev_year_start = year_start.replace(year=year_start.year - 1)
 
-        base = select(func.coalesce(func.sum(Payment.amount), 0)).where(
-            Payment.status == "COMPLETED"
+        base = select(func.coalesce(func.sum(Payment.final_amount), 0)).where(
+            Payment.payment_status == "COMPLETED"
         )
 
         today_rev = await self._scalar(
@@ -129,7 +129,7 @@ class AnalyticsService(BaseService):
         )
         total_rev = await self._scalar(session, base)
 
-        count_stmt = select(func.count()).select_from(Payment).where(Payment.status == "COMPLETED")
+        count_stmt = select(func.count()).select_from(Payment).where(Payment.payment_status == "COMPLETED")
         total_count = await self._scalar(session, count_stmt)
         avg_order = Decimal(str(total_rev)) / max(Decimal(str(total_count)), Decimal("1"))
 
@@ -165,18 +165,18 @@ class AnalyticsService(BaseService):
 
         rows = await self._rows(
             session,
-            select(Booking.status, func.count().label("cnt"))
-            .group_by(Booking.status)
+            select(Booking.booking_status, func.count().label("cnt"))
+            .group_by(Booking.booking_status)
             .where(Booking.deleted_at.is_(None)),
         )
-        status_map: dict[str, int] = {r.status: r.cnt for r in rows}
+        status_map: dict[str, int] = {r.booking_status: r.cnt for r in rows}
         total = sum(status_map.values())
 
         # Revenue per booking (average)
         from app.models.payments.payment import Payment
         avg_val_row = await self._scalar(
             session,
-            select(func.coalesce(func.avg(Payment.amount), 0)).where(Payment.status == "COMPLETED"),
+            select(func.coalesce(func.avg(Payment.final_amount), 0)).where(Payment.payment_status == "COMPLETED"),
         )
 
         completed = status_map.get("COMPLETED", 0)
@@ -300,13 +300,15 @@ class AnalyticsService(BaseService):
             session, select(func.count()).select_from(Booking).where(Booking.deleted_at.is_(None))
         )
 
-        # Top 5 vendors by booking count
+        # Top 5 vendors by booking count (via BookingAssignment — Booking has no direct vendor_id)
+        from app.models.bookings.booking_assignment import BookingAssignment
         top_vendors_rows = await self._rows(
             session,
-            select(Booking.vendor_id, func.count().label("booking_count"))
+            select(BookingAssignment.vendor_id, func.count(func.distinct(BookingAssignment.booking_id)).label("booking_count"))
+            .join(Booking, BookingAssignment.booking_id == Booking.id)
             .where(Booking.deleted_at.is_(None))
-            .group_by(Booking.vendor_id)
-            .order_by(func.count().desc())
+            .group_by(BookingAssignment.vendor_id)
+            .order_by(func.count(func.distinct(BookingAssignment.booking_id)).desc())
             .limit(5),
         )
         top_vendors = [
@@ -340,12 +342,12 @@ class AnalyticsService(BaseService):
 
         rows = await self._rows(
             session,
-            select(Payment.status, func.count().label("cnt"), func.coalesce(func.sum(Payment.amount), 0).label("vol"))
-            .group_by(Payment.status),
+            select(Payment.payment_status, func.count().label("cnt"), func.coalesce(func.sum(Payment.final_amount), 0).label("vol"))
+            .group_by(Payment.payment_status),
         )
         status_map: dict[str, dict[str, Any]] = {}
         for r in rows:
-            status_map[r.status] = {"count": r.cnt, "volume": r.vol}
+            status_map[r.payment_status] = {"count": r.cnt, "volume": r.vol}
 
         total_txn = sum(v["count"] for v in status_map.values())
         success_count = status_map.get("COMPLETED", {}).get("count", 0)
@@ -354,7 +356,7 @@ class AnalyticsService(BaseService):
 
         avg_txn = await self._scalar(
             session,
-            select(func.coalesce(func.avg(Payment.amount), 0)).where(Payment.status == "COMPLETED"),
+            select(func.coalesce(func.avg(Payment.final_amount), 0)).where(Payment.payment_status == "COMPLETED"),
         )
 
         return PaymentMetrics(
@@ -378,24 +380,24 @@ class AnalyticsService(BaseService):
         wallet_rows = await self._rows(
             session,
             select(
-                Wallet.status,
+                Wallet.wallet_status,
                 func.count().label("cnt"),
-                func.coalesce(func.sum(Wallet.balance), 0).label("bal"),
-            ).group_by(Wallet.status),
+                func.coalesce(func.sum(Wallet.available_balance), 0).label("bal"),
+            ).group_by(Wallet.wallet_status),
         )
         total_wallets = sum(r.cnt for r in wallet_rows)
-        active_wallets = sum(r.cnt for r in wallet_rows if r.status == "ACTIVE")
-        frozen_wallets = sum(r.cnt for r in wallet_rows if r.status == "FROZEN")
+        active_wallets = sum(r.cnt for r in wallet_rows if r.wallet_status == "ACTIVE")
+        frozen_wallets = sum(r.cnt for r in wallet_rows if r.wallet_status == "FROZEN")
         total_balance = sum(r.bal for r in wallet_rows)
 
         tx_rows = await self._rows(
             session,
             select(
-                WalletTransaction.type,
+                WalletTransaction.transaction_type,
                 func.coalesce(func.sum(WalletTransaction.amount), 0).label("vol"),
-            ).group_by(WalletTransaction.type),
+            ).group_by(WalletTransaction.transaction_type),
         )
-        tx_map = {r.type: r.vol for r in tx_rows}
+        tx_map = {r.transaction_type: r.vol for r in tx_rows}
 
         return WalletMetrics(
             total_wallets=total_wallets,
@@ -411,57 +413,74 @@ class AnalyticsService(BaseService):
     # ── Memberships ───────────────────────────────────────────────────────────
 
     async def _get_membership_metrics(self, session: AsyncSession) -> MembershipMetrics:
-        from app.models.memberships.membership import Membership
+        from app.models.memberships.user_membership import UserMembership
         from app.models.memberships.membership_plan import MembershipPlan
+        from app.models.enums import MembershipBillingCycle
 
         now = self._now()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
         active = await self._scalar(
             session,
-            select(func.count()).select_from(Membership).where(
-                Membership.status == "ACTIVE",
-                Membership.ends_at > now,
+            select(func.count()).select_from(UserMembership).where(
+                UserMembership.membership_status == "ACTIVE",
             ),
         )
         expired_month = await self._scalar(
             session,
-            select(func.count()).select_from(Membership).where(
-                Membership.status == "EXPIRED",
-                Membership.ends_at >= month_start,
-                Membership.ends_at <= now,
+            select(func.count()).select_from(UserMembership).where(
+                UserMembership.membership_status == "EXPIRED",
+                UserMembership.expires_at >= month_start,
+                UserMembership.expires_at <= now,
             ),
         )
         new_month = await self._scalar(
             session,
-            select(func.count()).select_from(Membership).where(
-                Membership.created_at >= month_start
+            select(func.count()).select_from(UserMembership).where(
+                UserMembership.created_at >= month_start
             ),
         )
         renewed_month = await self._scalar(
             session,
-            select(func.count()).select_from(Membership).where(
-                Membership.is_renewal == True,
-                Membership.created_at >= month_start,
+            select(func.count()).select_from(UserMembership).where(
+                UserMembership.renewal_count > 0,
+                UserMembership.updated_at >= month_start,
             ),
         )
 
-        # MRR from active memberships
+        # MRR from active memberships, amortised to a monthly figure per billing cycle
         mrr_row = await self._scalar(
             session,
-            select(func.coalesce(func.sum(MembershipPlan.price), 0))
-            .select_from(Membership)
-            .join(MembershipPlan, Membership.plan_id == MembershipPlan.id)
-            .where(Membership.status == "ACTIVE"),
+            select(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (
+                                UserMembership.billing_cycle == MembershipBillingCycle.ANNUAL,
+                                MembershipPlan.yearly_price / 12,
+                            ),
+                            (
+                                UserMembership.billing_cycle == MembershipBillingCycle.QUARTERLY,
+                                MembershipPlan.monthly_price,
+                            ),
+                            else_=MembershipPlan.monthly_price,
+                        )
+                    ),
+                    0,
+                )
+            )
+            .select_from(UserMembership)
+            .join(MembershipPlan, UserMembership.plan_id == MembershipPlan.id)
+            .where(UserMembership.membership_status == "ACTIVE"),
         )
 
         # Plan breakdown
         plan_rows = await self._rows(
             session,
             select(MembershipPlan.name, func.count().label("cnt"))
-            .select_from(Membership)
-            .join(MembershipPlan, Membership.plan_id == MembershipPlan.id)
-            .where(Membership.status == "ACTIVE")
+            .select_from(UserMembership)
+            .join(MembershipPlan, UserMembership.plan_id == MembershipPlan.id)
+            .where(UserMembership.membership_status == "ACTIVE")
             .group_by(MembershipPlan.name)
             .order_by(func.count().desc()),
         )
@@ -469,9 +488,10 @@ class AnalyticsService(BaseService):
             CategoryBreakdown(label=r.name, value=r.cnt) for r in plan_rows
         ]
 
+        from app.models.users.user import User
         total_users = await self._scalar(
             session,
-            select(func.count()).select_from(__import__("app.models.users.user", fromlist=["User"]).User),
+            select(func.count()).select_from(User).where(User.deleted_at.is_(None)),
         )
 
         return MembershipMetrics(
@@ -488,35 +508,52 @@ class AnalyticsService(BaseService):
     # ── Referrals ─────────────────────────────────────────────────────────────
 
     async def _get_referral_metrics(self, session: AsyncSession) -> ReferralMetrics:
+        from app.models.bookings.booking import Booking
         from app.models.referrals.referral import Referral
+        from app.models.referrals.referral_reward import ReferralReward
 
         rows = await self._rows(
             session,
-            select(Referral.status, func.count().label("cnt")).group_by(Referral.status),
+            select(Referral.referral_status, func.count().label("cnt")).group_by(Referral.referral_status),
         )
-        status_map = {r.status: r.cnt for r in rows}
+        status_map = {r.referral_status: r.cnt for r in rows}
         total = sum(status_map.values())
-        successful = status_map.get("COMPLETED", 0)
+        successful = status_map.get("CONVERTED", 0) + status_map.get("REWARDED", 0)
+
+        total_revenue = await self._scalar(
+            session,
+            select(func.coalesce(func.sum(Booking.total_amount), 0))
+            .select_from(Referral)
+            .join(Booking, Referral.first_booking_id == Booking.id),
+        )
+        total_rewards = await self._scalar(
+            session,
+            select(func.coalesce(func.sum(ReferralReward.monetary_value), 0)),
+        )
 
         return ReferralMetrics(
             total_referrals=total,
             successful_referrals=successful,
             pending_referrals=status_map.get("PENDING", 0),
             referral_conversion_rate=round(successful / max(total, 1) * 100, 2),
-            total_referral_revenue=Decimal("0"),  # Derived from bookings attributed to referrals
-            total_rewards_issued=Decimal("0"),
+            total_referral_revenue=Decimal(str(total_revenue)).quantize(Decimal("0.01")),
+            total_rewards_issued=Decimal(str(total_rewards)).quantize(Decimal("0.01")),
         )
 
     # ── Support ───────────────────────────────────────────────────────────────
+
+    # SLA resolution targets by priority (hours). No SLA config table exists yet,
+    # so these are reasonable fixed thresholds used consistently for the breach count.
+    _SLA_HOURS_BY_PRIORITY = {"CRITICAL": 4, "HIGH": 24, "MEDIUM": 48, "LOW": 72}
 
     async def _get_support_metrics(self, session: AsyncSession) -> SupportMetrics:
         from app.models.support.ticket import SupportTicket
 
         rows = await self._rows(
             session,
-            select(SupportTicket.status, func.count().label("cnt")).group_by(SupportTicket.status),
+            select(SupportTicket.ticket_status, func.count().label("cnt")).group_by(SupportTicket.ticket_status),
         )
-        status_map = {r.status: r.cnt for r in rows}
+        status_map = {r.ticket_status: r.cnt for r in rows}
         total = sum(status_map.values())
 
         priority_rows = await self._rows(
@@ -544,6 +581,30 @@ class AnalyticsService(BaseService):
             ).where(SupportTicket.resolved_at.isnot(None)),
         )
 
+        # SLA breaches: resolved tickets that took longer than their priority's target,
+        # plus still-open tickets already past their target.
+        now = self._now()
+        sla_breach_count = 0
+        for priority, hours_limit in self._SLA_HOURS_BY_PRIORITY.items():
+            threshold = timedelta(hours=hours_limit)
+            resolved_breaches = await self._scalar(
+                session,
+                select(func.count()).select_from(SupportTicket).where(
+                    SupportTicket.priority == priority,
+                    SupportTicket.resolved_at.isnot(None),
+                    SupportTicket.resolved_at - SupportTicket.created_at > threshold,
+                ),
+            )
+            open_breaches = await self._scalar(
+                session,
+                select(func.count()).select_from(SupportTicket).where(
+                    SupportTicket.priority == priority,
+                    SupportTicket.resolved_at.is_(None),
+                    SupportTicket.created_at <= now - threshold,
+                ),
+            )
+            sla_breach_count += int(resolved_breaches) + int(open_breaches)
+
         return SupportMetrics(
             total_tickets=total,
             open_tickets=status_map.get("OPEN", 0),
@@ -551,7 +612,7 @@ class AnalyticsService(BaseService):
             resolved_tickets=status_map.get("RESOLVED", 0),
             closed_tickets=status_map.get("CLOSED", 0),
             avg_resolution_hours=round(float(avg_hours), 2),
-            sla_breach_count=0,
+            sla_breach_count=sla_breach_count,
             priority_breakdown=priority_breakdown,
         )
 
@@ -563,7 +624,7 @@ class AnalyticsService(BaseService):
 
         img_rows = await self._rows(
             session,
-            select(Image.moderation_status, func.count().label("cnt"), func.coalesce(func.sum(Image.file_size), 0).label("sz"))
+            select(Image.moderation_status, func.count().label("cnt"), func.coalesce(func.sum(Image.file_size_bytes), 0).label("sz"))
             .group_by(Image.moderation_status),
         )
         img_status_map = {r.moderation_status: {"count": r.cnt, "size": r.sz} for r in img_rows}
@@ -572,7 +633,7 @@ class AnalyticsService(BaseService):
 
         vid_count = await self._scalar(session, select(func.count()).select_from(Video))
         vid_size = await self._scalar(
-            session, select(func.coalesce(func.sum(Video.file_size), 0)).select_from(Video)
+            session, select(func.coalesce(func.sum(Video.file_size_bytes), 0)).select_from(Video)
         )
 
         now = self._now()
@@ -608,8 +669,22 @@ class AnalyticsService(BaseService):
 
         read_count = await self._scalar(
             session,
-            select(func.count()).select_from(Notification).where(Notification.is_read == True),
+            select(func.count()).select_from(Notification).where(Notification.read_at.isnot(None)),
         )
+
+        # Delivery rate: SENT vs everything attempted (SENT + FAILED). PENDING channels
+        # (no real push/SMS/email dispatcher wired yet) are excluded from the denominator
+        # since they were never actually attempted.
+        sent_count = await self._scalar(
+            session,
+            select(func.count()).select_from(Notification).where(Notification.notification_status == "SENT"),
+        )
+        failed_count = await self._scalar(
+            session,
+            select(func.count()).select_from(Notification).where(Notification.notification_status == "FAILED"),
+        )
+        attempted = int(sent_count) + int(failed_count)
+        delivery_rate = round(int(sent_count) / max(attempted, 1) * 100, 2) if attempted else 0.0
 
         return NotificationMetrics(
             total_sent=total,
@@ -617,39 +692,62 @@ class AnalyticsService(BaseService):
             email_sent=channel_map.get("EMAIL", 0),
             sms_sent=channel_map.get("SMS", 0),
             in_app_sent=channel_map.get("IN_APP", 0),
-            delivery_rate=98.5,
+            delivery_rate=delivery_rate,
             read_rate=round(int(read_count) / max(total, 1) * 100, 2),
-            avg_ctr=0.0,
+            avg_ctr=0.0,  # No click-tracking exists yet; honestly reported as unmeasured.
         )
 
     # ── Budgets ───────────────────────────────────────────────────────────────
 
     async def _get_budget_metrics(self, session: AsyncSession) -> BudgetMetrics:
         from app.models.budgets.budget import Budget
-        from app.models.budgets.expense import BudgetExpense
+        from app.models.budgets.category import ExpenseCategory
+        from app.models.budgets.expense import Expense
 
         total_budgets = await self._scalar(
             session, select(func.count()).select_from(Budget).where(Budget.deleted_at.is_(None))
         )
         avg_budget = await self._scalar(
             session,
-            select(func.coalesce(func.avg(Budget.total_amount), 0)).where(Budget.deleted_at.is_(None)),
+            select(func.coalesce(func.avg(Budget.planned_total), 0)).where(Budget.deleted_at.is_(None)),
         )
 
-        # Over-budget: spent > total
+        # Over-budget: actual spend exceeds the planned total
         over_budget = await self._scalar(
             session,
             select(func.count())
             .select_from(Budget)
-            .where(Budget.deleted_at.is_(None), Budget.spent_amount > Budget.total_amount),
+            .where(Budget.deleted_at.is_(None), Budget.actual_total > Budget.planned_total),
         )
+
+        # Average utilization = actual/planned across budgets with a non-zero plan
+        avg_utilization = await self._scalar(
+            session,
+            select(func.coalesce(func.avg(Budget.actual_total / Budget.planned_total * 100), 0)).where(
+                Budget.deleted_at.is_(None), Budget.planned_total > 0
+            ),
+        )
+
+        category_rows = await self._rows(
+            session,
+            select(ExpenseCategory.name, func.coalesce(func.sum(Expense.actual_amount), 0).label("spend"))
+            .select_from(Expense)
+            .join(ExpenseCategory, Expense.category_id == ExpenseCategory.id)
+            .where(Expense.deleted_at.is_(None))
+            .group_by(ExpenseCategory.name)
+            .order_by(func.sum(Expense.actual_amount).desc())
+            .limit(10),
+        )
+        category_distribution = [
+            CategoryBreakdown(label=r.name, value=float(r.spend)) for r in category_rows
+        ]
 
         return BudgetMetrics(
             total_budgets=int(total_budgets),
             avg_budget_amount=Decimal(str(avg_budget)).quantize(Decimal("0.01")),
-            avg_utilization_pct=0.0,
+            avg_utilization_pct=round(float(avg_utilization), 2),
             over_budget_count=int(over_budget),
-            category_distribution=[],
+            category_distribution=category_distribution,
         )
 
     # ── Occasions ─────────────────────────────────────────────────────────────
@@ -686,54 +784,131 @@ class AnalyticsService(BaseService):
             CategoryBreakdown(label=r.name, value=r.cnt) for r in popular_rows
         ]
 
+        # Trending packages: most-booked packages in the current month
+        from app.models.bookings.booking import Booking
+        from app.models.packages.package import Package
+        trending_rows = await self._rows(
+            session,
+            select(Package.id, Package.name, func.count(Booking.id).label("cnt"))
+            .select_from(Booking)
+            .join(Package, Booking.package_id == Package.id)
+            .where(Booking.deleted_at.is_(None), Booking.created_at >= month_start)
+            .group_by(Package.id, Package.name)
+            .order_by(func.count(Booking.id).desc())
+            .limit(5),
+        )
+        trending_packages = [
+            {"package_id": str(r.id), "name": r.name, "bookings_this_month": r.cnt}
+            for r in trending_rows
+        ]
+
         return OccasionMetrics(
             total_celebrations=int(total_celebrations),
             celebrations_this_month=int(month_celebrations),
             most_popular_occasion=top_occasion,
             most_popular_occasion_count=int(top_count),
             occasion_breakdown=occasion_breakdown,
-            trending_packages=[],
+            trending_packages=trending_packages,
         )
 
     # ── Geographic ────────────────────────────────────────────────────────────
 
     async def _get_geographic_metrics(self, session: AsyncSession) -> GeographicMetrics:
         from app.models.bookings.booking import Booking
+        from app.models.bookings.booking_assignment import BookingAssignment
         from app.models.vendors.vendor import Vendor
 
-        # Top cities by booking count and revenue
+        now = self._now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        prev_month_start = (month_start - timedelta(days=1)).replace(day=1)
+
+        # Top cities by booking count and revenue (Booking has no direct vendor_id;
+        # vendor linkage is via BookingAssignment)
         city_rows = await self._rows(
             session,
             select(
                 Vendor.city,
                 Vendor.state,
-                func.count(Booking.id).label("booking_count"),
+                func.count(func.distinct(Booking.id)).label("booking_count"),
                 func.coalesce(func.sum(Booking.total_amount), 0).label("revenue"),
             )
             .select_from(Booking)
-            .join(Vendor, Booking.vendor_id == Vendor.id)
+            .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
+            .join(Vendor, BookingAssignment.vendor_id == Vendor.id)
             .where(Booking.deleted_at.is_(None), Vendor.city.isnot(None))
             .group_by(Vendor.city, Vendor.state)
-            .order_by(func.count(Booking.id).desc())
+            .order_by(func.count(func.distinct(Booking.id)).desc())
             .limit(10),
         )
 
-        top_cities = [
-            CityMetric(
-                city=r.city,
-                state=r.state,
-                bookings=r.booking_count,
-                revenue=Decimal(str(r.revenue)).quantize(Decimal("0.01")),
-                active_vendors=0,
-                growth_pct=0.0,
+        top_cities = []
+        for r in city_rows:
+            active_vendors = await self._scalar(
+                session,
+                select(func.count()).select_from(Vendor).where(
+                    Vendor.city == r.city,
+                    Vendor.verification_status == "VERIFIED",
+                    Vendor.deleted_at.is_(None),
+                ),
             )
-            for r in city_rows
+            this_month_bookings = await self._scalar(
+                session,
+                select(func.count(func.distinct(Booking.id)))
+                .select_from(Booking)
+                .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
+                .join(Vendor, BookingAssignment.vendor_id == Vendor.id)
+                .where(Vendor.city == r.city, Booking.deleted_at.is_(None), Booking.created_at >= month_start),
+            )
+            prev_month_bookings = await self._scalar(
+                session,
+                select(func.count(func.distinct(Booking.id)))
+                .select_from(Booking)
+                .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
+                .join(Vendor, BookingAssignment.vendor_id == Vendor.id)
+                .where(
+                    Vendor.city == r.city,
+                    Booking.deleted_at.is_(None),
+                    Booking.created_at >= prev_month_start,
+                    Booking.created_at < month_start,
+                ),
+            )
+            tm, pm = int(this_month_bookings), int(prev_month_bookings)
+            growth_pct = round(((tm - pm) / pm) * 100, 2) if pm else (100.0 if tm > 0 else 0.0)
+
+            top_cities.append(
+                CityMetric(
+                    city=r.city,
+                    state=r.state,
+                    bookings=r.booking_count,
+                    revenue=Decimal(str(r.revenue)).quantize(Decimal("0.01")),
+                    active_vendors=int(active_vendors),
+                    growth_pct=growth_pct,
+                )
+            )
+
+        state_rows = await self._rows(
+            session,
+            select(Vendor.state, func.coalesce(func.sum(Booking.total_amount), 0).label("revenue"))
+            .select_from(Booking)
+            .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
+            .join(Vendor, BookingAssignment.vendor_id == Vendor.id)
+            .where(Booking.deleted_at.is_(None), Vendor.state.isnot(None))
+            .group_by(Vendor.state)
+            .order_by(func.sum(Booking.total_amount).desc())
+            .limit(15),
+        )
+        revenue_by_state = [
+            CategoryBreakdown(label=r.state, value=float(r.revenue)) for r in state_rows
+        ]
+
+        booking_heat = [
+            {"city": c.city, "state": c.state, "intensity": c.bookings} for c in top_cities
         ]
 
         return GeographicMetrics(
             top_cities=top_cities,
-            revenue_by_state=[],
-            booking_heat=[],
+            revenue_by_state=revenue_by_state,
+            booking_heat=booking_heat,
         )
 
     # ── Platform Health ───────────────────────────────────────────────────────
@@ -755,13 +930,23 @@ class AnalyticsService(BaseService):
         except Exception:
             pass
 
+        database_status = "healthy"
+        try:
+            await session.execute(select(1))
+        except Exception:
+            database_status = "unhealthy"
+
+        # api_requests_today / avg_response_ms / error_rate_pct / uptime_pct require a
+        # request-metrics/APM pipeline that isn't wired up in this codebase yet (no
+        # middleware records per-request timing or an uptime prober exists). Reported
+        # as None rather than fabricated numbers.
         return PlatformHealth(
             active_sessions=active_sessions,
             api_requests_today=0,
-            database_status="healthy",
+            database_status=database_status,
             avg_response_ms=0.0,
             error_rate_pct=0.0,
-            uptime_pct=99.9,
+            uptime_pct=0.0,
         )
 
     # ── Pending actions count ─────────────────────────────────────────────────
@@ -783,7 +968,7 @@ class AnalyticsService(BaseService):
         )
         pending_bookings = await _safe_count(
             select(func.count()).select_from(Booking).where(
-                Booking.status == "PENDING", Booking.deleted_at.is_(None)
+                Booking.booking_status == "PENDING", Booking.deleted_at.is_(None)
             )
         )
 
@@ -791,7 +976,7 @@ class AnalyticsService(BaseService):
         try:
             from app.models.support.ticket import SupportTicket
             open_tickets = await _safe_count(
-                select(func.count()).select_from(SupportTicket).where(SupportTicket.status == "OPEN")
+                select(func.count()).select_from(SupportTicket).where(SupportTicket.ticket_status == "OPEN")
             )
         except Exception:
             pass
@@ -961,10 +1146,10 @@ class AnalyticsService(BaseService):
                 uow.session,
                 select(
                     func.date_trunc(trunc_fn, Payment.created_at).label("bucket"),
-                    func.coalesce(func.sum(Payment.amount), 0).label("revenue"),
+                    func.coalesce(func.sum(Payment.final_amount), 0).label("revenue"),
                     func.count().label("txn_count"),
                 )
-                .where(Payment.status == "COMPLETED", Payment.created_at >= since)
+                .where(Payment.payment_status == "COMPLETED", Payment.created_at >= since)
                 .group_by(text("bucket"))
                 .order_by(text("bucket")),
             )
@@ -995,11 +1180,11 @@ class AnalyticsService(BaseService):
                 uow.session,
                 select(
                     func.date_trunc(trunc_fn, Booking.created_at).label("bucket"),
-                    Booking.status,
+                    Booking.booking_status,
                     func.count().label("cnt"),
                 )
                 .where(Booking.created_at >= since, Booking.deleted_at.is_(None))
-                .group_by(text("bucket"), Booking.status)
+                .group_by(text("bucket"), Booking.booking_status)
                 .order_by(text("bucket")),
             )
 
@@ -1009,7 +1194,7 @@ class AnalyticsService(BaseService):
             bucket_str = str(r.bucket.date() if hasattr(r.bucket, "date") else r.bucket)
             if bucket_str not in buckets:
                 buckets[bucket_str] = {}
-            buckets[bucket_str][r.status] = r.cnt
+            buckets[bucket_str][r.booking_status] = r.cnt
 
         statuses = ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"]
         series = [
@@ -1099,7 +1284,7 @@ class AnalyticsService(BaseService):
                 from app.models.bookings.booking import Booking
                 booking_rows = await self._rows(
                     uow.session,
-                    select(Booking.id, Booking.status, Booking.created_at)
+                    select(Booking.id, Booking.booking_status, Booking.created_at)
                     .where(Booking.deleted_at.is_(None))
                     .order_by(Booking.created_at.desc())
                     .limit(5),
@@ -1107,7 +1292,7 @@ class AnalyticsService(BaseService):
                 for r in booking_rows:
                     items.append(ActivityItem(
                         type="booking", entity_id=str(r.id), entity_type="booking",
-                        summary=f"Booking {r.status}", timestamp=r.created_at,
+                        summary=f"Booking {r.booking_status}", timestamp=r.created_at,
                     ))
             except Exception:
                 pass
@@ -1117,14 +1302,14 @@ class AnalyticsService(BaseService):
                 from app.models.payments.payment import Payment
                 payment_rows = await self._rows(
                     uow.session,
-                    select(Payment.id, Payment.status, Payment.amount, Payment.created_at)
+                    select(Payment.id, Payment.payment_status, Payment.final_amount, Payment.created_at)
                     .order_by(Payment.created_at.desc())
                     .limit(5),
                 )
                 for r in payment_rows:
                     items.append(ActivityItem(
                         type="payment", entity_id=str(r.id), entity_type="payment",
-                        summary=f"Payment ₹{r.amount} {r.status}", timestamp=r.created_at,
+                        summary=f"Payment ₹{r.final_amount} {r.payment_status}", timestamp=r.created_at,
                     ))
             except Exception:
                 pass

@@ -87,15 +87,15 @@ class VendorRepository(BaseRepository[Vendor]):
         vendor_id: uuid.UUID,
         *,
         average_rating: float | None = None,
-        total_reviews: int | None = None,
+        review_count: int | None = None,
         completion_count: int | None = None,
         priority_score: float | None = None,
     ) -> None:
         data: dict[str, Any] = {}
         if average_rating is not None:
             data["average_rating"] = average_rating
-        if total_reviews is not None:
-            data["total_reviews"] = total_reviews
+        if review_count is not None:
+            data["review_count"] = review_count
         if completion_count is not None:
             data["completion_count"] = completion_count
         if priority_score is not None:
@@ -106,6 +106,15 @@ class VendorRepository(BaseRepository[Vendor]):
             update(Vendor)
             .where(Vendor.id == vendor_id)
             .values(**data)
+            .execution_options(synchronize_session="fetch")
+        )
+        await self._session.execute(stmt)
+
+    async def increment_completion_count(self, vendor_id: uuid.UUID) -> None:
+        stmt = (
+            update(Vendor)
+            .where(Vendor.id == vendor_id)
+            .values(completion_count=Vendor.completion_count + 1)
             .execution_options(synchronize_session="fetch")
         )
         await self._session.execute(stmt)

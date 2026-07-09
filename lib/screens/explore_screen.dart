@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../theme/responsive.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../widgets/photo_placeholder.dart';
@@ -196,7 +197,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final topPadding = MediaQuery.of(context).padding.top + 70;
+    final resp = context.resp;
+    final topPadding = MediaQuery.of(context).padding.top + resp.h(85);
 
     // Client-side search filter only — category and city are applied server-side.
     final List<Package> list = _allPackages.where((p) {
@@ -211,22 +213,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+            padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), 0),
             child: Column(
               children: [
                 Row(
                   children: [
                     Expanded(
                         child: Text('Discover packages',
-                            style: TyType.display(25, color: ty.ink))),
+                            style: TyType.display(resp.sp(25), color: ty.ink))),
                     // City picker button
                     GestureDetector(
                       onTap: _showCityPicker,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: EdgeInsets.symmetric(horizontal: resp.w(10), vertical: resp.h(6)),
                         decoration: BoxDecoration(
                           color: _selectedCitySlug.isEmpty ? ty.surface2 : ty.saffron.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(resp.w(10)),
                           border: Border.all(
                             color: _selectedCitySlug.isEmpty ? ty.line : ty.saffron.withOpacity(0.4),
                           ),
@@ -235,41 +237,41 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.location_on_rounded,
-                                size: 14,
+                                size: resp.sp(14),
                                 color: _selectedCitySlug.isEmpty ? ty.ink3 : ty.saffron),
-                            const SizedBox(width: 4),
+                            SizedBox(width: resp.w(4)),
                             Text(_selectedCityLabel,
-                                style: TyType.sans(13,
+                                style: TyType.sans(resp.sp(13),
                                     color: _selectedCitySlug.isEmpty ? ty.ink2 : ty.saffron,
                                     weight: FontWeight.w600)),
-                            const SizedBox(width: 3),
+                            SizedBox(width: resp.w(3)),
                             Icon(Icons.keyboard_arrow_down_rounded,
-                                size: 14,
+                                size: resp.sp(14),
                                 color: _selectedCitySlug.isEmpty ? ty.ink3 : ty.saffron),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: resp.w(8)),
                     ChromeIconButton(
                       icon: Icons.tune_rounded,
                       onTap: () => _push(context, const PackageFilterScreen()),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: resp.h(12)),
                 Container(
                   key: _searchKey,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: EdgeInsets.symmetric(horizontal: resp.w(14)),
                   decoration: BoxDecoration(
                     color: ty.surface2,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(resp.w(14)),
                     border: Border.all(color: ty.line),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.search_rounded, size: 18, color: ty.ink3),
-                      const SizedBox(width: 8),
+                      Icon(Icons.search_rounded, size: resp.sp(18), color: ty.ink3),
+                      SizedBox(width: resp.w(8)),
                       Expanded(
                         child: TextField(
                           onChanged: (v) => setState(() => _searchQuery = v),
@@ -277,25 +279,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             isDense: true,
                             border: InputBorder.none,
                             hintText: 'Search birthdays, weddings, Diwali…',
-                            hintStyle: TyType.sans(14.5, color: ty.ink3),
+                            hintStyle: TyType.sans(resp.sp(14.5), color: ty.ink3),
                           ),
-                          style: TyType.sans(14.5, color: ty.ink),
+                          style: TyType.sans(resp.sp(14.5), color: ty.ink),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: resp.h(14)),
               ],
             ),
           ),
           SizedBox(
-            height: 40,
+            height: resp.h(40),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
+              padding: EdgeInsets.symmetric(horizontal: resp.w(18)),
               itemCount: _categories.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, __) => SizedBox(width: resp.w(8)),
               itemBuilder: (context, i) {
                 if (i == 0) {
                   return TyChip(
@@ -323,36 +325,40 @@ class _ExploreScreenState extends State<ExploreScreen> {
               },
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: resp.h(6)),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : list.isEmpty
                     ? _buildEmptyState(context)
-                    : ListView(
-                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-                        children: [
-                          if (featured.isNotEmpty && _searchQuery.isEmpty) ...[
-                            const SectionHeader('Featured for you'),
-                            SizedBox(
-                              height: 230,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: featured.length,
-                                separatorBuilder: (_, __) => const SizedBox(width: 13),
-                                itemBuilder: (context, i) =>
-                                    _packageFeatured(context, featured[i]),
+                    : RefreshIndicator(
+                        onRefresh: _loadPackages,
+                        color: ty.saffron,
+                        child: ListView(
+                          padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), resp.h(28)),
+                          children: [
+                            if (featured.isNotEmpty && _searchQuery.isEmpty) ...[
+                              const SectionHeader('Featured for you'),
+                              SizedBox(
+                                height: resp.h(220),
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: featured.length,
+                                  separatorBuilder: (_, __) => SizedBox(width: resp.w(13)),
+                                  itemBuilder: (context, i) =>
+                                      _packageFeatured(context, featured[i]),
+                                ),
                               ),
+                              SizedBox(height: resp.h(24)),
+                            ],
+                            SectionHeader(
+                              _selectedCitySlug.isEmpty
+                                  ? 'Available Packages'
+                                  : 'Packages in $_selectedCityLabel',
                             ),
-                            const SizedBox(height: 24),
+                            ...list.map((p) => _packageRow(context, p)),
                           ],
-                          SectionHeader(
-                            _selectedCitySlug.isEmpty
-                                ? 'Available Packages'
-                                : 'Packages in $_selectedCityLabel',
-                          ),
-                          ...list.map((p) => _packageRow(context, p)),
-                        ],
+                        ),
                       ),
           ),
         ],
@@ -362,35 +368,36 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Widget _buildEmptyState(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off_rounded, size: 64, color: ty.ink3),
-          const SizedBox(height: 16),
+          Icon(Icons.search_off_rounded, size: resp.sp(64), color: ty.ink3),
+          SizedBox(height: resp.h(16)),
           Text(
             _selectedCitySlug.isEmpty
                 ? 'No packages found'
                 : 'No packages in $_selectedCityLabel',
-            style: TyType.display(20, color: ty.ink),
+            style: TyType.display(resp.sp(20), color: ty.ink),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: resp.h(8)),
           Text(
             _selectedCitySlug.isEmpty
                 ? 'Try searching for something else or change categories.'
                 : 'Try a different city or browse all cities.',
-            style: TyType.sans(14, color: ty.ink2),
+            style: TyType.sans(resp.sp(14), color: ty.ink2),
             textAlign: TextAlign.center,
           ),
           if (_selectedCitySlug.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: resp.h(16)),
             GestureDetector(
               onTap: () {
                 setState(() => _CityPref.selected = null);
                 _loadPackages();
               },
               child: Text('Browse all cities',
-                  style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w600)),
+                  style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w600)),
             ),
           ],
         ],
@@ -400,42 +407,43 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Widget _packageFeatured(BuildContext context, Package p) {
     final ty = context.ty;
+    final resp = context.resp;
     return GestureDetector(
       onTap: () => _push(context, PackageDetailScreen(package: p)),
       child: SizedBox(
-        width: 220,
+        width: resp.w(220),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(resp.w(20)),
                   child: CachedNetworkImage(
                     imageUrl: p.coverImageUrl ?? '',
-                    height: 140,
+                    height: resp.h(135),
                     width: double.infinity,
                     fit: BoxFit.cover,
                     placeholder: (context, url) =>
-                        PhotoPlaceholder(tint: p.tint, height: 140, arch: false),
+                        PhotoPlaceholder(tint: p.tint, height: resp.h(135), arch: false),
                     errorWidget: (context, url, error) =>
                         OccasionAssets.getFallback(p.name, tint: p.tint, arch: false),
                   ),
                 ),
                 Positioned(
-                  top: 10,
-                  right: 10,
+                  top: resp.h(10),
+                  right: resp.w(10),
                   child: TyPill('₹${(p.price / 1000).toStringAsFixed(0)}K'),
                 ),
               ],
             ),
-            const SizedBox(height: 9),
+            SizedBox(height: resp.h(9)),
             Text(p.name,
-                style: TyType.sans(15.5, color: ty.ink, weight: FontWeight.w700)),
+                style: TyType.sans(resp.sp(15.5), color: ty.ink, weight: FontWeight.w700)),
             Text(p.description ?? '',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TyType.sans(12.5, color: ty.ink2)),
+                style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
           ],
         ),
       ),
@@ -444,24 +452,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Widget _packageRow(BuildContext context, Package p) {
     final ty = context.ty;
+    final resp = context.resp;
     return GestureDetector(
       onTap: () => _push(context, PackageDetailScreen(package: p)),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 13),
-        padding: const EdgeInsets.all(11),
+        margin: EdgeInsets.only(bottom: resp.h(13)),
+        padding: EdgeInsets.all(resp.w(11)),
         decoration: BoxDecoration(
           color: ty.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(resp.w(20)),
           border: Border.all(color: ty.line),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 88,
-              height: 88,
+              width: resp.w(88),
+              height: resp.w(88),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(resp.w(16)),
                 child: CachedNetworkImage(
                   imageUrl: p.coverImageUrl ?? '',
                   fit: BoxFit.cover,
@@ -472,7 +481,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 13),
+            SizedBox(width: resp.w(13)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,39 +490,39 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: EdgeInsets.symmetric(horizontal: resp.w(6), vertical: resp.h(2)),
                         decoration: BoxDecoration(
                           color: ty.surface2,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(resp.w(6)),
                           border: Border.all(color: ty.line),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.location_on_rounded, size: 10, color: ty.ink3),
-                            const SizedBox(width: 2),
+                            Icon(Icons.location_on_rounded, size: resp.sp(10), color: ty.ink3),
+                            SizedBox(width: resp.w(2)),
                             Text(p.citySlug!,
-                                style: TyType.sans(10, color: ty.ink3)),
+                                style: TyType.sans(resp.sp(10), color: ty.ink3)),
                           ],
                         ),
                       ),
                     ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: resp.h(2)),
                   Text(p.name,
-                      style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
-                  const SizedBox(height: 1),
+                      style: TyType.sans(resp.sp(16), color: ty.ink, weight: FontWeight.w700)),
+                  SizedBox(height: resp.h(1)),
                   Text('${p.inclusionsCount} Inclusions',
-                      style: TyType.sans(12.5, color: ty.ink2)),
-                  const SizedBox(height: 12),
+                      style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                  SizedBox(height: resp.h(12)),
                   Row(
                     children: [
-                      Text('Starting from', style: TyType.sans(11, color: ty.ink3)),
-                      const SizedBox(width: 4),
+                      Text('Starting from', style: TyType.sans(resp.sp(11), color: ty.ink3)),
+                      SizedBox(width: resp.w(4)),
                       Text('₹${(p.price / 1000).toStringAsFixed(0)}K',
-                          style: TyType.sans(14,
+                          style: TyType.sans(resp.sp(14),
                               color: ty.ink, weight: FontWeight.w800)),
                       const Spacer(),
-                      Icon(Icons.chevron_right_rounded, color: ty.ink3, size: 18),
+                      Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.sp(18)),
                     ],
                   ),
                 ],

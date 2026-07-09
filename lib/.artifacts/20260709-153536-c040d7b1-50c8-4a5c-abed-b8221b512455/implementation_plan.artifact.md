@@ -1,28 +1,20 @@
-# Implementation Plan - UI Responsiveness Fixes
+# Implementation Plan - UI Responsiveness & Auto-Refresh
 
-The goal is to fix the responsiveness issues in the `AuthScreen` (and eventually other screens) where the UI shows a scrollbar or overflows on smaller iOS devices. We will introduce a `TyResponsive` utility and use it to scale hardcoded dimensions.
-
-## User Review Required
-
-> [!NOTE]
-> I have created a `TyResponsive` utility in `lib/theme/responsive.dart`. I will now apply it to `AuthScreen.dart` to scale font sizes and spacing.
-> I also noticed that the `AuthScreen` has a top-level `Column` that isn't scrollable, but the tabs inside are. On small screens, the header might take too much space, causing the tab content to be too small or overflow. I will wrap the entire body in a `SingleChildScrollView` if necessary, or better, make the spacing responsive.
+The goal is to fix responsiveness issues (header overlaps, excessive whitespace) and implement an auto-refresh mechanism so the UI stays in sync with data changes.
 
 ## Proposed Changes
 
-### Theme & Utilities
+### Core Responsiveness
+- Use `TyResponsive` utility to scale all hardcoded dimensions.
+- Standardize top padding for screens with sticky headers to `MediaQuery.of(context).padding.top + resp.h(85)`.
 
-#### [responsive.dart](file:///D:/EdVentura/apps/tyohaar/lib/theme/responsive.dart) (Already Created)
-- Utility to scale widths, heights, and font sizes based on a 390x844 base (iPhone 13/14).
+### Auto-Refresh
+- Wrap all major list views in `RefreshIndicator`.
+- Listen to `AuthManager` in `AccountScreen` for live user updates.
+- Use `.then()` callbacks on navigation to refresh parent screens on return.
 
-### Screens
-
-#### [auth_screen.dart](file:///D:/EdVentura/apps/tyohaar/lib/screens/auth_screen.dart)
-- Import `responsive.dart`.
-- Replace hardcoded `SizedBox` heights with `resp.h(value)`.
-- Replace hardcoded font sizes in `TyType` calls with `resp.sp(value)`.
-- Wrap the main `Column` in a `SingleChildScrollView` to ensure the header and tabs can all be reached on very small devices.
-- Adjust the `TabBarView` to handle dynamic height if possible, or use a `LayoutBuilder` to calculate available space.
+### Screens Updated
+- `HomeScreen`, `AccountScreen`, `PlansScreen`, `ExploreScreen`, `EventHubScreen`, `BudgetScreen`, `GuestsScreen`.
 
 ## Verification Plan
 

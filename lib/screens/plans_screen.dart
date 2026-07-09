@@ -4,6 +4,7 @@ import 'package:shimmer/shimmer.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../theme/responsive.dart';
 import '../data/models.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
@@ -64,100 +65,106 @@ class _PlansScreenState extends State<PlansScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final topPadding = MediaQuery.of(context).padding.top + 70;
+    final resp = context.resp;
+    final topPadding = MediaQuery.of(context).padding.top + resp.h(85);
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(18, topPadding, 18, 28),
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text('Your plans', style: TyType.display(26, color: ty.ink))),
-            ChromeIconButton(
-              icon: Icons.add_rounded,
-              onTap: () => Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const PlanFlowScreen()))
-                  .then((_) => _load()),
-            ),
+    return RefreshIndicator(
+      onRefresh: _load,
+      displacement: topPadding,
+      color: ty.saffron,
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(resp.w(18), topPadding, resp.w(18), resp.h(28)),
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('Your plans', style: TyType.display(resp.sp(26), color: ty.ink))),
+              ChromeIconButton(
+                icon: Icons.add_rounded,
+                onTap: () => Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => const PlanFlowScreen()))
+                    .then((_) => _load()),
+              ),
+            ],
+          ),
+          SizedBox(height: resp.h(22)),
+          if (_loading && _celebrations.isEmpty) ..._buildSkeletons(ty, resp),
+          if (!_loading && _error != null) _buildError(ty, resp),
+          if (!_loading && _error == null && _celebrations.isEmpty) _buildEmpty(context, ty, resp),
+          if (_celebrations.isNotEmpty) ...[
+            SectionHeader('In progress'),
+            ..._celebrations.map((c) => _celebrationCard(context, c)),
           ],
-        ),
-        const SizedBox(height: 22),
-        if (_loading) ..._buildSkeletons(ty),
-        if (!_loading && _error != null) _buildError(ty),
-        if (!_loading && _error == null && _celebrations.isEmpty) _buildEmpty(context, ty),
-        if (!_loading && _error == null && _celebrations.isNotEmpty) ...[
-          const SectionHeader('In progress'),
-          ..._celebrations.map((c) => _celebrationCard(context, c)),
+          SizedBox(height: resp.h(12)),
+          _addNewCard(context, ty, resp),
         ],
-        const SizedBox(height: 12),
-        _addNewCard(context, ty),
-      ],
+      ),
     );
   }
 
-  List<Widget> _buildSkeletons(TyColors ty) {
+  List<Widget> _buildSkeletons(TyColors ty, TyResponsive resp) {
     return List.generate(
       3,
       (_) => Shimmer.fromColors(
         baseColor: ty.line,
         highlightColor: ty.surface2,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          height: 84,
+          margin: EdgeInsets.only(bottom: resp.h(12)),
+          height: resp.h(84),
           decoration: BoxDecoration(
             color: ty.surface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(resp.w(20)),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildError(TyColors ty) {
+  Widget _buildError(TyColors ty, TyResponsive resp) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
+      padding: EdgeInsets.symmetric(vertical: resp.h(32)),
       child: Column(
         children: [
-          Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
-          const SizedBox(height: 12),
-          Text(_error!, style: TyType.sans(14, color: ty.ink2), textAlign: TextAlign.center),
-          const SizedBox(height: 16),
+          Icon(Icons.error_outline_rounded, size: resp.sp(48), color: ty.rose),
+          SizedBox(height: resp.h(12)),
+          Text(_error!, style: TyType.sans(resp.sp(14), color: ty.ink2), textAlign: TextAlign.center),
+          SizedBox(height: resp.h(16)),
           TextButton(
             onPressed: _load,
-            child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+            child: Text('Try Again', style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmpty(BuildContext context, TyColors ty) {
+  Widget _buildEmpty(BuildContext context, TyColors ty, TyResponsive resp) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
+      padding: EdgeInsets.symmetric(vertical: resp.h(40)),
       child: Column(
         children: [
-          Icon(Icons.event_note_outlined, size: 56, color: ty.ink3),
-          const SizedBox(height: 16),
+          Icon(Icons.event_note_outlined, size: resp.sp(56), color: ty.ink3),
+          SizedBox(height: resp.h(16)),
           Text('No celebrations yet',
-              style: TyType.display(20, color: ty.ink), textAlign: TextAlign.center),
-          const SizedBox(height: 8),
+              style: TyType.display(resp.sp(20), color: ty.ink), textAlign: TextAlign.center),
+          SizedBox(height: resp.h(8)),
           Text(
             'Start planning your first unforgettable event.',
-            style: TyType.sans(14, color: ty.ink2, height: 1.5),
+            style: TyType.sans(resp.sp(14), color: ty.ink2, height: 1.5),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: resp.h(24)),
           GestureDetector(
             onTap: () => Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) => const PlanFlowScreen()))
                 .then((_) => _load()),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              padding: EdgeInsets.symmetric(horizontal: resp.w(24), vertical: resp.h(14)),
               decoration: BoxDecoration(
                 color: ty.saffron,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(resp.w(16)),
               ),
               child: Text('Start Planning',
-                  style: TyType.sans(15, color: Colors.white, weight: FontWeight.w700)),
+                  style: TyType.sans(resp.sp(15), color: Colors.white, weight: FontWeight.w700)),
             ),
           ),
         ],
@@ -167,6 +174,7 @@ class _PlansScreenState extends State<PlansScreen> {
 
   Widget _celebrationCard(BuildContext context, Celebration c) {
     final ty = context.ty;
+    final resp = context.resp;
     final title = c.title;
     final occasionName = c.occasionName ?? '';
     final tint = _tintFor(occasionName);
@@ -178,32 +186,32 @@ class _PlansScreenState extends State<PlansScreen> {
           .push(MaterialPageRoute(builder: (_) => EventHubScreen(celebrationId: c.id)))
           .then((_) => _load()),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(13),
+        margin: EdgeInsets.only(bottom: resp.h(12)),
+        padding: EdgeInsets.all(resp.w(13)),
         decoration: BoxDecoration(
           color: ty.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(resp.w(20)),
           border: Border.all(color: ty.line),
         ),
         child: Row(
           children: [
             SizedBox(
-              width: 58,
-              height: 58,
+              width: resp.w(58),
+              height: resp.w(58),
               child: PhotoPlaceholder(tint: tint, arch: false),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: resp.w(14)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '${occasionName.isNotEmpty ? occasionName : 'Celebration'}${dateStr.isNotEmpty ? ' · $dateStr' : ''}'.toUpperCase(),
-                    style: TyType.eyebrow(11, color: ty.tint(tint)),
+                    style: TyType.eyebrow(resp.sp(11), color: ty.tint(tint)),
                   ),
-                  const SizedBox(height: 3),
-                  Text(title, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
-                  const SizedBox(height: 9),
+                  SizedBox(height: resp.h(3)),
+                  Text(title, style: TyType.sans(resp.sp(16), color: ty.ink, weight: FontWeight.w700)),
+                  SizedBox(height: resp.h(9)),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(3),
                     child: LinearProgressIndicator(
@@ -216,12 +224,12 @@ class _PlansScreenState extends State<PlansScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: resp.w(12)),
             Column(
               children: [
                 Text('${(_statusProgress(status) * 100).round()}%',
-                    style: TyType.sans(15, color: ty.ink, weight: FontWeight.w800)),
-                Text(_capitalise(status), style: TyType.sans(10.5, color: ty.ink3)),
+                    style: TyType.sans(resp.sp(15), color: ty.ink, weight: FontWeight.w800)),
+                Text(_capitalise(status), style: TyType.sans(resp.sp(10.5), color: ty.ink3)),
               ],
             ),
           ],
@@ -230,41 +238,41 @@ class _PlansScreenState extends State<PlansScreen> {
     );
   }
 
-  Widget _addNewCard(BuildContext context, TyColors ty) {
+  Widget _addNewCard(BuildContext context, TyColors ty, TyResponsive resp) {
     return GestureDetector(
       onTap: () => Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const PlanFlowScreen()))
           .then((_) => _load()),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(resp.w(16)),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(resp.w(20)),
           border: Border.all(color: ty.line, width: 1.5),
         ),
         child: Row(
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: resp.w(46),
+              height: resp.w(46),
               decoration: BoxDecoration(
                 color: ty.saffronSoft,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(resp.w(14)),
               ),
-              child: Icon(Icons.add_rounded, color: ty.saffronDeep, size: 22),
+              child: Icon(Icons.add_rounded, color: ty.saffronDeep, size: resp.sp(22)),
             ),
-            const SizedBox(width: 13),
+            SizedBox(width: resp.w(13)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Plan a new celebration',
-                      style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
-                  const SizedBox(height: 2),
-                  Text('Start from any occasion', style: TyType.sans(12.5, color: ty.ink2)),
+                      style: TyType.sans(resp.sp(15), color: ty.ink, weight: FontWeight.w700)),
+                  SizedBox(height: resp.h(2)),
+                  Text('Start from any occasion', style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: ty.ink3),
+            Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.sp(20)),
           ],
         ),
       ),

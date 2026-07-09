@@ -38,10 +38,10 @@ class _EventHubScreenState extends State<EventHubScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCelebration();
+    _load();
   }
 
-  Future<void> _loadCelebration() async {
+  Future<void> _load() async {
     try {
       String? id = widget.celebrationId;
       if (id == null) {
@@ -128,9 +128,12 @@ class _EventHubScreenState extends State<EventHubScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      body: ListView(
-        padding: EdgeInsets.zero,
-        children: [
+      body: RefreshIndicator(
+        onRefresh: _load,
+        color: ty.saffron,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
           Stack(
             key: _heroKey,
             children: [
@@ -316,8 +319,9 @@ class _EventHubScreenState extends State<EventHubScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _glass(BuildContext context, IconData icon, VoidCallback onTap) {
     final resp = context.resp;
@@ -357,7 +361,9 @@ class _EventHubScreenState extends State<EventHubScreen> {
     final ty = context.ty;
     final resp = context.resp;
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => page))
+          .then((_) => _load()),
       child: Container(
         padding: EdgeInsets.all(resp.w(15)),
         decoration: _card(ty, resp),

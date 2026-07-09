@@ -112,9 +112,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
       appBar: tyAppBar(context, title: 'Budget', actions: const [
         Padding(padding: EdgeInsets.only(right: 16), child: ChromeIconButton(icon: Icons.add_rounded)),
       ]),
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(4), resp.w(18), resp.h(28)),
-        children: [
+      body: RefreshIndicator(
+        onRefresh: _loadBudgetData,
+        color: ty.saffron,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(4), resp.w(18), resp.h(28)),
+          children: [
           Container(
             padding: EdgeInsets.all(resp.w(20)),
             decoration: _card(ty, resp),
@@ -224,8 +227,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
             }),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   BoxDecoration _card(TyColors ty, TyResponsive resp) => BoxDecoration(
         color: ty.surface,

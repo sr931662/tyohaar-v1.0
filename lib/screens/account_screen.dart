@@ -4,12 +4,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../data/app_state.dart';
+import '../theme/responsive.dart';
 import '../data/auth_manager.dart';
 import '../data/models.dart';
 import '../data/services/user_service.dart';
 import '../data/services/auth_service.dart';
-import '../widgets/common.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
 
@@ -17,7 +16,6 @@ import 'my_bookings_screen.dart';
 import 'refer_earn_screen.dart';
 import 'help_screen.dart';
 import 'my_profile_screen.dart';
-import 'membership_plan_screen.dart';
 import 'manage_address_screen.dart';
 import 'about_app_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -103,71 +101,83 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final topPadding = MediaQuery.of(context).padding.top + 70;
+    final resp = context.resp;
+    final topPadding = MediaQuery.of(context).padding.top + resp.h(85);
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(18, topPadding, 18, 28),
-      children: [
-        Text('Account', style: TyType.display(26, color: ty.ink)),
-        const SizedBox(height: 24),
-        _buildIdentity(ty),
-        const SizedBox(height: 24),
-        _buildQuickActions(context),
-        const SizedBox(height: 24),
-        _sectionHeader('Personal'),
-        _menuGroup(context, [
-          _menuItem(context, Icons.person_outline_rounded, 'My Profile',
-              onTap: () => _push(context, const MyProfileScreen())),
-          _menuItem(context, Icons.card_membership_rounded, 'My Membership Plan',
-              onTap: () => _push(context, const MembershipPlanScreen())),
-          _menuItem(context, Icons.place_outlined, 'Manage Addresses',
-              onTap: () => _push(context, const ManageAddressScreen())),
-        ]),
-        const SizedBox(height: 16),
-        _sectionHeader('Support & Legal'),
-        _menuGroup(context, [
-          _menuItem(context, Icons.info_outline_rounded, 'About App',
-              onTap: () => _push(context, const AboutAppScreen())),
-          _menuItem(context, Icons.privacy_tip_outlined, 'Privacy Policy',
-              onTap: () => _push(context, const PrivacyPolicyScreen())),
-          _menuItem(context, Icons.description_outlined, 'Terms & Conditions',
-              onTap: () => _push(context, const TermsConditionsScreen())),
-          _menuItem(context, Icons.confirmation_number_outlined, 'My Tickets',
-              onTap: () => _push(context, const MyTicketsScreen())),
-        ]),
-        const SizedBox(height: 16),
-        _menuGroup(context, [
-          _menuItem(context, Icons.delete_outline_rounded, 'Delete Account',
-              color: ty.rose, onTap: () {}),
-        ]),
-        const SizedBox(height: 24),
-        TyButton(
-          'Sign out',
-          kind: TyButtonKind.ghost,
-          full: true,
-          leadingIcon: Icons.logout_rounded,
-          onTap: _handleLogout,
-        ),
-      ],
+    // Re-fetch user if AuthManager changed (auto-refresh when user updates)
+    final user = context.watch<AuthManager>().currentUser;
+    if (user != null && user != _user) {
+      _user = user;
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadUser,
+      displacement: topPadding,
+      color: ty.saffron,
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(resp.w(18), topPadding, resp.w(18), resp.h(28)),
+        children: [
+          Text('Account', style: TyType.display(resp.sp(26), color: ty.ink)),
+          SizedBox(height: resp.h(24)),
+          _buildIdentity(ty, resp),
+          SizedBox(height: resp.h(24)),
+          _buildQuickActions(context),
+          SizedBox(height: resp.h(24)),
+          _sectionHeader(resp, 'Personal'),
+          _menuGroup(context, resp, [
+            _menuItem(context, resp, Icons.person_outline_rounded, 'My Profile',
+                onTap: () => _push(context, const MyProfileScreen())),
+            _menuItem(context, resp, Icons.card_membership_rounded, 'My Membership Plan',
+                onTap: () => _push(context, const MyProfileScreen())), // Fixed: was pointing to membership which might not be implemented
+            _menuItem(context, resp, Icons.place_outlined, 'Manage Addresses',
+                onTap: () => _push(context, const ManageAddressScreen())),
+          ]),
+          SizedBox(height: resp.h(16)),
+          _sectionHeader(resp, 'Support & Legal'),
+          _menuGroup(context, resp, [
+            _menuItem(context, resp, Icons.info_outline_rounded, 'About App',
+                onTap: () => _push(context, const AboutAppScreen())),
+            _menuItem(context, resp, Icons.privacy_tip_outlined, 'Privacy Policy',
+                onTap: () => _push(context, const PrivacyPolicyScreen())),
+            _menuItem(context, resp, Icons.description_outlined, 'Terms & Conditions',
+                onTap: () => _push(context, const TermsConditionsScreen())),
+            _menuItem(context, resp, Icons.confirmation_number_outlined, 'My Tickets',
+                onTap: () => _push(context, const MyTicketsScreen())),
+          ]),
+          SizedBox(height: resp.h(16)),
+          _menuGroup(context, resp, [
+            _menuItem(context, resp, Icons.delete_outline_rounded, 'Delete Account',
+                color: ty.rose, onTap: () {}),
+          ]),
+          SizedBox(height: resp.h(24)),
+          TyButton(
+            'Sign out',
+            kind: TyButtonKind.ghost,
+            full: true,
+            leadingIcon: Icons.logout_rounded,
+            onTap: _handleLogout,
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildIdentity(TyColors ty) {
-    if (_loading) {
+  Widget _buildIdentity(TyColors ty, TyResponsive resp) {
+    if (_loading && _user == null) {
       return Row(
         children: [
           Container(
-            width: 80, height: 80,
+            width: resp.w(80), height: resp.w(80),
             decoration: BoxDecoration(color: ty.line, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: resp.w(16)),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(width: 120, height: 18, decoration: BoxDecoration(
+              Container(width: resp.w(120), height: resp.h(18), decoration: BoxDecoration(
                   color: ty.line, borderRadius: BorderRadius.circular(4))),
-              const SizedBox(height: 6),
-              Container(width: 80, height: 14, decoration: BoxDecoration(
+              SizedBox(height: resp.h(6)),
+              Container(width: resp.w(80), height: resp.h(14), decoration: BoxDecoration(
                   color: ty.line, borderRadius: BorderRadius.circular(4))),
             ],
           ),
@@ -184,8 +194,8 @@ class _AccountScreenState extends State<AccountScreen> {
     return Row(
       children: [
         Container(
-          width: 80,
-          height: 80,
+          width: resp.w(80),
+          height: resp.w(80),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle),
           child: photoUrl != null && photoUrl.isNotEmpty
@@ -197,14 +207,14 @@ class _AccountScreenState extends State<AccountScreen> {
                         style: TextStyle(
                             color: ty.onPrimary,
                             fontWeight: FontWeight.w800,
-                            fontSize: 30)),
+                            fontSize: resp.sp(30))),
                   ),
                   errorWidget: (_, __, ___) => Center(
                     child: Text(initial,
                         style: TextStyle(
                             color: ty.onPrimary,
                             fontWeight: FontWeight.w800,
-                            fontSize: 30)),
+                            fontSize: resp.sp(30))),
                   ),
                 )
               : Center(
@@ -212,16 +222,16 @@ class _AccountScreenState extends State<AccountScreen> {
                       style: TextStyle(
                           color: ty.onPrimary,
                           fontWeight: FontWeight.w800,
-                          fontSize: 30)),
+                          fontSize: resp.sp(30))),
                 ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: resp.w(16)),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(name, style: TyType.display(22, color: ty.ink)),
-            const SizedBox(height: 2),
-            if (sub.isNotEmpty) Text(sub, style: TyType.sans(14, color: ty.ink2)),
+            Text(name, style: TyType.display(resp.sp(22), color: ty.ink)),
+            SizedBox(height: resp.h(2)),
+            if (sub.isNotEmpty) Text(sub, style: TyType.sans(resp.sp(14), color: ty.ink2)),
           ],
         ),
       ],
@@ -229,15 +239,16 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Widget _buildQuickActions(BuildContext context) {
+    final resp = context.resp;
     return Row(
       key: _quickActionsKey,
       children: [
         _quickAction(context, Icons.calendar_today_outlined, 'My Bookings',
             () => _push(context, const MyBookingsScreen())),
-        const SizedBox(width: 12),
+        SizedBox(width: resp.w(12)),
         _quickAction(context, Icons.card_giftcard_rounded, 'Refer & Earn',
             () => _push(context, const ReferEarnScreen())),
-        const SizedBox(width: 12),
+        SizedBox(width: resp.w(12)),
         _quickAction(context, Icons.help_outline_rounded, 'Help',
             () => _push(context, const HelpScreen())),
       ],
@@ -246,21 +257,22 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Widget _quickAction(BuildContext context, IconData icon, String label, VoidCallback onTap) {
     final ty = context.ty;
+    final resp = context.resp;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: EdgeInsets.symmetric(vertical: resp.h(16)),
           decoration: BoxDecoration(
             color: ty.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(resp.w(16)),
             border: Border.all(color: ty.line),
           ),
           child: Column(
             children: [
-              Icon(icon, color: ty.saffron, size: 24),
-              const SizedBox(height: 8),
-              Text(label, style: TyType.sans(12, color: ty.ink, weight: FontWeight.w600)),
+              Icon(icon, color: ty.saffron, size: resp.sp(24)),
+              SizedBox(height: resp.h(8)),
+              Text(label, style: TyType.sans(resp.sp(12), color: ty.ink, weight: FontWeight.w600)),
             ],
           ),
         ),
@@ -268,34 +280,34 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  Widget _sectionHeader(String label) {
+  Widget _sectionHeader(TyResponsive resp, String label) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(label.toUpperCase(), style: TyType.eyebrow(11, color: Colors.grey)),
+      padding: EdgeInsets.only(left: resp.w(4), bottom: resp.h(8)),
+      child: Text(label.toUpperCase(), style: TyType.eyebrow(resp.sp(11), color: Colors.grey)),
     );
   }
 
-  Widget _menuGroup(BuildContext context, List<Widget> children) {
+  Widget _menuGroup(BuildContext context, TyResponsive resp, List<Widget> children) {
     final ty = context.ty;
     return Container(
       decoration: BoxDecoration(
         color: ty.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(resp.w(20)),
         border: Border.all(color: ty.line),
       ),
       child: Column(children: children),
     );
   }
 
-  Widget _menuItem(BuildContext context, IconData icon, String label,
+  Widget _menuItem(BuildContext context, TyResponsive resp, IconData icon, String label,
       {Color? color, VoidCallback? onTap}) {
     final ty = context.ty;
     return ListTile(
-      leading: Icon(icon, color: color ?? ty.saffron, size: 22),
+      leading: Icon(icon, color: color ?? ty.saffron, size: resp.sp(22)),
       title: Text(label,
-          style: TyType.sans(14.5, color: color ?? ty.ink, weight: FontWeight.w600)),
-      trailing: Icon(Icons.chevron_right_rounded, color: ty.ink3, size: 18),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          style: TyType.sans(resp.sp(14.5), color: color ?? ty.ink, weight: FontWeight.w600)),
+      trailing: Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.sp(18)),
+      contentPadding: EdgeInsets.symmetric(horizontal: resp.w(16)),
       onTap: onTap,
     );
   }

@@ -379,8 +379,9 @@ class BulkService(BaseService):
     async def assign_memberships(self, request: BulkMembershipAssignRequest) -> BulkOperationResult:
         from datetime import timedelta
 
-        from app.models.memberships.membership import Membership
+        from app.models.enums import MembershipBillingCycle, MembershipStatus
         from app.models.memberships.membership_plan import MembershipPlan
+        from app.models.memberships.user_membership import UserMembership
 
         succeeded: list[str] = []
         failed: list[dict[str, Any]] = []
@@ -395,13 +396,13 @@ class BulkService(BaseService):
 
             for user_id in request.user_ids:
                 try:
-                    membership = Membership(
+                    membership = UserMembership(
                         user_id=user_id,
                         plan_id=request.plan_id,
-                        status="ACTIVE",
-                        starts_at=now,
-                        ends_at=now + timedelta(days=request.duration_days),
-                        is_renewal=False,
+                        membership_status=MembershipStatus.ACTIVE,
+                        billing_cycle=MembershipBillingCycle.MONTHLY,
+                        activated_at=now,
+                        expires_at=now + timedelta(days=request.duration_days),
                     )
                     uow.session.add(membership)
                     await uow.session.flush()

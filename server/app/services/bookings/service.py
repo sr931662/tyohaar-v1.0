@@ -410,6 +410,8 @@ class BookingService(BaseService):
                 context_data={"new_status": BookingStatus.COMPLETED.value},
             )
 
+            await uow.vendors.vendors.increment_completion_count(vendor_id)
+
             await uow.commit()
 
         # Side effect: trigger vendor payment release (stub)

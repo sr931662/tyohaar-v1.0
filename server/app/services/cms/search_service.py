@@ -192,15 +192,12 @@ class SearchService(BaseService):
         from app.models.bookings.booking import Booking
 
         pattern = f"%{q}%"
-        # Search by booking reference or UUID prefix
+        # Search by human-readable booking number
         stmt = (
             select(Booking)
             .where(
                 Booking.deleted_at.is_(None),
-                or_(
-                    Booking.booking_reference.ilike(pattern) if hasattr(Booking, "booking_reference") else False,
-                    Booking.status.ilike(pattern),
-                ),
+                Booking.booking_number.ilike(pattern),
             )
             .limit(limit)
         )
@@ -209,9 +206,9 @@ class SearchService(BaseService):
             SearchResultItem(
                 id=str(r.id),
                 entity_type="booking",
-                title=f"Booking {str(r.id)[:8]}",
-                subtitle=f"Status: {r.status}",
-                badge=r.status,
+                title=f"Booking {r.booking_number}",
+                subtitle=f"Status: {r.booking_status}",
+                badge=r.booking_status,
                 created_at=r.created_at,
             )
             for r in rows

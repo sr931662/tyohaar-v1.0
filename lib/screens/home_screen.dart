@@ -116,10 +116,11 @@ class _HomeScreenState extends State<HomeScreen> {
       AuthManager.instance.checkAuth(
         context,
         action: authAction,
-        onAuthenticated: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
+        onAuthenticated: () =>
+            Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)).then((_) => _loadData()),
       );
     } else {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)).then((_) => _loadData());
     }
   }
 
@@ -142,20 +143,23 @@ class _HomeScreenState extends State<HomeScreen> {
     final pendingTasks = _checklist.where((t) => !t.isCompleted).toList();
     final openTasks = pendingTasks.take(2).toList();
 
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: ty.saffron,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
         _buildHeroCard(context, pct, totalGuests, pendingTasks.length),
 
         Padding(
-          padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(18), resp.w(18), resp.h(28)),
+          padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), resp.h(20)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (_bestSellers.isNotEmpty) ...[
                 SectionHeader('Best Selling Packages'),
                 _packageRail(context, _bestSellers),
-                SizedBox(height: resp.h(26)),
+                SizedBox(height: resp.h(12)),
               ],
 
               Row(
@@ -169,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your plans')),
                 ],
               ),
-              SizedBox(height: resp.h(26)),
+              SizedBox(height: resp.h(12)),
 
               SectionHeader('Up next',
                   action: 'Timeline',
@@ -190,21 +194,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.mail_outline_rounded,
                 onTap: () => _push(context, const InvitationManagementScreen(), authAction: 'manage invitations'),
               ),
-              SizedBox(height: resp.h(26)),
+              SizedBox(height: resp.h(12)),
 
               _membershipBanner(context),
-              SizedBox(height: resp.h(26)),
+              SizedBox(height: resp.h(12)),
 
               if (_occasions.any((o) => o.category == 'major_festival')) ...[
                 SectionHeader('Popular Festivals'),
                 _festivalRail(context, _occasions.where((o) => o.category == 'major_festival').toList()),
-                SizedBox(height: resp.h(26)),
+                SizedBox(height: resp.h(12)),
               ],
 
               if (_occasions.any((o) => o.category == 'life_event')) ...[
                 SectionHeader('Life Moments'),
                 _festivalRail(context, _occasions.where((o) => o.category == 'life_event').toList()),
-                SizedBox(height: resp.h(26)),
+                SizedBox(height: resp.h(12)),
               ],
 
               if (_occasions.any((o) => o.category == 'minor_festival')) ...[
@@ -215,8 +219,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildHeroCard(BuildContext context, int pct, int totalGuests, int pendingTaskCount) {
     final ty = context.ty;
@@ -268,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: () => _push(context, const EventHubScreen(), authAction: 'view your event hub'),
       child: SizedBox(
-        height: resp.h(440),
+        height: resp.h(420),
         child: Stack(
           children: [
             Positioned.fill(
@@ -422,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final ty = context.ty;
     final resp = context.resp;
     return SizedBox(
-      height: resp.h(210),
+      height: resp.h(185),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: packages.length,
@@ -442,11 +447,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(resp.w(20)),
                         child: CachedNetworkImage(
                           imageUrl: p.coverImageUrl ?? '',
-                          height: resp.h(130),
+                          height: resp.h(125),
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: resp.h(130), arch: false),
-                          errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: resp.h(130), arch: false),
+                          placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: resp.h(125), arch: false),
+                          errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: resp.h(125), arch: false),
                         ),
                       ),
                       Positioned(
