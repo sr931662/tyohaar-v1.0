@@ -21,6 +21,7 @@ from app.schemas.notifications.create import (
     NotificationFromTemplateCreate,
     NotificationTemplateCreate,
 )
+from app.schemas.notifications.filters import NotificationFilters
 from app.schemas.notifications.response import (
     NotificationPreferencesResponse,
     NotificationResponse,
@@ -72,11 +73,12 @@ async def broadcast_notification(
 
 async def list_notifications(
     current_user: CurrentUserDep,
+    filters: Annotated[NotificationFilters, Depends()],
     pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     service: NotificationServiceDep,
 ) -> CursorPaginatedResponse[NotificationResponse]:
     page = await service.list_notifications(
-        user_id=current_user.id, cursor=pagination.cursor, limit=pagination.page_size
+        user_id=current_user.id, filters=filters, cursor=pagination.cursor, limit=pagination.page_size
     )
     return _cursor_resp(page, pagination.page_size)
 

@@ -50,7 +50,7 @@ async def apply_referral_code(
     current_user: CurrentUserDep,
     service: ReferralServiceDep,
 ) -> SuccessResponse[ReferralResponse]:
-    result = await service.apply_referral_code(user_id=current_user.id, data=body)
+    result = await service.apply_referral_code(referee_id=current_user.id, code=body.referral_code)
     return SuccessResponse(data=result, message="Referral code applied.")
 
 

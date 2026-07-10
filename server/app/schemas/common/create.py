@@ -35,7 +35,8 @@ class CityCreate(BaseSchema):
     name: str = Field(max_length=100)
     slug: str = Field(max_length=100, pattern=r"^[a-z0-9-]+$")
     is_active: bool = True
-    is_tier_one: bool = False
+    is_tier_1: bool = False
+    is_tier_2: bool = False
     latitude: Latitude = None
     longitude: Longitude = None
     display_order: int = Field(default=0, ge=0)

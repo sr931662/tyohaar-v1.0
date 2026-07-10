@@ -11,9 +11,9 @@ from fastapi import Depends, Request
 
 from app.core.current_user import CurrentUserDep
 from app.core.dependencies import AdminServiceDep
-from app.core.pagination import CursorPaginationParams, OffsetPaginationParams, get_cursor_pagination, get_offset_pagination
+from app.core.pagination import CursorPaginationParams, get_cursor_pagination
 from app.core.permissions import AdminDep, SuperAdminDep
-from app.core.responses import CursorMeta, CursorPaginatedResponse, PaginatedResponse, SuccessResponse
+from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
 from app.schemas.admin.create import (
     AdminCreate,
@@ -24,6 +24,7 @@ from app.schemas.admin.create import (
     PermissionCreate,
     RoleCreate,
 )
+from app.schemas.admin.filters import AuditLogFilters
 from app.schemas.admin.response import (
     AdminAuditLogResponse,
     AdminPermissionResponse,
@@ -77,7 +78,7 @@ async def create_admin(
     current_user: SuperAdminDep,
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminResponse]:
-    result = await service.create_admin(data=body, created_by=current_user.id)
+    result = await service.create_admin(data=body, created_by_id=current_user.id)
     return SuccessResponse(data=result, message="Admin created.")
 
 
@@ -106,7 +107,7 @@ async def update_admin(
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminResponse]:
     result = await service.update_admin(
-        admin_id=admin_id, data=body, updated_by=current_user.id
+        admin_id=admin_id, data=body, updated_by_id=current_user.id
     )
     return SuccessResponse(data=result, message="Admin updated.")
 
@@ -117,7 +118,7 @@ async def deactivate_admin(
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminResponse]:
     result = await service.deactivate_admin(
-        admin_id=admin_id, deactivated_by=current_user.id
+        admin_id=admin_id, deactivated_by_id=current_user.id
     )
     return SuccessResponse(data=result, message="Admin deactivated.")
 
@@ -129,7 +130,7 @@ async def change_admin_password(
     service: AdminServiceDep,
 ) -> SuccessResponse[None]:
     await service.change_admin_password(
-        admin_id=admin_id, data=body, changed_by=current_user.id
+        admin_id=admin_id, old_password=body.old_password, new_password=body.new_password
     )
     return SuccessResponse(data=None, message="Password changed.")
 
@@ -140,7 +141,7 @@ async def unlock_admin(
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminResponse]:
     result = await service.unlock_admin(
-        admin_id=admin_id, unlocked_by=current_user.id
+        admin_id=admin_id, unlocked_by_id=current_user.id
     )
     return SuccessResponse(data=result, message="Admin unlocked.")
 
@@ -149,10 +150,10 @@ async def unlock_admin(
 
 async def create_role(
     body: RoleCreate,
-    _: SuperAdminDep,
+    current_user: SuperAdminDep,
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminRoleResponse]:
-    result = await service.create_role(data=body)
+    result = await service.create_role(data=body, created_by_id=current_user.id)
     return SuccessResponse(data=result, message="Role created.")
 
 
@@ -176,19 +177,19 @@ async def list_roles(
 async def update_role(
     role_id: uuid.UUID,
     body: RoleUpdate,
-    _: SuperAdminDep,
+    current_user: SuperAdminDep,
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminRoleResponse]:
-    result = await service.update_role(role_id=role_id, data=body)
+    result = await service.update_role(role_id=role_id, data=body, updated_by_id=current_user.id)
     return SuccessResponse(data=result, message="Role updated.")
 
 
 async def delete_role(
     role_id: uuid.UUID,
-    _: SuperAdminDep,
+    current_user: SuperAdminDep,
     service: AdminServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_role(role_id=role_id)
+    await service.delete_role(role_id=role_id, admin_id=current_user.id)
     return SuccessResponse(data=None, message="Role deleted.")
 
 
@@ -197,7 +198,9 @@ async def assign_role_to_admin(
     current_user: SuperAdminDep,
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminResponse]:
-    result = await service.assign_role_to_admin(data=body, assigned_by=current_user.id)
+    result = await service.assign_role_to_admin(
+        admin_id=body.admin_id, role_id=body.role_id, assigned_by_id=current_user.id
+    )
     return SuccessResponse(data=result, message="Role assigned.")
 
 
@@ -205,10 +208,10 @@ async def assign_role_to_admin(
 
 async def create_permission(
     body: PermissionCreate,
-    _: SuperAdminDep,
+    current_user: SuperAdminDep,
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminPermissionResponse]:
-    result = await service.create_permission(data=body)
+    result = await service.create_permission(data=body, created_by_id=current_user.id)
     return SuccessResponse(data=result, message="Permission created.")
 
 
@@ -222,20 +225,24 @@ async def list_permissions(
 
 async def assign_permission_to_role(
     body: PermissionAssign,
-    _: SuperAdminDep,
+    current_user: SuperAdminDep,
     service: AdminServiceDep,
 ) -> SuccessResponse[AdminRoleResponse]:
-    result = await service.assign_permission_to_role(data=body)
+    result = await service.assign_permission_to_role(
+        role_id=body.role_id, permission_id=body.permission_id, assigned_by_id=current_user.id
+    )
     return SuccessResponse(data=result, message="Permission assigned to role.")
 
 
 async def revoke_permission_from_role(
     role_id: uuid.UUID,
     permission_id: uuid.UUID,
-    _: SuperAdminDep,
+    current_user: SuperAdminDep,
     service: AdminServiceDep,
 ) -> SuccessResponse[None]:
-    await service.revoke_permission_from_role(role_id=role_id, permission_id=permission_id)
+    await service.revoke_permission_from_role(
+        role_id=role_id, permission_id=permission_id, admin_id=current_user.id
+    )
     return SuccessResponse(data=None, message="Permission revoked.")
 
 
@@ -251,25 +258,28 @@ async def get_admin_permissions(
 # ── Audit logs ────────────────────────────────────────────────────────────────
 
 async def list_audit_logs(
-    pagination: Annotated[OffsetPaginationParams, Depends(get_offset_pagination)],
+    filters: Annotated[AuditLogFilters, Depends()],
+    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     _: AdminDep,
     service: AdminServiceDep,
-) -> PaginatedResponse[AdminAuditLogResponse]:
-    result = await service.list_audit_logs(page=pagination.page, page_size=pagination.page_size)
-    return result
+) -> CursorPaginatedResponse[AdminAuditLogResponse]:
+    page = await service.list_audit_logs(
+        filters=filters, cursor=pagination.cursor, limit=pagination.page_size
+    )
+    return _cursor_resp(page, pagination.page_size)
 
 
 async def get_audit_logs_for_entity(
     entity_id: uuid.UUID,
     entity_type: str,
-    pagination: Annotated[OffsetPaginationParams, Depends(get_offset_pagination)],
+    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     _: AdminDep,
     service: AdminServiceDep,
-) -> PaginatedResponse[AdminAuditLogResponse]:
-    result = await service.get_audit_logs_for_entity(
-        entity_id=entity_id,
+) -> CursorPaginatedResponse[AdminAuditLogResponse]:
+    page = await service.get_audit_logs_for_entity(
         entity_type=entity_type,
-        page=pagination.page,
-        page_size=pagination.page_size,
+        entity_id=entity_id,
+        cursor=pagination.cursor,
+        limit=pagination.page_size,
     )
-    return result
+    return _cursor_resp(page, pagination.page_size)

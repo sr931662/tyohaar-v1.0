@@ -10,9 +10,10 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.core.dependencies import CommonServiceDep
-from app.core.pagination import OffsetPaginationParams, get_offset_pagination
+from app.core.pagination import CursorPaginationParams, get_cursor_pagination
 from app.core.permissions import AdminDep
-from app.core.responses import PaginatedResponse, SuccessResponse
+from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
+from app.schemas.base import CursorPage
 from app.schemas.common.create import (
     AppSettingUpsert,
     BannerCreate,
@@ -22,6 +23,7 @@ from app.schemas.common.create import (
     StateCreate,
     TermsVersionCreate,
 )
+from app.schemas.common.filters import AppSettingFilters, BannerFilters
 from app.schemas.common.response import (
     AppSettingResponse,
     BannerResponse,
@@ -34,13 +36,20 @@ from app.schemas.common.response import (
 from app.schemas.common.update import BannerUpdate, CityUpdate, FAQUpdate, StateUpdate
 
 
+def _cursor_resp(page: CursorPage, page_size: int) -> CursorPaginatedResponse:
+    return CursorPaginatedResponse(
+        data=page.items,
+        meta=CursorMeta(cursor=page.next_cursor, has_next=page.has_more, page_size=page_size),
+    )
+
+
 # ── States ────────────────────────────────────────────────────────────────────
 
 async def list_states(
     service: CommonServiceDep,
 ) -> SuccessResponse[list[StateResponse]]:
-    states = await service.list_states()
-    return SuccessResponse(data=states, message="States retrieved.")
+    page = await service.list_states(limit=100)
+    return SuccessResponse(data=page.items, message="States retrieved.")
 
 
 async def get_state(
@@ -53,29 +62,29 @@ async def get_state(
 
 async def create_state(
     body: StateCreate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[StateResponse]:
-    result = await service.create_state(data=body)
+    result = await service.create_state(data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="State created.")
 
 
 async def update_state(
     state_id: uuid.UUID,
     body: StateUpdate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[StateResponse]:
-    result = await service.update_state(state_id=state_id, data=body)
+    result = await service.update_state(state_id=state_id, data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="State updated.")
 
 
 async def delete_state(
     state_id: uuid.UUID,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_state(state_id=state_id)
+    await service.delete_state(state_id=state_id, admin_id=admin.id)
     return SuccessResponse(data=None, message="State deleted.")
 
 
@@ -85,8 +94,8 @@ async def list_cities(
     service: CommonServiceDep,
     state_id: uuid.UUID | None = None,
 ) -> SuccessResponse[list[CityResponse]]:
-    cities = await service.list_cities(state_id=state_id)
-    return SuccessResponse(data=cities, message="Cities retrieved.")
+    page = await service.list_cities(state_id=state_id, limit=500)
+    return SuccessResponse(data=page.items, message="Cities retrieved.")
 
 
 async def get_city(
@@ -107,29 +116,29 @@ async def search_cities(
 
 async def create_city(
     body: CityCreate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[CityResponse]:
-    result = await service.create_city(data=body)
+    result = await service.create_city(data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="City created.")
 
 
 async def update_city(
     city_id: uuid.UUID,
     body: CityUpdate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[CityResponse]:
-    result = await service.update_city(city_id=city_id, data=body)
+    result = await service.update_city(city_id=city_id, data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="City updated.")
 
 
 async def delete_city(
     city_id: uuid.UUID,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_city(city_id=city_id)
+    await service.delete_city(city_id=city_id, admin_id=admin.id)
     return SuccessResponse(data=None, message="City deleted.")
 
 
@@ -151,47 +160,51 @@ async def get_banner(
 
 
 async def list_all_banners(
+    filters: Annotated[BannerFilters, Depends()],
+    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     _admin: AdminDep,
     service: CommonServiceDep,
-) -> SuccessResponse[list[BannerResponse]]:
-    banners = await service.list_all_banners()
-    return SuccessResponse(data=banners, message="All banners retrieved.")
+) -> CursorPaginatedResponse[BannerResponse]:
+    page = await service.list_all_banners(
+        filters=filters, cursor=pagination.cursor, limit=pagination.page_size
+    )
+    return _cursor_resp(page, pagination.page_size)
 
 
 async def create_banner(
     body: BannerCreate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[BannerResponse]:
-    result = await service.create_banner(data=body)
+    result = await service.create_banner(data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="Banner created.")
 
 
 async def update_banner(
     banner_id: uuid.UUID,
     body: BannerUpdate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[BannerResponse]:
-    result = await service.update_banner(banner_id=banner_id, data=body)
+    result = await service.update_banner(banner_id=banner_id, data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="Banner updated.")
 
 
 async def delete_banner(
     banner_id: uuid.UUID,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_banner(banner_id=banner_id)
+    await service.delete_banner(banner_id=banner_id, admin_id=admin.id)
     return SuccessResponse(data=None, message="Banner deleted.")
 
 
 async def toggle_banner_active(
     banner_id: uuid.UUID,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[BannerResponse]:
-    result = await service.toggle_banner_active(banner_id=banner_id)
+    result = await service.toggle_banner_active(banner_id=banner_id, admin_id=admin.id)
     return SuccessResponse(data=result, message="Banner toggled.")
 
 
@@ -214,38 +227,39 @@ async def get_faq(
 
 async def create_faq(
     body: FAQCreate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[FAQResponse]:
-    result = await service.create_faq(data=body)
+    result = await service.create_faq(data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="FAQ created.")
 
 
 async def update_faq(
     faq_id: uuid.UUID,
     body: FAQUpdate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[FAQResponse]:
-    result = await service.update_faq(faq_id=faq_id, data=body)
+    result = await service.update_faq(faq_id=faq_id, data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="FAQ updated.")
 
 
 async def delete_faq(
     faq_id: uuid.UUID,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_faq(faq_id=faq_id)
+    await service.delete_faq(faq_id=faq_id, admin_id=admin.id)
     return SuccessResponse(data=None, message="FAQ deleted.")
 
 
 async def reorder_faqs(
+    category: str,
     ordered_ids: list[uuid.UUID],
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[list[FAQResponse]]:
-    result = await service.reorder_faqs(ordered_ids=ordered_ids)
+    result = await service.reorder_faqs(category=category, ordered_ids=ordered_ids, admin_id=admin.id)
     return SuccessResponse(data=result, message="FAQs reordered.")
 
 
@@ -269,28 +283,32 @@ async def get_setting_admin(
 
 
 async def list_settings(
+    filters: Annotated[AppSettingFilters, Depends()],
+    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     _admin: AdminDep,
     service: CommonServiceDep,
-) -> SuccessResponse[list[AppSettingResponse]]:
-    settings = await service.list_settings()
-    return SuccessResponse(data=settings, message="Settings retrieved.")
+) -> CursorPaginatedResponse[AppSettingResponse]:
+    page = await service.list_settings(
+        filters=filters, cursor=pagination.cursor, limit=pagination.page_size
+    )
+    return _cursor_resp(page, pagination.page_size)
 
 
 async def upsert_setting(
     body: AppSettingUpsert,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[AppSettingResponse]:
-    result = await service.upsert_setting(data=body)
+    result = await service.upsert_setting(key=body.key, value=body.value, data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="Setting saved.")
 
 
 async def delete_setting(
     key: str,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_setting(key=key)
+    await service.delete_setting(key=key, admin_id=admin.id)
     return SuccessResponse(data=None, message="Setting deleted.")
 
 
@@ -304,22 +322,20 @@ async def get_current_terms(
 
 
 async def list_terms_versions(
-    pagination: Annotated[OffsetPaginationParams, Depends(get_offset_pagination)],
+    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     _admin: AdminDep,
     service: CommonServiceDep,
-) -> PaginatedResponse[TermsVersionResponse]:
-    result = await service.list_terms_versions(
-        page=pagination.page, page_size=pagination.page_size
-    )
-    return result
+) -> CursorPaginatedResponse[TermsVersionResponse]:
+    page = await service.list_terms_versions(cursor=pagination.cursor, limit=pagination.page_size)
+    return _cursor_resp(page, pagination.page_size)
 
 
 async def create_terms_version(
     body: TermsVersionCreate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[TermsVersionResponse]:
-    result = await service.create_terms_version(data=body)
+    result = await service.create_terms_version(data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="Terms version created.")
 
 
@@ -332,8 +348,8 @@ async def get_current_privacy_policy(
 
 async def create_privacy_policy_version(
     body: PrivacyPolicyCreate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: CommonServiceDep,
 ) -> SuccessResponse[PrivacyPolicyResponse]:
-    result = await service.create_privacy_policy_version(data=body)
+    result = await service.create_privacy_policy_version(data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="Privacy policy version created.")

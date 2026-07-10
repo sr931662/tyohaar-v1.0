@@ -101,7 +101,10 @@ async def register_image_upload(
     current_user: CurrentUserDep,
     service: MediaServiceDep,
 ) -> SuccessResponse[ImageUploadResponse]:
-    result = await service.register_image_upload(uploader_id=current_user.id, data=body)
+    owner_type = _OWNER_TYPE_BY_ROLE.get(current_user.role, ImageOwnerType.USER)
+    result = await service.register_image_upload(
+        owner_id=current_user.id, owner_type=owner_type, data=body
+    )
     return SuccessResponse(data=result, message="Image upload registered.")
 
 
@@ -111,7 +114,7 @@ async def confirm_image_upload(
     service: MediaServiceDep,
 ) -> SuccessResponse[ImageResponse]:
     result = await service.confirm_image_upload(
-        image_id=image_id, uploader_id=current_user.id
+        image_id=image_id, owner_id=current_user.id
     )
     return SuccessResponse(data=result, message="Image upload confirmed.")
 
@@ -127,16 +130,10 @@ async def get_image(
 async def list_images_for_entity(
     entity_id: uuid.UUID,
     entity_type: str,
-    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     service: MediaServiceDep,
-) -> CursorPaginatedResponse[ImageResponse]:
-    page = await service.list_images_for_entity(
-        entity_id=entity_id,
-        entity_type=entity_type,
-        cursor=pagination.cursor,
-        limit=pagination.page_size,
-    )
-    return _cursor_resp(page, pagination.page_size)
+) -> SuccessResponse[list[ImageResponse]]:
+    images = await service.list_images_for_entity(entity_type=entity_type, entity_id=entity_id)
+    return SuccessResponse(data=images, message="Images retrieved.")
 
 
 async def delete_image(
@@ -144,11 +141,7 @@ async def delete_image(
     current_user: CurrentUserDep,
     service: MediaServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_image(
-        image_id=image_id,
-        requester_id=current_user.id,
-        requester_role=current_user.role.value,
-    )
+    await service.delete_image(image_id=image_id, owner_id=current_user.id)
     return SuccessResponse(data=None, message="Image deleted.")
 
 
@@ -159,7 +152,7 @@ async def update_image_metadata(
     service: MediaServiceDep,
 ) -> SuccessResponse[ImageResponse]:
     result = await service.update_image_metadata(
-        image_id=image_id, uploader_id=current_user.id, data=body
+        image_id=image_id, owner_id=current_user.id, data=body
     )
     return SuccessResponse(data=result, message="Image metadata updated.")
 
@@ -170,8 +163,12 @@ async def moderate_image(
     current_user: AdminDep,
     service: MediaServiceDep,
 ) -> SuccessResponse[ImageResponse]:
+    from app.models.media.image import ModerationStatus
+
     result = await service.moderate_image(
-        image_id=image_id, admin_id=current_user.id, approved=approved
+        image_id=image_id,
+        admin_id=current_user.id,
+        status=ModerationStatus.APPROVED if approved else ModerationStatus.REJECTED,
     )
     return SuccessResponse(data=result, message="Image moderated.")
 
@@ -194,7 +191,10 @@ async def register_video_upload(
     current_user: CurrentUserDep,
     service: MediaServiceDep,
 ) -> SuccessResponse[VideoUploadResponse]:
-    result = await service.register_video_upload(uploader_id=current_user.id, data=body)
+    owner_type = _OWNER_TYPE_BY_ROLE.get(current_user.role, ImageOwnerType.USER)
+    result = await service.register_video_upload(
+        owner_id=current_user.id, owner_type=owner_type, data=body
+    )
     return SuccessResponse(data=result, message="Video upload registered.")
 
 
@@ -204,7 +204,7 @@ async def confirm_video_upload(
     service: MediaServiceDep,
 ) -> SuccessResponse[VideoResponse]:
     result = await service.confirm_video_upload(
-        video_id=video_id, uploader_id=current_user.id
+        video_id=video_id, owner_id=current_user.id
     )
     return SuccessResponse(data=result, message="Video upload confirmed.")
 
@@ -220,16 +220,10 @@ async def get_video(
 async def list_videos_for_entity(
     entity_id: uuid.UUID,
     entity_type: str,
-    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     service: MediaServiceDep,
-) -> CursorPaginatedResponse[VideoResponse]:
-    page = await service.list_videos_for_entity(
-        entity_id=entity_id,
-        entity_type=entity_type,
-        cursor=pagination.cursor,
-        limit=pagination.page_size,
-    )
-    return _cursor_resp(page, pagination.page_size)
+) -> SuccessResponse[list[VideoResponse]]:
+    videos = await service.list_videos_for_entity(entity_type=entity_type, entity_id=entity_id)
+    return SuccessResponse(data=videos, message="Videos retrieved.")
 
 
 async def delete_video(
@@ -237,11 +231,7 @@ async def delete_video(
     current_user: CurrentUserDep,
     service: MediaServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_video(
-        video_id=video_id,
-        requester_id=current_user.id,
-        requester_role=current_user.role.value,
-    )
+    await service.delete_video(video_id=video_id, owner_id=current_user.id)
     return SuccessResponse(data=None, message="Video deleted.")
 
 

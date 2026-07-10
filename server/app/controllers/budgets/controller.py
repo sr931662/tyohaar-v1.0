@@ -192,29 +192,29 @@ async def get_category(
 
 async def create_category(
     body: BudgetCategoryCreate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: BudgetServiceDep,
 ) -> SuccessResponse[BudgetCategoryResponse]:
-    result = await service.create_category(data=body)
+    result = await service.create_category(data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="Category created.")
 
 
 async def update_category(
     category_id: uuid.UUID,
     body: BudgetCategoryUpdate,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: BudgetServiceDep,
 ) -> SuccessResponse[BudgetCategoryResponse]:
-    result = await service.update_category(category_id=category_id, data=body)
+    result = await service.update_category(category_id=category_id, data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="Category updated.")
 
 
 async def delete_category(
     category_id: uuid.UUID,
-    _admin: AdminDep,
+    admin: AdminDep,
     service: BudgetServiceDep,
 ) -> SuccessResponse[None]:
-    await service.delete_category(category_id=category_id)
+    await service.delete_category(category_id=category_id, admin_id=admin.id)
     return SuccessResponse(data=None, message="Category deleted.")
 
 
@@ -227,7 +227,7 @@ async def set_alert(
     service: BudgetServiceDep,
 ) -> SuccessResponse[BudgetAlertResponse]:
     result = await service.set_alert(
-        budget_id=budget_id, user_id=current_user.id, data=body
+        budget_id=budget_id, user_id=current_user.id, threshold_pct=float(body.threshold_pct)
     )
     return SuccessResponse(data=result, message="Alert set.")
 

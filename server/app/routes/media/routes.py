@@ -36,10 +36,10 @@ router.add_api_route(
     "/images/entity/{entity_id}",
     ctrl.list_images_for_entity,
     methods=["GET"],
-    response_model=CursorPaginatedResponse[ImageResponse],
+    response_model=SuccessResponse[list[ImageResponse]],
     status_code=status.HTTP_200_OK,
     summary="List Images for Entity",
-    description="Return cursor-paginated images attached to a given entity. Pass `entity_type` as a query parameter.",
+    description="Return all approved images attached to a given entity. Pass `entity_type` as a query parameter.",
     operation_id="media_list_images_for_entity",
 )
 
@@ -133,10 +133,10 @@ router.add_api_route(
     "/videos/entity/{entity_id}",
     ctrl.list_videos_for_entity,
     methods=["GET"],
-    response_model=CursorPaginatedResponse[VideoResponse],
+    response_model=SuccessResponse[list[VideoResponse]],
     status_code=status.HTTP_200_OK,
     summary="List Videos for Entity",
-    description="Return cursor-paginated videos attached to a given entity. Pass `entity_type` as a query parameter.",
+    description="Return all videos attached to a given entity. Pass `entity_type` as a query parameter.",
     operation_id="media_list_videos_for_entity",
 )
 

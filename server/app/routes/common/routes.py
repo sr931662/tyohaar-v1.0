@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, status
 
 from app.controllers.common import controller as ctrl
-from app.core.responses import PaginatedResponse, SuccessResponse
+from app.core.responses import CursorPaginatedResponse, SuccessResponse
 from app.schemas.common.response import (
     AppSettingResponse,
     BannerResponse,
@@ -151,7 +151,7 @@ router.add_api_route(
     "/banners/admin/all",
     ctrl.list_all_banners,
     methods=["GET"],
-    response_model=SuccessResponse[list[BannerResponse]],
+    response_model=CursorPaginatedResponse[BannerResponse],
     status_code=status.HTTP_200_OK,
     summary="List All Banners (Admin)",
     description="Return all banners including inactive ones. Admin access required.",
@@ -298,7 +298,7 @@ router.add_api_route(
     "/settings",
     ctrl.list_settings,
     methods=["GET"],
-    response_model=SuccessResponse[list[AppSettingResponse]],
+    response_model=CursorPaginatedResponse[AppSettingResponse],
     status_code=status.HTTP_200_OK,
     summary="List App Settings (Admin)",
     description="Return all application settings. Admin access required.",
@@ -366,7 +366,7 @@ router.add_api_route(
     "/terms/versions",
     ctrl.list_terms_versions,
     methods=["GET"],
-    response_model=PaginatedResponse[TermsVersionResponse],
+    response_model=CursorPaginatedResponse[TermsVersionResponse],
     status_code=status.HTTP_200_OK,
     summary="List Terms Versions (Admin)",
     description="Return paginated history of all Terms & Conditions versions. Admin access required.",

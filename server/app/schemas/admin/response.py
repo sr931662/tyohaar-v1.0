@@ -102,19 +102,18 @@ class AuditLogResponse(IDSchema):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    actor_id: uuid.UUID = Field(description="Admin who performed the action")
-    actor_type: str = Field(description="'admin', 'system', or 'api'")
-    action: str = Field(description="Dot-notation action descriptor")
-    resource_type: str = Field(description="Entity type affected")
-    resource_id: uuid.UUID | None = Field(
+    actor_id: uuid.UUID | None = Field(default=None, description="Admin who performed the action")
+    actor_type: str = Field(description="'admin', 'system', 'cron', or 'api_key'")
+    action: str = Field(description="Type of action performed")
+    entity_type: str = Field(description="Entity type affected")
+    entity_id: uuid.UUID | None = Field(
         default=None,
-        description="Primary key of the affected resource",
+        description="Primary key of the affected entity",
     )
     ip_address: str | None = Field(
         default=None,
         description="Actor IP address",
     )
-    occurred_at: datetime = Field(description="When the action occurred")
     created_at: datetime = Field(description="When the audit record was persisted")
 
 
@@ -126,15 +125,15 @@ class AuditLogDetailResponse(AuditLogResponse):
     Includes before/after state snapshots and full request metadata.
     """
 
-    before_state: dict[str, Any] | None = Field(
+    before_value: dict[str, Any] | None = Field(
         default=None,
         description="Full entity state snapshot before the action",
     )
-    after_state: dict[str, Any] | None = Field(
+    after_value: dict[str, Any] | None = Field(
         default=None,
         description="Full entity state snapshot after the action",
     )
-    metadata: dict[str, Any] | None = Field(
+    extra_metadata: dict[str, Any] | None = Field(
         default=None,
         description="Request context metadata (session_id, request_id, etc.)",
     )

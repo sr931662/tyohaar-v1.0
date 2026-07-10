@@ -188,9 +188,9 @@ class UserAddressCreate(BaseSchema):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    user_id: uuid.UUID = Field(description="UUID of the owning user.")
     address_type: AddressType = Field(
-        description="Categorises the address (HOME, WORK, EVENT_VENUE, etc.)."
+        default=AddressType.HOME,
+        description="Categorises the address (HOME, WORK, EVENT_VENUE, etc.).",
     )
     label: str | None = Field(
         default=None,

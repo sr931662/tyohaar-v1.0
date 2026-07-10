@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, status
 
 from app.controllers.admin import controller as ctrl
-from app.core.responses import CursorPaginatedResponse, PaginatedResponse, SuccessResponse
+from app.core.responses import CursorPaginatedResponse, SuccessResponse
 from app.schemas.admin.response import (
     AdminAuditLogResponse,
     AdminPermissionResponse,
@@ -173,7 +173,7 @@ router.add_api_route(
     "/audit-logs/entity/{entity_id}",
     ctrl.get_audit_logs_for_entity,
     methods=["GET"],
-    response_model=PaginatedResponse[AdminAuditLogResponse],
+    response_model=CursorPaginatedResponse[AdminAuditLogResponse],
     status_code=status.HTTP_200_OK,
     summary="Get Audit Logs for Entity (Admin)",
     description="Return paginated audit logs for a specific entity. Pass `entity_type` as a query parameter. Admin access required.",
@@ -184,7 +184,7 @@ router.add_api_route(
     "/audit-logs",
     ctrl.list_audit_logs,
     methods=["GET"],
-    response_model=PaginatedResponse[AdminAuditLogResponse],
+    response_model=CursorPaginatedResponse[AdminAuditLogResponse],
     status_code=status.HTTP_200_OK,
     summary="List Audit Logs (Admin)",
     description="Return a paginated audit log of all admin actions. Admin access required.",

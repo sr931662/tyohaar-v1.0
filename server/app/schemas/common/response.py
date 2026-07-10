@@ -36,7 +36,8 @@ class CityResponse(BaseSchema):
     name: str
     slug: str
     is_active: bool
-    is_tier_one: bool
+    is_tier_1: bool
+    is_tier_2: bool
     latitude: Decimal | None = None
     longitude: Decimal | None = None
     display_order: int
