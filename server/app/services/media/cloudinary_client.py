@@ -87,10 +87,14 @@ async def upload_image_bytes(
 
     try:
         return await run_in_threadpool(_upload, apply_watermark)
-    except Exception as exc:
-        if apply_watermark and "overlay" in str(exc).lower():
-            # Watermark logo hasn't been uploaded to Cloudinary yet — degrade
-            # to a plain upload instead of blocking every image upload on it.
+    except Exception:
+        if apply_watermark:
+            # The watermark overlay asset likely hasn't been uploaded to
+            # Cloudinary yet (or the transform otherwise failed) — degrade to
+            # a plain upload instead of blocking every image upload on it.
+            # Not narrowed to a specific error message: Cloudinary's wording
+            # for a missing overlay resource varies, and any watermark-step
+            # failure should fall back rather than 500 the whole upload.
             return await run_in_threadpool(_upload, False)
         raise
 
