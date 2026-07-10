@@ -15,7 +15,6 @@ from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
-    OccasionCategory,
     CelebrationStatus,
     Currency,
     RSVPStatus,
@@ -189,21 +188,30 @@ class OccasionCreate(BaseSchema):
     Admin-only payload for creating a new Occasion type.
 
     End-users cannot create occasions; this is a platform-managed catalogue.
+    `slug` is optional — the server auto-generates one from `name` if omitted.
     """
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=200, description="Display name of the occasion")
-    slug: str = Field(
-        min_length=1,
+    slug: str | None = Field(
+        default=None,
         max_length=100,
         pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
-        description="URL-safe slug (lowercase, hyphens only)",
+        description="URL-safe slug (lowercase, hyphens only). Auto-generated from name if omitted.",
     )
-    category: OccasionCategory = Field(description="Broad category bucket for this occasion")
+    category_id: uuid.UUID | None = Field(
+        default=None,
+        description="Browsable category this occasion belongs to.",
+    )
     description: str | None = Field(default=None)
-    cover_image_url: str | None = Field(default=None, max_length=2048)
     icon_url: str | None = Field(default=None, max_length=2048)
+    banner_url: str | None = Field(default=None, max_length=2048)
+    thumbnail_url: str | None = Field(
+        default=None,
+        max_length=2048,
+        description="Square card image shown in occasion grids (e.g. the customer 'Other Moments' cards).",
+    )
     display_order: int = Field(
         default=0,
         ge=0,

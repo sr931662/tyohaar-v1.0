@@ -50,4 +50,10 @@ class PackageService {
     final List list = response.data['data'];
     return list.map((item) => Occasion.fromJson(item)).toList();
   }
+
+  Future<List<CelebrationTheme>> listThemes() async {
+    final response = await _api.dio.get('occasions/themes');
+    final List list = response.data['data'];
+    return list.map((item) => CelebrationTheme.fromJson(item)).toList();
+  }
 }

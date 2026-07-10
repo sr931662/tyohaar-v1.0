@@ -41,4 +41,10 @@ export const occasionsApi = {
 
   createTheme: (body) =>
     apiClient.post('/occasions/themes', body).then(extractData),
+
+  updateTheme: (themeId, body) =>
+    apiClient.put(`/occasions/themes/${themeId}`, body).then(extractData),
+
+  deleteTheme: (themeId) =>
+    apiClient.delete(`/occasions/themes/${themeId}`).then(extractData),
 };

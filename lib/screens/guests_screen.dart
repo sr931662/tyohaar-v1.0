@@ -299,7 +299,8 @@ class _GuestsScreenState extends State<GuestsScreen> {
                   ))
                 else
                   ...shown.asMap().entries.map((e) => _guestRow(context, e.value, e.key, resp)),
-              ],
+                ],
+              ),
             ),
           ),
         ],

@@ -11,7 +11,12 @@ from app.db.session import AsyncSessionLocal
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.models.notifications.notification import Notification
 from app.schemas.base import CursorPage
-from app.schemas.notifications.create import NotificationCreate, NotificationTemplateCreate
+from app.schemas.notifications.create import (
+    BroadcastCreate,
+    NotificationCreate,
+    NotificationFromTemplateCreate,
+    NotificationTemplateCreate,
+)
 from app.schemas.notifications.filters import NotificationFilters
 from app.schemas.notifications.response import NotificationResponse, NotificationTemplateResponse
 from app.schemas.notifications.update import NotificationTemplateUpdate
@@ -48,18 +53,71 @@ class NotificationService(BaseService):
     ) -> None:
         super().__init__(session_factory)
 
+    # ── Push dispatch ─────────────────────────────────────────────────────────
+
+    async def _dispatch_push(
+        self,
+        notification_id: UUID,
+        user_id: UUID,
+        title: str,
+        body: str,
+        action_url: str | None = None,
+    ) -> None:
+        """
+        Best-effort FCM dispatch for a PUSH-channel notification that was
+        already written to the table as PENDING. Flips it to SENT/FAILED
+        based on the outcome. No-ops silently if Firebase isn't configured
+        yet — the row just stays PENDING, same as today.
+        """
+        from app.services.notifications.fcm_client import is_configured, send_push
+
+        if not is_configured():
+            return
+
+        async with self._uow() as uow:
+            devices = await uow.users.devices.find_by_user(user_id)
+            tokens = [
+                d.push_notification_token for d in devices
+                if d.is_active and d.push_notification_token
+            ]
+            if not tokens:
+                return
+
+            try:
+                result = send_push(
+                    tokens, title, body,
+                    data={"action_url": action_url} if action_url else None,
+                )
+            except Exception:
+                logger.exception("FCM dispatch failed for notification %s", notification_id)
+                return
+
+            new_status = NotificationStatus.SENT if result.success_count > 0 else NotificationStatus.FAILED
+            notif = await uow.notifications.notifications.get_by_id(notification_id)
+            if notif is not None:
+                await uow.notifications.notifications.update(notif, {
+                    "notification_status": new_status,
+                    "sent_at": datetime.now(tz=timezone.utc) if new_status == NotificationStatus.SENT else None,
+                })
+
+            for token in result.invalid_tokens:
+                device = await uow.users.devices.find_by_token(token)
+                if device is not None:
+                    await uow.users.devices.update(device, {"is_active": False})
+
     # ── Send ──────────────────────────────────────────────────────────────────
 
     async def send_notification(
         self,
-        user_id: UUID,
         data: NotificationCreate,
+        user_id: UUID | None = None,
     ) -> NotificationResponse:
+        recipient_id = user_id or data.user_id
         channel = data.channel
         status = _status_for_channel(channel)
         async with self._uow() as uow:
             notification = await uow.notifications.notifications.create_from_dict({
-                "recipient_id": user_id,
+                "recipient_id": recipient_id,
                 "notification_type": data.notification_type,
                 "channel": channel,
                 "priority": data.priority,
@@ -75,9 +133,12 @@ class NotificationService(BaseService):
             })
             response = NotificationResponse.model_validate(notification)
 
+        if channel == NotificationChannel.PUSH:
+            await self._dispatch_push(notification.id, recipient_id, data.title, data.body, data.action_url)
+
         logger.info(
             "dispatch_stub (no real channel configured) user_id=%s notification_id=%s channel=%s status=%s",
-            user_id,
+            recipient_id,
             notification.id,
             channel,
             status,
@@ -86,61 +147,74 @@ class NotificationService(BaseService):
 
     async def send_from_template(
         self,
-        user_id: UUID,
-        template_key: str,
-        context: dict,
-        channels: list[str] | None = None,
+        data: NotificationFromTemplateCreate,
     ) -> NotificationResponse:
         async with self._uow() as uow:
-            template_obj = await validate_template_exists(template_key, uow)
+            template_obj = await validate_template_exists(data.template_key, uow)
             try:
-                title = render_subject(template_obj.title_template, context)
-                body = render_template(template_obj.body_template, context)
+                title = render_subject(template_obj.title_template, data.context_data)
+                body = render_template(template_obj.body_template, data.context_data)
             except Exception as exc:
                 raise TemplateRenderError(f"Template render failed: {exc}") from exc
 
-            channel = template_obj.channel
+            channel = data.channel
             status = _status_for_channel(channel)
             notification = await uow.notifications.notifications.create_from_dict({
-                "recipient_id": user_id,
+                "recipient_id": data.user_id,
                 "template_id": template_obj.id,
-                "notification_type": template_obj.notification_category,
+                "notification_type": data.notification_type,
                 "channel": channel,
+                "priority": data.priority,
                 "title": title,
                 "body": body,
+                "reference_type": data.reference_type,
+                "reference_id": data.reference_id,
                 "notification_status": status,
                 "sent_at": datetime.now(tz=timezone.utc) if status == NotificationStatus.SENT else None,
             })
-            return NotificationResponse.model_validate(notification)
+            result = NotificationResponse.model_validate(notification)
+
+        if channel == NotificationChannel.PUSH:
+            await self._dispatch_push(notification.id, data.user_id, title, body)
+
+        return result
 
     async def broadcast_notification(
         self,
-        user_ids: list[UUID],
-        template_key: str,
-        context: dict,
+        data: BroadcastCreate,
     ) -> int:
         async with self._uow() as uow:
-            template_obj = await validate_template_exists(template_key, uow)
-            try:
-                title = render_subject(template_obj.title_template, context)
-                body = render_template(template_obj.body_template, context)
-            except Exception as exc:
-                raise TemplateRenderError(f"Template render failed: {exc}") from exc
+            if data.recipient_ids:
+                user_ids = data.recipient_ids
+            else:
+                from app.models.enums import UserRole
+                from app.models.users.user import User
 
+                segment = data.target_segment or "all"
+                conditions = [User.deleted_at.is_(None)]
+                if segment == "customers":
+                    conditions.append(User.role == UserRole.CUSTOMER)
+                elif segment == "vendors":
+                    conditions.append(User.role == UserRole.VENDOR)
+                from sqlalchemy import select
+                result = await uow.session.execute(select(User.id).where(*conditions))
+                user_ids = [row[0] for row in result.all()]
+
+            status = _status_for_channel(data.channel)
             now = datetime.now(tz=timezone.utc)
-            status = _status_for_channel(template_obj.channel)
             total_sent = 0
+            created_by_user: dict[UUID, Notification] = {}
 
             for i in range(0, len(user_ids), NOTIFICATION_BATCH_SIZE):
                 batch = user_ids[i : i + NOTIFICATION_BATCH_SIZE]
                 instances = [
                     Notification(
                         recipient_id=uid,
-                        template_id=template_obj.id,
-                        notification_type=template_obj.notification_category,
-                        channel=template_obj.channel,
-                        title=title,
-                        body=body,
+                        notification_type=data.notification_type,
+                        channel=data.channel,
+                        title=data.title,
+                        body=data.body,
+                        scheduled_at=data.scheduled_at,
                         notification_status=status,
                         sent_at=now if status == NotificationStatus.SENT else None,
                     )
@@ -148,8 +222,71 @@ class NotificationService(BaseService):
                 ]
                 created = await uow.notifications.notifications.bulk_create(instances)
                 total_sent += len(created)
+                for uid, notif in zip(batch, created):
+                    created_by_user[uid] = notif
 
-            return total_sent
+        if data.channel == NotificationChannel.PUSH:
+            await self._dispatch_broadcast_push(created_by_user, data.title, data.body)
+
+        return total_sent
+
+    async def _dispatch_broadcast_push(
+        self,
+        created_by_user: dict[UUID, Notification],
+        title: str,
+        body: str,
+    ) -> None:
+        from app.services.notifications.fcm_client import is_configured, send_push
+
+        if not is_configured() or not created_by_user:
+            return
+
+        async with self._uow() as uow:
+            user_ids = list(created_by_user.keys())
+            token_to_user: dict[str, UUID] = {}
+            for i in range(0, len(user_ids), NOTIFICATION_BATCH_SIZE):
+                batch = user_ids[i : i + NOTIFICATION_BATCH_SIZE]
+                from sqlalchemy import select
+                from app.models.users.device import UserDevice
+                result = await uow.session.execute(
+                    select(UserDevice.push_notification_token, UserDevice.user_id).where(
+                        UserDevice.user_id.in_(batch),
+                        UserDevice.is_active == True,
+                        UserDevice.push_notification_token.isnot(None),
+                    )
+                )
+                for token, uid in result.all():
+                    token_to_user[token] = uid
+
+            if not token_to_user:
+                return
+
+            try:
+                push_result = send_push(list(token_to_user.keys()), title, body)
+            except Exception:
+                logger.exception("FCM broadcast dispatch failed")
+                return
+
+            users_with_success: set[UUID] = set()
+            for token, success in push_result.token_success.items():
+                if success:
+                    users_with_success.add(token_to_user[token])
+
+            now = datetime.now(tz=timezone.utc)
+            for uid in users_with_success:
+                notif = created_by_user.get(uid)
+                if notif is not None:
+                    fresh = await uow.notifications.notifications.get_by_id(notif.id)
+                    if fresh is not None:
+                        await uow.notifications.notifications.update(fresh, {
+                            "notification_status": NotificationStatus.SENT,
+                            "sent_at": now,
+                        })
+
+            for token in push_result.invalid_tokens:
+                device = await uow.users.devices.find_by_token(token)
+                if device is not None:
+                    await uow.users.devices.update(device, {"is_active": False})
 
     # ── Read / Manage ─────────────────────────────────────────────────────────
 

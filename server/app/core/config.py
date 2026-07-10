@@ -111,6 +111,15 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_SECRET: str = ""
     RAZORPAY_WEBHOOK_SECRET: str = ""
 
+    # ── Push Notifications (Firebase Cloud Messaging) ───────────────────────
+    # console.firebase.google.com → Project Settings → Service Accounts →
+    # "Generate new private key". Paste the FULL JSON contents of the
+    # downloaded file as this env var's value (not a file path — Cloud Run
+    # env vars are simpler to manage than mounted files).
+    # Leave blank in dev; push notifications stay PENDING (never dispatched)
+    # until this is set, matching the existing SMS/email/WhatsApp behavior.
+    FIREBASE_CREDENTIALS_JSON: str = ""
+
     # ── Properties ───────────────────────────────────────────────────────────
 
     @property

@@ -17,7 +17,6 @@ from pydantic import ConfigDict, Field, computed_field
 
 from app.schemas.base import BaseSchema
 from app.models.enums import (
-    OccasionCategory,
     CelebrationStatus,
     Currency,
     RSVPStatus,
@@ -50,10 +49,11 @@ class OccasionResponse(BaseSchema):
     id: uuid.UUID
     name: str
     slug: str
-    category: OccasionCategory | None = None
+    category_id: uuid.UUID | None = None
     description: str | None = None
-    cover_image_url: str | None = None
     icon_url: str | None = None
+    banner_url: str | None = None
+    thumbnail_url: str | None = None
     is_active: bool
     display_order: int
     is_featured: bool
@@ -73,12 +73,15 @@ class OccasionThemeResponse(BaseSchema):
     name: str
     slug: str
     description: str | None = None
-    preview_image_url: str | None = None
-    color_palette: list[str] | None = Field(
+    cover_image_url: str | None = None
+    thumbnail_url: str | None = None
+    colors: dict[str, str] | None = Field(
         default=None,
-        description="List of hex colour codes (e.g. ['#FF5733', '#C70039'])",
+        description="Color palette: {primary, secondary, accent, background} hex codes.",
     )
+    sort_order: int
     is_active: bool
+    is_featured: bool
 
 
 class OccasionMoodResponse(BaseSchema):

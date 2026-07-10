@@ -11,6 +11,7 @@ import '../data/auth_manager.dart';
 import '../data/models.dart';
 import '../data/services/user_service.dart';
 import '../data/services/notification_service.dart';
+import '../data/services/push_service.dart';
 import 'home_screen.dart';
 import 'plans_screen.dart';
 import 'explore_screen.dart';
@@ -50,6 +51,7 @@ class _RootNavState extends State<RootNav> {
     super.initState();
     _ensureUserLoaded();
     _loadUnreadCount();
+    PushService.instance.initialize();
   }
 
   Future<void> _loadUnreadCount() async {

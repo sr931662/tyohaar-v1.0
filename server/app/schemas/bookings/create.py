@@ -59,6 +59,10 @@ class BookingCreate(BaseSchema):
         default=None,
         description="Free-text venue address for the auto-created celebration (ignored if celebration_id is provided).",
     )
+    theme_id: uuid.UUID | None = Field(
+        default=None,
+        description="Customer's chosen visual theme for the auto-created celebration (ignored if celebration_id is provided).",
+    )
     package_id: uuid.UUID = Field(description="UUID of the package being booked")
     address_id: uuid.UUID | None = Field(
         default=None,

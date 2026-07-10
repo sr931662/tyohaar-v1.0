@@ -152,6 +152,7 @@ class BookingService(BaseService):
                     "title": data.celebration_title or f"{package.name} booking",
                     "celebration_date": data.scheduled_date,
                     "venue_address": data.venue_address,
+                    "theme_id": data.theme_id,
                     "guest_count": 0,
                 })
                 celebration_id = celebration.id

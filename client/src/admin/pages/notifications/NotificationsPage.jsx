@@ -115,15 +115,25 @@ function TemplatesTab() {
   );
 }
 
+const CHANNEL_OPTIONS = [
+  { value: 'in_app', label: 'In-App' },
+  { value: 'push', label: 'Push' },
+  { value: 'sms', label: 'SMS' },
+  { value: 'email', label: 'Email' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+];
+
 function SendTab() {
-  const [form, setForm] = useState({ user_id: '', title: '', message: '', notification_type: 'push' });
-  const [broadcastForm, setBroadcastForm] = useState({ title: '', message: '', notification_type: 'push', target: 'all' });
+  const [form, setForm] = useState({ user_id: '', title: '', body: '', channel: 'in_app', notification_type: 'system' });
+  const [broadcastForm, setBroadcastForm] = useState({ title: '', body: '', channel: 'in_app', notification_type: 'promotional', target_segment: 'all' });
   const [mode, setMode] = useState('single');
 
   const sendMutation = useMutation({
-    mutationFn: (body) => mode === 'single' ? notificationsApi.send(body) : notificationsApi.broadcast(body),
+    mutationFn: (body) => mode === 'single'
+      ? notificationsApi.send(body)
+      : notificationsApi.broadcast(body),
     onSuccess: () => { toast.success(mode === 'single' ? 'Notification sent' : 'Broadcast queued'); },
-    onError: () => toast.error('Send failed'),
+    onError: (err) => toast.error(err?.response?.data?.message || err?.response?.data?.detail || 'Send failed'),
   });
 
   return (
@@ -146,9 +156,18 @@ function SendTab() {
             </div>
             <div className="form-group">
               <label className="form-label required">Message</label>
-              <textarea className="form-control" rows={3} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} />
+              <textarea className="form-control" rows={3} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} />
             </div>
-            <button className="btn btn-primary" onClick={() => sendMutation.mutate(form)} disabled={!form.user_id || !form.title || sendMutation.isPending}>
+            <div className="form-group">
+              <label className="form-label">Channel</label>
+              <select className="form-control" value={form.channel} onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}>
+                {CHANNEL_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+              {form.channel !== 'in_app' && (
+                <div className="form-hint">Only In-App is delivered today. Other channels are recorded as pending until a dispatcher is wired.</div>
+              )}
+            </div>
+            <button className="btn btn-primary" onClick={() => sendMutation.mutate(form)} disabled={!form.user_id || !form.title || !form.body || sendMutation.isPending}>
               {sendMutation.isPending ? 'Sending…' : 'Send Notification'}
             </button>
           </div>
@@ -163,7 +182,7 @@ function SendTab() {
             </div>
             <div className="form-group">
               <label className="form-label">Target Audience</label>
-              <select className="form-control" value={broadcastForm.target} onChange={e => setBroadcastForm(f => ({ ...f, target: e.target.value }))}>
+              <select className="form-control" value={broadcastForm.target_segment} onChange={e => setBroadcastForm(f => ({ ...f, target_segment: e.target.value }))}>
                 <option value="all">All Users</option>
                 <option value="customers">Customers Only</option>
                 <option value="vendors">Vendors Only</option>
@@ -175,9 +194,18 @@ function SendTab() {
             </div>
             <div className="form-group">
               <label className="form-label required">Message</label>
-              <textarea className="form-control" rows={3} value={broadcastForm.message} onChange={e => setBroadcastForm(f => ({ ...f, message: e.target.value }))} />
+              <textarea className="form-control" rows={3} value={broadcastForm.body} onChange={e => setBroadcastForm(f => ({ ...f, body: e.target.value }))} />
             </div>
-            <button className="btn btn-primary" onClick={() => sendMutation.mutate(broadcastForm)} disabled={!broadcastForm.title || sendMutation.isPending}>
+            <div className="form-group">
+              <label className="form-label">Channel</label>
+              <select className="form-control" value={broadcastForm.channel} onChange={e => setBroadcastForm(f => ({ ...f, channel: e.target.value }))}>
+                {CHANNEL_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+              {broadcastForm.channel !== 'in_app' && (
+                <div className="form-hint">Only In-App is delivered today. Other channels are recorded as pending until a dispatcher is wired.</div>
+              )}
+            </div>
+            <button className="btn btn-primary" onClick={() => sendMutation.mutate(broadcastForm)} disabled={!broadcastForm.title || !broadcastForm.body || sendMutation.isPending}>
               {sendMutation.isPending ? 'Queuing…' : 'Broadcast'}
             </button>
           </div>

@@ -37,6 +37,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   List<Occasion> _occasions = [];
   List<Package> _packages = [];
   List<Address> _addresses = [];
+  List<CelebrationTheme> _themes = [];
   bool _isLoading = true;
 
   Occasion? _occasion;
@@ -45,6 +46,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   final Set<String> _vibes = {};
   final List<Guest> _guests = [];
   Package? _pkg;
+  CelebrationTheme? _theme;
   Address? _address;
   DateTime _eventDate = DateTime.now().add(const Duration(days: 30));
 
@@ -60,11 +62,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _packageService.listOccasions(),
         _packageService.listPackages(),
         _userService.getAddresses(),
+        _packageService.listThemes().catchError((_) => <CelebrationTheme>[]),
       ]);
       setState(() {
         _occasions = results[0] as List<Occasion>;
         _packages = results[1] as List<Package>;
         _addresses = results[2] as List<Address>;
+        _themes = results[3] as List<CelebrationTheme>;
         if (_occasions.isNotEmpty) _occasion = _occasions.first;
         if (_addresses.isNotEmpty) _address = _addresses.first;
         _isLoading = false;
@@ -109,6 +113,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'venue_address': _placeCtrl.text.isNotEmpty ? _placeCtrl.text : null,
         'celebration_title': _nameCtrl.text.isNotEmpty ? _nameCtrl.text : 'My Celebration',
         'address_id': _address?.id,
+        'theme_id': (_pkg?.isCustomizable ?? false) ? _theme?.id : null,
         'special_instructions': _vibes.isNotEmpty ? 'Mood: ${_vibes.join(', ')}' : null,
       });
       if (!mounted) return;
@@ -251,13 +256,41 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   Widget _occasionStep(BuildContext context) {
+    final milestones = _occasions.where((o) {
+      final n = o.name.toLowerCase();
+      return n.contains('birth') || n.contains('anniv') || n.contains('grad') || n.contains('baby') || n.contains('shower');
+    }).toList();
+
+    final memories = _occasions.where((o) {
+      final n = o.name.toLowerCase();
+      return n.contains('wedding') || n.contains('mehndi') || n.contains('haldi') || n.contains('sangeet') || n.contains('marriage') || n.contains('engagement') || n.contains('roka');
+    }).toList();
+
+    final growth = _occasions.where((o) {
+      final n = o.name.toLowerCase();
+      return n.contains('corporate') || n.contains('annual') || n.contains('office') || n.contains('growth') || n.contains('seminar') || n.contains('workshop');
+    }).toList();
+
+    final others = _occasions.where((o) {
+      return !milestones.contains(o) && !memories.contains(o) && !growth.contains(o);
+    }).toList();
+
     return Column(
       children: [
-        _occasionGroup(context, 'Life Events', _occasions.where((o) => o.category == 'life_event').toList()),
-        const SizedBox(height: 24),
-        _occasionGroup(context, 'Major Festivals', _occasions.where((o) => o.category == 'major_festival').toList()),
-        const SizedBox(height: 24),
-        _occasionGroup(context, 'Other Moments', _occasions.where((o) => o.category != 'life_event' && o.category != 'major_festival').toList()),
+        if (milestones.isNotEmpty) ...[
+          _occasionGroup(context, 'Milestones', milestones),
+          const SizedBox(height: 24),
+        ],
+        if (memories.isNotEmpty) ...[
+          _occasionGroup(context, 'Memories', memories),
+          const SizedBox(height: 24),
+        ],
+        if (growth.isNotEmpty) ...[
+          _occasionGroup(context, 'Growth', growth),
+          const SizedBox(height: 24),
+        ],
+        if (others.isNotEmpty)
+          _occasionGroup(context, 'Other Moments', others),
       ],
     );
   }
@@ -280,8 +313,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           children: list.map((o) {
             final on = _occasion?.id == o.id;
             final c = ty.tint(o.tint);
-            
+
+            // Prefer the admin-uploaded card image; fall back to the bundled
+            // local asset when none has been set yet.
+            final String? networkImage = o.thumbnailUrl;
             final String? localImage = OccasionAssets.getRelatedBackground(o.name);
+            final bool hasImage = networkImage != null || localImage != null;
 
             return GestureDetector(
               onTap: () => setState(() => _occasion = o),
@@ -299,14 +336,19 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 clipBehavior: Clip.antiAlias,
                 child: Stack(
                   children: [
-                    if (localImage != null)
+                    if (hasImage)
                       Positioned.fill(
-                        child: Image.asset(
-                          localImage,
-                          fit: BoxFit.cover,
-                        ),
+                        child: networkImage != null
+                            ? CachedNetworkImage(
+                                imageUrl: networkImage,
+                                fit: BoxFit.cover,
+                                errorWidget: (context, url, error) => localImage != null
+                                    ? Image.asset(localImage, fit: BoxFit.cover)
+                                    : const SizedBox(),
+                              )
+                            : Image.asset(localImage!, fit: BoxFit.cover),
                       ),
-                    if (localImage != null)
+                    if (hasImage)
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(
@@ -328,14 +370,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                         children: [
                           Emblem(
                             icon: o.icon,
-                            tint: localImage != null ? 'white' : o.tint,
+                            tint: hasImage ? 'white' : o.tint,
                             size: 28,
                           ),
                           const Spacer(),
                           Text(
                             o.name,
                             style: TyType.sans(14,
-                                color: localImage != null ? Colors.white : ty.ink,
+                                color: hasImage ? Colors.white : ty.ink,
                                 weight: FontWeight.w700),
                           ),
                         ],
@@ -463,7 +505,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   Widget _packageStep(BuildContext context) {
     final ty = context.ty;
     return Column(
-      children: _packages.map((p) {
+      children: [
+        ..._packages.map((p) {
         final on = _pkg?.id == p.id;
         return GestureDetector(
           onTap: () => setState(() => _pkg = p),
@@ -511,7 +554,84 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             ),
           ),
         );
-      }).toList(),
+        }),
+        if (_pkg?.isCustomizable ?? false) _themeStep(context),
+      ],
+    );
+  }
+
+  Widget _themeStep(BuildContext context) {
+    final ty = context.ty;
+    if (_themes.isEmpty) return const SizedBox();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('CHOOSE A COLOR THEME', style: TyType.eyebrow(11, color: ty.ink3)),
+          const SizedBox(height: 4),
+          Text('This package is customizable — pick the palette for your celebration.',
+              style: TyType.sans(12.5, color: ty.ink2)),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 96,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _themes.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, i) {
+                final t = _themes[i];
+                final on = _theme?.id == t.id;
+                Color hexToColor(String hex) {
+                  final h = hex.replaceAll('#', '');
+                  return Color(int.parse('FF$h', radix: 16));
+                }
+                final swatch = hexToColor(t.primaryColorHex);
+                return GestureDetector(
+                  onTap: () => setState(() => _theme = on ? null : t),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: swatch,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: on ? ty.saffron : Colors.transparent,
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: swatch.withOpacity(0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: on
+                            ? const Icon(Icons.check_rounded, color: Colors.white)
+                            : null,
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: 68,
+                        child: Text(
+                          t.name,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TyType.sans(11, color: ty.ink2, weight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -522,6 +642,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       children: [
         _summaryCard(context, 'Celebration', '${_occasion?.name} - ${_nameCtrl.text}'),
         _summaryCard(context, 'Package', _pkg?.name ?? ''),
+        if ((_pkg?.isCustomizable ?? false) && _theme != null)
+          _summaryCard(context, 'Theme', _theme!.name),
         _summaryCard(context, 'Date & Time', '${_eventDate.day} ${_eventDate.month} · 6:30 PM'),
         _summaryCard(context, 'Guest Count', '$_totalGuests Guests'),
         const SizedBox(height: 16),

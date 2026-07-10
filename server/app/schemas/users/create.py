@@ -268,7 +268,6 @@ class UserDeviceCreate(BaseSchema):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    user_id: uuid.UUID = Field(description="UUID of the owning user.")
     device_id: str = Field(
         min_length=8,
         max_length=256,

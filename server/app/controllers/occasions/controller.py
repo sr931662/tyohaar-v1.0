@@ -46,6 +46,7 @@ from app.services.occasions.service import (
     OccasionMoodCreate,
     OccasionTagCreate,
     OccasionThemeCreate,
+    OccasionThemeUpdate,
     OccasionUpdate,
 )
 
@@ -170,6 +171,25 @@ async def create_theme(
 ) -> SuccessResponse[OccasionThemeResponse]:
     result = await service.create_theme(data=body)
     return SuccessResponse(data=result, message="Theme created.")
+
+
+async def update_theme(
+    theme_id: uuid.UUID,
+    body: OccasionThemeUpdate,
+    _admin: AdminDep,
+    service: OccasionServiceDep,
+) -> SuccessResponse[OccasionThemeResponse]:
+    result = await service.update_theme(theme_id=theme_id, data=body)
+    return SuccessResponse(data=result, message="Theme updated.")
+
+
+async def delete_theme(
+    theme_id: uuid.UUID,
+    _admin: AdminDep,
+    service: OccasionServiceDep,
+) -> SuccessResponse[None]:
+    await service.delete_theme(theme_id=theme_id)
+    return SuccessResponse(data=None, message="Theme deleted.")
 
 
 # ── Celebrations ───────────────────────────────────────────────────────────────

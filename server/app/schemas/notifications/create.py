@@ -123,10 +123,14 @@ class BroadcastCreate(BaseSchema):
     title: str = Field(max_length=300, description="Broadcast notification title.")
     body: str = Field(description="Broadcast notification body.")
     notification_type: NotificationType = Field(default=NotificationType.SYSTEM)
-    channel: NotificationChannel
+    channel: NotificationChannel = Field(default=NotificationChannel.IN_APP)
+    target_segment: str | None = Field(
+        default="all",
+        description="'all', 'customers', or 'vendors'. Ignored when recipient_ids is set.",
+    )
     recipient_ids: list[uuid.UUID] | None = Field(
         default=None,
-        description="Explicit list of user UUIDs to notify. None means all users.",
+        description="Explicit list of user UUIDs to notify. Overrides target_segment.",
     )
     scheduled_at: datetime | None = Field(
         default=None,
@@ -139,6 +143,7 @@ class NotificationFromTemplateCreate(BaseSchema):
     """Trigger a templated notification for a specific user and event."""
 
     user_id: uuid.UUID = Field(description="Recipient user ID.")
+    template_key: str = Field(description="Key of the NotificationTemplate to render and send.")
     notification_type: NotificationType
     channel: NotificationChannel
     language: str = Field(default="en", max_length=10)

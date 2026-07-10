@@ -1,29 +1,26 @@
-# Walkthrough - UI Responsiveness & Auto-Refresh
+# Walkthrough - UI Enhancements & Event Categorization
 
-I have implemented a comprehensive responsiveness system and an auto-refresh mechanism to ensure the app looks professional on all devices and stays up-to-date during user interactions.
+I have implemented several UI improvements focusing on responsiveness, data synchronization, and event organization.
 
-## 1. UI Responsiveness Fixes
+## 1. UI Responsiveness & Auto-Refresh
+- **Fixed Header Clearance**: Standardized top padding across `Account`, `Plans`, and `Explore` screens to ensure page titles are correctly visible below the sticky header.
+- **Full Responsive Scaling**: Integrated the `TyResponsive` utility into all major screens, scaling font sizes and spacing proportionally.
+- **Pull-to-Refresh**: Added `RefreshIndicator` to all primary list screens.
+- **Automatic Sync**: Navigation from `Home` and `Event Hub` now automatically reloads data when returning from sub-screens.
 
-### Header Clearance & Scaling
-- **Account, Plans, Explore Screens**: Fixed the issue where page titles were overlapping with the sticky app bar. I used a responsive top padding of `MediaQuery.of(context).padding.top + resp.h(85)`.
-- **Responsive Utility**: All hardcoded dimensions (Sizedbox heights, font sizes, padding) in major screens have been replaced with `resp.h()`, `resp.w()`, and `resp.sp()` calls from the `TyResponsive` utility.
-- **Home Screen**: Compacted the layout by reducing hero height and inter-section spacing to eliminate visual gaps on larger screens.
+## 2. Event Categorization (Planning Flow)
+I categorized the event selection screen (Step 1) to make it easier for users to find what they are looking for:
 
-## 2. Auto-Refresh Mechanism
+- **Milestones**: Grouped Birthdays, Anniversaries, etc., using a consistent `rose` tint.
+- **Memories**: Grouped Wedding-related events like Mehndi, Haldi, and Sangeet under a `saffron` tint.
+- **Growth**: Grouped Corporate events like Annual Days and Seminars under a `gold` tint.
+- **Other Moments**: Fallback for remaining occasions like Festivals.
 
-### Pull-to-Refresh
-- Added `RefreshIndicator` to all primary screens: `HomeScreen`, `PlansScreen`, `ExploreScreen`, `AccountScreen`, `EventHubScreen`, `BudgetScreen`, and `GuestsScreen`.
+## 3. Technical Implementation
+- **PlanFlowScreen**: Refactored `_occasionStep` to dynamically group occasions based on keywords.
+- **Occasion Model**: Updated `_getCategoryTint` in `models.dart` to support keyword-based color mapping for consistent branding.
 
-### Automatic Data Updates
-- **Profile Updates**: `AccountScreen` now uses `context.watch<AuthManager>()` to automatically rebuild whenever the user's profile is updated (e.g., after editing name or photo in `MyProfileScreen`).
-- **Navigation Feedback**: Navigation calls in `HomeScreen` and `EventHubScreen` now use the `.then((_) => _loadData())` pattern. This ensures that when a user performs an action in a sub-screen (like adding a guest, updating budget, or creating a plan) and returns, the parent screen refreshes its state immediately.
-
-## 3. Verification Summary
-
-### Automated Tests
-- Verified all modified files using `analyze_file` and `flutter analyze` to ensure no syntax errors or breaking changes were introduced.
-- Confirmed that `TyResponsive` correctly clamps scaling factors to maintain readability on extremely small or large devices.
-
-### Manual Verification
-- Inspected the `Account` screen layout to confirm that the title is no longer cut off by the status bar or sticky header.
-- Verified that the "Quick Actions" and "Packages" rails on the `HomeScreen` are well-positioned with minimal whitespace.
+## Verification Summary
+- Verified all screens in `DevicePreview` for proper layout.
+- Analyzed modified files to ensure no regressions or syntax errors.
+- Confirmed that auto-refresh triggers correctly after data mutations.

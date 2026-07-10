@@ -186,6 +186,30 @@ router.add_api_route(
     tags=["Occasions"],
 )
 
+router.add_api_route(
+    "/occasions/themes/{theme_id}",
+    ctrl.update_theme,
+    methods=["PUT"],
+    response_model=SuccessResponse[OccasionThemeResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Occasion Theme (Admin)",
+    description="Update an existing theme. Admin access required.",
+    operation_id="occasions_update_theme",
+    tags=["Occasions"],
+)
+
+router.add_api_route(
+    "/occasions/themes/{theme_id}",
+    ctrl.delete_theme,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Delete Occasion Theme (Admin)",
+    description="Delete a theme. Admin access required.",
+    operation_id="occasions_delete_theme",
+    tags=["Occasions"],
+)
+
 # ── Celebrations ──────────────────────────────────────────────────────────────
 
 router.add_api_route(

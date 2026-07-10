@@ -68,8 +68,11 @@ class Occasion {
   final String tint;
   final String? description;
   final String category;
-  // Backend field: cover_image_url (was incorrectly read as hero_image_url).
+  // Backend field: banner_url — full-width hero image for the detail page.
   final String? heroImageUrl;
+  // Backend field: thumbnail_url — square card image for grid browse screens
+  // (e.g. the "Other Moments" occasion cards).
+  final String? thumbnailUrl;
   // Raw icon URL returned by backend (icon_url field).
   final String? iconUrl;
 
@@ -82,6 +85,7 @@ class Occasion {
     this.description,
     required this.category,
     this.heroImageUrl,
+    this.thumbnailUrl,
     this.iconUrl,
   });
 
@@ -95,24 +99,26 @@ class Occasion {
     this.description,
     this.category, {
     this.heroImageUrl,
+    this.thumbnailUrl,
     this.iconUrl,
   });
 
   factory Occasion.fromJson(Map<String, dynamic> json) {
-    final category = json['category']?.toString() ?? 'other';
+    final name = json['name']?.toString() ?? '';
+    final category = json['category_id']?.toString() ?? 'other';
     return Occasion(
       id: json['id'],
-      name: json['name'],
+      name: name,
       nameLocalized: json['name_localized'] as String?,
       // Backend sends icon_url (URL), not icon_name. _parseIcon falls back to
       // auto_awesome when icon_name is absent, which is the correct default.
       icon: _parseIcon(json['icon_name'] as String?),
       iconUrl: json['icon_url'] as String?,
-      tint: _getCategoryTint(category),
+      tint: _getCategoryTint(category, name),
       description: json['description'] as String?,
       category: category,
-      // Was: json['hero_image_url'] — backend sends cover_image_url.
-      heroImageUrl: json['cover_image_url'] as String?,
+      heroImageUrl: json['banner_url'] as String?,
+      thumbnailUrl: json['thumbnail_url'] as String?,
     );
   }
 
@@ -133,10 +139,67 @@ class Occasion {
     }
   }
 
-  static String _getCategoryTint(String? category) {
+  static String _getCategoryTint(String? category, String name) {
+    final n = name.toLowerCase();
+    
+    // Milestones keywords
+    if (n.contains('birth') || n.contains('anniv') || n.contains('grad') || n.contains('baby') || n.contains('shower')) {
+      return 'rose';
+    }
+    
+    // Memories (Wedding) keywords
+    if (n.contains('wedding') || n.contains('mehndi') || n.contains('haldi') || n.contains('sangeet') || n.contains('marriage') || n.contains('engagement')) {
+      return 'saffron';
+    }
+    
+    // Growth (Corporate) keywords
+    if (n.contains('corporate') || n.contains('annual') || n.contains('office') || n.contains('growth')) {
+      return 'gold';
+    }
+
     if (category == 'life_event') return 'rose';
     if (category == 'major_festival') return 'gold';
     return 'saffron';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OCCASION THEME → OccasionThemeResponse
+// ---------------------------------------------------------------------------
+
+class CelebrationTheme {
+  final String id;
+  final String name;
+  final String? description;
+  final String? coverImageUrl;
+  final String? thumbnailUrl;
+  final Map<String, String> colors;
+  final bool isFeatured;
+
+  const CelebrationTheme({
+    required this.id,
+    required this.name,
+    this.description,
+    this.coverImageUrl,
+    this.thumbnailUrl,
+    this.colors = const {},
+    this.isFeatured = false,
+  });
+
+  /// Primary swatch color, falling back to a neutral gold if unset.
+  String get primaryColorHex => colors['primary'] ?? '#C8A96E';
+
+  factory CelebrationTheme.fromJson(Map<String, dynamic> json) {
+    final rawColors = json['colors'] as Map<String, dynamic>?;
+    return CelebrationTheme(
+      id: json['id'],
+      name: json['name'] ?? '',
+      description: json['description'] as String?,
+      coverImageUrl: json['cover_image_url'] as String?,
+      thumbnailUrl: json['thumbnail_url'] as String?,
+      colors: rawColors?.map((k, v) => MapEntry(k, v.toString())) ?? const {},
+      isFeatured: json['is_featured'] as bool? ?? false,
+    );
   }
 }
 

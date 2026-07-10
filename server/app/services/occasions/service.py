@@ -97,8 +97,30 @@ class OccasionTagCreate(_BaseSchema):
 
 class OccasionThemeCreate(_BaseSchema):
     name: str
+    slug: str | None = None
     description: str | None = None
-    image_url: str | None = None
+    cover_image_url: str | None = None
+    thumbnail_url: str | None = None
+    primary_color: str | None = None  # hex code, e.g. '#C8A96E'
+    secondary_color: str | None = None
+    accent_color: str | None = None
+    background_color: str | None = None
+    sort_order: int = 0
+    is_featured: bool = False
+
+
+class OccasionThemeUpdate(_BaseSchema):
+    name: str | None = None
+    description: str | None = None
+    cover_image_url: str | None = None
+    thumbnail_url: str | None = None
+    primary_color: str | None = None
+    secondary_color: str | None = None
+    accent_color: str | None = None
+    background_color: str | None = None
+    sort_order: int | None = None
+    is_active: bool | None = None
+    is_featured: bool | None = None
 
 
 class OccasionUpdate(_BaseSchema):
@@ -106,6 +128,11 @@ class OccasionUpdate(_BaseSchema):
     description: str | None = None
     is_active: bool | None = None
     category_id: UUID | None = None
+    icon_url: str | None = None
+    banner_url: str | None = None
+    thumbnail_url: str | None = None
+    display_order: int | None = None
+    is_featured: bool | None = None
 
 
 class CelebrationTimelineCreate(_BaseSchema):
@@ -226,9 +253,11 @@ class OccasionService(BaseService):
 
     async def create_occasion(self, data: OccasionCreate) -> OccasionResponse:
         async with self._uow() as uow:
-            occasion = await uow.occasions.occasions.create_from_dict(
-                data.model_dump(exclude_unset=True)
-            )
+            payload = data.model_dump(exclude_unset=True)
+            if not payload.get("slug"):
+                from app.services.common.helpers import slugify
+                payload["slug"] = slugify(payload["name"])
+            occasion = await uow.occasions.occasions.create_from_dict(payload)
             return OccasionResponse.model_validate(occasion)
 
     async def update_occasion(
@@ -269,12 +298,59 @@ class OccasionService(BaseService):
             )
             return OccasionTagResponse.model_validate(tag)
 
+    @staticmethod
+    def _theme_payload(data: object) -> dict:
+        """
+        Translate the flat primary/secondary/accent/background color fields
+        (the admin-friendly shape) into the model's real `colors` JSONB column.
+        """
+        raw = data.model_dump(exclude_unset=True)  # type: ignore[union-attr]
+        color_keys = {
+            "primary_color": "primary",
+            "secondary_color": "secondary",
+            "accent_color": "accent",
+            "background_color": "background",
+        }
+        colors = {}
+        for field, colors_key in color_keys.items():
+            if field in raw:
+                value = raw.pop(field)
+                if value is not None:
+                    colors[colors_key] = value
+        if colors:
+            raw["colors"] = colors
+        if not raw.get("slug") and raw.get("name"):
+            from app.services.common.helpers import slugify
+            raw["slug"] = slugify(raw["name"])
+        return raw
+
     async def create_theme(self, data: object) -> OccasionThemeResponse:
         async with self._uow() as uow:
-            theme = await uow.occasions.themes.create_from_dict(
-                data.model_dump(exclude_unset=True)  # type: ignore[union-attr]
-            )
+            theme = await uow.occasions.themes.create_from_dict(self._theme_payload(data))
             return OccasionThemeResponse.model_validate(theme)
+
+    async def update_theme(self, theme_id: UUID, data: object) -> OccasionThemeResponse:
+        async with self._uow() as uow:
+            theme = await uow.occasions.themes.get_by_id(theme_id)
+            if theme is None:
+                from app.services.occasions.exceptions import OccasionNotFoundError
+                raise OccasionNotFoundError(str(theme_id))
+            payload = self._theme_payload(data)
+            if "colors" in payload:
+                # Merge into the existing palette rather than overwriting it wholesale
+                merged = dict(theme.colors or {})
+                merged.update(payload["colors"])
+                payload["colors"] = merged
+            theme = await uow.occasions.themes.update(theme, payload)
+            return OccasionThemeResponse.model_validate(theme)
+
+    async def delete_theme(self, theme_id: UUID) -> None:
+        async with self._uow() as uow:
+            theme = await uow.occasions.themes.get_by_id(theme_id)
+            if theme is None:
+                from app.services.occasions.exceptions import OccasionNotFoundError
+                raise OccasionNotFoundError(str(theme_id))
+            await uow.occasions.themes.delete(theme)
 
     # ── 3. Celebrations ────────────────────────────────────────────────────────
 
