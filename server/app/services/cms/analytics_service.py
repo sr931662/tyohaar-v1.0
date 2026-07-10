@@ -814,59 +814,50 @@ class AnalyticsService(BaseService):
     # ── Geographic ────────────────────────────────────────────────────────────
 
     async def _get_geographic_metrics(self, session: AsyncSession) -> GeographicMetrics:
+        # Vendor has no city/state columns anywhere in the schema (verified —
+        # no location field exists on Vendor or any related vendor model).
+        # UserAddress (the booking's delivery address) is the only real
+        # city/state source in the data model, so geographic breakdown is by
+        # where bookings are delivered, not by vendor location.
         from app.models.bookings.booking import Booking
-        from app.models.bookings.booking_assignment import BookingAssignment
-        from app.models.vendors.vendor import Vendor
+        from app.models.users.address import UserAddress
 
         now = self._now()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         prev_month_start = (month_start - timedelta(days=1)).replace(day=1)
 
-        # Top cities by booking count and revenue (Booking has no direct vendor_id;
-        # vendor linkage is via BookingAssignment)
         city_rows = await self._rows(
             session,
             select(
-                Vendor.city,
-                Vendor.state,
+                UserAddress.city,
+                UserAddress.state,
                 func.count(func.distinct(Booking.id)).label("booking_count"),
                 func.coalesce(func.sum(Booking.total_amount), 0).label("revenue"),
             )
             .select_from(Booking)
-            .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
-            .join(Vendor, BookingAssignment.vendor_id == Vendor.id)
-            .where(Booking.deleted_at.is_(None), Vendor.city.isnot(None))
-            .group_by(Vendor.city, Vendor.state)
+            .join(UserAddress, Booking.address_id == UserAddress.id)
+            .where(Booking.deleted_at.is_(None))
+            .group_by(UserAddress.city, UserAddress.state)
             .order_by(func.count(func.distinct(Booking.id)).desc())
             .limit(10),
         )
 
         top_cities = []
         for r in city_rows:
-            active_vendors = await self._scalar(
-                session,
-                select(func.count()).select_from(Vendor).where(
-                    Vendor.city == r.city,
-                    Vendor.verification_status == "VERIFIED",
-                    Vendor.deleted_at.is_(None),
-                ),
-            )
             this_month_bookings = await self._scalar(
                 session,
                 select(func.count(func.distinct(Booking.id)))
                 .select_from(Booking)
-                .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
-                .join(Vendor, BookingAssignment.vendor_id == Vendor.id)
-                .where(Vendor.city == r.city, Booking.deleted_at.is_(None), Booking.created_at >= month_start),
+                .join(UserAddress, Booking.address_id == UserAddress.id)
+                .where(UserAddress.city == r.city, Booking.deleted_at.is_(None), Booking.created_at >= month_start),
             )
             prev_month_bookings = await self._scalar(
                 session,
                 select(func.count(func.distinct(Booking.id)))
                 .select_from(Booking)
-                .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
-                .join(Vendor, BookingAssignment.vendor_id == Vendor.id)
+                .join(UserAddress, Booking.address_id == UserAddress.id)
                 .where(
-                    Vendor.city == r.city,
+                    UserAddress.city == r.city,
                     Booking.deleted_at.is_(None),
                     Booking.created_at >= prev_month_start,
                     Booking.created_at < month_start,
@@ -881,19 +872,18 @@ class AnalyticsService(BaseService):
                     state=r.state,
                     bookings=r.booking_count,
                     revenue=Decimal(str(r.revenue)).quantize(Decimal("0.01")),
-                    active_vendors=int(active_vendors),
+                    active_vendors=0,  # No vendor location data exists to compute this.
                     growth_pct=growth_pct,
                 )
             )
 
         state_rows = await self._rows(
             session,
-            select(Vendor.state, func.coalesce(func.sum(Booking.total_amount), 0).label("revenue"))
+            select(UserAddress.state, func.coalesce(func.sum(Booking.total_amount), 0).label("revenue"))
             .select_from(Booking)
-            .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
-            .join(Vendor, BookingAssignment.vendor_id == Vendor.id)
-            .where(Booking.deleted_at.is_(None), Vendor.state.isnot(None))
-            .group_by(Vendor.state)
+            .join(UserAddress, Booking.address_id == UserAddress.id)
+            .where(Booking.deleted_at.is_(None))
+            .group_by(UserAddress.state)
             .order_by(func.sum(Booking.total_amount).desc())
             .limit(15),
         )

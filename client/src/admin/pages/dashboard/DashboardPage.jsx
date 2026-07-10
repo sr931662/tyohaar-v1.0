@@ -36,11 +36,10 @@ function MetricCard({ label, value, trend, trendLabel, icon, iconBg }) {
 function PendingActionsCard({ data }) {
   if (!data) return null;
   const items = [
-    { label: 'Pending Vendor Verifications', value: data.pending_vendor_verifications, icon: '🏪', color: 'warning' },
-    { label: 'Pending Cancellations', value: data.pending_cancellations, icon: '⚠️', color: 'error' },
-    { label: 'Pending Reschedules', value: data.pending_reschedules, icon: '📅', color: 'warning' },
-    { label: 'Open Support Tickets', value: data.open_support_tickets, icon: '🎧', color: 'info' },
-    { label: 'Images Awaiting Moderation', value: data.images_pending_moderation, icon: '🖼️', color: 'neutral' },
+    { label: 'Pending Vendor Approvals', value: data.vendor_approvals, icon: '🏪', color: 'warning' },
+    { label: 'Pending Booking Confirmations', value: data.booking_confirmations, icon: '📅', color: 'warning' },
+    { label: 'Open Support Tickets', value: data.support_tickets, icon: '🎧', color: 'info' },
+    { label: 'Media Awaiting Moderation', value: data.media_moderation, icon: '🖼️', color: 'neutral' },
   ].filter(i => i.value > 0);
 
   if (!items.length) return (
@@ -89,8 +88,8 @@ function ActivityFeed({ data }) {
               {item.type === 'booking' ? '📅' : item.type === 'vendor' ? '🏪' : item.type === 'payment' ? '💳' : '📌'}
             </div>
             <div className="admin-activity-content">
-              <div className="admin-activity-text">{item.description ?? item.message}</div>
-              <div className="admin-activity-time">{timeAgo(item.created_at ?? item.timestamp)}</div>
+              <div className="admin-activity-text">{item.summary}</div>
+              <div className="admin-activity-time">{timeAgo(item.timestamp)}</div>
             </div>
           </div>
         ))}
@@ -157,10 +156,26 @@ export default function DashboardPage() {
   const vendors = dashboard?.vendors ?? {};
   const wallets = dashboard?.wallets ?? {};
 
-  const revenueData = Array.isArray(revenueChart) ? revenueChart : revenueChart?.data ?? [];
-  const bookData = Array.isArray(bookingsChart) ? bookingsChart : bookingsChart?.data ?? [];
-  const userData = Array.isArray(usersChart) ? usersChart : usersChart?.data ?? [];
-  const catData = Array.isArray(categoryDist) ? categoryDist : categoryDist?.data ?? [];
+  // TimeSeriesChart shape: { series: [{ name, data: [{date, ...}] }] }
+  const revenueData = revenueChart?.series?.[0]?.data ?? [];
+
+  // Bookings chart has one series per status; pivot into one row per date
+  // so the BarChart can read pending/confirmed/cancelled off each point.
+  const bookingsBuckets = {};
+  for (const s of bookingsChart?.series ?? []) {
+    for (const point of s.data ?? []) {
+      const row = bookingsBuckets[point.date] ?? { date: point.date };
+      row[s.name.toLowerCase()] = point.value;
+      bookingsBuckets[point.date] = row;
+    }
+  }
+  const bookData = Object.values(bookingsBuckets).sort((a, b) => a.date.localeCompare(b.date));
+
+  const userData = (usersChart?.series?.[0]?.data ?? []).map((p) => ({ date: p.date, registrations: p.value }));
+
+  // PieChartData shape: { segments: [{label, value, pct}] }
+  const catData = (categoryDist?.segments ?? []).map((s) => ({ name: s.label, count: s.value }));
+
   const activity = Array.isArray(activityFeed) ? activityFeed : activityFeed?.items ?? [];
 
   return (
@@ -179,41 +194,38 @@ export default function DashboardPage() {
         <div className="admin-metric-grid">
           <MetricCard
             label="Total Revenue"
-            value={formatCurrency(rev.total_revenue)}
-            trend={rev.revenue_growth}
+            value={formatCurrency(rev.total_lifetime)}
+            trend={rev.growth_pct_mom}
             icon="💰"
             iconBg="var(--success-50)"
           />
           <MetricCard
             label="Active Bookings"
-            value={formatNumber(book.active_bookings)}
-            trend={book.booking_growth}
+            value={formatNumber((book.confirmed ?? 0) + (book.in_progress ?? 0))}
             icon="📅"
             iconBg="var(--info-50)"
           />
           <MetricCard
             label="Total Users"
-            value={formatNumber(users.total_users)}
-            trend={users.user_growth}
+            value={formatNumber(users.total)}
             icon="👥"
             iconBg="var(--brand-50)"
           />
           <MetricCard
             label="Active Vendors"
-            value={formatNumber(vendors.active_vendors)}
-            trend={vendors.vendor_growth}
+            value={formatNumber(vendors.verified)}
             icon="🏪"
             iconBg="var(--warning-50)"
           />
           <MetricCard
             label="Wallet Balance"
-            value={formatCurrency(wallets?.total_wallet_balance)}
+            value={formatCurrency(wallets?.total_balance)}
             icon="👛"
             iconBg="var(--brand-50)"
           />
           <MetricCard
             label="Pending Approvals"
-            value={formatNumber(pendingActions?.pending_vendor_verifications ?? 0)}
+            value={formatNumber(pendingActions?.vendor_approvals ?? 0)}
             icon="⚡"
             iconBg="var(--error-50)"
           />
