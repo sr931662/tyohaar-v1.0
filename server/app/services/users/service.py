@@ -47,7 +47,9 @@ class UserService(BaseService):
             user = await uow.users.users.get_with_profile(user_id)
             if user is None:
                 raise UserNotFoundError(str(user_id))
-            return UserResponse.model_validate(user)
+            response = UserResponse.model_validate(user)
+            photo_url = user.profile.profile_photo_url if user.profile else None
+            return response.model_copy(update={"profile_photo_url": photo_url})
 
     async def get_user_by_phone(self, phone: str) -> UserResponse:
         async with self._uow() as uow:
@@ -58,7 +60,7 @@ class UserService(BaseService):
 
     async def update_user(self, user_id: uuid.UUID, data: UserUpdate) -> UserResponse:
         async with self._uow() as uow:
-            user = await uow.users.users.get_by_id(user_id)
+            user = await uow.users.users.get_with_profile(user_id)
             if user is None:
                 raise UserNotFoundError(str(user_id))
 
@@ -68,7 +70,9 @@ class UserService(BaseService):
                 await validate_email_unique(update_dict["email"], uow, exclude_user_id=user_id)
 
             updated = await uow.users.users.update(user, update_dict)
-            return UserResponse.model_validate(updated)
+            response = UserResponse.model_validate(updated)
+            photo_url = updated.profile.profile_photo_url if updated.profile else None
+            return response.model_copy(update={"profile_photo_url": photo_url})
 
     async def deactivate_user(self, user_id: uuid.UUID) -> None:
         async with self._uow() as uow:
@@ -237,7 +241,9 @@ class UserService(BaseService):
                 if a.deleted_at is None
             ]
 
-            base = UserResponse.model_validate(user)
+            base = UserResponse.model_validate(user).model_copy(
+                update={"profile_photo_url": profile_resp.profile_photo_url if profile_resp else None}
+            )
             return UserFullResponse(
                 **base.model_dump(),
                 profile=profile_resp,

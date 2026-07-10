@@ -74,6 +74,12 @@ class UserResponse(IDSchema, TimestampSchema):
     email_verified: bool
     last_login_at: datetime | None = None
     mfa_enabled: bool
+    profile_photo_url: str | None = Field(
+        default=None,
+        description="CDN URL for the user's avatar, sourced from UserProfile. "
+                    "Populated by the service layer via model_copy — not present "
+                    "directly on the User ORM object.",
+    )
 
     @computed_field(description="Best available display name for the user.")
     @property

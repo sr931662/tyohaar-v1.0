@@ -19,6 +19,14 @@ class UserService {
     await _api.dio.put('users/me', data: data);
   }
 
+  /// Updates extended profile fields (photo, bio, address, etc.) that live
+  /// on UserProfile, not on the User account itself — PUT users/me only
+  /// accepts account fields (name/email/phone) and silently drops anything
+  /// else, so profile_photo_url must go through this endpoint instead.
+  Future<void> updateExtendedProfile(String userId, Map<String, dynamic> data) async {
+    await _api.dio.put('users/$userId/profile', data: data);
+  }
+
   Future<Address> addAddress(Map<String, dynamic> data) async {
     final response = await _api.dio.post('users/me/addresses', data: data);
     return Address.fromJson(response.data['data'] as Map<String, dynamic>);

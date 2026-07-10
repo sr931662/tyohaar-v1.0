@@ -104,8 +104,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     setState(() => _isUploading = true);
     try {
       final url = await _mediaService.uploadProfilePicture(File(croppedFile.path));
-      await _userService.updateProfile({'profile_photo_url': url});
-      
+      await _userService.updateExtendedProfile(_user!.id, {'profile_photo_url': url});
+
       final updatedUser = await _userService.getMe();
       AuthManager.instance.setUser(updatedUser);
       
