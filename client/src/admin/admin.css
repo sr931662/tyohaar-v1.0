@@ -731,6 +731,12 @@ textarea.form-control {
   gap: 16px;
 }
 
+.form-row-2-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
 /* Checkbox & Radio */
 .form-check {
   display: flex;
@@ -1361,7 +1367,7 @@ select.admin-input {
   .admin-metric-grid { grid-template-columns: 1fr 1fr; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .admin-page-header { flex-direction: column; }
-  .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
+  .form-row-2, .form-row-3, .form-row-2-1 { grid-template-columns: 1fr; }
 
   .mobile-nav-toggle,
   .sidebar-toggle.mobile-nav-toggle {

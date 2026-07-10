@@ -90,7 +90,7 @@ export default function BookingDetailPage() {
       </div>
 
       {/* Metrics */}
-      <div className="admin-metric-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+      <div className="admin-metric-grid" style={{ marginBottom: 20 }}>
         <div className="admin-metric-card">
           <div className="admin-metric-label">Total Amount</div>
           <div className="admin-metric-value">{formatCurrency(b.total_amount)}</div>

@@ -73,7 +73,7 @@ function AddBankModal({ vendorId, onClose }) {
         <form onSubmit={handleSubmit} style={{ padding: '0 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {inputRow('Account Holder Name *', 'account_holder_name', { placeholder: 'As on bank records' })}
           {inputRow('Account Number *', 'account_number', { placeholder: 'Full account number' })}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-row-2">
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>IFSC Code *</label>
               <input className="admin-input" value={form.ifsc_code} onChange={(e) => set('ifsc_code', e.target.value.toUpperCase())} placeholder="e.g. SBIN0001234" maxLength={11} />

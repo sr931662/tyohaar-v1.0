@@ -17,13 +17,13 @@ const PAGE_TRANSITION = { duration: 0.18, ease: [0.4, 0, 0.2, 1] };
 function PageLoader() {
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+      <div className="admin-metric-grid">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="skeleton skeleton-card" style={{ height: 92, flex: 1 }} />
+          <div key={i} className="skeleton skeleton-card" style={{ height: 92 }} />
         ))}
       </div>
       <div className="skeleton skeleton-card" style={{ height: 240, marginBottom: 16 }} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="grid-2">
         <div className="skeleton skeleton-card" style={{ height: 160 }} />
         <div className="skeleton skeleton-card" style={{ height: 160 }} />
       </div>

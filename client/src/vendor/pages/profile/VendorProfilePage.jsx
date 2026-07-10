@@ -350,7 +350,7 @@ export default function VendorProfilePage() {
       <form onSubmit={handleSubmit}>
         {/* Business Info — always shown */}
         <SectionCard title="Business Information" subtitle="Core details about your business">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-row-2">
             <Field label="Business Name" required error={errors.businessName}>
               <Input
                 value={businessName}
@@ -380,7 +380,7 @@ export default function VendorProfilePage() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-row-2">
             <Field label="Legal Name">
               <Input value={legalName} onChange={setLegalName} placeholder="Registered company name" />
             </Field>
@@ -389,7 +389,7 @@ export default function VendorProfilePage() {
             </Field>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-row-2">
             <Field label="GST Number" error={errors.gstNumber}>
               <Input
                 value={gstNumber}
@@ -408,7 +408,7 @@ export default function VendorProfilePage() {
             </Field>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+          <div className="form-row-3">
             <Field label="Years of Experience">
               <Input value={yearsExp} onChange={setYearsExp} type="number" min="0" max="100" placeholder="e.g. 8" />
             </Field>
@@ -449,7 +449,7 @@ export default function VendorProfilePage() {
           <Field label="Website URL">
             <Input value={websiteUrl} onChange={setWebsiteUrl} type="url" placeholder="https://yourwebsite.com" />
           </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-row-2">
             {SOCIAL_PLATFORMS.map((platform) => (
               <Field key={platform} label={platform.charAt(0).toUpperCase() + platform.slice(1)}>
                 <Input
@@ -529,7 +529,7 @@ function GallerySection({ vendor }) {
       </div>
       <div style={{ padding: '16px 20px 20px' }}>
         {isLoading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
             {[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 10 }} />)}
           </div>
         ) : gallery.length > 0 ? (
@@ -557,7 +557,7 @@ function GallerySection({ vendor }) {
         )}
 
         <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, alignItems: 'start' }}>
+          <div className="form-row-2-1" style={{ gap: 10, alignItems: 'start' }}>
             <ImageUploadField value={mediaUrl} onChange={setMediaUrl} usage="vendor_gallery" placeholder="Image URL (https://...)" />
             <input className="admin-input" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption (optional)" />
           </div>

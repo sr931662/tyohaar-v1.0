@@ -276,7 +276,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts Row 2 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
+      <div className="grid-3" style={{ display: 'grid', marginBottom: 24 }}>
         {/* Bookings Chart */}
         <div className="admin-card">
           <div className="admin-card-header">

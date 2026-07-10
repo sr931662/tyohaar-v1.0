@@ -117,7 +117,7 @@ export default function VendorDetailPage() {
       </div>
 
       {/* Metric row */}
-      <div className="admin-metric-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+      <div className="admin-metric-grid" style={{ marginBottom: 20 }}>
         <div className="admin-metric-card">
           <div className="admin-metric-label">Total Bookings</div>
           <div className="admin-metric-value">{fin.total_bookings ?? 0}</div>

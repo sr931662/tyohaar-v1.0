@@ -72,10 +72,10 @@ export default function VendorOverviewPage() {
   if (vendorLoading) {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="admin-metric-grid" style={{ marginBottom: 24 }}>
           {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton skeleton-card" style={{ height: 96 }} />)}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        <div className="grid-2">
           <div className="skeleton skeleton-card" style={{ height: 160 }} />
           <div className="skeleton skeleton-card" style={{ height: 160 }} />
         </div>
@@ -129,7 +129,7 @@ export default function VendorOverviewPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="admin-metric-grid" style={{ marginBottom: 24 }}>
         <StatCard
           icon="⭐"
           label="Average Rating"
@@ -161,7 +161,7 @@ export default function VendorOverviewPage() {
       </div>
 
       {/* Cards row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+      <div className="grid-2">
         {/* Quick actions */}
         <div className="admin-card" style={{ padding: 24 }}>
           <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Quick Actions</h3>

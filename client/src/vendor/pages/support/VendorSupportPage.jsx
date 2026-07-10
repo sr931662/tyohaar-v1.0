@@ -56,7 +56,7 @@ function NewTicketModal({ onClose, onCreate, saving }) {
               placeholder="Brief summary of your issue"
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-row-2">
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Category</label>
               <select className="admin-input" value={form.category} onChange={(e) => set('category', e.target.value)}>

@@ -143,7 +143,7 @@ export default function VendorBookingDetailPage() {
 
       {/* Overview Tab */}
       {activeTab === 'Overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="grid-2">
           <div className="admin-card">
             <Section title="Booking Details">
               <Row label="Booking Number" value={b.booking_number ?? b.id?.slice(0, 8)} />
@@ -234,7 +234,7 @@ export default function VendorBookingDetailPage() {
 
       {/* History Tab */}
       {activeTab === 'History' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="grid-2">
           <div className="admin-card">
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, fontSize: 14 }}>
               Status Transitions

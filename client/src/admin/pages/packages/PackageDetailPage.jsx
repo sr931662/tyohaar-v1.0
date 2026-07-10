@@ -343,11 +343,11 @@ export default function PackageDetailPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: showAddItem ? 20 : 0 }}>
                 {items.map((item) => editingItemId === item.id ? (
                   <div key={item.id} className="admin-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+                    <div className="form-row-2-1" style={{ gap: 10 }}>
                       <input className="admin-input" value={editItemForm.name} onChange={(e) => setEF('name', e.target.value)} placeholder="Item name" />
                       <input className="admin-input" type="number" min="0" value={editItemForm.base_price} onChange={(e) => setEF('base_price', e.target.value)} placeholder="Price (₹)" />
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    <div className="form-row-3" style={{ gap: 10 }}>
                       <input className="admin-input" type="number" min="1" value={editItemForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
                       <input className="admin-input" value={editItemForm.unit} onChange={(e) => setEF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
                       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
@@ -391,11 +391,11 @@ export default function PackageDetailPage() {
               <div>
                 <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Add New Item</h4>
                 <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+                  <div className="form-row-2-1" style={{ gap: 10 }}>
                     <input className="admin-input" value={newItem.name} onChange={(e) => setNF('name', e.target.value)} placeholder="Item name *" />
                     <input className="admin-input" type="number" min="0" value={newItem.base_price} onChange={(e) => setNF('base_price', e.target.value)} placeholder="Price (₹) *" />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  <div className="form-row-3" style={{ gap: 10 }}>
                     <input className="admin-input" type="number" min="1" value={newItem.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
                     <input className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
