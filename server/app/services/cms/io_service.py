@@ -36,9 +36,9 @@ from app.services.base import BaseService
 
 # Column definitions for each importable entity
 _ENTITY_COLUMNS: dict[str, list[str]] = {
-    "vendors": ["business_name", "phone", "email", "city", "state", "pincode", "description", "business_type"],
+    "vendors": ["business_name", "phone", "email", "vendor_type", "city", "state", "pincode", "description"],
     "customers": ["phone", "email", "full_name", "city", "state"],
-    "packages": ["name", "description", "base_price", "currency", "category", "min_guests", "max_guests", "duration_hours"],
+    "packages": ["name", "description", "base_price", "currency", "category", "vendor_phone", "min_guests", "max_guests", "duration_hours"],
     "categories": ["name", "slug", "description"],
     "cities": ["name", "state", "pincode_prefix"],
     "states": ["name", "code", "country"],
@@ -53,7 +53,7 @@ _ENTITY_COLUMNS: dict[str, list[str]] = {
 _REQUIRED_COLUMNS: dict[str, list[str]] = {
     "vendors": ["business_name", "phone"],
     "customers": ["phone"],
-    "packages": ["name", "base_price", "category"],
+    "packages": ["name", "base_price"],
     "categories": ["name", "slug"],
     "cities": ["name", "state"],
     "states": ["name", "code"],
@@ -64,6 +64,9 @@ _REQUIRED_COLUMNS: dict[str, list[str]] = {
     "memberships": ["plan_name", "price", "duration_days"],
     "services": ["name"],
 }
+
+# Entity types with a real bulk-insert implementation in _insert_row().
+EXECUTABLE_ENTITY_TYPES = {"faqs", "settings", "packages", "vendors"}
 
 
 class IOService(BaseService):
@@ -92,9 +95,11 @@ class IOService(BaseService):
                     {headers[i]: str(cell) if cell is not None else "" for i, cell in enumerate(row)}
                     for row in rows[1:]
                 ]
-            except ImportError:
-                # openpyxl not installed — return empty for now
-                return []
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Server is missing the openpyxl dependency required to read .xlsx files. "
+                    "Please upload a .csv file instead, or contact support."
+                ) from exc
         return []
 
     def _validate_row(
@@ -358,14 +363,147 @@ class IOService(BaseService):
             session.add(obj)
             await session.flush()
             return obj.id
-        # Every other entity_type accepted by /import/validate (vendors,
-        # customers, packages, categories, cities, states, coupons,
-        # notification_templates, memberships, services) has no real insert
-        # path here yet — creating those properly means going through their
-        # own domain services (password hashing + user/vendor linkage for
-        # accounts, pricing/category wiring for packages, etc.), not a raw
-        # row insert. Fail loudly per-row instead of silently reporting 0
-        # rows inserted as if the import had nothing to do.
+        elif entity_type == "packages":
+            import re
+            import uuid as _uuid
+            from decimal import Decimal, InvalidOperation
+
+            from sqlalchemy import func, select
+
+            from app.models.enums import PackageStatus
+            from app.models.packages.package import Package
+            from app.models.packages.package_category import PackageCategory
+            from app.models.users.user import User
+            from app.models.vendors.vendor import Vendor
+
+            name = (row.get("name") or "").strip()
+            if not name:
+                raise ValueError("'name' is required")
+
+            try:
+                base_price = Decimal(str(row.get("base_price")))
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValueError(f"Invalid base_price: {row.get('base_price')!r}")
+
+            vendor_id = None
+            vendor_phone = (row.get("vendor_phone") or "").strip()
+            if vendor_phone:
+                vendor = (await session.execute(
+                    select(Vendor).join(User, User.id == Vendor.user_id).where(User.phone == vendor_phone)
+                )).scalars().first()
+                if vendor is None:
+                    raise ValueError(f"No vendor found with phone '{vendor_phone}'")
+                vendor_id = vendor.id
+
+            category_id = None
+            category_name = (row.get("category") or "").strip()
+            if category_name:
+                category = (await session.execute(
+                    select(PackageCategory).where(func.lower(PackageCategory.name) == category_name.lower())
+                )).scalars().first()
+                if category is not None:
+                    category_id = category.id
+
+            def _to_int(value: Any) -> int | None:
+                try:
+                    return int(value) if value not in (None, "") else None
+                except (TypeError, ValueError):
+                    return None
+
+            def _to_decimal(value: Any) -> Decimal | None:
+                try:
+                    return Decimal(str(value)) if value not in (None, "") else None
+                except (InvalidOperation, TypeError, ValueError):
+                    return None
+
+            base_slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+            slug = f"{base_slug}-{str(_uuid.uuid4())[:8]}"
+
+            obj = Package(
+                name=name,
+                slug=slug,
+                description=row.get("description") or None,
+                base_price=base_price,
+                currency=(row.get("currency") or "INR").strip().upper() or "INR",
+                category_id=category_id,
+                vendor_id=vendor_id,
+                min_guest_count=_to_int(row.get("min_guests")),
+                max_guest_count=_to_int(row.get("max_guests")),
+                duration_hours=_to_decimal(row.get("duration_hours")),
+                status=PackageStatus.DRAFT,
+                is_active=False,
+            )
+            session.add(obj)
+            await session.flush()
+            return obj.id
+        elif entity_type == "vendors":
+            from app.models.enums import (
+                AccountStatus,
+                UserRole,
+                VendorStatus,
+                VendorType,
+                VendorVerificationStatus,
+            )
+            from app.models.users.user import User
+            from app.models.vendors.vendor import Vendor
+            from app.models.vendors.vendor_profile import VendorProfile
+            from sqlalchemy import select
+
+            business_name = (row.get("business_name") or "").strip()
+            phone = (row.get("phone") or "").strip()
+            if not business_name:
+                raise ValueError("'business_name' is required")
+            if not phone:
+                raise ValueError("'phone' is required")
+
+            existing_user = (await session.execute(
+                select(User).where(User.phone == phone)
+            )).scalars().first()
+
+            if existing_user is not None:
+                user_id = existing_user.id
+            else:
+                new_user = User(
+                    phone=phone,
+                    email=row.get("email") or None,
+                    full_name=business_name,
+                    role=UserRole.VENDOR,
+                    account_status=AccountStatus.ACTIVE,
+                )
+                session.add(new_user)
+                await session.flush()
+                user_id = new_user.id
+
+            existing_vendor = (await session.execute(
+                select(Vendor).where(Vendor.user_id == user_id)
+            )).scalars().first()
+            if existing_vendor is not None:
+                raise ValueError(f"Vendor already exists for phone '{phone}'")
+
+            raw_type = (row.get("vendor_type") or "").strip().lower()
+            try:
+                vendor_type = VendorType(raw_type) if raw_type else VendorType.PLANNER
+            except ValueError:
+                vendor_type = VendorType.PLANNER
+
+            vendor = Vendor(
+                user_id=user_id,
+                business_name=business_name,
+                vendor_type=vendor_type,
+                verification_status=VendorVerificationStatus.UNVERIFIED,
+                status=VendorStatus.PENDING,
+                is_active=False,
+            )
+            session.add(vendor)
+            await session.flush()
+            session.add(VendorProfile(vendor_id=vendor.id))
+            await session.flush()
+            return vendor.id
+        # Every other entity_type accepted by /import/validate (customers,
+        # categories, cities, states, coupons, notification_templates,
+        # memberships, services) has no real insert path here yet. Fail
+        # loudly per-row instead of silently reporting 0 rows inserted as
+        # if the import had nothing to do.
         raise NotImplementedError(
             f"Bulk import for entity_type='{entity_type}' is not implemented yet."
         )
@@ -391,6 +529,41 @@ class IOService(BaseService):
                     try:
                         stmt = delete(FAQ).where(FAQ.id == uuid.UUID(faq_id))
                         await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "settings":
+                from app.models.common.app_setting import AppSetting
+                from sqlalchemy import delete
+                for setting_id in inserted_ids:
+                    try:
+                        stmt = delete(AppSetting).where(AppSetting.id == uuid.UUID(setting_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "packages":
+                from app.models.packages.package import Package
+                from sqlalchemy import delete
+                for package_id in inserted_ids:
+                    try:
+                        stmt = delete(Package).where(Package.id == uuid.UUID(package_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "vendors":
+                # Deletes only the Vendor + VendorProfile rows created by this
+                # import — the paired User account is left intact (it may be
+                # reused or the phone number re-imported later).
+                from app.models.vendors.vendor import Vendor
+                from app.models.vendors.vendor_profile import VendorProfile
+                from sqlalchemy import delete
+                for vendor_id in inserted_ids:
+                    try:
+                        vid = uuid.UUID(vendor_id)
+                        await uow.session.execute(delete(VendorProfile).where(VendorProfile.vendor_id == vid))
+                        await uow.session.execute(delete(Vendor).where(Vendor.id == vid))
                         deleted_count += 1
                     except Exception:
                         pass
@@ -432,8 +605,6 @@ class IOService(BaseService):
         request: ExportRequest,
         admin_id: uuid.UUID,
     ) -> ExportTriggerResponse:
-        from datetime import timedelta
-
         async with self._uow() as uow:
             log = await uow.cms.export_logs.create_from_dict({
                 "admin_id": admin_id,
@@ -458,17 +629,24 @@ class IOService(BaseService):
                 selected_ids=request.selected_ids,
                 column_selection=request.column_selection,
             )
+
+            # File bytes are stored directly on the ExportLog row and served
+            # through an admin-authenticated download route — exports can
+            # contain customer/payment PII, so they must never land on a
+            # publicly-reachable URL (e.g. a plain Cloudinary raw upload).
             file_path = f"exports/{log_id}.{request.format.lower()}"
-            expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+            download_url = f"/api/v1/admin/cms/io/export/logs/{log_id}/download"
 
             async with self._uow() as uow:
                 export_log = await uow.cms.export_logs.get_by_id_or_raise(log_id)
                 await uow.cms.export_logs.mark_completed(
                     log_id,
                     file_storage_path=file_path,
-                    download_url=f"/api/v1/admin/cms/io/exports/{log_id}/download",
+                    download_url=download_url,
                     row_count=row_count,
                     file_size_bytes=len(content),
+                    file_content=content,
+                    mime_type=mime_type,
                 )
                 await uow.commit()
 
@@ -587,7 +765,7 @@ class IOService(BaseService):
                 return [
                     {
                         "id": str(b.id),
-                        "status": b.status,
+                        "status": b.booking_status.value if hasattr(b.booking_status, "value") else str(b.booking_status),
                         "total_amount": str(b.total_amount),
                         "created_at": str(b.created_at),
                     }
@@ -601,11 +779,54 @@ class IOService(BaseService):
                 return [
                     {
                         "id": str(p.id),
-                        "status": p.status,
-                        "amount": str(p.amount),
+                        "status": p.payment_status.value if hasattr(p.payment_status, "value") else str(p.payment_status),
+                        "amount": str(p.final_amount),
                         "created_at": str(p.created_at),
                     }
                     for p in rows
+                ]
+
+            elif entity_type == "packages":
+                from sqlalchemy.orm import selectinload
+
+                from app.models.packages.package import Package
+                from app.models.users.user import User
+                from app.models.vendors.vendor import Vendor
+
+                stmt = (
+                    select(Package)
+                    .where(Package.deleted_at.is_(None))
+                    .options(selectinload(Package.category))
+                    .limit(10000)
+                )
+                rows = (await session.execute(stmt)).scalars().all()
+
+                vendor_ids = list({pkg.vendor_id for pkg in rows if pkg.vendor_id})
+                phone_by_vendor_id: dict[Any, str] = {}
+                if vendor_ids:
+                    vendor_rows = (await session.execute(
+                        select(Vendor.id, User.phone)
+                        .join(User, User.id == Vendor.user_id)
+                        .where(Vendor.id.in_(vendor_ids))
+                    )).all()
+                    phone_by_vendor_id = {vid: phone for vid, phone in vendor_rows}
+
+                return [
+                    {
+                        "id": str(pkg.id),
+                        "name": pkg.name,
+                        "description": pkg.description or "",
+                        "base_price": str(pkg.base_price) if pkg.base_price is not None else "",
+                        "currency": pkg.currency,
+                        "category": pkg.category.name if pkg.category else "",
+                        "vendor_phone": phone_by_vendor_id.get(pkg.vendor_id, ""),
+                        "min_guests": pkg.min_guest_count if pkg.min_guest_count is not None else "",
+                        "max_guests": pkg.max_guest_count if pkg.max_guest_count is not None else "",
+                        "duration_hours": str(pkg.duration_hours) if pkg.duration_hours is not None else "",
+                        "status": pkg.status.value if hasattr(pkg.status, "value") else str(pkg.status),
+                        "created_at": str(pkg.created_at),
+                    }
+                    for pkg in rows
                 ]
 
             return []
@@ -628,3 +849,16 @@ class IOService(BaseService):
         async with self._uow() as uow:
             log = await uow.cms.export_logs.get_by_id_or_raise(log_id)
         return ExportLogResponse.model_validate(log)
+
+    async def get_export_file(self, log_id: uuid.UUID) -> tuple[bytes, str, str]:
+        """Returns (content, mime_type, filename) for a completed export."""
+        async with self._uow() as uow:
+            log = await uow.cms.export_logs.get_by_id_or_raise(log_id)
+            if log.status != "COMPLETED" or not log.file_content:
+                from fastapi import HTTPException, status as s
+                raise HTTPException(
+                    status_code=s.HTTP_404_NOT_FOUND,
+                    detail="Export file not available.",
+                )
+            filename = f"{log.entity_type}_export_{log.id}.{log.format.lower()}"
+            return log.file_content, log.mime_type or "application/octet-stream", filename

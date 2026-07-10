@@ -151,6 +151,8 @@ class ExportLogRepository(BaseRepository[ExportLog]):
         download_url: str,
         row_count: int,
         file_size_bytes: int,
+        file_content: bytes | None = None,
+        mime_type: str | None = None,
     ) -> None:
         from datetime import datetime, timezone
         stmt = (
@@ -162,6 +164,8 @@ class ExportLogRepository(BaseRepository[ExportLog]):
                 download_url=download_url,
                 row_count=row_count,
                 file_size_bytes=file_size_bytes,
+                file_content=file_content,
+                mime_type=mime_type,
                 completed_at=datetime.now(timezone.utc),
             )
             .execution_options(synchronize_session="fetch")

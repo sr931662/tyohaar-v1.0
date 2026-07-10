@@ -7,8 +7,8 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 
 // Must match the backend's actual column definitions (_ENTITY_COLUMNS in
-// io_service.py) — 'bookings'/'products' aren't recognized there, so
-// picking them would silently download a blank template.
+// io_service.py) — entity types not recognized there would silently
+// download a blank template.
 const ENTITY_TYPES = [
   'vendors', 'customers', 'packages', 'categories', 'cities', 'states',
   'coupons', 'faqs', 'notification_templates', 'settings', 'memberships', 'services',
@@ -17,16 +17,28 @@ const ENTITY_TYPES = [
 // Of those, only these currently have real row-insert logic on execute —
 // everything else will validate fine but fail per-row at execute time
 // (each row insert isn't wired to its domain service yet).
-const EXECUTABLE_ENTITY_TYPES = new Set(['faqs', 'settings']);
+const EXECUTABLE_ENTITY_TYPES = new Set(['faqs', 'settings', 'packages', 'vendors']);
 
 // Export has an entirely separate, narrower set of supported entity types
 // (see _fetch_export_rows in io_service.py) — it does not share Import's list.
-const EXPORT_ENTITY_TYPES = ['vendors', 'customers', 'bookings', 'payments'];
+const EXPORT_ENTITY_TYPES = ['vendors', 'customers', 'bookings', 'payments', 'packages'];
+
+const ENTITY_HINTS = {
+  packages: 'To attach a package to a vendor, include a "vendor_phone" column matching that vendor\'s registered phone number. "category" matches an existing category name (leave blank to skip). Packages import as Draft — publish them from Vendor Packages after review.',
+  vendors: 'A new login account is created automatically from "phone" if one doesn\'t already exist. "vendor_type" should be one of: decorator, caterer, photographer, videographer, baker, florist, entertainer, venue, planner.',
+};
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 function ImportTab() {
   const qc = useQueryClient();
   const fileRef = useRef(null);
-  const [entityType, setEntityType] = useState('vendors');
+  const [entityType, setEntityType] = useState('packages');
   const [file, setFile] = useState(null);
   const [validationResult, setValidationResult] = useState(null);
   const [validating, setValidating] = useState(false);
@@ -37,13 +49,19 @@ function ImportTab() {
   });
   const logs = importLogsData?.items ?? [];
 
+  const undoMutation = useMutation({
+    mutationFn: (logId) => ioApi.undoImport(logId),
+    onSuccess: (result) => {
+      toast.success(result?.message ?? 'Import rolled back.');
+      qc.invalidateQueries(['io', 'import-logs']);
+    },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Rollback failed'),
+  });
+
   const downloadTemplate = async () => {
     try {
       const blob = await ioApi.getTemplate(entityType);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${entityType}_template.xlsx`; a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, `${entityType}_template.xlsx`);
     } catch {
       toast.error('Failed to download template');
     }
@@ -86,8 +104,13 @@ function ImportTab() {
       formData.append('log_id', validationResult.log_id);
       return ioApi.executeImport(formData);
     },
-    onSuccess: () => {
-      toast.success('Import queued successfully');
+    onSuccess: (result) => {
+      const errorCount = result?.error_summary?.total_errors ?? 0;
+      if (result?.status === 'COMPLETED') {
+        toast.success(`Imported ${result.inserted_rows ?? 0} rows successfully.`);
+      } else {
+        toast.error(`Import finished with errors — ${result?.inserted_rows ?? 0} rows inserted, ${errorCount} failed. See history below.`);
+      }
       setFile(null); setValidationResult(null);
       if (fileRef.current) fileRef.current.value = '';
       qc.invalidateQueries(['io', 'import-logs']);
@@ -96,7 +119,7 @@ function ImportTab() {
   });
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+    <div className="grid-2">
       {/* Upload Panel */}
       <div>
         <div className="admin-card" style={{ marginBottom: 16 }}>
@@ -112,9 +135,13 @@ function ImportTab() {
                 ))}
               </select>
             </div>
-            {!EXECUTABLE_ENTITY_TYPES.has(entityType) && (
+            {!EXECUTABLE_ENTITY_TYPES.has(entityType) ? (
               <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 12.5, color: '#f59e0b', marginBottom: 16 }}>
-                You can validate a "{entityType}" file to preview row errors, but executing the import isn't implemented for this entity type yet — only Faqs and Settings actually write rows today.
+                You can validate a "{entityType}" file to preview row errors, but executing the import isn't implemented for this entity type yet.
+              </div>
+            ) : ENTITY_HINTS[entityType] && (
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', fontSize: 12.5, color: 'var(--color-info, #3b82f6)', marginBottom: 16 }}>
+                {ENTITY_HINTS[entityType]}
               </div>
             )}
             <button className="btn btn-secondary btn-sm" onClick={downloadTemplate} style={{ marginBottom: 16 }}>
@@ -124,7 +151,7 @@ function ImportTab() {
               <label className="form-label">Upload Excel / CSV</label>
               <input ref={fileRef} className="form-control" type="file" accept=".xlsx,.csv" onChange={e => { setFile(e.target.files[0]); setValidationResult(null); }} />
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn btn-secondary" onClick={handleValidate} disabled={!file || validating}>
                 {validating ? 'Validating…' : 'Validate'}
               </button>
@@ -158,21 +185,34 @@ function ImportTab() {
         <div className="admin-card">
           <div className="admin-card-header"><div className="admin-card-title">Import History</div></div>
           <div className="admin-card-body" style={{ padding: 0 }}>
-            {logsLoading ? <SkeletonTable rows={5} cols={4} /> : (
-              <table className="admin-table">
-                <thead><tr><th>Type</th><th>Rows</th><th>Status</th><th>When</th></tr></thead>
-                <tbody>
-                  {logs.map((log) => (
-                    <tr key={log.id}>
-                      <td>{log.entity_type}</td>
-                      <td>{log.total_rows}</td>
-                      <td><StatusBadge status={log.status} /></td>
-                      <td style={{ fontSize: 11 }}>{formatDateTime(log.created_at)}</td>
-                    </tr>
-                  ))}
-                  {!logs.length && <tr><td colSpan={4} className="admin-table-empty">No imports yet</td></tr>}
-                </tbody>
-              </table>
+            {logsLoading ? <SkeletonTable rows={5} cols={5} /> : (
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead><tr><th>Type</th><th>Rows</th><th>Status</th><th>When</th><th></th></tr></thead>
+                  <tbody>
+                    {logs.map((log) => (
+                      <tr key={log.id}>
+                        <td>{log.entity_type}</td>
+                        <td>{log.inserted_rows ?? 0} / {log.total_rows}</td>
+                        <td><StatusBadge status={log.status} /></td>
+                        <td style={{ fontSize: 11 }}>{formatDateTime(log.created_at)}</td>
+                        <td>
+                          {log.status === 'COMPLETED' && (
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => undoMutation.mutate(log.id)}
+                              disabled={undoMutation.isPending}
+                            >
+                              Undo
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {!logs.length && <tr><td colSpan={5} className="admin-table-empty">No imports yet</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
@@ -183,9 +223,10 @@ function ImportTab() {
 
 function ExportTab() {
   const qc = useQueryClient();
-  const [entityType, setEntityType] = useState('vendors');
+  const [entityType, setEntityType] = useState('packages');
   const [exporting, setExporting] = useState(false);
   const [format, setFormat] = useState('excel');
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const { data: exportLogsData, isLoading: logsLoading } = useQuery({
     queryKey: ['io', 'export-logs'],
@@ -206,8 +247,20 @@ function ExportTab() {
     }
   };
 
+  const handleDownload = async (log) => {
+    setDownloadingId(log.id);
+    try {
+      const { blob, filename } = await ioApi.downloadExport(log.id);
+      downloadBlob(blob, filename);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail ?? 'Download failed');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+    <div className="grid-2">
       <div className="admin-card">
         <div className="admin-card-header"><div className="admin-card-title">Export Data</div></div>
         <div className="admin-card-body">
@@ -222,10 +275,11 @@ function ExportTab() {
             <select className="form-control" value={format} onChange={e => setFormat(e.target.value)}>
               <option value="excel">Excel (.xlsx)</option>
               <option value="csv">CSV</option>
+              <option value="json">JSON</option>
             </select>
           </div>
           <button className="btn btn-primary" onClick={handleExport} disabled={exporting}>
-            {exporting ? 'Queuing…' : 'Export'}
+            {exporting ? 'Exporting…' : 'Export'}
           </button>
         </div>
       </div>
@@ -233,21 +287,35 @@ function ExportTab() {
       <div className="admin-card">
         <div className="admin-card-header"><div className="admin-card-title">Export History</div></div>
         <div className="admin-card-body" style={{ padding: 0 }}>
-          {logsLoading ? <SkeletonTable rows={5} cols={4} /> : (
-            <table className="admin-table">
-              <thead><tr><th>Type</th><th>Format</th><th>Status</th><th>When</th></tr></thead>
-              <tbody>
-                {logs.map((log) => (
-                  <tr key={log.id}>
-                    <td>{log.entity_type}</td>
-                    <td>{log.format ?? 'excel'}</td>
-                    <td><StatusBadge status={log.status} /></td>
-                    <td style={{ fontSize: 11 }}>{formatDateTime(log.created_at)}</td>
-                  </tr>
-                ))}
-                {!logs.length && <tr><td colSpan={4} className="admin-table-empty">No exports yet</td></tr>}
-              </tbody>
-            </table>
+          {logsLoading ? <SkeletonTable rows={5} cols={5} /> : (
+            <div className="admin-table-wrapper">
+              <table className="admin-table">
+                <thead><tr><th>Type</th><th>Format</th><th>Rows</th><th>Status</th><th>When</th><th></th></tr></thead>
+                <tbody>
+                  {logs.map((log) => (
+                    <tr key={log.id}>
+                      <td>{log.entity_type}</td>
+                      <td>{log.format ?? 'excel'}</td>
+                      <td>{log.row_count ?? 0}</td>
+                      <td><StatusBadge status={log.status} /></td>
+                      <td style={{ fontSize: 11 }}>{formatDateTime(log.created_at)}</td>
+                      <td>
+                        {log.status === 'COMPLETED' && log.row_count > 0 && (
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => handleDownload(log)}
+                            disabled={downloadingId === log.id}
+                          >
+                            {downloadingId === log.id ? 'Downloading…' : 'Download'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {!logs.length && <tr><td colSpan={6} className="admin-table-empty">No exports yet</td></tr>}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

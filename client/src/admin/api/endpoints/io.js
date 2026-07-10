@@ -4,7 +4,7 @@ const BASE = '/admin/cms/io';
 
 export const ioApi = {
   getTemplate: (entityType) =>
-    apiClient.get(`${BASE}/import/template`, { params: { entity_type: entityType }, responseType: 'blob' }),
+    apiClient.get(`${BASE}/import/template`, { params: { entity_type: entityType }, responseType: 'blob' }).then((res) => res.data),
 
   validateImport: (formData) =>
     apiClient.post(`${BASE}/import/validate`, formData).then(extractData),
@@ -32,4 +32,10 @@ export const ioApi = {
 
   getExportLog: (logId) =>
     apiClient.get(`${BASE}/export/logs/${logId}`).then(extractData),
+
+  downloadExport: (logId) =>
+    apiClient.get(`${BASE}/export/logs/${logId}/download`, { responseType: 'blob' }).then((res) => ({
+      blob: res.data,
+      filename: /filename="([^"]+)"/.exec(res.headers['content-disposition'] ?? '')?.[1] ?? 'export',
+    })),
 };

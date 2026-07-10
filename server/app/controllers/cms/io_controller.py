@@ -141,3 +141,16 @@ async def list_export_logs(
 
 async def get_export_log(log_id: uuid.UUID, svc: IOServiceDep) -> SuccessResponse[ExportLogResponse]:
     return SuccessResponse(data=await svc.get_export_log(log_id))
+
+
+async def download_export(
+    log_id: uuid.UUID,
+    admin_id: CurrentAdminIdDep,
+    svc: IOServiceDep,
+) -> Response:
+    content, mime_type, filename = await svc.get_export_file(log_id)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

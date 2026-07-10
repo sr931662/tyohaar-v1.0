@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.controllers.cms.io_controller import (
+    download_export,
     execute_import,
     get_export_log,
     get_import_log,
@@ -76,4 +77,10 @@ router.add_api_route(
     get_export_log,
     methods=["GET"],
     summary="Get single export log details",
+)
+router.add_api_route(
+    "/export/logs/{log_id}/download",
+    download_export,
+    methods=["GET"],
+    summary="Download the generated export file",
 )

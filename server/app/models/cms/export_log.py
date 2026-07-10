@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, LargeBinary, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -52,6 +52,12 @@ class ExportLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     file_storage_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     download_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    file_content: Mapped[bytes | None] = mapped_column(
+        LargeBinary,
+        nullable=True,
+        comment="Generated export file bytes, served via an admin-authenticated download route.",
+    )
+    mime_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
