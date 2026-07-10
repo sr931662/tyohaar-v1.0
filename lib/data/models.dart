@@ -400,6 +400,7 @@ class PackageItem {
 class Booking {
   final String id;
   final String bookingNumber;
+  final String celebrationId;
   final String status;
   final String paymentStatus;
   final double totalAmount;
@@ -422,6 +423,7 @@ class Booking {
   Booking({
     required this.id,
     required this.bookingNumber,
+    required this.celebrationId,
     required this.status,
     required this.paymentStatus,
     required this.totalAmount,
@@ -443,6 +445,7 @@ class Booking {
     return Booking(
       id: json['id'],
       bookingNumber: json['booking_number'],
+      celebrationId: json['celebration_id'],
       status: json['booking_status'],
       paymentStatus: json['payment_status'] as String? ?? 'pending',
       totalAmount: (json['total_amount'] ?? 0).toDouble(),

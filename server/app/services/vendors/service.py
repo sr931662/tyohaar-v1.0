@@ -571,6 +571,25 @@ class VendorService(BaseService):
             # here we return the resolved category objects for confirmation.
             return [VendorCategoryResponse.model_validate(c) for c in categories]
 
+    async def delete_vendor_cascade(self, vendor_id: UUID) -> int:
+        """
+        Admin-only cleanup: soft-delete a vendor and every package they
+        created. Soft (not hard) delete — reversible, and avoids violating
+        FK constraints from existing bookings/payments/reviews that
+        reference this vendor. Returns the number of packages removed.
+        """
+        from app.models.packages.package import Package
+
+        async with self._uow() as uow:
+            vendor = await validate_vendor_exists(vendor_id, uow)
+
+            packages = await uow.packages.packages.find_many(Package.vendor_id == vendor_id)
+            for package in packages:
+                await uow.packages.packages.soft_delete(package)
+
+            await uow.vendors.vendors.soft_delete(vendor)
+            return len(packages)
+
     # ── Internal Helpers ───────────────────────────────────────────────────────
 
     async def _recalculate_vendor_rating(self, vendor_id: UUID) -> None:

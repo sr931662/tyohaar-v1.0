@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { notificationsApi } from '../../api';
@@ -7,12 +7,91 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
 
+const NOTIFICATION_TYPE_OPTIONS = [
+  { value: 'booking_confirmed', label: 'Booking Confirmed' },
+  { value: 'booking_cancelled', label: 'Booking Cancelled' },
+  { value: 'booking_updated', label: 'Booking Updated' },
+  { value: 'payment_received', label: 'Payment Received' },
+  { value: 'payment_failed', label: 'Payment Failed' },
+  { value: 'refund_initiated', label: 'Refund Initiated' },
+  { value: 'refund_completed', label: 'Refund Completed' },
+  { value: 'otp', label: 'OTP' },
+  { value: 'reminder', label: 'Reminder' },
+  { value: 'promotional', label: 'Promotional' },
+  { value: 'system', label: 'System' },
+  { value: 'review_request', label: 'Review Request' },
+  { value: 'vendor_assigned', label: 'Vendor Assigned' },
+  { value: 'rsvp_update', label: 'RSVP Update' },
+  { value: 'celebration_upcoming', label: 'Celebration Upcoming' },
+  { value: 'wallet_credit', label: 'Wallet Credit' },
+  { value: 'membership_expiring', label: 'Membership Expiring' },
+  { value: 'support_update', label: 'Support Update' },
+];
+
+const TEMPLATE_CHANNEL_OPTIONS = [
+  { value: 'in_app', label: 'In-App' },
+  { value: 'push', label: 'Push' },
+  { value: 'sms', label: 'SMS' },
+  { value: 'email', label: 'Email' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+];
+
+// Curated list of dynamic content the notification service actually renders
+// into templates via Jinja2 — click to insert instead of typing {{...}} by hand.
+const DYNAMIC_CONTENT_OPTIONS = [
+  { key: 'user_name', label: 'Customer Name' },
+  { key: 'booking_number', label: 'Booking Number' },
+  { key: 'booking_id', label: 'Booking ID' },
+  { key: 'package_name', label: 'Package Name' },
+  { key: 'vendor_name', label: 'Vendor Name' },
+  { key: 'event_date', label: 'Event Date' },
+  { key: 'event_time', label: 'Event Time' },
+  { key: 'venue_address', label: 'Venue Address' },
+  { key: 'celebration_title', label: 'Celebration Title' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'payment_status', label: 'Payment Status' },
+  { key: 'wallet_balance', label: 'Wallet Balance' },
+  { key: 'membership_tier', label: 'Membership Tier' },
+  { key: 'ticket_number', label: 'Support Ticket #' },
+];
+
+function DynamicContentPicker({ onInsert }) {
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div className="form-hint" style={{ marginBottom: 6 }}>Click to insert dynamic content:</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {DYNAMIC_CONTENT_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: 12 }}
+            onMouseDown={(e) => e.preventDefault()} // keep focus/selection in the text field
+            onClick={() => onInsert(`{{${opt.key}}}`)}
+          >
+            + {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const EMPTY_TEMPLATE_FORM = {
+  notification_type: 'booking_confirmed',
+  channel: 'in_app',
+  title_template: '',
+  body_template: '',
+};
+
 function TemplatesTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [form, setForm] = useState({ template_key: '', title: '', body: '', notification_category: 'system' });
+  const [form, setForm] = useState(EMPTY_TEMPLATE_FORM);
+  const titleRef = useRef(null);
+  const bodyRef = useRef(null);
 
   const { data: templates = [] } = useQuery({
     queryKey: ['notifications', 'templates'],
@@ -20,13 +99,15 @@ function TemplatesTab() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: (body) => editItem ? notificationsApi.updateTemplate(editItem.id, body) : notificationsApi.createTemplate(body),
+    mutationFn: (body) => editItem
+      ? notificationsApi.updateTemplate(editItem.id, { title_template: body.title_template, body_template: body.body_template })
+      : notificationsApi.createTemplate(body),
     onSuccess: () => {
       toast.success(editItem ? 'Template updated' : 'Template created');
       qc.invalidateQueries(['notifications', 'templates']);
       setOpen(false); setEditItem(null);
     },
-    onError: () => toast.error('Save failed'),
+    onError: (err) => toast.error(err?.response?.data?.message || err?.response?.data?.detail || 'Save failed'),
   });
 
   const deleteMutation = useMutation({
@@ -37,28 +118,56 @@ function TemplatesTab() {
 
   const openEdit = (t) => {
     setEditItem(t);
-    setForm({ template_key: t.template_key, title: t.title, body: t.body, notification_category: t.notification_category });
+    setForm({
+      notification_type: t.notification_type,
+      channel: t.channel,
+      title_template: t.title_template,
+      body_template: t.body_template,
+    });
     setOpen(true);
   };
+
+  // Inserts text at the current cursor position of whichever field was last
+  // focused, so admins never have to hand-type {{variable}} syntax.
+  const insertIntoField = (fieldKey, ref, text) => {
+    const el = ref.current;
+    const current = form[fieldKey] ?? '';
+    if (!el) {
+      setForm((f) => ({ ...f, [fieldKey]: current + text }));
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const next = current.slice(0, start) + text + current.slice(end);
+    setForm((f) => ({ ...f, [fieldKey]: next }));
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + text.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const typeLabel = (value) => NOTIFICATION_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value;
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button className="btn btn-primary" onClick={() => { setEditItem(null); setForm({ template_key:'', title:'', body:'', notification_category:'system' }); setOpen(true); }}>
+        <button className="btn btn-primary" onClick={() => { setEditItem(null); setForm(EMPTY_TEMPLATE_FORM); setOpen(true); }}>
           + New Template
         </button>
       </div>
       <div className="admin-table-wrapper">
         <table className="admin-table">
           <thead>
-            <tr><th>Key</th><th>Title</th><th>Category</th><th>Actions</th></tr>
+            <tr><th>Key</th><th>Title</th><th>Type</th><th>Channel</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {templates.map((t) => (
               <tr key={t.id}>
                 <td><code style={{ fontSize: 11 }}>{t.template_key}</code></td>
-                <td>{t.title}</td>
-                <td>{t.notification_category}</td>
+                <td>{t.title_template}</td>
+                <td>{typeLabel(t.notification_type)}</td>
+                <td>{TEMPLATE_CHANNEL_OPTIONS.find((c) => c.value === t.channel)?.label ?? t.channel}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className="btn btn-secondary btn-sm" onClick={() => openEdit(t)}>Edit</button>
@@ -67,7 +176,7 @@ function TemplatesTab() {
                 </td>
               </tr>
             ))}
-            {!templates.length && <tr><td colSpan={4} className="admin-table-empty">No templates</td></tr>}
+            {!templates.length && <tr><td colSpan={5} className="admin-table-empty">No templates</td></tr>}
           </tbody>
         </table>
       </div>
@@ -76,7 +185,7 @@ function TemplatesTab() {
         footer={
           <>
             <button className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={() => saveMutation.mutate(form)} disabled={!form.template_key || !form.title || saveMutation.isPending}>
+            <button className="btn btn-primary" onClick={() => saveMutation.mutate(form)} disabled={!form.title_template || !form.body_template || saveMutation.isPending}>
               {saveMutation.isPending ? 'Saving…' : 'Save'}
             </button>
           </>
@@ -84,29 +193,51 @@ function TemplatesTab() {
       >
         <div className="form-row-2">
           <div className="form-group">
-            <label className="form-label required">Template Key</label>
-            <input className="form-control" value={form.template_key} onChange={e => setForm(f => ({ ...f, template_key: e.target.value }))} placeholder="booking_confirmed" disabled={!!editItem} />
+            <label className="form-label required">Notification Type</label>
+            <select className="form-control" value={form.notification_type} disabled={!!editItem}
+              onChange={e => setForm(f => ({ ...f, notification_type: e.target.value }))}>
+              {NOTIFICATION_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            {!editItem && <div className="form-hint">The template's unique key is generated from this — can't be changed later.</div>}
           </div>
           <div className="form-group">
-            <label className="form-label">Category</label>
-            <select className="form-control" value={form.notification_category} onChange={e => setForm(f => ({ ...f, notification_category: e.target.value }))}>
-              <option value="system">System</option>
-              <option value="booking">Booking</option>
-              <option value="payment">Payment</option>
-              <option value="promotion">Promotion</option>
-              <option value="alert">Alert</option>
+            <label className="form-label required">Channel</label>
+            <select className="form-control" value={form.channel} disabled={!!editItem}
+              onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}>
+              {TEMPLATE_CHANNEL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
         </div>
         <div className="form-group">
           <label className="form-label required">Title</label>
-          <input className="form-control" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Your booking is confirmed! 🎉" />
+          <input
+            ref={titleRef}
+            className="form-control"
+            value={form.title_template}
+            onChange={e => setForm(f => ({ ...f, title_template: e.target.value }))}
+            placeholder="Your booking is confirmed! 🎉"
+          />
         </div>
         <div className="form-group">
           <label className="form-label required">Body</label>
-          <textarea className="form-control" rows={4} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder="Use {{variable}} for dynamic content…" />
-          <div className="form-hint">Variables: {'{{user_name}}'}, {'{{booking_id}}'}, {'{{event_date}}'}, etc.</div>
+          <textarea
+            ref={bodyRef}
+            className="form-control"
+            rows={4}
+            value={form.body_template}
+            onChange={e => setForm(f => ({ ...f, body_template: e.target.value }))}
+            placeholder="Hi there, your booking is confirmed for..."
+          />
         </div>
+        <DynamicContentPicker
+          onInsert={(text) => {
+            // Insert into whichever field (title/body) the admin last used;
+            // default to body since that's the common case.
+            const active = document.activeElement;
+            if (active === titleRef.current) insertIntoField('title_template', titleRef, text);
+            else insertIntoField('body_template', bodyRef, text);
+          }}
+        />
       </Modal>
 
       <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteMutation.mutate(deleteId)}

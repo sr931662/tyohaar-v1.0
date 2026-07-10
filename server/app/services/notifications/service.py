@@ -401,15 +401,18 @@ class NotificationService(BaseService):
             templates = await uow.notifications.templates.find_active()
             return [NotificationTemplateResponse.model_validate(t) for t in templates]
 
-    async def get_template(self, template_key: str) -> NotificationTemplateResponse:
+    async def get_template(self, template_id: UUID) -> NotificationTemplateResponse:
         async with self._uow() as uow:
-            template = await validate_template_exists(template_key, uow)
+            template = await uow.notifications.templates.get_by_id(template_id)
+            if template is None:
+                from app.services.notifications.exceptions import TemplateNotFoundError
+                raise TemplateNotFoundError(str(template_id))
             return NotificationTemplateResponse.model_validate(template)
 
     async def create_template(
         self,
         data: NotificationTemplateCreate,
-        admin_id: UUID,
+        admin_id: UUID | None = None,
     ) -> NotificationTemplateResponse:
         async with self._uow() as uow:
             template_key_value = (
@@ -439,18 +442,24 @@ class NotificationService(BaseService):
 
     async def update_template(
         self,
-        template_key: str,
+        template_id: UUID,
         data: NotificationTemplateUpdate,
-        admin_id: UUID,
+        admin_id: UUID | None = None,
     ) -> NotificationTemplateResponse:
         async with self._uow() as uow:
-            template = await validate_template_exists(template_key, uow)
+            template = await uow.notifications.templates.get_by_id(template_id)
+            if template is None:
+                from app.services.notifications.exceptions import TemplateNotFoundError
+                raise TemplateNotFoundError(str(template_id))
             updated = await uow.notifications.templates.update(
                 template, data.model_dump(exclude_unset=True)
             )
             return NotificationTemplateResponse.model_validate(updated)
 
-    async def delete_template(self, template_key: str, admin_id: UUID) -> None:
+    async def delete_template(self, template_id: UUID, admin_id: UUID | None = None) -> None:
         async with self._uow() as uow:
-            template = await validate_template_exists(template_key, uow)
+            template = await uow.notifications.templates.get_by_id(template_id)
+            if template is None:
+                from app.services.notifications.exceptions import TemplateNotFoundError
+                raise TemplateNotFoundError(str(template_id))
             await uow.notifications.templates.update(template, {"is_active": False})

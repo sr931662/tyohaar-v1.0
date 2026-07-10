@@ -10,6 +10,9 @@ export const vendorsApi = {
   verify: (vendorId, body) =>
     apiClient.post(`/vendors/${vendorId}/verify`, body).then(extractData),
 
+  remove: (vendorId) =>
+    apiClient.delete(`/vendors/${vendorId}`).then(extractData),
+
   updateCategories: (vendorId, categories) =>
     apiClient.put(`/vendors/${vendorId}/categories`, { categories }).then(extractData),
 

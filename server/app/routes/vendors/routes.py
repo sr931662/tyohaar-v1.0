@@ -339,6 +339,17 @@ router.add_api_route(
 )
 
 router.add_api_route(
+    "/{vendor_id}",
+    ctrl.delete_vendor,
+    methods=["DELETE"],
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Delete Vendor (Admin)",
+    description="Soft-delete a vendor and every package they created. Admin access required.",
+    operation_id="vendors_delete_vendor",
+)
+
+router.add_api_route(
     "/{vendor_id}/categories",
     ctrl.update_vendor_categories,
     methods=["PUT"],

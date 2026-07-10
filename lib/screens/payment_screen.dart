@@ -7,12 +7,15 @@ import '../data/auth_manager.dart';
 import '../data/services/payment_service.dart';
 import '../widgets/ty_button.dart';
 import 'booking_confirmation_screen.dart';
+import 'send_invitations_screen.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String bookingId;
   final double amount;
   final String packageName;
   final String scheduledDate;
+  final String? celebrationId;
+  final List<PlannedGuest> plannedGuests;
 
   const PaymentScreen({
     super.key,
@@ -20,6 +23,8 @@ class PaymentScreen extends StatefulWidget {
     required this.amount,
     required this.packageName,
     this.scheduledDate = 'Upcoming',
+    this.celebrationId,
+    this.plannedGuests = const [],
   });
 
   @override
@@ -90,16 +95,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
         signature: response.signature ?? '',
       );
       if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (_) => BookingConfirmationScreen(
-              bookingId: widget.bookingId,
-              packageName: widget.packageName,
-              date: widget.scheduledDate,
+        final celebrationId = widget.celebrationId;
+        if (celebrationId != null && widget.plannedGuests.isNotEmpty) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => SendInvitationsScreen(
+                celebrationId: celebrationId,
+                bookingId: widget.bookingId,
+                packageName: widget.packageName,
+                date: widget.scheduledDate,
+                plannedGuests: widget.plannedGuests,
+              ),
             ),
-          ),
-          (_) => false,
-        );
+            (_) => false,
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => BookingConfirmationScreen(
+                bookingId: widget.bookingId,
+                packageName: widget.packageName,
+                date: widget.scheduledDate,
+              ),
+            ),
+            (_) => false,
+          );
+        }
       }
     } catch (_) {
       if (mounted) {

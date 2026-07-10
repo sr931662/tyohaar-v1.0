@@ -31,6 +31,7 @@ export default function VendorsPage() {
   const [selected, setSelected] = useState([]);
   const [bulkAction, setBulkAction] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['vendors', 'crm', { page, perPage, search: debouncedSearch, status }],
@@ -53,6 +54,16 @@ export default function VendorsPage() {
     mutationFn: (ids) => bulkApi.suspendVendors(ids),
     onSuccess: () => { toast.success('Vendors suspended'); qc.invalidateQueries(['vendors']); setSelected([]); },
     onError: () => toast.error('Bulk suspend failed'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (vendorId) => vendorsApi.remove(vendorId),
+    onSuccess: (res) => {
+      toast.success(`Vendor deleted${res?.packages_removed ? ` (${res.packages_removed} package(s) removed)` : ''}`);
+      qc.invalidateQueries(['vendors']);
+      setDeleteTarget(null);
+    },
+    onError: () => toast.error('Delete failed'),
   });
 
   const items = data?.items ?? [];
@@ -182,12 +193,22 @@ export default function VendorsPage() {
                   </td>
                   <td><span className="text-secondary">{timeAgo(v.created_at)}</span></td>
                   <td>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => navigate(`/admin/vendors/${v.id}`)}
-                    >
-                      View
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => navigate(`/admin/vendors/${v.id}`)}
+                      >
+                        View
+                      </button>
+                      {v.status === 'suspended' && (
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => setDeleteTarget(v)}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -205,6 +226,16 @@ export default function VendorsPage() {
         message={`Are you sure you want to ${bulkAction} ${selected.length} vendor(s)?`}
         danger={bulkAction === 'reject' || bulkAction === 'suspend'}
         loading={approveMutation.isPending || rejectMutation.isPending || suspendMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteMutation.mutate(deleteTarget.id)}
+        title="Delete vendor"
+        message={`This removes "${deleteTarget?.business_name ?? deleteTarget?.name}" and every package they created. This cannot be undone from this screen.`}
+        danger
+        loading={deleteMutation.isPending}
       />
     </div>
   );

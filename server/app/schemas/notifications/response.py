@@ -74,7 +74,8 @@ class NotificationTemplateResponse(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
-    notification_type: NotificationType
+    template_key: str
+    notification_type: NotificationType = Field(validation_alias="notification_category")
     channel: NotificationChannel
     title_template: str
     body_template: str

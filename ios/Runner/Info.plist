@@ -30,6 +30,8 @@
 	<string>Tyohaar saves package images you download to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Tyohaar saves package images you download to your photo library.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Tyohaar uses your contacts to help you invite guests to your celebration.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

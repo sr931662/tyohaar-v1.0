@@ -364,6 +364,18 @@ async def verify_vendor(
     return SuccessResponse(data=result, message="Vendor verification processed.")
 
 
+async def delete_vendor(
+    vendor_id: uuid.UUID,
+    _admin: AdminDep,
+    service: VendorServiceDep,
+) -> SuccessResponse[dict]:
+    packages_removed = await service.delete_vendor_cascade(vendor_id=vendor_id)
+    return SuccessResponse(
+        data={"packages_removed": packages_removed},
+        message="Vendor and their packages removed.",
+    )
+
+
 async def update_vendor_categories(
     vendor_id: uuid.UUID,
     category_ids: list[uuid.UUID],
