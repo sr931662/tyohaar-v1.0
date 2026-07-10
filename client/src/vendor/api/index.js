@@ -124,6 +124,13 @@ export const vendorPackagesApi = {
     vendorClient.delete(`/packages/${packageId}/items/${itemId}`).then(extractData),
 };
 
+// ── Occasions (reference data for package linking) ─────────────────────────────
+
+export const vendorOccasionsApi = {
+  list: (params) =>
+    vendorClient.get('/occasions', { params: { per_page: 100, ...params } }).then(extractPaginated),
+};
+
 // ── Bookings ──────────────────────────────────────────────────────────────────
 
 export const vendorBookingsApi = {

@@ -57,6 +57,10 @@ class PackageService(BaseService):
         async with self._uow() as uow:
             payload = data.model_dump(exclude_unset=True)
 
+            # occasion_ids has no backing column on Package — it's written
+            # separately into the package_occasions association table below.
+            occasion_ids = payload.pop("occasion_ids", None) or []
+
             # Remap schema field names → model column names
             if "min_guests" in payload:
                 payload["min_guest_count"] = payload.pop("min_guests")
@@ -72,8 +76,42 @@ class PackageService(BaseService):
                 payload["slug"] = f"{base}-{str(_uuid.uuid4())[:8]}"
 
             package = await uow.packages.packages.create_from_dict(payload)
+            await uow.session.flush()
+
+            if occasion_ids:
+                await self._replace_package_occasions(uow, package.id, occasion_ids)
+
             await uow.commit()
-            return PackageResponse.model_validate(package)
+            response = PackageResponse.model_validate(package)
+            return response.model_copy(update={"occasion_ids": occasion_ids})
+
+    @staticmethod
+    async def _replace_package_occasions(
+        uow, package_id: UUID, occasion_ids: list[UUID]
+    ) -> None:
+        from sqlalchemy import delete, insert
+        from app.models.packages.package import package_occasions
+
+        await uow.session.execute(
+            delete(package_occasions).where(package_occasions.c.package_id == package_id)
+        )
+        if occasion_ids:
+            await uow.session.execute(
+                insert(package_occasions),
+                [{"package_id": package_id, "occasion_id": oid} for oid in occasion_ids],
+            )
+
+    @staticmethod
+    async def _get_package_occasion_ids(uow, package_id: UUID) -> list[UUID]:
+        from sqlalchemy import select
+        from app.models.packages.package import package_occasions
+
+        result = await uow.session.execute(
+            select(package_occasions.c.occasion_id).where(
+                package_occasions.c.package_id == package_id
+            )
+        )
+        return [row[0] for row in result.all()]
 
     async def get_package(self, package_id: UUID) -> PackageDetailResponse:
         from app.models.packages.package_pricing import PackagePriceType
@@ -114,7 +152,10 @@ class PackageService(BaseService):
             # Build from PackageResponse (no `pricing` field) first so the ORM's
             # list-valued `package.pricing` attribute is never auto-read against
             # the singular `pricing` field on PackageDetailResponse.
-            base = PackageResponse.model_validate(package)
+            occasion_ids = await self._get_package_occasion_ids(uow, package_id)
+            base = PackageResponse.model_validate(package).model_copy(
+                update={"occasion_ids": occasion_ids}
+            )
             response = PackageDetailResponse(
                 **base.model_dump(), pricing=pricing_response, vendor=vendor_info
             )
@@ -235,6 +276,7 @@ class PackageService(BaseService):
             )
             package_ids = [p.id for p in page.items]
             counts: dict = {}
+            occasions_by_package: dict = {}
             if package_ids:
                 item_rows = await uow.packages.items.find_many(
                     uow.packages.items._model.package_id.in_(package_ids)
@@ -242,9 +284,22 @@ class PackageService(BaseService):
                 for row in item_rows:
                     pid = row.package_id
                     counts[pid] = counts.get(pid, 0) + 1
+
+                from sqlalchemy import select
+                from app.models.packages.package import package_occasions
+                link_rows = await uow.session.execute(
+                    select(
+                        package_occasions.c.package_id, package_occasions.c.occasion_id
+                    ).where(package_occasions.c.package_id.in_(package_ids))
+                )
+                for pid, oid in link_rows.all():
+                    occasions_by_package.setdefault(pid, []).append(oid)
             responses = [
                 PackageResponse.model_validate(p).model_copy(
-                    update={"inclusions_count": counts.get(p.id, 0)}
+                    update={
+                        "inclusions_count": counts.get(p.id, 0),
+                        "occasion_ids": occasions_by_package.get(p.id, []),
+                    }
                 )
                 for p in page.items
             ]
@@ -263,13 +318,20 @@ class PackageService(BaseService):
         async with self._uow() as uow:
             package = await validate_package_ownership(package_id, vendor_id, uow)
             changes = data.model_dump(exclude_unset=True)
+            occasion_ids = changes.pop("occasion_ids", None)
             if "min_guests" in changes:
                 changes["min_guest_count"] = changes.pop("min_guests")
             if "max_guests" in changes:
                 changes["max_guest_count"] = changes.pop("max_guests")
             updated = await uow.packages.packages.update(package, changes)
+            if occasion_ids is not None:
+                await self._replace_package_occasions(uow, package_id, occasion_ids)
+                final_occasion_ids = occasion_ids
+            else:
+                final_occasion_ids = await self._get_package_occasion_ids(uow, package_id)
             await uow.commit()
-            return PackageResponse.model_validate(updated)
+            response = PackageResponse.model_validate(updated)
+            return response.model_copy(update={"occasion_ids": final_occasion_ids})
 
     async def delete_package(
         self,

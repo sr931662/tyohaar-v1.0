@@ -61,6 +61,10 @@ class PackageCreate(BaseSchema):
     category_id: uuid.UUID | None = Field(
         default=None, description="FK to PackageCategory"
     )
+    occasion_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description="Occasions this package applies to (e.g. Birthday, Baby Shower).",
+    )
     description: str | None = Field(default=None, description="Long-form description (Markdown)")
     short_description: str | None = Field(
         default=None, max_length=500, description="One-liner shown in listing cards"

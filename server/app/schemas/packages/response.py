@@ -96,6 +96,7 @@ class PackageResponse(BaseSchema):
     vendor_id: uuid.UUID | None = None
     city_slug: str | None = None
     inclusions_count: int = 0
+    occasion_ids: list[uuid.UUID] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

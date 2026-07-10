@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { vendorProfileApi, vendorPackagesApi } from '../../api';
+import { vendorProfileApi, vendorPackagesApi, vendorOccasionsApi } from '../../api';
 import { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import ImageUploadField from '../../components/ImageUploadField';
 
@@ -36,13 +36,13 @@ function StatusBadge({ status }) {
 
 // ── Create Package Modal ───────────────────────────────────────────────────────
 
-function PackageFormModal({ initial, categories, onClose, onSave, saving }) {
+function PackageFormModal({ initial, occasions, onClose, onSave, saving }) {
   const isEdit = !!initial;
   const [form, setForm] = useState({
     name: initial?.name ?? '',
     description: initial?.description ?? '',
     short_description: initial?.short_description ?? '',
-    category_id: initial?.category?.id ?? initial?.category_id ?? '',
+    occasion_ids: initial?.occasion_ids ?? [],
     base_price: initial?.base_price ?? '',
     min_guests: initial?.min_guests ?? '',
     max_guests: initial?.max_guests ?? '',
@@ -54,6 +54,15 @@ function PackageFormModal({ initial, categories, onClose, onSave, saving }) {
   const [errors, setErrors] = useState({});
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const toggleOccasion = (id) => {
+    setForm((f) => ({
+      ...f,
+      occasion_ids: f.occasion_ids.includes(id)
+        ? f.occasion_ids.filter((oid) => oid !== id)
+        : [...f.occasion_ids, id],
+    }));
+  };
 
   const validate = () => {
     const e = {};
@@ -70,7 +79,7 @@ function PackageFormModal({ initial, categories, onClose, onSave, saving }) {
       name: form.name.trim(),
       description: form.description.trim() || undefined,
       short_description: form.short_description.trim() || undefined,
-      category_id: form.category_id || undefined,
+      occasion_ids: form.occasion_ids,
       base_price: Number(form.base_price),
       pricing_type: 'fixed',
       min_guests: form.min_guests !== '' ? Number(form.min_guests) : undefined,
@@ -104,19 +113,41 @@ function PackageFormModal({ initial, categories, onClose, onSave, saving }) {
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Full Description</label>
             <textarea className="admin-input" rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="What's included in this package?" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Category</label>
-              <select className="admin-input" value={form.category_id} onChange={(e) => set('category_id', e.target.value)}>
-                <option value="">None</option>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Base Price (₹) *</label>
-              <input className="admin-input" type="number" min="0" value={form.base_price} onChange={(e) => set('base_price', e.target.value)} placeholder="e.g. 15000" />
-              {errors.base_price && <p style={{ color: 'var(--color-error,#ef4444)', fontSize: 12, marginTop: 4 }}>{errors.base_price}</p>}
-            </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Base Price (₹) *</label>
+            <input className="admin-input" type="number" min="0" value={form.base_price} onChange={(e) => set('base_price', e.target.value)} placeholder="e.g. 15000" style={{ maxWidth: 220 }} />
+            {errors.base_price && <p style={{ color: 'var(--color-error,#ef4444)', fontSize: 12, marginTop: 4 }}>{errors.base_price}</p>}
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Occasions</label>
+            {!occasions.length ? (
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No occasions available yet.</p>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {occasions.map((o) => {
+                  const active = form.occasion_ids.includes(o.id);
+                  return (
+                    <button
+                      type="button"
+                      key={o.id}
+                      onClick={() => toggleOccasion(o.id)}
+                      className="btn btn-sm"
+                      style={{
+                        borderRadius: 99,
+                        border: active ? '1px solid var(--color-primary,#6366f1)' : '1px solid var(--border-subtle)',
+                        background: active ? 'rgba(99,102,241,0.12)' : 'transparent',
+                        color: active ? 'var(--color-primary,#6366f1)' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {o.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
+              Select every occasion this package suits (e.g. Birthday, Baby Shower). Customers browsing by occasion will see it.
+            </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
@@ -357,10 +388,11 @@ export default function VendorPackagesPage() {
     retry: (count, err) => err?.response?.status !== 404 && count < 2,
   });
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ['package-categories'],
-    queryFn: () => vendorPackagesApi.listCategories(),
+  const { data: occasionsPage } = useQuery({
+    queryKey: ['vendor-occasions'],
+    queryFn: () => vendorOccasionsApi.list({ is_active: true }),
   });
+  const occasions = occasionsPage?.items ?? [];
 
   const { data, isLoading } = useQuery({
     queryKey: ['vendor-packages'],
@@ -444,7 +476,7 @@ export default function VendorPackagesPage() {
             <thead>
               <tr>
                 <th>Package</th>
-                <th>Category</th>
+                <th>Occasions</th>
                 <th>City</th>
                 <th>Price</th>
                 <th>Guests</th>
@@ -463,7 +495,14 @@ export default function VendorPackagesPage() {
                       </div>
                     )}
                   </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{p.category?.name ?? '—'}</td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: 13, maxWidth: 200 }}>
+                    {(p.occasion_ids ?? []).length
+                      ? p.occasion_ids
+                          .map((id) => occasions.find((o) => o.id === id)?.name)
+                          .filter(Boolean)
+                          .join(', ')
+                      : '—'}
+                  </td>
                   <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {p.city_slug ? <code style={{ fontSize: 11 }}>{p.city_slug}</code> : <span style={{ color: 'var(--color-error,#ef4444)' }}>Not set</span>}
                   </td>
@@ -502,7 +541,7 @@ export default function VendorPackagesPage() {
       {/* Modals */}
       {showCreate && (
         <PackageFormModal
-          categories={categories}
+          occasions={occasions}
           onClose={() => setShowCreate(false)}
           onSave={(body) => createMutation.mutate(body)}
           saving={createMutation.isPending}
@@ -511,7 +550,7 @@ export default function VendorPackagesPage() {
       {editingPkg && (
         <PackageFormModal
           initial={editingPkg}
-          categories={categories}
+          occasions={occasions}
           onClose={() => setEditingPkg(null)}
           onSave={(body) => updateMutation.mutate({ id: editingPkg.id, body })}
           saving={updateMutation.isPending}
