@@ -223,7 +223,7 @@ class VendorGalleryRepository(BaseRepository[VendorGalleryItem]):
     async def find_by_vendor(self, vendor_id: uuid.UUID) -> list[VendorGalleryItem]:
         return await self.find_many(
             VendorGalleryItem.vendor_id == vendor_id,
-            order_by=VendorGalleryItem.display_order.asc(),
+            order_by=VendorGalleryItem.sort_order.asc(),
         )
 
 

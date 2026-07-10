@@ -62,6 +62,7 @@ from datetime import datetime
 
 from app.models.enums import DayOfWeek as _DayOfWeek, MediaType as _MediaType
 from app.schemas.base import BaseSchema as _BaseSchema
+from pydantic import Field as _Field
 
 
 class VendorGalleryCreate(_BaseSchema):
@@ -83,7 +84,7 @@ class VendorGalleryUpdate(_BaseSchema):
 class VendorGalleryResponse(_BaseSchema):
     id: UUID
     vendor_id: UUID
-    media_url: str
+    media_url: str = _Field(validation_alias="file_url")
     media_type: str
     caption: str | None = None
     sort_order: int
@@ -283,7 +284,11 @@ class VendorService(BaseService):
         async with self._uow() as uow:
             await validate_vendor_ownership(vendor_id, user_id, uow)
             await validate_gallery_limit(vendor_id, uow)
-            payload = data.model_dump(exclude_unset=True)  # type: ignore[union-attr]
+            # Not exclude_unset: media_type/sort_order/is_featured are Create
+            # defaults, not optional Update fields — they must always be sent.
+            payload = data.model_dump()  # type: ignore[union-attr]
+            if "media_url" in payload:
+                payload["file_url"] = payload.pop("media_url")
             payload["vendor_id"] = vendor_id
             item = await uow.vendors.gallery.create_from_dict(payload)
             return VendorGalleryResponse.model_validate(item)  # type: ignore[call-arg]
