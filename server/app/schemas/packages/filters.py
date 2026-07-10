@@ -36,6 +36,9 @@ class PackageFilters(BaseSchema):
     category_id: uuid.UUID | None = Field(
         default=None, description="Filter by parent category"
     )
+    occasion_id: uuid.UUID | None = Field(
+        default=None, description="Filter to packages linked to this occasion"
+    )
     status: PackageStatus | None = Field(
         default=None, description="Filter by publication status"
     )

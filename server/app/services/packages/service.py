@@ -130,7 +130,7 @@ class PackageService(BaseService):
         limit: int,
         is_admin: bool = False,
     ) -> CursorPage[PackageResponse]:
-        from sqlalchemy import or_
+        from sqlalchemy import or_, select
         async with self._uow() as uow:
             if is_admin:
                 # Admin package management needs to see every lifecycle state
@@ -147,6 +147,15 @@ class PackageService(BaseService):
                 ]
             if filters.category_id is not None:
                 conditions.append(Package.category_id == filters.category_id)
+            if filters.occasion_id is not None:
+                from app.models.packages.package import package_occasions
+                conditions.append(
+                    Package.id.in_(
+                        select(package_occasions.c.package_id).where(
+                            package_occasions.c.occasion_id == filters.occasion_id
+                        )
+                    )
+                )
             if filters.city is not None:
                 conditions.append(Package.city_slug == filters.city)
             if filters.is_featured is not None:

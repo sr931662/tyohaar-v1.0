@@ -816,14 +816,61 @@ class InvitationTemplate {
 class Address {
   final String id;
   final String label;
-  final String fullAddress;
-  const Address(this.id, this.label, this.fullAddress);
+  final String addressType;
+  final String? recipientName;
+  final String? recipientPhone;
+  final String addressLine1;
+  final String? addressLine2;
+  final String? landmark;
+  final String city;
+  final String state;
+  final String country;
+  final String postalCode;
+  final bool isDefault;
+
+  const Address({
+    required this.id,
+    required this.label,
+    this.addressType = 'home',
+    this.recipientName,
+    this.recipientPhone,
+    required this.addressLine1,
+    this.addressLine2,
+    this.landmark,
+    required this.city,
+    required this.state,
+    this.country = 'India',
+    required this.postalCode,
+    this.isDefault = false,
+  });
+
+  /// Single-line summary for display in cards/lists.
+  String get fullAddress {
+    final parts = [
+      addressLine1,
+      if (addressLine2 != null && addressLine2!.isNotEmpty) addressLine2,
+      if (landmark != null && landmark!.isNotEmpty) 'near $landmark',
+      city,
+      '$state $postalCode',
+    ];
+    return parts.join(', ');
+  }
 
   factory Address.fromJson(Map<String, dynamic> json) {
     return Address(
-      json['id'],
-      json['label'] as String? ?? 'Home',
-      '${json['address_line_1']}, ${json['city']}, ${json['state']} ${json['postal_code']}',
+      id: json['id'],
+      label: json['label'] as String? ?? 'Home',
+      addressType: json['address_type'] as String? ?? 'home',
+      recipientName: json['recipient_name'] as String?,
+      recipientPhone: json['recipient_phone'] as String?,
+      addressLine1: json['address_line_1'] as String? ?? '',
+      addressLine2: json['address_line_2'] as String?,
+      landmark: json['landmark'] as String?,
+      city: json['city'] as String? ?? '',
+      state: json['state'] as String? ?? '',
+      country: json['country'] as String? ?? 'India',
+      postalCode: json['postal_code'] as String? ?? '',
+      isDefault: json['is_default'] as bool? ?? false,
     );
   }
 }

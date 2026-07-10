@@ -75,9 +75,24 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _AddressFormSheet(
+      builder: (ctx) => AddressFormSheet(
         onSave: (data) async {
           await context.read<UserService>().addAddress(data);
+        },
+      ),
+    );
+    _load();
+  }
+
+  Future<void> _openEditForm(Address addr) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AddressFormSheet(
+        existing: addr,
+        onSave: (data) async {
+          await context.read<UserService>().updateAddress(addr.id, data);
         },
       ),
     );
@@ -159,7 +174,7 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
 
   Widget _addressCard(BuildContext context, Address addr) {
     final ty = context.ty;
-    final isHome = addr.label.toLowerCase() == 'home';
+    final isHome = addr.addressType == 'home';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -167,7 +182,7 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
       decoration: BoxDecoration(
         color: ty.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ty.line),
+        border: Border.all(color: addr.isDefault ? ty.saffron : ty.line, width: addr.isDefault ? 1.5 : 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,12 +200,37 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(addr.label, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
+                Row(
+                  children: [
+                    Text(addr.label, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
+                    if (addr.isDefault) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: ty.saffronSoft, borderRadius: BorderRadius.circular(6)),
+                        child: Text('DEFAULT', style: TyType.eyebrow(9, color: ty.saffron)),
+                      ),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 4),
-                Text(addr.fullAddress, style: TyType.sans(13, color: ty.ink2, height: 1.4)),
+                if (addr.recipientName != null)
+                  Text(addr.recipientName! + (addr.recipientPhone != null ? ' · ${addr.recipientPhone}' : ''),
+                      style: TyType.sans(12.5, color: ty.ink, weight: FontWeight.w600)),
+                Text(addr.addressLine1, style: TyType.sans(13, color: ty.ink2, height: 1.4)),
+                if (addr.addressLine2 != null && addr.addressLine2!.isNotEmpty)
+                  Text(addr.addressLine2!, style: TyType.sans(13, color: ty.ink2, height: 1.4)),
+                if (addr.landmark != null && addr.landmark!.isNotEmpty)
+                  Text('Near ${addr.landmark}', style: TyType.sans(12, color: ty.ink3, height: 1.4)),
+                Text('${addr.city}, ${addr.state} - ${addr.postalCode}', style: TyType.sans(13, color: ty.ink2, height: 1.4)),
                 const SizedBox(height: 12),
                 Row(
                   children: [
+                    GestureDetector(
+                      onTap: () => _openEditForm(addr),
+                      child: Text('Edit', style: TyType.sans(13, color: ty.saffron, weight: FontWeight.w700)),
+                    ),
+                    const SizedBox(width: 20),
                     GestureDetector(
                       onTap: () => _delete(addr.id),
                       child: Text('Remove', style: TyType.sans(13, color: ty.rose, weight: FontWeight.w700)),
@@ -206,26 +246,50 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
   }
 }
 
-class _AddressFormSheet extends StatefulWidget {
-  final Future<void> Function(Map<String, dynamic> data) onSave;
-  const _AddressFormSheet({required this.onSave});
-
-  @override
-  State<_AddressFormSheet> createState() => _AddressFormSheetState();
+/// Normalizes a 10-digit Indian mobile number to E.164 (+91XXXXXXXXXX),
+/// which is what the backend's phone validator requires. Leaves already
+/// E.164-formatted numbers untouched.
+String? normalizeIndianPhone(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+  if (trimmed.startsWith('+')) return trimmed;
+  final digitsOnly = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digitsOnly.length == 10) return '+91$digitsOnly';
+  if (digitsOnly.length == 12 && digitsOnly.startsWith('91')) return '+$digitsOnly';
+  return '+$digitsOnly';
 }
 
-class _AddressFormSheetState extends State<_AddressFormSheet> {
-  final _line1Ctrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _stateCtrl = TextEditingController();
-  final _pinCtrl = TextEditingController();
-  String _label = 'Home';
+class AddressFormSheet extends StatefulWidget {
+  final Future<void> Function(Map<String, dynamic> data) onSave;
+  final Address? existing;
+  const AddressFormSheet({super.key, required this.onSave, this.existing});
+
+  @override
+  State<AddressFormSheet> createState() => _AddressFormSheetState();
+}
+
+class _AddressFormSheetState extends State<AddressFormSheet> {
+  late final _recipientNameCtrl = TextEditingController(text: widget.existing?.recipientName ?? '');
+  late final _recipientPhoneCtrl = TextEditingController(text: widget.existing?.recipientPhone ?? '');
+  late final _line1Ctrl = TextEditingController(text: widget.existing?.addressLine1 ?? '');
+  late final _line2Ctrl = TextEditingController(text: widget.existing?.addressLine2 ?? '');
+  late final _landmarkCtrl = TextEditingController(text: widget.existing?.landmark ?? '');
+  late final _cityCtrl = TextEditingController(text: widget.existing?.city ?? '');
+  late final _stateCtrl = TextEditingController(text: widget.existing?.state ?? '');
+  late final _pinCtrl = TextEditingController(text: widget.existing?.postalCode ?? '');
+  late String _label = widget.existing?.label ?? 'Home';
   bool _saving = false;
   String? _error;
 
+  static const _labelToType = {'Home': 'home', 'Work': 'work', 'Other': 'other'};
+
   @override
   void dispose() {
+    _recipientNameCtrl.dispose();
+    _recipientPhoneCtrl.dispose();
     _line1Ctrl.dispose();
+    _line2Ctrl.dispose();
+    _landmarkCtrl.dispose();
     _cityCtrl.dispose();
     _stateCtrl.dispose();
     _pinCtrl.dispose();
@@ -238,14 +302,20 @@ class _AddressFormSheetState extends State<_AddressFormSheet> {
     final state = _stateCtrl.text.trim();
     final pin = _pinCtrl.text.trim();
     if (line1.isEmpty || city.isEmpty || state.isEmpty || pin.isEmpty) {
-      setState(() => _error = 'Please fill in all fields.');
+      setState(() => _error = 'Please fill in address line, city, state, and PIN code.');
       return;
     }
     setState(() { _saving = true; _error = null; });
     try {
       await widget.onSave({
+        'address_type': _labelToType[_label] ?? 'other',
         'label': _label,
+        if (_recipientNameCtrl.text.trim().isNotEmpty) 'recipient_name': _recipientNameCtrl.text.trim(),
+        if (_recipientPhoneCtrl.text.trim().isNotEmpty)
+          'recipient_phone': normalizeIndianPhone(_recipientPhoneCtrl.text.trim()),
         'address_line_1': line1,
+        if (_line2Ctrl.text.trim().isNotEmpty) 'address_line_2': _line2Ctrl.text.trim(),
+        if (_landmarkCtrl.text.trim().isNotEmpty) 'landmark': _landmarkCtrl.text.trim(),
         'city': city,
         'state': state,
         'postal_code': pin,
@@ -283,7 +353,7 @@ class _AddressFormSheetState extends State<_AddressFormSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            Text('Add Address', style: TyType.display(22, color: ty.ink)),
+            Text(widget.existing != null ? 'Edit Address' : 'Add Address', style: TyType.display(22, color: ty.ink)),
             const SizedBox(height: 20),
             // Label picker
             Row(
@@ -304,7 +374,19 @@ class _AddressFormSheetState extends State<_AddressFormSheet> {
               )).toList(),
             ),
             const SizedBox(height: 16),
-            _field(ty, 'ADDRESS LINE 1', 'e.g. 42 Gandhi Road', _line1Ctrl),
+            Row(
+              children: [
+                Expanded(child: _field(ty, 'RECIPIENT NAME', 'Who receives at this address?', _recipientNameCtrl)),
+                const SizedBox(width: 12),
+                Expanded(child: _field(ty, 'RECIPIENT PHONE', '10-digit mobile', _recipientPhoneCtrl, type: TextInputType.phone)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _field(ty, 'ADDRESS LINE 1', 'House/flat no., building, street', _line1Ctrl),
+            const SizedBox(height: 12),
+            _field(ty, 'ADDRESS LINE 2 (OPTIONAL)', 'Area, sector, colony', _line2Ctrl),
+            const SizedBox(height: 12),
+            _field(ty, 'LANDMARK (OPTIONAL)', 'e.g. Near City Park', _landmarkCtrl),
             const SizedBox(height: 12),
             Row(
               children: [

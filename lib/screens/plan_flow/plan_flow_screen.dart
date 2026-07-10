@@ -13,6 +13,7 @@ import '../../data/services/user_service.dart';
 import '../../data/services/booking_service.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
 import 'package:tyohaar/screens/send_invitations_screen.dart';
+import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
 import '../../widgets/avatar.dart';
 import '../../widgets/emblem.dart';
 import '../../widgets/photo_placeholder.dart';
@@ -583,7 +584,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _AddressFormSheet(
+      builder: (ctx) => AddressFormSheet(
         onSave: (data) async {
           final addr = await _userService.addAddress(data);
           if (mounted) setState(() { _addresses = [..._addresses, addr]; _address = addr; });
@@ -714,7 +715,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           for (final c in selected) {
             final phone = c.phones.first.number;
             if (_plannedGuests.any((g) => g.phone == phone)) continue;
-            _plannedGuests.add(PlannedGuest(name: c.displayName, phone: phone));
+            _plannedGuests.add(PlannedGuest(name: c.displayName ?? 'Guest', phone: phone));
           }
         });
       }
@@ -1205,150 +1206,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       );
 }
 
-class _AddressFormSheet extends StatefulWidget {
-  final Future<void> Function(Map<String, dynamic> data) onSave;
-  const _AddressFormSheet({required this.onSave});
-
-  @override
-  State<_AddressFormSheet> createState() => _AddressFormSheetState();
-}
-
-class _AddressFormSheetState extends State<_AddressFormSheet> {
-  final _line1Ctrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _stateCtrl = TextEditingController();
-  final _pinCtrl = TextEditingController();
-  String _label = 'Home';
-  bool _saving = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _line1Ctrl.dispose();
-    _cityCtrl.dispose();
-    _stateCtrl.dispose();
-    _pinCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final line1 = _line1Ctrl.text.trim();
-    final city = _cityCtrl.text.trim();
-    final state = _stateCtrl.text.trim();
-    final pin = _pinCtrl.text.trim();
-    if (line1.isEmpty || city.isEmpty || state.isEmpty || pin.isEmpty) {
-      setState(() => _error = 'Please fill in all fields.');
-      return;
-    }
-    setState(() { _saving = true; _error = null; });
-    try {
-      await widget.onSave({
-        'label': _label,
-        'address_line_1': line1,
-        'city': city,
-        'state': state,
-        'postal_code': pin,
-        'country': 'India',
-      });
-      if (mounted) Navigator.pop(context);
-    } catch (_) {
-      if (mounted) setState(() { _saving = false; _error = 'Could not save. Please try again.'; });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ty = context.ty;
-    return Container(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 32),
-      decoration: BoxDecoration(
-        color: ty.paper,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: ty.line, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text('Add Address', style: TyType.display(22, color: ty.ink)),
-            const SizedBox(height: 20),
-            Row(
-              children: ['Home', 'Work', 'Other'].map((l) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => setState(() => _label = l),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _label == l ? ty.saffron : ty.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _label == l ? ty.saffron : ty.line),
-                    ),
-                    child: Text(l, style: TyType.sans(13, color: _label == l ? Colors.white : ty.ink, weight: FontWeight.w600)),
-                  ),
-                ),
-              )).toList(),
-            ),
-            const SizedBox(height: 16),
-            _addrField(ty, 'ADDRESS LINE 1', 'e.g. 42 Gandhi Road', _line1Ctrl),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: _addrField(ty, 'CITY', 'Jaipur', _cityCtrl)),
-                const SizedBox(width: 12),
-                Expanded(child: _addrField(ty, 'STATE', 'Rajasthan', _stateCtrl)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _addrField(ty, 'PIN CODE', '302001', _pinCtrl, type: TextInputType.number),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: TyType.sans(13, color: ty.rose)),
-            ],
-            const SizedBox(height: 24),
-            TyButton(_saving ? 'Saving...' : 'Save Address', full: true, enabled: !_saving, onTap: _save),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _addrField(TyColors ty, String label, String hint, TextEditingController ctrl,
-      {TextInputType type = TextInputType.text}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TyType.eyebrow(10, color: ty.ink3)),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          decoration: BoxDecoration(
-            color: ty.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: ty.line),
-          ),
-          child: TextField(
-            controller: ctrl,
-            keyboardType: type,
-            style: TyType.sans(14, color: ty.ink),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TyType.sans(14, color: ty.ink3),
-              border: InputBorder.none,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
+// The address add/edit form now lives in manage_address_screen.dart
+// (AddressFormSheet) and is reused here to avoid two divergent copies.
 
 class _ContactPickerSheet extends StatefulWidget {
   final List<Contact> contacts;
@@ -1410,7 +1269,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
                   return CheckboxListTile(
                     value: on,
                     activeColor: ty.saffron,
-                    title: Text(c.displayName, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                    title: Text(c.displayName ?? 'Unknown', style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
                     subtitle: Text(c.phones.first.number, style: TyType.sans(12, color: ty.ink2)),
                     onChanged: (v) => setState(() {
                       if (v == true) _selected.add(c); else _selected.remove(c);
