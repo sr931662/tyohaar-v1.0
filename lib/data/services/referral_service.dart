@@ -1,4 +1,5 @@
 import '../api_client.dart';
+import '../models.dart' show asDouble;
 
 class ReferralCode {
   final String code;
@@ -32,7 +33,7 @@ class ReferralStats {
     return ReferralStats(
       totalReferrals: json['signed_up_count'] as int? ?? 0,
       successfulReferrals: json['converted_count'] as int? ?? 0,
-      totalEarned: (json['total_earned'] ?? 0).toDouble(),
+      totalEarned: asDouble(json['total_earned']),
       pendingRewards: 0, // not in ReferralStatsResponse
     );
   }

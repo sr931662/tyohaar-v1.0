@@ -1,4 +1,5 @@
 import '../api_client.dart';
+import '../models.dart' show asDouble;
 
 class MembershipPlan {
   final String id;
@@ -59,13 +60,13 @@ class MembershipPlan {
       slug: json['slug'] as String? ?? '',
       tagline: json['tagline'] as String?,
       description: json['description'] as String? ?? '',
-      monthlyPrice: ((json['monthly_price'] ?? 0) as num).toDouble(),
-      yearlyPrice: ((json['yearly_price'] ?? 0) as num).toDouble(),
+      monthlyPrice: asDouble(json['monthly_price']),
+      yearlyPrice: asDouble(json['yearly_price']),
       validityDays: json['validity_days'] as int?,
-      cashbackPercentage: ((json['cashback_percentage'] ?? 0) as num).toDouble(),
-      discountPercentage: ((json['discount_percentage'] ?? 0) as num).toDouble(),
-      rewardMultiplier: ((json['reward_multiplier'] ?? 1) as num).toDouble(),
-      walletBonus: ((json['wallet_bonus'] ?? 0) as num).toDouble(),
+      cashbackPercentage: asDouble(json['cashback_percentage']),
+      discountPercentage: asDouble(json['discount_percentage']),
+      rewardMultiplier: json['reward_multiplier'] == null ? 1.0 : asDouble(json['reward_multiplier']),
+      walletBonus: asDouble(json['wallet_bonus']),
       freeInvitationsCount: (json['free_invitations_count'] ?? 0) as int,
       priorityBooking: json['priority_booking'] as bool? ?? false,
       hasExclusivePackages: json['has_exclusive_packages'] as bool? ?? false,
@@ -75,7 +76,7 @@ class MembershipPlan {
       canDowngradeToTier: json['can_downgrade_to_tier'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       displayOrder: (json['display_order'] ?? 0) as int,
-      annualSavings: ((json['annual_savings'] ?? 0) as num).toDouble(),
+      annualSavings: asDouble(json['annual_savings']),
     );
   }
 }

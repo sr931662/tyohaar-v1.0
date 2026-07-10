@@ -3,6 +3,15 @@ import 'package:flutter/material.dart';
 /// Production-ready data models for the Tyohaar app.
 /// Mapped to FastAPI backend schemas (server/app/schemas/*/response.py).
 
+/// Money/decimal fields are serialized as strings by the backend (e.g.
+/// "1500.00") to avoid float precision loss — never call `.toDouble()`
+/// directly on a JSON value that might be a String.
+double asDouble(dynamic value) {
+  if (value == null) return 0.0;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString()) ?? 0.0;
+}
+
 // ---------------------------------------------------------------------------
 // USER  →  UserResponse
 // ---------------------------------------------------------------------------
@@ -383,7 +392,7 @@ class PackageItem {
       // Was: json['item_type'] — backend has no item_type field; unit is closest.
       unit: json['unit'] as String?,
       // Was: json['unit_price'] — backend sends base_price.
-      unitPrice: (json['base_price'] ?? 0).toDouble(),
+      unitPrice: asDouble(json['base_price']),
       quantity: json['quantity'] as int? ?? 1,
       isMandatory: isMandatory,
       // Was: json['is_optional'] — backend sends is_mandatory (inverted).
@@ -448,9 +457,9 @@ class Booking {
       celebrationId: json['celebration_id'],
       status: json['booking_status'],
       paymentStatus: json['payment_status'] as String? ?? 'pending',
-      totalAmount: (json['total_amount'] ?? 0).toDouble(),
-      amountPaid: (json['amount_paid'] ?? 0).toDouble(),
-      amountDue: (json['amount_due'] ?? 0).toDouble(),
+      totalAmount: asDouble(json['total_amount']),
+      amountPaid: asDouble(json['amount_paid']),
+      amountDue: asDouble(json['amount_due']),
       scheduledDate: DateTime.parse(json['scheduled_date']),
       packageId: json['package_id'] as String?,
       // Backend does not nest the package object in BookingResponse.
@@ -564,7 +573,7 @@ class BudgetExpense {
       category: category,
       title: json['title'] as String? ?? '',
       // Was: estimated_amount / actual_amount — backend sends single 'amount'.
-      amount: (json['amount'] ?? 0).toDouble(),
+      amount: asDouble(json['amount']),
       expenseType: json['expense_type'] as String? ?? 'estimated',
       isPaid: json['is_paid'] as bool? ?? false,
       vendorName: json['vendor_name'] as String?,

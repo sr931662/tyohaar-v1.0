@@ -22,9 +22,9 @@ class Budget {
     return Budget(
       id: json['id'] as String,
       celebrationId: json['celebration_id'] as String,
-      totalPlanned: (json['total_planned'] ?? 0).toDouble(),
-      totalSpent: (json['total_spent'] ?? 0).toDouble(),
-      remaining: (json['remaining'] ?? 0).toDouble(),
+      totalPlanned: asDouble(json['total_planned']),
+      totalSpent: asDouble(json['total_spent']),
+      remaining: asDouble(json['remaining']),
       status: json['lifecycle_status'] as String? ?? 'draft',
     );
   }
