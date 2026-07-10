@@ -175,21 +175,6 @@ class MembershipService(BaseService):
             await uow.commit()
             return transitioned
 
-    # ── Wallet bonus (post-commit side effect) ───────────────────────────────
-
-    async def _credit_wallet_bonus(self, user_id: UUID, plan: MembershipPlan, occasion: str) -> None:
-        from app.services.wallets.service import WalletService
-
-        try:
-            await WalletService(self._session_factory).credit_wallet(
-                user_id=user_id,
-                amount=plan.wallet_bonus,
-                description=f"{occasion} bonus — {plan.name}",
-                reference_type="membership",
-            )
-        except Exception:
-            logger.exception("Wallet bonus credit failed for user=%s plan=%s", user_id, plan.id)
-
     # ── Plans ─────────────────────────────────────────────────────────────────
 
     async def list_plans(
@@ -286,9 +271,6 @@ class MembershipService(BaseService):
             })
             await uow.commit()
             result = await self._to_membership_response(uow, membership, plan=plan)
-
-        if plan.wallet_bonus > Decimal("0.00"):
-            await self._credit_wallet_bonus(user_id, plan, occasion="Welcome")
 
         return result
 
@@ -525,9 +507,6 @@ class MembershipService(BaseService):
             })
             await uow.commit()
             result = await self._to_membership_response(uow, new_membership, plan=new_plan)
-
-        if is_upgrade and new_plan.wallet_bonus > Decimal("0.00"):
-            await self._credit_wallet_bonus(user_id, new_plan, occasion="Upgrade")
 
         return result
 

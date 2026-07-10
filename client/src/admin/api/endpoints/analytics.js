@@ -21,9 +21,6 @@ export const analyticsApi = {
   payments: (params) =>
     apiClient.get(`${BASE}/payments`, { params }).then(extractData),
 
-  wallets: (params) =>
-    apiClient.get(`${BASE}/wallets`, { params }).then(extractData),
-
   support: (params) =>
     apiClient.get(`${BASE}/support`, { params }).then(extractData),
 

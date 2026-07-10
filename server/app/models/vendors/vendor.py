@@ -52,7 +52,6 @@ if TYPE_CHECKING:
     from app.models.vendors.vendor_service import VendorService
     from app.models.vendors.vendor_settlement import VendorSettlement
     from app.models.vendors.vendor_team import VendorTeamMember
-    from app.models.vendors.vendor_wallet import VendorWallet
 
 
 class Vendor(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, AuditMixin, NotesMixin, MetadataMixin, Base):
@@ -300,14 +299,6 @@ class Vendor(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, AuditMixin, N
     reviews: Mapped[list[VendorReview]] = relationship(
         "VendorReview",
         back_populates="vendor",
-        lazy="noload",
-    )
-
-    wallet: Mapped[VendorWallet] = relationship(
-        "VendorWallet",
-        back_populates="vendor",
-        uselist=False,
-        cascade="all, delete-orphan",
         lazy="noload",
     )
 

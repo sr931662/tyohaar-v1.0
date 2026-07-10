@@ -38,7 +38,6 @@ from app.services.referrals.service import ReferralService
 from app.services.support.service import SupportService
 from app.services.users.service import UserService
 from app.services.vendors.service import VendorService
-from app.services.wallets.service import WalletService
 
 
 # ── Unit of Work ──────────────────────────────────────────────────────────────
@@ -92,11 +91,6 @@ def get_booking_service() -> BookingService:
 def get_payment_service() -> PaymentService:
     """Dependency factory — returns a PaymentService bound to the default session factory."""
     return PaymentService(AsyncSessionLocal)
-
-
-def get_wallet_service() -> WalletService:
-    """Dependency factory — returns a WalletService bound to the default session factory."""
-    return WalletService(AsyncSessionLocal)
 
 
 def get_membership_service() -> MembershipService:
@@ -154,7 +148,6 @@ OccasionServiceDep = Annotated[OccasionService, Depends(get_occasion_service)]
 PackageServiceDep = Annotated[PackageService, Depends(get_package_service)]
 BookingServiceDep = Annotated[BookingService, Depends(get_booking_service)]
 PaymentServiceDep = Annotated[PaymentService, Depends(get_payment_service)]
-WalletServiceDep = Annotated[WalletService, Depends(get_wallet_service)]
 MembershipServiceDep = Annotated[MembershipService, Depends(get_membership_service)]
 NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
 SupportServiceDep = Annotated[SupportService, Depends(get_support_service)]

@@ -5,7 +5,7 @@ export { vendorsApi } from './endpoints/vendors';
 export { customersApi } from './endpoints/customers';
 export { bookingsApi } from './endpoints/bookings';
 export { packagesApi } from './endpoints/packages';
-export { paymentsApi, walletsApi } from './endpoints/payments';
+export { paymentsApi } from './endpoints/payments';
 export { membershipsApi } from './endpoints/memberships';
 export { notificationsApi } from './endpoints/notifications';
 export { occasionsApi } from './endpoints/occasions';

@@ -28,7 +28,6 @@ from app.routes.referrals.routes import router as referrals_router
 from app.routes.support.routes import router as support_router
 from app.routes.users.routes import router as users_router
 from app.routes.vendors.routes import router as vendors_router
-from app.routes.wallets.routes import router as wallets_router
 
 all_routers = [
     auth_router,
@@ -38,7 +37,6 @@ all_routers = [
     packages_router,
     bookings_router,
     payments_router,
-    wallets_router,
     memberships_router,
     notifications_router,
     support_router,
@@ -60,7 +58,6 @@ __all__ = [
     "packages_router",
     "bookings_router",
     "payments_router",
-    "wallets_router",
     "memberships_router",
     "notifications_router",
     "support_router",

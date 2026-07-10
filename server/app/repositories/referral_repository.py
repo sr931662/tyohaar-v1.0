@@ -309,14 +309,6 @@ class ReferralRewardRepository(BaseRepository[ReferralReward]):
             ReferralReward.expires_at < now,
         )
 
-    # ── Wallet Linkage ────────────────────────────────────────────────────────
-
-    async def find_by_wallet(self, wallet_id: uuid.UUID) -> list[ReferralReward]:
-        return await self.find_many(
-            ReferralReward.wallet_id == wallet_id,
-            order_by=ReferralReward.created_at.desc(),
-        )
-
     async def find_with_referral(self, reward_id: uuid.UUID) -> ReferralReward | None:
         return await self.get_by_id(
             reward_id,

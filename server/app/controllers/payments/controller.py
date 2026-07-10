@@ -13,7 +13,7 @@ from fastapi import Depends, Header, Query, Request
 from app.core.current_user import CurrentUserDep
 from app.core.dependencies import PaymentServiceDep
 from app.core.pagination import CursorPaginationParams, get_cursor_pagination
-from app.core.permissions import AdminDep
+from app.core.permissions import AdminDep, CurrentVendorIdDep
 from app.models.enums import UserRole
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
@@ -31,7 +31,7 @@ from app.services.payments.service import (
     PaymentSplitCreate,
     PaymentSplitResponse,
     PaymentTransactionResponse,
-    WalletTopupInitResponse,
+    VendorEarningsSummary,
 )
 
 
@@ -54,25 +54,12 @@ async def initiate_payment(
     return SuccessResponse(data=result, message="Payment initiated.")
 
 
-async def initiate_wallet_payment(
-    booking_id: uuid.UUID,
-    current_user: CurrentUserDep,
+async def get_vendor_earnings(
+    vendor_id: CurrentVendorIdDep,
     service: PaymentServiceDep,
-    amount: Decimal = Query(...),
-) -> SuccessResponse[PaymentResponse]:
-    result = await service.initiate_wallet_payment(
-        booking_id=booking_id, customer_id=current_user.id, amount=amount
-    )
-    return SuccessResponse(data=result, message="Wallet payment completed.")
-
-
-async def initiate_wallet_topup(
-    current_user: CurrentUserDep,
-    service: PaymentServiceDep,
-    amount: Decimal = Query(...),
-) -> SuccessResponse[WalletTopupInitResponse]:
-    result = await service.initiate_wallet_topup(customer_id=current_user.id, amount=amount)
-    return SuccessResponse(data=result, message="Wallet top-up order created.")
+) -> SuccessResponse[VendorEarningsSummary]:
+    result = await service.get_vendor_earnings(vendor_id=vendor_id)
+    return SuccessResponse(data=result, message="Earnings retrieved.")
 
 
 async def handle_webhook(

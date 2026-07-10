@@ -23,7 +23,6 @@ class AutomationRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         conditions     = {"booking_value_gte": 5000}
         actions        = [
             {"type": "generate_invoice"},
-            {"type": "wallet_settlement"},
             {"type": "send_notification", "template": "review_request"},
         ]
     """

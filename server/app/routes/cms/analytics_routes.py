@@ -22,7 +22,6 @@ from app.controllers.cms.analytics_controller import (
     get_user_metrics,
     get_users_chart,
     get_vendor_metrics,
-    get_wallet_metrics,
 )
 
 router = APIRouter(prefix="/analytics", tags=["CMS — Analytics"])
@@ -62,12 +61,6 @@ router.add_api_route(
     get_payment_metrics,
     methods=["GET"],
     summary="Payment metrics",
-)
-router.add_api_route(
-    "/wallets",
-    get_wallet_metrics,
-    methods=["GET"],
-    summary="Wallet metrics",
 )
 router.add_api_route(
     "/support",

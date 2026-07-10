@@ -30,27 +30,6 @@ class PaymentOrder {
   }
 }
 
-class WalletTopupOrder {
-  final String orderId;
-  final String currency;
-  final int amountPaise;
-
-  WalletTopupOrder({
-    required this.orderId,
-    required this.currency,
-    required this.amountPaise,
-  });
-
-  factory WalletTopupOrder.fromJson(Map<String, dynamic> json) {
-    final amount = (json['amount'] as num?)?.toDouble() ?? 0;
-    return WalletTopupOrder(
-      orderId: json['gateway_order_id'] as String,
-      currency: json['currency'] as String? ?? 'INR',
-      amountPaise: (amount * 100).round(),
-    );
-  }
-}
-
 class PaymentService {
   final ApiClient _api = ApiClient();
 
@@ -83,16 +62,5 @@ class PaymentService {
       'gateway_signature': signature,
       'gateway': 'razorpay',
     });
-  }
-
-  /// Creates a gateway order to top up the customer's wallet. There is no
-  /// verify step — the backend credits the wallet asynchronously once the
-  /// gateway webhook confirms the capture.
-  Future<WalletTopupOrder> initiateWalletTopup({required double amount}) async {
-    final response = await _api.dio.post(
-      'payments/wallet/topup',
-      queryParameters: {'amount': amount},
-    );
-    return WalletTopupOrder.fromJson(response.data['data'] as Map<String, dynamic>);
   }
 }

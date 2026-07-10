@@ -19,7 +19,7 @@ from app.services.payments.service import (
     PaymentInitResponse,
     PaymentSplitResponse,
     PaymentTransactionResponse,
-    WalletTopupInitResponse,
+    VendorEarningsSummary,
 )
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
@@ -108,17 +108,6 @@ router.add_api_route(
 )
 
 router.add_api_route(
-    "/bookings/{booking_id}/wallet",
-    ctrl.initiate_wallet_payment,
-    methods=["POST"],
-    response_model=SuccessResponse[PaymentResponse],
-    status_code=status.HTTP_201_CREATED,
-    summary="Pay with Wallet",
-    description="Debit the user's wallet balance to pay for a booking. Pass `amount` as a query parameter.",
-    operation_id="payments_initiate_wallet_payment",
-)
-
-router.add_api_route(
     "/bookings/{booking_id}/refunds",
     ctrl.list_refunds,
     methods=["GET"],
@@ -129,17 +118,17 @@ router.add_api_route(
     operation_id="payments_list_refunds",
 )
 
-# ── Wallet top-up ─────────────────────────────────────────────────────────────
+# ── Vendor earnings ───────────────────────────────────────────────────────────
 
 router.add_api_route(
-    "/wallet/topup",
-    ctrl.initiate_wallet_topup,
-    methods=["POST"],
-    response_model=SuccessResponse[WalletTopupInitResponse],
-    status_code=status.HTTP_201_CREATED,
-    summary="Initiate Wallet Top-up",
-    description="Create a gateway order to add funds to the authenticated user's wallet. Pass `amount` as a query parameter.",
-    operation_id="payments_initiate_wallet_topup",
+    "/vendor/earnings",
+    ctrl.get_vendor_earnings,
+    methods=["GET"],
+    response_model=SuccessResponse[VendorEarningsSummary],
+    status_code=status.HTTP_200_OK,
+    summary="Vendor Earnings",
+    description="Razorpay payment analytics scoped to the authenticated vendor's own bookings.",
+    operation_id="payments_get_vendor_earnings",
 )
 
 # ── Webhooks ──────────────────────────────────────────────────────────────────

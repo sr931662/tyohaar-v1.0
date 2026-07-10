@@ -421,26 +421,6 @@ class CouponApplicability(str, enum.Enum):
     MEMBERSHIP_ONLY = "membership_only"
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Wallets
-# ──────────────────────────────────────────────────────────────────────────────
-
-class WalletType(str, enum.Enum):
-    CUSTOMER = "customer"
-    VENDOR = "vendor"
-
-
-class WalletTransactionType(str, enum.Enum):
-    CREDIT = "credit"
-    DEBIT = "debit"
-    REFUND = "refund"
-    REWARD = "reward"
-    CASHBACK = "cashback"
-    WITHDRAWAL = "withdrawal"
-    TRANSFER = "transfer"
-    ADJUSTMENT = "adjustment"
-    EXPIRY = "expiry"               # Reward/credit balance expiring
-
 
 class RewardType(str, enum.Enum):
     REFERRAL_BONUS = "referral_bonus"
@@ -517,7 +497,6 @@ class NotificationType(str, enum.Enum):
     VENDOR_ASSIGNED = "vendor_assigned"
     RSVP_UPDATE = "rsvp_update"
     CELEBRATION_UPCOMING = "celebration_upcoming"
-    WALLET_CREDIT = "wallet_credit"
     MEMBERSHIP_EXPIRING = "membership_expiring"
     SUPPORT_UPDATE = "support_update"
 

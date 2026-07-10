@@ -12,8 +12,7 @@ Architecture:
 
 Built-in action types:
   send_notification, send_email, send_sms,
-  generate_invoice, wallet_credit, wallet_settlement,
-  assign_membership, log_event, trigger_webhook
+  generate_invoice, assign_membership, log_event, trigger_webhook
 """
 
 from __future__ import annotations
@@ -189,12 +188,6 @@ class AutomationService(BaseService):
                     from app.services.notifications.service import NotificationService
                     # Fire notification via service
                     result["output"] = {"notification_queued": True, "user_id": str(user_id)}
-
-            elif action_type == "wallet_credit":
-                amount = params.get("amount", 0)
-                user_id = payload.get("user_id") or params.get("user_id")
-                if user_id and amount:
-                    result["output"] = {"wallet_credited": True, "amount": amount, "user_id": str(user_id)}
 
             elif action_type == "generate_invoice":
                 booking_id = payload.get("booking_id") or params.get("booking_id")

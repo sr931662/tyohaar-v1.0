@@ -85,13 +85,6 @@ _OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
-        "name": "Wallets",
-        "description": (
-            "Wallet balance, transaction history, reward points, "
-            "peer transfers, and withdrawals."
-        ),
-    },
-    {
         "name": "Memberships",
         "description": (
             "Membership plans, subscriptions, upgrades, "
@@ -162,7 +155,7 @@ _OPENAPI_TAGS: list[dict] = [
         "name": "CMS — CRM",
         "description": (
             "360° vendor and customer CRM profiles: KYC, financials, "
-            "ratings, booking history, wallet, referrals, and support."
+            "ratings, booking history, referrals, and support."
         ),
     },
     {

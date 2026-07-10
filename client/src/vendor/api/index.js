@@ -148,15 +148,11 @@ export const vendorBookingsApi = {
     vendorClient.get(`/bookings/${bookingId}/status-history`).then(extractList),
 };
 
-// ── Wallet / Earnings ─────────────────────────────────────────────────────────
+// ── Earnings ──────────────────────────────────────────────────────────────────
 
-export const vendorWalletApi = {
+export const vendorEarningsApi = {
   get: () =>
-    vendorClient.get('/wallets/me').then(extractData),
-  listTransactions: ({ page, per_page, ...rest } = {}) =>
-    vendorClient.get('/wallets/me/transactions', { params: { page_size: per_page, ...rest } }).then(extractPaginated),
-  getRewardBalance: () =>
-    vendorClient.get('/wallets/me/rewards/balance').then(extractData),
+    vendorClient.get('/payments/vendor/earnings').then(extractData),
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────

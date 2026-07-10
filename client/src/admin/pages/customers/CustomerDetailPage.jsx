@@ -54,8 +54,8 @@ export default function CustomerDetailPage() {
           <div className="admin-metric-value">{formatCurrency(fin.total_spent_lifetime ?? 0)}</div>
         </div>
         <div className="admin-metric-card">
-          <div className="admin-metric-label">Wallet Balance</div>
-          <div className="admin-metric-value">{formatCurrency(fin.wallet_balance ?? 0)}</div>
+          <div className="admin-metric-label">Avg Booking Value</div>
+          <div className="admin-metric-value">{formatCurrency(fin.avg_booking_value ?? 0)}</div>
         </div>
         <div className="admin-metric-card">
           <div className="admin-metric-label">Membership</div>

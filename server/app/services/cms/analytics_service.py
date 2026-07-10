@@ -50,7 +50,6 @@ from app.schemas.cms.analytics import (
     TimeSeriesPoint,
     UserMetrics,
     VendorMetrics,
-    WalletMetrics,
 )
 from app.services.base import BaseService
 
@@ -369,45 +368,6 @@ class AnalyticsService(BaseService):
             total_refunded=Decimal(str(refund_vol)).quantize(Decimal("0.01")),
             gateway_success_rate=round(success_count / max(total_txn, 1) * 100, 2),
             avg_transaction_value=Decimal(str(avg_txn)).quantize(Decimal("0.01")),
-        )
-
-    # ── Wallets ───────────────────────────────────────────────────────────────
-
-    async def _get_wallet_metrics(self, session: AsyncSession) -> WalletMetrics:
-        from app.models.wallets.wallet import Wallet
-        from app.models.wallets.transaction import WalletTransaction
-
-        wallet_rows = await self._rows(
-            session,
-            select(
-                Wallet.wallet_status,
-                func.count().label("cnt"),
-                func.coalesce(func.sum(Wallet.available_balance), 0).label("bal"),
-            ).group_by(Wallet.wallet_status),
-        )
-        total_wallets = sum(r.cnt for r in wallet_rows)
-        active_wallets = sum(r.cnt for r in wallet_rows if r.wallet_status == "ACTIVE")
-        frozen_wallets = sum(r.cnt for r in wallet_rows if r.wallet_status == "FROZEN")
-        total_balance = sum(r.bal for r in wallet_rows)
-
-        tx_rows = await self._rows(
-            session,
-            select(
-                WalletTransaction.transaction_type,
-                func.coalesce(func.sum(WalletTransaction.amount), 0).label("vol"),
-            ).group_by(WalletTransaction.transaction_type),
-        )
-        tx_map = {r.transaction_type: r.vol for r in tx_rows}
-
-        return WalletMetrics(
-            total_wallets=total_wallets,
-            active_wallets=active_wallets,
-            frozen_wallets=frozen_wallets,
-            total_balance=Decimal(str(total_balance)).quantize(Decimal("0.01")),
-            total_credits_issued=Decimal(str(tx_map.get("CREDIT", 0))).quantize(Decimal("0.01")),
-            total_debits=Decimal(str(tx_map.get("DEBIT", 0))).quantize(Decimal("0.01")),
-            total_rewards_issued=Decimal(str(tx_map.get("REWARD", 0))).quantize(Decimal("0.01")),
-            total_cashback_issued=Decimal(str(tx_map.get("CASHBACK", 0))).quantize(Decimal("0.01")),
         )
 
     # ── Memberships ───────────────────────────────────────────────────────────
@@ -1007,7 +967,6 @@ class AnalyticsService(BaseService):
             users = await _safe(self._get_user_metrics(s), UserMetrics(total=0, active=0, suspended=0, banned=0, deactivated=0, new_today=0, new_this_week=0, new_this_month=0, daily_active=0, monthly_active=0, returning_users=0, retention_rate=0.0))
             vendors = await _safe(self._get_vendor_metrics(s), VendorMetrics(total=0, verified=0, pending_approval=0, rejected=0, suspended=0, inactive=0, new_this_month=0, avg_rating=0.0, avg_bookings_per_vendor=0.0, top_vendors=[]))
             payments = await _safe(self._get_payment_metrics(s), PaymentMetrics(total_transactions=0, successful=0, failed=0, refunded=0, pending=0, total_volume=_z, total_refunded=_z, gateway_success_rate=0.0, avg_transaction_value=_z))
-            wallets = await _safe(self._get_wallet_metrics(s), WalletMetrics(total_wallets=0, active_wallets=0, frozen_wallets=0, total_balance=_z, total_credits_issued=_z, total_debits=_z, total_rewards_issued=_z, total_cashback_issued=_z))
             geographic = await _safe(self._get_geographic_metrics(s), GeographicMetrics(top_cities=[], revenue_by_state=[], booking_heat=[]))
             platform_health = await _safe(self._get_platform_health(s), PlatformHealth(active_sessions=0, api_requests_today=0, database_status="unknown", avg_response_ms=0.0, error_rate_pct=0.0, uptime_pct=0.0))
             pending_actions = await _safe(self._get_pending_actions(s), {"vendor_approvals": 0, "booking_confirmations": 0, "support_tickets": 0, "media_moderation": 0})
@@ -1027,7 +986,6 @@ class AnalyticsService(BaseService):
             users=users,
             vendors=vendors,
             payments=payments,
-            wallets=wallets,
             memberships=memberships,
             referrals=referrals,
             occasions=occasions,
@@ -1077,14 +1035,6 @@ class AnalyticsService(BaseService):
                 return await self._get_payment_metrics(uow.session)
         except Exception:
             return PaymentMetrics(total_transactions=0, successful=0, failed=0, refunded=0, pending=0, total_volume=Decimal("0"), total_refunded=Decimal("0"), gateway_success_rate=0.0, avg_transaction_value=Decimal("0"))
-
-    async def get_wallet_metrics(self) -> WalletMetrics:
-        try:
-            async with self._uow() as uow:
-                return await self._get_wallet_metrics(uow.session)
-        except Exception:
-            _z = Decimal("0")
-            return WalletMetrics(total_wallets=0, active_wallets=0, frozen_wallets=0, total_balance=_z, total_credits_issued=_z, total_debits=_z, total_rewards_issued=_z, total_cashback_issued=_z)
 
     async def get_support_metrics(self) -> SupportMetrics:
         try:

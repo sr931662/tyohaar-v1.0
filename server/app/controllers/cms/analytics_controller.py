@@ -22,7 +22,6 @@ from app.schemas.cms.analytics import (
     TimeSeriesChart,
     UserMetrics,
     VendorMetrics,
-    WalletMetrics,
 )
 from app.services.cms.analytics_service import AnalyticsService
 
@@ -57,10 +56,6 @@ async def get_vendor_metrics(svc: AnalyticsServiceDep) -> SuccessResponse[Vendor
 
 async def get_payment_metrics(svc: AnalyticsServiceDep) -> SuccessResponse[PaymentMetrics]:
     return SuccessResponse(data=await svc.get_payment_metrics())
-
-
-async def get_wallet_metrics(svc: AnalyticsServiceDep) -> SuccessResponse[WalletMetrics]:
-    return SuccessResponse(data=await svc.get_wallet_metrics())
 
 
 async def get_support_metrics(svc: AnalyticsServiceDep) -> SuccessResponse[SupportMetrics]:

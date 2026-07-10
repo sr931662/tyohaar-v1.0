@@ -117,19 +117,6 @@ class PaymentMetrics(_Base):
     avg_transaction_value: Decimal
 
 
-# ── Wallets ───────────────────────────────────────────────────────────────────
-
-class WalletMetrics(_Base):
-    total_wallets: int
-    active_wallets: int
-    frozen_wallets: int
-    total_balance: Decimal
-    total_credits_issued: Decimal
-    total_debits: Decimal
-    total_rewards_issued: Decimal
-    total_cashback_issued: Decimal
-
-
 # ── Memberships ───────────────────────────────────────────────────────────────
 
 class MembershipMetrics(_Base):
@@ -251,7 +238,6 @@ class ExecutiveDashboard(_Base):
     users: UserMetrics
     vendors: VendorMetrics
     payments: PaymentMetrics
-    wallets: WalletMetrics
     memberships: MembershipMetrics
     referrals: ReferralMetrics
     occasions: OccasionMetrics

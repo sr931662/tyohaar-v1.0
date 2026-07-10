@@ -286,7 +286,7 @@ class ReferralService(BaseService):
         reward_id: UUID,
         admin_id: UUID,
     ) -> ReferralRewardResponse:
-        """Transition a PENDING reward to APPROVED and credit the wallet."""
+        """Transition a PENDING reward to APPROVED."""
         async with self._uow() as uow:
             reward = await validate_referral_reward_exists(reward_id, uow)
 
@@ -301,8 +301,6 @@ class ReferralService(BaseService):
                 "approved_at": now,
                 "approved_by_id": admin_id,
             })
-            # Cross-domain: credit corresponding wallet (stub)
-            # await uow.wallets.wallet.credit(reward.recipient_id, reward.monetary_value)
             await uow.commit()
 
         return ReferralRewardResponse.model_validate(reward)

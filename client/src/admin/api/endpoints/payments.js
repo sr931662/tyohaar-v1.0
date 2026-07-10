@@ -42,38 +42,3 @@ export const paymentsApi = {
   getInvoice: (invoiceId) =>
     apiClient.get(`/payments/invoices/${invoiceId}`).then(extractData),
 };
-
-export const walletsApi = {
-  get: () =>
-    apiClient.get('/wallets/me').then(extractData),
-
-  getById: (walletId) =>
-    apiClient.get(`/wallets/${walletId}`).then(extractData),
-
-  credit: (userId, params) =>
-    apiClient.post(`/wallets/admin/credit/${userId}`, null, { params }).then(extractData),
-
-  debit: (userId, params) =>
-    apiClient.post(`/wallets/admin/debit/${userId}`, null, { params }).then(extractData),
-
-  freeze: (walletId, reason) =>
-    apiClient.post(`/wallets/${walletId}/freeze`, null, { params: { reason } }).then(extractData),
-
-  unfreeze: (walletId) =>
-    apiClient.post(`/wallets/${walletId}/unfreeze`).then(extractData),
-
-  close: (walletId) =>
-    apiClient.post(`/wallets/${walletId}/close`).then(extractData),
-
-  listTransactions: (params) =>
-    apiClient.get('/wallets/me/transactions', { params }).then(extractPaginated),
-
-  awardReward: (userId, body) =>
-    apiClient.post(`/wallets/admin/rewards/${userId}`, body).then(extractData),
-
-  listRewards: (params) =>
-    apiClient.get('/wallets/me/rewards', { params }).then(extractPaginated),
-
-  activateReward: (rewardId) =>
-    apiClient.post(`/wallets/rewards/${rewardId}/activate`).then(extractData),
-};

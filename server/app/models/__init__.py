@@ -18,4 +18,3 @@ import app.models.referrals      # noqa: F401
 import app.models.support        # noqa: F401
 import app.models.users          # noqa: F401
 import app.models.vendors        # noqa: F401
-import app.models.wallets        # noqa: F401

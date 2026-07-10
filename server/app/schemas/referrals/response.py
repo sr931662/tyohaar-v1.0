@@ -86,10 +86,6 @@ class ReferralRewardResponse(IDSchema):
     amount: MoneyAmount = Field(description="Reward monetary value")
     currency: Currency = Field(description="Currency of the reward")
     reward_status: ReferralRewardStatus = Field(description="Current payout status")
-    wallet_id: uuid.UUID | None = Field(
-        default=None,
-        description="Wallet that was or will be credited",
-    )
     approved_at: datetime | None = Field(
         default=None,
         description="When the reward was approved",

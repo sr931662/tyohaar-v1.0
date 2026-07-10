@@ -23,7 +23,6 @@ from app.models.enums import (
     PaymentStatus,
     RefundStatus,
     TransactionType,
-    WalletTransactionType,
 )
 from app.models.payments.payment import PaymentGateway
 from app.models.payments.payment_attempt import PaymentAttemptStatus
@@ -39,7 +38,7 @@ from app.schemas.payments.response import (
 )
 from app.schemas.payments.filters import PaymentFilters
 from app.services.base import BaseService
-from app.services.exceptions import BusinessRuleError, ExternalServiceError, InsufficientBalanceError, NotFoundError
+from app.services.exceptions import BusinessRuleError, ExternalServiceError, NotFoundError
 from app.services.payments.exceptions import (
     CouponNotFoundError,
     InvalidGatewaySignatureError,
@@ -101,17 +100,6 @@ class PaymentSplitResponse:
 
 
 @dataclass
-class WalletTopupInitResponse:
-    """Data returned to the client to open Razorpay checkout for a wallet top-up."""
-
-    gateway_order_id: str
-    receipt: str
-    amount: Decimal
-    currency: str = "INR"
-    gateway: str = "razorpay"
-
-
-@dataclass
 class InvoiceResponse:
     """Minimal invoice response returned from the service."""
 
@@ -132,6 +120,34 @@ class PaymentTransactionResponse:
     amount: Decimal
     is_success: bool
     initiated_at: datetime
+
+
+@dataclass
+class VendorEarningsPayment:
+    """One payment row in a vendor's earnings/transaction history."""
+
+    id: uuid.UUID
+    payment_number: str
+    booking_id: uuid.UUID
+    amount: Decimal
+    currency: str
+    payment_status: str
+    payment_method: str | None
+    captured_at: datetime | None
+    created_at: datetime
+
+
+@dataclass
+class VendorEarningsSummary:
+    """
+    Razorpay-payment-derived earnings analytics for a single vendor,
+    scoped to that vendor's own bookings only (no platform-wide data).
+    """
+
+    total_collected: Decimal
+    pending_amount: Decimal
+    total_bookings_paid: int
+    payments: list[VendorEarningsPayment]
 
 
 def _generate_txn_number() -> str:
@@ -332,123 +348,6 @@ class PaymentService(BaseService):
             gateway=gateway_value,
         )
 
-    async def initiate_wallet_payment(
-        self,
-        booking_id: uuid.UUID,
-        customer_id: uuid.UUID,
-        amount: Decimal,
-    ) -> PaymentResponse:
-        """
-        Debit the customer wallet and create a completed payment record.
-
-        Uses SELECT FOR UPDATE on the wallet to prevent concurrent balance races.
-        """
-        validate_payment_amount(amount)
-        payment_number = generate_payment_reference()
-
-        async with self._uow() as uow:
-            # Acquire row lock on wallet
-            wallet = await uow.wallets.wallets.get_by_user_with_lock(customer_id)
-            if wallet is None:
-                raise NotFoundError("Wallet", f"user_id={customer_id}")
-
-            if wallet.available_balance < amount:
-                raise InsufficientBalanceError(
-                    f"Insufficient wallet balance. Available: ₹{wallet.available_balance}, required: ₹{amount}."
-                )
-
-            booking = await uow.bookings.bookings.get_by_id(booking_id)
-            if booking is None:
-                raise NotFoundError("Booking", str(booking_id))
-            if booking.customer_id != customer_id:
-                raise BusinessRuleError("Booking does not belong to this customer.")
-
-            balance_before = wallet.available_balance
-            balance_after = balance_before - amount
-            await uow.wallets.wallets.update(wallet, {
-                "available_balance": balance_after,
-                "lifetime_debits": wallet.lifetime_debits + amount,
-                "last_transaction_at": datetime.now(tz=timezone.utc),
-            })
-
-            payment = await uow.payments.payments.create({
-                "booking_id": booking_id,
-                "payer_id": customer_id,
-                "currency": wallet.currency,
-                "subtotal": amount,
-                "discount_amount": Decimal("0.00"),
-                "tax_amount": Decimal("0.00"),
-                "platform_fee": Decimal("0.00"),
-                "final_amount": amount,
-                "payment_status": PaymentStatus.COMPLETED,
-                "gateway": PaymentGateway.OFFLINE,
-                "payment_number": payment_number,
-                "captured_at": datetime.now(tz=timezone.utc),
-            })
-
-            await uow.wallets.transactions.create({
-                "wallet_id": wallet.id,
-                "transaction_type": WalletTransactionType.DEBIT,
-                "amount": amount,
-                "balance_before": balance_before,
-                "balance_after": balance_after,
-                "description": f"Wallet payment for booking {booking_id}",
-                "reference_type": "payment",
-                "reference_id": payment.id,
-            })
-
-            await uow.payments.ledger.create({
-                "transaction_number": _generate_txn_number(),
-                "transaction_type": TransactionType.PAYMENT,
-                "direction": TransactionDirection.CREDIT,
-                "amount": amount,
-                "currency": wallet.currency,
-                "payer_type": PartyType.CUSTOMER,
-                "payer_id": customer_id,
-                "payee_type": PartyType.PLATFORM,
-                "payee_id": None,
-                "booking_id": booking_id,
-                "payment_id": payment.id,
-                "description": f"Wallet payment for booking {booking_id}",
-                "transacted_at": datetime.now(tz=timezone.utc),
-            })
-
-            result = PaymentResponse.model_validate(payment)
-
-        return result
-
-    async def initiate_wallet_topup(
-        self,
-        customer_id: uuid.UUID,
-        amount: Decimal,
-    ) -> WalletTopupInitResponse:
-        """
-        Create a Razorpay order for a customer to add funds to their wallet.
-
-        No Payment row is created — Payment.booking_id is mandatory and a
-        top-up has no booking. handle_webhook() credits the wallet directly
-        on payment.captured, routed by the order's `notes`.
-        """
-        validate_payment_amount(amount)
-        receipt = generate_payment_reference()
-        client = _razorpay_client()
-        try:
-            order = client.order.create({
-                "amount": _rupees_to_paise(amount),
-                "currency": "INR",
-                "receipt": receipt,
-                "notes": {"type": "wallet_topup", "customer_id": str(customer_id)},
-            })
-        except Exception as exc:
-            logger.exception("Razorpay wallet top-up order creation failed for customer %s", customer_id)
-            raise ExternalServiceError("razorpay", "Could not create gateway order. Please try again.") from exc
-
-        return WalletTopupInitResponse(
-            gateway_order_id=order["id"],
-            receipt=receipt,
-            amount=amount,
-        )
-
     # ── Webhook Handling ──────────────────────────────────────────────────────
 
     async def handle_webhook(
@@ -493,12 +392,8 @@ class PaymentService(BaseService):
         gateway_order_id = entity.get("order_id")
         gateway_payment_id = entity.get("id")
         is_success = event == "payment.captured"
-        notes = entity.get("notes") or {}
-        is_wallet_topup = notes.get("type") == "wallet_topup" and bool(notes.get("customer_id"))
 
         now = datetime.now(tz=timezone.utc)
-        topup_credit: tuple[uuid.UUID, Decimal] | None = None
-        cashback_credit: tuple[uuid.UUID, Decimal] | None = None
         payment_outcome: tuple[uuid.UUID, bool, str, Decimal] | None = None
         referral_trigger: tuple[uuid.UUID, Decimal, uuid.UUID] | None = None
 
@@ -522,22 +417,13 @@ class PaymentService(BaseService):
                     "payment_id": payment.id if payment else None,
                     "is_signature_verified": True,
                     "raw_payload": body,
-                    "is_processed": payment is not None or is_wallet_topup,
+                    "is_processed": payment is not None,
                     "received_at": now,
-                    "processed_at": now if (payment is not None or is_wallet_topup) else None,
+                    "processed_at": now if payment is not None else None,
                 })
 
                 if payment is None:
-                    # Orders opened via initiate_wallet_topup() have no Payment
-                    # row (Payment.booking_id is mandatory) — credit the wallet
-                    # directly, routed by the gateway order's notes.
-                    if is_success and is_wallet_topup:
-                        topup_credit = (
-                            uuid.UUID(notes["customer_id"]),
-                            Decimal(str(entity.get("amount", 0))) / Decimal("100"),
-                        )
-                    else:
-                        logger.warning("Webhook for unknown gateway_order_id=%s", gateway_order_id)
+                    logger.warning("Webhook for unknown gateway_order_id=%s", gateway_order_id)
                 # Idempotency guard — a payment only transitions out of PENDING once
                 elif payment.payment_status in (PaymentStatus.COMPLETED, PaymentStatus.FAILED):
                     pass
@@ -579,14 +465,6 @@ class PaymentService(BaseService):
                     if booking is not None:
                         await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.COMPLETED})
 
-                    membership = await uow.memberships.memberships.get_active_for_user(payment.payer_id)
-                    if membership is not None:
-                        plan = await uow.memberships.plans.get_by_id(membership.plan_id)
-                        if plan is not None and plan.cashback_percentage > 0:
-                            cashback_amount = apply_membership_discount(payment.subtotal, plan.cashback_percentage)
-                            if cashback_amount > 0:
-                                cashback_credit = (payment.payer_id, cashback_amount)
-
                     payment_outcome = (payment.payer_id, True, payment.payment_number, payment.final_amount)
                     referral_trigger = (payment.payer_id, payment.final_amount, payment.booking_id)
                 else:
@@ -624,32 +502,6 @@ class PaymentService(BaseService):
             except Exception:
                 logger.exception("Referral reward trigger failed for referee=%s booking=%s", referee_id, booking_id)
 
-        from app.services.wallets.service import WalletService
-
-        if topup_credit is not None:
-            customer_id, amount = topup_credit
-            try:
-                await WalletService(self._session_factory).credit_wallet(
-                    user_id=customer_id,
-                    amount=amount,
-                    description="Wallet top-up via Razorpay",
-                    reference_type="razorpay_topup",
-                )
-            except Exception:
-                logger.exception("Wallet credit failed for razorpay top-up, customer=%s amount=%s", customer_id, amount)
-
-        if cashback_credit is not None:
-            customer_id, amount = cashback_credit
-            try:
-                await WalletService(self._session_factory).credit_wallet(
-                    user_id=customer_id,
-                    amount=amount,
-                    description="Membership cashback",
-                    reference_type="payment",
-                )
-            except Exception:
-                logger.exception("Cashback credit failed for customer=%s amount=%s", customer_id, amount)
-
     async def verify_payment(
         self,
         payment_id: uuid.UUID,
@@ -662,8 +514,6 @@ class PaymentService(BaseService):
         Client-side redirect verification (Razorpay checkout flow).
         Verifies the HMAC and marks the payment as COMPLETED.
         """
-        cashback_credit: tuple[uuid.UUID, Decimal] | None = None
-
         async with self._uow() as uow:
             payment = await validate_payment_exists(payment_id, uow)
 
@@ -719,14 +569,6 @@ class PaymentService(BaseService):
             if booking is not None:
                 await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.COMPLETED})
 
-            membership = await uow.memberships.memberships.get_active_for_user(payment.payer_id)
-            if membership is not None:
-                plan = await uow.memberships.plans.get_by_id(membership.plan_id)
-                if plan is not None and plan.cashback_percentage > 0:
-                    cashback_amount = apply_membership_discount(payment.subtotal, plan.cashback_percentage)
-                    if cashback_amount > 0:
-                        cashback_credit = (payment.payer_id, cashback_amount)
-
             payer_id = payment.payer_id
             payment_number = payment.payment_number
             final_amount = payment.final_amount
@@ -743,19 +585,6 @@ class PaymentService(BaseService):
             )
         except Exception:
             logger.exception("Referral reward trigger failed for referee=%s booking=%s", payer_id, booking_id)
-
-        if cashback_credit is not None:
-            customer_id, amount = cashback_credit
-            from app.services.wallets.service import WalletService
-            try:
-                await WalletService(self._session_factory).credit_wallet(
-                    user_id=customer_id,
-                    amount=amount,
-                    description="Membership cashback",
-                    reference_type="payment",
-                )
-            except Exception:
-                logger.exception("Cashback credit failed for customer=%s amount=%s", customer_id, amount)
 
         return result
 
@@ -789,6 +618,70 @@ class PaymentService(BaseService):
                 )
             items = [PaymentResponse.model_validate(p) for p in payments]
             return CursorPage(items=items, has_more=len(items) == limit)
+
+    async def get_vendor_earnings(self, vendor_id: uuid.UUID) -> VendorEarningsSummary:
+        """
+        Razorpay payment analytics scoped to one vendor's own bookings —
+        replaces the old vendor payout wallet, which never had a live
+        crediting path. Sourced directly from real Payment + Booking
+        records via the same booking_id set list_vendor_bookings() uses.
+        """
+        from app.models.payments.payment import Payment
+
+        async with self._uow() as uow:
+            assignments = await uow.bookings.assignments.find_by_vendor(vendor_id, limit=10000)
+            booking_ids = list({a.booking_id for a in assignments})
+            if not booking_ids:
+                return VendorEarningsSummary(
+                    total_collected=Decimal("0.00"),
+                    pending_amount=Decimal("0.00"),
+                    total_bookings_paid=0,
+                    payments=[],
+                )
+
+            payments = await uow.payments.payments.find_many(
+                Payment.booking_id.in_(booking_ids),
+                order_by=Payment.created_at.desc(),
+                limit=200,
+            )
+
+            total_collected = sum(
+                (p.final_amount for p in payments if p.payment_status == PaymentStatus.COMPLETED),
+                Decimal("0.00"),
+            )
+            pending_amount = sum(
+                (
+                    p.final_amount
+                    for p in payments
+                    if p.payment_status in (PaymentStatus.PENDING, PaymentStatus.INITIATED, PaymentStatus.PROCESSING)
+                ),
+                Decimal("0.00"),
+            )
+            bookings_paid = len({
+                p.booking_id for p in payments if p.payment_status == PaymentStatus.COMPLETED
+            })
+
+            return VendorEarningsSummary(
+                total_collected=total_collected,
+                pending_amount=pending_amount,
+                total_bookings_paid=bookings_paid,
+                payments=[
+                    VendorEarningsPayment(
+                        id=p.id,
+                        payment_number=p.payment_number,
+                        booking_id=p.booking_id,
+                        amount=p.final_amount,
+                        currency=p.currency.value if hasattr(p.currency, "value") else str(p.currency),
+                        payment_status=p.payment_status.value if hasattr(p.payment_status, "value") else str(p.payment_status),
+                        payment_method=(
+                            p.payment_method.value if p.payment_method and hasattr(p.payment_method, "value") else p.payment_method
+                        ),
+                        captured_at=p.captured_at,
+                        created_at=p.created_at,
+                    )
+                    for p in payments
+                ],
+            )
 
     async def get_payment_transactions(
         self, payment_id: uuid.UUID

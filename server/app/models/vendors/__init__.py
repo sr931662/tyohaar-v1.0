@@ -8,7 +8,6 @@ from app.models.vendors.vendor_bank import VendorBankAccount
 from app.models.vendors.vendor_availability import VendorWorkSchedule, VendorBlockedPeriod, VendorBlockType
 from app.models.vendors.vendor_team import VendorTeamMember, VendorTeamRole
 from app.models.vendors.vendor_review import VendorReview, ReviewModerationStatus
-from app.models.vendors.vendor_wallet import VendorWallet
 from app.models.vendors.vendor_settlement import VendorSettlement
 
 __all__ = [
@@ -27,6 +26,5 @@ __all__ = [
     "VendorTeamRole",
     "VendorReview",
     "ReviewModerationStatus",
-    "VendorWallet",
     "VendorSettlement",
 ]

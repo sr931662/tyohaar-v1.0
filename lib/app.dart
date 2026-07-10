@@ -10,7 +10,6 @@ import 'data/auth_manager.dart';
 import 'data/services/user_service.dart';
 import 'data/services/package_service.dart';
 import 'data/services/booking_service.dart';
-import 'data/services/wallet_service.dart';
 import 'data/services/celebration_service.dart';
 import 'data/services/media_service.dart';
 import 'data/services/auth_service.dart';
@@ -39,7 +38,6 @@ class TyohaarApp extends StatelessWidget {
         Provider(create: (_) => AuthService()),
         Provider(create: (_) => PackageService()),
         Provider(create: (_) => BookingService()),
-        Provider(create: (_) => WalletService()),
         Provider(create: (_) => CelebrationService()),
         Provider(create: (_) => MediaService()),
         Provider(create: (_) => NotificationService()),

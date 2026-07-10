@@ -29,7 +29,6 @@ from app.models.mixins import AuditMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.vendors.vendor import Vendor
-    from app.models.vendors.vendor_wallet import VendorWallet
 
 
 class VendorSettlement(UUIDPrimaryKeyMixin, TimestampMixin, AuditMixin, Base):
@@ -82,10 +81,10 @@ class VendorSettlement(UUIDPrimaryKeyMixin, TimestampMixin, AuditMixin, Base):
         nullable=False,
     )
 
-    wallet_id: Mapped[uuid.UUID] = mapped_column(
+    wallet_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
-        ForeignKey("vendor_wallets.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
+        comment="Legacy reference to the now-removed vendor wallet ledger. No longer an FK.",
     )
 
     booking_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -198,7 +197,6 @@ class VendorSettlement(UUIDPrimaryKeyMixin, TimestampMixin, AuditMixin, Base):
     # ── Relationships ─────────────────────────────────────────────────────────
 
     vendor: Mapped[Vendor] = relationship("Vendor", back_populates="settlements")
-    wallet: Mapped[VendorWallet] = relationship("VendorWallet", back_populates="settlements")
 
     def __repr__(self) -> str:
         return (

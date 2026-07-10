@@ -24,7 +24,7 @@ TRIGGER_EVENTS = [
 
 ACTION_TYPES = [
     "send_notification", "send_email", "send_sms",
-    "generate_invoice", "wallet_credit", "wallet_settlement",
+    "generate_invoice",
     "assign_membership", "apply_coupon", "create_support_ticket",
     "update_vendor_status", "update_user_status",
     "trigger_webhook", "log_event",

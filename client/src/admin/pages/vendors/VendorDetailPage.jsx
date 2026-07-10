@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { vendorsApi, walletsApi } from '../../api';
+import { vendorsApi } from '../../api';
 import { formatDate, formatCurrency, initials, timeAgo } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Modal from '../../components/ui/Modal';
@@ -34,8 +34,6 @@ export default function VendorDetailPage() {
   const [verifyAction, setVerifyAction] = useState('');
   const [verifyNote, setVerifyNote] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
-  const [creditOpen, setCreditOpen] = useState(false);
-  const [creditForm, setCreditForm] = useState({ amount: '', description: '' });
 
   const { data: crm, isLoading } = useQuery({
     queryKey: ['vendor', 'crm', vendorId],
@@ -64,18 +62,6 @@ export default function VendorDetailPage() {
     onError: () => toast.error('Verification action failed'),
   });
 
-  const creditMutation = useMutation({
-    mutationFn: ({ userId, amount, description }) =>
-      walletsApi.credit(userId, { amount, description }),
-    onSuccess: () => {
-      toast.success('Wallet credited successfully');
-      qc.invalidateQueries(['vendor', 'crm', vendorId]);
-      setCreditOpen(false);
-      setCreditForm({ amount: '', description: '' });
-    },
-    onError: () => toast.error('Failed to credit wallet'),
-  });
-
   if (isLoading) return (
     <div>
       <div className="admin-page-header">
@@ -93,8 +79,6 @@ export default function VendorDetailPage() {
   const ratings = crm.ratings ?? {};
   const recentBookings = crm.recent_bookings ?? [];
   const monthlyPerf = crm.monthly_performance ?? [];
-
-  const userId = s.user_id; // needed for wallet credit/debit
 
   const verifyStatus = s.verification_status?.toLowerCase();
   const tabs = ['overview', 'documents', 'reviews', 'bookings', 'financials'];
@@ -147,8 +131,8 @@ export default function VendorDetailPage() {
           <div className="admin-metric-value">⭐ {ratings.avg_rating ? Number(ratings.avg_rating).toFixed(1) : '—'}</div>
         </div>
         <div className="admin-metric-card">
-          <div className="admin-metric-label">Wallet Balance</div>
-          <div className="admin-metric-value">{formatCurrency(fin.wallet_balance ?? 0)}</div>
+          <div className="admin-metric-label">Avg Booking Value</div>
+          <div className="admin-metric-value">{formatCurrency(fin.avg_booking_value ?? 0)}</div>
         </div>
       </div>
 
@@ -315,16 +299,10 @@ export default function VendorDetailPage() {
         <div className="grid-2">
           <div className="admin-card">
             <div className="admin-card-header">
-              <div className="admin-card-title">Wallet</div>
-              {userId && (
-                <button className="btn btn-primary btn-sm" onClick={() => setCreditOpen(true)}>
-                  Credit Wallet
-                </button>
-              )}
+              <div className="admin-card-title">Settlement</div>
             </div>
             <div className="admin-card-body">
               <Section>
-                <Row label="Wallet Balance" value={formatCurrency(fin.wallet_balance ?? 0)} />
                 <Row label="Pending Settlement" value={formatCurrency(fin.pending_settlement ?? 0)} />
                 <Row label="Commission Earned (Platform)" value={formatCurrency(fin.commission_earned_platform ?? 0)} />
               </Section>
@@ -373,46 +351,6 @@ export default function VendorDetailPage() {
             onChange={(e) => setVerifyNote(e.target.value)}
             placeholder={`Reason for ${verifyAction}…`}
             rows={3}
-          />
-        </div>
-      </Modal>
-
-      {/* Credit Wallet Modal */}
-      <Modal
-        open={creditOpen}
-        onClose={() => setCreditOpen(false)}
-        title="Credit Vendor Wallet"
-        footer={
-          <>
-            <button className="btn btn-secondary" onClick={() => setCreditOpen(false)}>Cancel</button>
-            <button
-              className="btn btn-primary"
-              onClick={() => creditMutation.mutate({ userId, amount: creditForm.amount, description: creditForm.description })}
-              disabled={creditMutation.isPending || !creditForm.amount}
-            >
-              {creditMutation.isPending ? 'Processing…' : 'Credit'}
-            </button>
-          </>
-        }
-      >
-        <div className="form-group" style={{ marginBottom: 12 }}>
-          <label className="form-label">Amount (₹) *</label>
-          <input
-            type="number"
-            className="form-control"
-            value={creditForm.amount}
-            onChange={(e) => setCreditForm(f => ({ ...f, amount: e.target.value }))}
-            placeholder="Enter amount"
-            min="1"
-          />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Description</label>
-          <input
-            className="form-control"
-            value={creditForm.description}
-            onChange={(e) => setCreditForm(f => ({ ...f, description: e.target.value }))}
-            placeholder="Reason for credit"
           />
         </div>
       </Modal>

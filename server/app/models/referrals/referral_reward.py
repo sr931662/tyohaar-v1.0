@@ -36,8 +36,6 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 if TYPE_CHECKING:
     from app.models.referrals.referral import Referral
     from app.models.users.user import User
-    from app.models.wallets.wallet import Wallet
-    from app.models.wallets.transaction import WalletTransaction
 
 
 class ReferralRewardTrigger(str, enum.Enum):
@@ -181,22 +179,6 @@ class ReferralReward(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         default=ReferralRewardStatus.PENDING,
     )
 
-    # ── Wallet Linkage ────────────────────────────────────────────────────────
-
-    wallet_id: Mapped[uuid.UUID | None] = mapped_column(
-        PGUUID(as_uuid=True),
-        ForeignKey("wallets.id", ondelete="RESTRICT"),
-        nullable=True,
-        comment="The recipient's wallet. Set when status transitions to PROCESSING.",
-    )
-
-    wallet_transaction_id: Mapped[uuid.UUID | None] = mapped_column(
-        PGUUID(as_uuid=True),
-        ForeignKey("wallet_transactions.id", ondelete="SET NULL"),
-        nullable=True,
-        comment="The WalletTransaction that credited this reward. Set when status=PAID.",
-    )
-
     # ── Approval ─────────────────────────────────────────────────────────────
 
     approved_at: Mapped[datetime | None] = mapped_column(
@@ -292,16 +274,6 @@ class ReferralReward(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     recipient: Mapped[User] = relationship(
         "User",
         foreign_keys=[recipient_id],
-        lazy="noload",
-    )
-
-    wallet: Mapped[Wallet | None] = relationship(
-        "Wallet",
-        lazy="noload",
-    )
-
-    wallet_transaction: Mapped[WalletTransaction | None] = relationship(
-        "WalletTransaction",
         lazy="noload",
     )
 

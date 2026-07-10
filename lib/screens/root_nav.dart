@@ -271,7 +271,6 @@ class _StickyHeader extends StatelessWidget {
             borderColor: borderColor,
           ),
           SizedBox(width: resp.w(10)),
-          // Wallet feature is suppressed for now (kept dormant — see wallet_screen.dart).
           Stack(
             children: [
               _circleButton(

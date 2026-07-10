@@ -49,7 +49,6 @@ class CRMService(BaseService):
             from app.models.vendors.vendor import Vendor
             from app.models.vendors.vendor_document import VendorDocument
             from app.models.vendors.vendor_review import VendorReview
-            from app.models.wallets.wallet import Wallet
 
             # Core vendor record
             vendor_row = (
@@ -118,14 +117,6 @@ class CRMService(BaseService):
                 )
             ).one()
 
-            wallet_balance = (
-                await session.execute(
-                    select(func.coalesce(Wallet.available_balance, 0)).where(
-                        Wallet.user_id == getattr(vendor_row, "user_id", None)
-                    )
-                )
-            ).scalar_one_or_none() or Decimal("0")
-
             financials = VendorFinancials(
                 total_revenue_lifetime=Decimal(str(booking_agg.total_rev)).quantize(Decimal("0.01")),
                 revenue_this_month=Decimal("0"),
@@ -138,7 +129,6 @@ class CRMService(BaseService):
                 ).quantize(Decimal("0.01")),
                 commission_earned_platform=Decimal("0"),
                 pending_settlement=Decimal("0"),
-                wallet_balance=Decimal(str(wallet_balance)).quantize(Decimal("0.01")),
                 settlement_history=[],
             )
 
@@ -249,7 +239,6 @@ class CRMService(BaseService):
             from app.models.support.ticket import SupportTicket
             from app.models.users.address import UserAddress
             from app.models.users.user import User
-            from app.models.wallets.wallet import Wallet
 
             user_row = (
                 await session.execute(
@@ -288,12 +277,6 @@ class CRMService(BaseService):
                 )
             ).one()
 
-            wallet_row = (
-                await session.execute(
-                    select(Wallet).where(Wallet.user_id == user_id)
-                )
-            ).scalar_one_or_none()
-
             financials = CustomerFinancials(
                 total_spent_lifetime=Decimal(str(booking_agg.total_spent)).quantize(Decimal("0.01")),
                 spent_this_month=Decimal("0"),
@@ -301,8 +284,6 @@ class CRMService(BaseService):
                 completed_bookings=int(booking_agg.completed or 0),
                 cancelled_bookings=int(booking_agg.cancelled or 0),
                 avg_booking_value=Decimal(str(booking_agg.avg_value)).quantize(Decimal("0.01")),
-                wallet_balance=Decimal(str(getattr(wallet_row, "available_balance", 0) or 0)).quantize(Decimal("0.01")),
-                reward_points=Decimal(str(getattr(wallet_row, "reward_points", 0) or 0)),
                 total_refunds_received=Decimal("0"),
             )
 

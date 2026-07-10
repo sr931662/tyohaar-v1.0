@@ -28,7 +28,6 @@ const NAV = [
     section: 'Finance',
     items: [
       { to: '/admin/payments', label: 'Payments', icon: '💳' },
-      // Wallets nav entry suppressed for now (feature dormant, not deleted — see WalletsPage.jsx).
       { to: '/admin/memberships', label: 'Memberships', icon: '⭐' },
     ],
   },

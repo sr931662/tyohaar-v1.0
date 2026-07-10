@@ -154,7 +154,7 @@ export default function DashboardPage() {
   const book = dashboard?.bookings ?? {};
   const users = dashboard?.users ?? {};
   const vendors = dashboard?.vendors ?? {};
-  const wallets = dashboard?.wallets ?? {};
+  const payments = dashboard?.payments ?? {};
 
   // TimeSeriesChart shape: { series: [{ name, data: [{date, ...}] }] }
   const revenueData = revenueChart?.series?.[0]?.data ?? [];
@@ -218,9 +218,9 @@ export default function DashboardPage() {
             iconBg="var(--warning-50)"
           />
           <MetricCard
-            label="Wallet Balance"
-            value={formatCurrency(wallets?.total_balance)}
-            icon="👛"
+            label="Payment Volume"
+            value={formatCurrency(payments?.total_volume)}
+            icon="💳"
             iconBg="var(--brand-50)"
           />
           <MetricCard

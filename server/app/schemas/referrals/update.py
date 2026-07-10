@@ -77,10 +77,6 @@ class ReferralRewardUpdate(BaseSchema):
         default=None,
         description="New status for the reward",
     )
-    wallet_id: uuid.UUID | None = Field(
-        default=None,
-        description="Wallet that was credited with this reward",
-    )
     approved_at: datetime | None = Field(
         default=None,
         description="Timestamp when the reward was approved for payout",

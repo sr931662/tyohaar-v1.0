@@ -24,7 +24,6 @@ from app.models.vendors.vendor_review import VendorReview
 from app.models.vendors.vendor_service import VendorService
 from app.models.vendors.vendor_settlement import VendorSettlement
 from app.models.vendors.vendor_team import VendorTeamMember
-from app.models.vendors.vendor_wallet import VendorWallet
 from app.repositories.base import BaseRepository
 
 
@@ -260,14 +259,6 @@ class VendorTeamRepository(BaseRepository[VendorTeamMember]):
         return await self.find_many(VendorTeamMember.vendor_id == vendor_id)
 
 
-class VendorWalletRepository(BaseRepository[VendorWallet]):
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__(session, VendorWallet)
-
-    async def find_by_vendor(self, vendor_id: uuid.UUID) -> VendorWallet | None:
-        return await self.find_one(VendorWallet.vendor_id == vendor_id)
-
-
 class VendorSettlementRepository(BaseRepository[VendorSettlement]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, VendorSettlement)
@@ -306,5 +297,4 @@ class VendorRepositoryAggregate:
         self.gallery = VendorGalleryRepository(session)
         self.reviews = VendorReviewRepository(session)
         self.team = VendorTeamRepository(session)
-        self.wallets = VendorWalletRepository(session)
         self.settlements = VendorSettlementRepository(session)

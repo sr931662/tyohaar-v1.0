@@ -4,7 +4,6 @@ Unit of Work — wraps a single AsyncSession in one transactional boundary.
 Usage:
     async with UnitOfWork() as uow:
         user = await uow.users.users.find_by_phone("+919876543210")
-        wallet = await uow.wallets.wallets.find_by_user(user.id)
         # commit is called automatically on clean exit
         # rollback is called automatically on exception
 
@@ -37,7 +36,6 @@ from app.repositories.referral_repository import ReferralRepositoryAggregate
 from app.repositories.support_repository import SupportRepositoryAggregate
 from app.repositories.user_repository import UserRepositoryAggregate
 from app.repositories.vendor_repository import VendorRepositoryAggregate
-from app.repositories.wallet_repository import WalletRepositoryAggregate
 
 
 class UnitOfWork:
@@ -69,7 +67,6 @@ class UnitOfWork:
         self._packages: PackageRepositoryAggregate | None = None
         self._bookings: BookingRepositoryAggregate | None = None
         self._payments: PaymentRepositoryAggregate | None = None
-        self._wallets: WalletRepositoryAggregate | None = None
         self._memberships: MembershipRepositoryAggregate | None = None
         self._notifications: NotificationRepositoryAggregate | None = None
         self._support: SupportRepositoryAggregate | None = None
@@ -168,13 +165,6 @@ class UnitOfWork:
         if self._payments is None:
             self._payments = PaymentRepositoryAggregate(self.session)
         return self._payments
-
-    @property
-    def wallets(self) -> WalletRepositoryAggregate:
-        assert self.session is not None, "UnitOfWork must be used as an async context manager."
-        if self._wallets is None:
-            self._wallets = WalletRepositoryAggregate(self.session)
-        return self._wallets
 
     @property
     def memberships(self) -> MembershipRepositoryAggregate:

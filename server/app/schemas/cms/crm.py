@@ -83,7 +83,6 @@ class VendorFinancials(_Base):
     avg_booking_value: Decimal
     commission_earned_platform: Decimal
     pending_settlement: Decimal
-    wallet_balance: Decimal
     settlement_history: list[dict[str, Any]]
 
 
@@ -130,8 +129,6 @@ class CustomerFinancials(_Base):
     completed_bookings: int
     cancelled_bookings: int
     avg_booking_value: Decimal
-    wallet_balance: Decimal
-    reward_points: Decimal
     total_refunds_received: Decimal
 
 
