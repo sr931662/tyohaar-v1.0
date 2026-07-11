@@ -12,13 +12,13 @@ const founders = [
     name: 'Karn Goyal',
     title: 'Co-Founder',
     photo: karnGoyalPhoto,
-    bio: 'Bio coming soon.',
+    bio: 'Karn brings a strong background in business development, growth, and strategic partnerships across aviation, IT services, and FMCG. He combines relationship-building with data-backed decision-making to help shape Tyohaar into a scalable, customer-focused celebration platform.',
   },
   {
     name: 'Arjun Goyal',
     title: 'Co-Founder',
     photo: arjunGoyalPhoto,
-    bio: 'Bio coming soon.',
+    bio: 'Arjun is a strategic business leader with experience spanning agri-food, sustainability, water, and climate-focused initiatives across global markets. At Tyohaar, he brings deep expertise in partnerships, project development, and building systems that connect meaningful ideas with real-world impact.',
   },
 ];
 
