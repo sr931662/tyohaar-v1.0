@@ -3,19 +3,21 @@ import Navbar from '../components/layout/Navbar.jsx';
 import Footer from '../components/layout/Footer.jsx';
 import SectionHeading from '../components/ui/SectionHeading.jsx';
 import { fadeUp, bloom, stagger, inView } from '../lib/motion';
+import arjunGoyalPhoto from '../assets/arjun-goyal.png';
+import karnGoyalPhoto from '../assets/karn-goyal.png';
 import styles from './AboutPage.module.css';
 
 const founders = [
   {
     name: 'Karn Goyal',
     title: 'Co-Founder',
-    photo: null,
+    photo: karnGoyalPhoto,
     bio: 'Bio coming soon.',
   },
   {
     name: 'Arjun Goyal',
     title: 'Co-Founder',
-    photo: null,
+    photo: arjunGoyalPhoto,
     bio: 'Bio coming soon.',
   },
 ];
@@ -139,17 +141,21 @@ export default function AboutPage() {
             >
               {founders.map((f) => (
                 <motion.div key={f.name} className={styles.founderCard} variants={bloom}>
-                  <div className={styles.founderPhoto}>
-                    {f.photo ? (
-                      <img src={f.photo} alt={f.name} />
-                    ) : (
-                      <span className={styles.founderPlaceholder} aria-hidden="true">
-                        {f.name.charAt(0)}
-                      </span>
-                    )}
+                  <div className={styles.founderHeader}>
+                    <div className={styles.founderPhoto}>
+                      {f.photo ? (
+                        <img src={f.photo} alt={f.name} />
+                      ) : (
+                        <span className={styles.founderPlaceholder} aria-hidden="true">
+                          {f.name.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    <div className={styles.founderIdentity}>
+                      <h3 className={styles.founderName}>{f.name}</h3>
+                      <span className={styles.founderTitle}>{f.title}</span>
+                    </div>
                   </div>
-                  <h3 className={styles.founderName}>{f.name}</h3>
-                  <span className={styles.founderTitle}>{f.title}</span>
                   <p className={styles.founderBio}>{f.bio}</p>
                 </motion.div>
               ))}

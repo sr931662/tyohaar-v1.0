@@ -47,6 +47,7 @@ export default function Footer() {
         <span className={styles.copy}>
           © {year} Tyohaar <Diya size={7} pulse={false} /> Made in India, for India.
         </span>
+        <span className={styles.credit}>Designed and Developed by MaviCode</span>
         <div className={styles.legal}>
           <a href="#">Privacy</a>
           <a href="#">Terms</a>

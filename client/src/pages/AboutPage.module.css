@@ -80,12 +80,21 @@
   border: 1px dashed var(--line);
   border-radius: var(--r-lg);
   padding: clamp(20px, 2.4vw, 28px);
-  text-align: center;
+}
+.founderHeader {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+.founderIdentity {
+  min-width: 0;
+  text-align: left;
 }
 .founderPhoto {
-  width: 96px;
-  height: 96px;
-  margin: 0 auto 16px;
+  width: 132px;
+  height: 132px;
+  flex: 0 0 auto;
   border-radius: 50%;
   overflow: hidden;
   background: var(--surface-2);
@@ -111,16 +120,29 @@
   display: block;
   font-size: 13px;
   color: var(--ink-3);
-  margin: 4px 0 12px;
+  margin: 4px 0 0;
 }
 .founderBio {
   font-size: 14px;
   line-height: 1.6;
   color: var(--ink-2);
   margin: 0;
+  text-align: left;
 }
 
 @media (max-width: 720px) {
   .valuesGrid { grid-template-columns: 1fr; }
   .teamGrid { grid-template-columns: 1fr; }
+  .founderHeader {
+    flex-direction: column;
+    text-align: center;
+  }
+  .founderPhoto {
+    width: 120px;
+    height: 120px;
+  }
+  .founderIdentity,
+  .founderBio {
+    text-align: center;
+  }
 }

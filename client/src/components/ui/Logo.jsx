@@ -1,11 +1,17 @@
+import { Link } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import styles from './Logo.module.css';
 
-export default function Logo({ size = 'md', onClick, href = '#top' }) {
+export default function Logo({ size = 'md', onClick, to = '/' }) {
   return (
-    <a href={href} className={`${styles.logo} ${styles[size]}`} onClick={onClick} aria-label="Tyohaar — home">
+    <Link
+      to={to}
+      className={`${styles.logo} ${styles[size]}`}
+      onClick={onClick}
+      aria-label="Tyohaar home"
+    >
       <img src={logo} alt="" className={styles.emblem} aria-hidden="true" />
       <span className={styles.wordmark}>Tyohaar</span>
-    </a>
+    </Link>
   );
 }
