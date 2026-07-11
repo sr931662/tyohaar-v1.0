@@ -169,7 +169,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'special_instructions': notes.isNotEmpty ? notes : null,
       });
       if (!mounted) return;
-      Navigator.of(context).push(
+      // pushReplacement (not push) so backing out of PaymentScreen can't
+      // return to this resubmittable Summary step and create a duplicate
+      // booking/celebration.
+      Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => PaymentScreen(
             bookingId: booking.id,

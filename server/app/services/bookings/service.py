@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -125,6 +125,28 @@ class BookingService(BaseService):
         validate_booking_cutoff(event_dt)
 
         async with self._uow() as uow:
+            # Idempotency safety net: if the customer already has a PENDING
+            # booking for this exact package + date created in the last few
+            # minutes, return it instead of creating a duplicate celebration
+            # + booking. Covers a client back-navigation/resubmit race
+            # rather than a client-supplied idempotency key.
+            recent_cutoff = datetime.now(tz=timezone.utc) - timedelta(minutes=5)
+            duplicate_candidates = await uow.bookings.bookings.find_many(
+                uow.bookings.bookings._model.customer_id == customer_id,
+                uow.bookings.bookings._model.package_id == data.package_id,
+                uow.bookings.bookings._model.scheduled_date == data.scheduled_date,
+                uow.bookings.bookings._model.booking_status == BookingStatus.PENDING,
+                uow.bookings.bookings._model.created_at >= recent_cutoff,
+            )
+            if duplicate_candidates:
+                existing = max(duplicate_candidates, key=lambda b: b.created_at)
+                info = await self._attach_package_info(uow, [existing])
+                response = BookingResponse.model_validate(existing)
+                response.package_name, response.package_cover_url = info.get(
+                    existing.package_id, (None, None)
+                )
+                return response
+
             # Validate package exists and is available
             package = await validate_package_available(data.package_id, data.scheduled_date, uow)
 
@@ -255,6 +277,14 @@ class BookingService(BaseService):
             await uow.commit()
             return BookingResponse.model_validate(booking)
 
+    async def _attach_package_info(
+        self, uow, bookings: list[Booking]
+    ) -> dict[UUID, tuple[str | None, str | None]]:
+        """Batch-fetch package name/cover image for a list of bookings, keyed by package_id."""
+        package_ids = list({b.package_id for b in bookings if b.package_id})
+        packages = await uow.packages.packages.get_by_ids(package_ids)
+        return {p.id: (p.name, p.cover_image_url) for p in packages}
+
     async def get_booking(
         self,
         booking_id: UUID,
@@ -272,7 +302,12 @@ class BookingService(BaseService):
             # Vendors: they access through list_vendor_bookings; detail access here is permissive
             # Admin / support: unrestricted
 
-            return BookingDetailResponse.model_validate(booking)
+            info = await self._attach_package_info(uow, [booking])
+            name, cover_url = info.get(booking.package_id, (None, None))
+            response = BookingDetailResponse.model_validate(booking)
+            response.package_name = name
+            response.package_cover_url = cover_url
+            return response
 
     async def list_bookings(
         self,
@@ -285,12 +320,19 @@ class BookingService(BaseService):
             conditions = []
             if customer_id is not None:
                 conditions.append(uow.bookings.bookings._model.customer_id == customer_id)
+            if filters.celebration_id is not None:
+                conditions.append(uow.bookings.bookings._model.celebration_id == filters.celebration_id)
             page = await uow.bookings.bookings.cursor_paginate(
                 *conditions,
                 cursor=cursor,
                 limit=limit,
             )
-            items = [BookingResponse.model_validate(b) for b in page.items]
+            info = await self._attach_package_info(uow, page.items)
+            items = []
+            for b in page.items:
+                item = BookingResponse.model_validate(b)
+                item.package_name, item.package_cover_url = info.get(b.package_id, (None, None))
+                items.append(item)
             return CursorPage(
                 items=items,
                 next_cursor=page.next_cursor,
@@ -316,7 +358,12 @@ class BookingService(BaseService):
                 cursor=cursor,
                 limit=limit,
             )
-            items = [BookingResponse.model_validate(b) for b in page.items]
+            info = await self._attach_package_info(uow, page.items)
+            items = []
+            for b in page.items:
+                item = BookingResponse.model_validate(b)
+                item.package_name, item.package_cover_url = info.get(b.package_id, (None, None))
+                items.append(item)
             return CursorPage(
                 items=items,
                 next_cursor=page.next_cursor,

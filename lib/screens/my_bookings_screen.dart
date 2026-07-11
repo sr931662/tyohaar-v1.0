@@ -131,7 +131,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final dateStr = DateFormat('dd MMM').format(b.scheduledDate);
     
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EventHubScreen())),
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => EventHubScreen(celebrationId: b.celebrationId))),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),

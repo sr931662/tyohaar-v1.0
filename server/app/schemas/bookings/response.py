@@ -55,6 +55,8 @@ class BookingResponse(BaseSchema):
     customer_id: uuid.UUID
     celebration_id: uuid.UUID
     package_id: uuid.UUID
+    package_name: str | None = Field(default=None, description="Snapshot of the package's current name")
+    package_cover_url: str | None = Field(default=None, description="Snapshot of the package's current cover image")
     address_id: uuid.UUID | None
     scheduled_date: date
     scheduled_start_time: time | None

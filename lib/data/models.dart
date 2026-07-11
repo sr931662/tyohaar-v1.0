@@ -448,9 +448,6 @@ class Booking {
   final double amountPaid;
   final double amountDue;
   final DateTime scheduledDate;
-  // Backend sends package_id (UUID) — nested package object is NOT included in
-  // BookingResponse. packageName/packageCoverUrl are only available if the
-  // endpoint nests a 'package' object (non-standard extension).
   final String? packageId;
   final String? packageName;
   final String? packageCoverUrl;
@@ -494,11 +491,8 @@ class Booking {
       amountDue: asDouble(json['amount_due']),
       scheduledDate: DateTime.parse(json['scheduled_date']),
       packageId: json['package_id'] as String?,
-      // Backend does not nest the package object in BookingResponse.
-      // These will be null unless the endpoint is extended to include them.
-      packageName: (json['package'] as Map?)?['name'] as String?,
-      packageCoverUrl:
-          (json['package'] as Map?)?['cover_image_url'] as String?,
+      packageName: json['package_name'] as String?,
+      packageCoverUrl: json['package_cover_url'] as String?,
       currency: json['currency'] as String? ?? 'INR',
       specialInstructions: json['special_instructions'] as String?,
       cancellationReason: json['cancellation_reason'] as String?,
