@@ -1078,9 +1078,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             children: [
               _priceRow('Package Base Price', _pkg?.price.toInt() ?? 0),
               if (itemsTotal > 0) _priceRow('Add-ons', itemsTotal.toInt()),
-              _priceRow('Tyohaar Fee', 1500),
+              _priceRow('GST (18%)', (((_pkg?.price ?? 0) + itemsTotal) * 0.18).toInt()),
               const Divider(height: 24),
-              _priceRow('Total Amount', (_pkg?.price.toInt() ?? 0) + itemsTotal.toInt() + 1500, bold: true),
+              _priceRow('Total Amount', (((_pkg?.price ?? 0) + itemsTotal) * 1.18).toInt(), bold: true),
             ],
           ),
         ),

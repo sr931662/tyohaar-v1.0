@@ -16,13 +16,17 @@ from app.services.payments.constants import (
     GST_ON_PLATFORM_FEE,
     MAX_COUPON_DISCOUNT_PERCENTAGE,
     PAYMENT_EXPIRY_SECONDS,
-    PLATFORM_FEE_PERCENTAGE,
 )
 
 
 def calculate_platform_fee(amount: Decimal) -> Decimal:
-    """Return the 2% Tyohaar platform fee for the given base amount."""
-    return (amount * PLATFORM_FEE_PERCENTAGE).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    """
+    Platform fee has been removed project-wide — customers are charged only
+    the package price (+ any product GST), never a separate Tyohaar fee.
+    Kept as a function (rather than deleted) since callers still pass its
+    result into the total/GST-on-fee formula; it now always returns 0.
+    """
+    return Decimal("0.00")
 
 
 def calculate_gst(platform_fee: Decimal) -> Decimal:

@@ -137,7 +137,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       .where((i) => i.isOptional && _selectedOptionalItemIds.contains(i.id))
       .fold(0.0, (sum, item) => sum + item.unitPrice);
 
-  double get _totalPrice => _fullPackage.price + _addonsTotal + 1500; // 1500 fee
+  double get _totalPrice => _fullPackage.price + _addonsTotal; // platform fee removed
 
   @override
   Widget build(BuildContext context) {
@@ -322,8 +322,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               _priceRow('Package Base Price', _fullPackage.price),
               if (_selectedOptionalItemIds.isNotEmpty)
                 _priceRow('Selected Add-ons', _addonsTotal),
-              _priceRow('Platform Fee', 1500),
-              _priceRow('GST (18%)', (_fullPackage.price + _addonsTotal) * 0.18),
+              _priceRow('GST (18%)', _totalPrice * 0.18),
               const Divider(height: 32),
               _priceRow('Grand Total', _totalPrice * 1.18, isBold: true),
             ],

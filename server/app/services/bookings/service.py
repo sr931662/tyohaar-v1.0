@@ -166,9 +166,14 @@ class BookingService(BaseService):
                 optional_items = [i for i in package_items if not i.is_mandatory and i.id in data.item_ids]
                 selected_items.extend(optional_items)
 
-            # 3. Calculate financials
-            subtotal = sum((i.base_price * i.quantity) for i in selected_items)
-            platform_fee = Decimal("1500.00")
+            # 3. Calculate financials — package base price + selected items.
+            # Package.base_price is the package's own starting price; item
+            # rows are line-item add-ons/inclusions on top of it, not a
+            # replacement for it (previously this only summed items, so a
+            # package with no items priced the booking at ₹0 subtotal).
+            items_total = sum((i.base_price * i.quantity) for i in selected_items)
+            subtotal = (package.base_price or Decimal("0.00")) + items_total
+            platform_fee = Decimal("0.00")  # Platform fee removed project-wide.
             tax_rate = Decimal("0.18")
             tax_amount = (subtotal * tax_rate).quantize(Decimal("0.01"))
             total_amount = subtotal + tax_amount + platform_fee

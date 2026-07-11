@@ -151,7 +151,6 @@ export default function BookingDetailPage() {
               <div className="admin-detail-row"><div className="admin-detail-label">Subtotal</div><div className="admin-detail-value">{formatCurrency(b.subtotal ?? 0)}</div></div>
               <div className="admin-detail-row"><div className="admin-detail-label">Discount</div><div className="admin-detail-value">{b.discount_amount ? formatCurrency(b.discount_amount) : '—'}</div></div>
               <div className="admin-detail-row"><div className="admin-detail-label">Tax</div><div className="admin-detail-value">{formatCurrency(b.tax_amount ?? 0)}</div></div>
-              <div className="admin-detail-row"><div className="admin-detail-label">Platform Fee</div><div className="admin-detail-value">{formatCurrency(b.platform_fee ?? 0)}</div></div>
               <div className="admin-detail-row"><div className="admin-detail-label">Amount Due</div><div className="admin-detail-value">{formatCurrency(b.amount_due ?? 0)}</div></div>
             </div>
           </div>
