@@ -43,6 +43,7 @@ from app.schemas.occasions.response import (
     OccasionTagResponse,
     CelebrationResponse,
     CelebrationGuestResponse,
+    CelebrationGuestHistoryResponse,
     CelebrationChecklistResponse,
     GuestRSVPPublicResponse,
 )
@@ -91,6 +92,7 @@ __all__ = [
     "OccasionTagResponse",
     "CelebrationResponse",
     "CelebrationGuestResponse",
+    "CelebrationGuestHistoryResponse",
     "CelebrationChecklistResponse",
     "GuestRSVPPublicResponse",
     # filters

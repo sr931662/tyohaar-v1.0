@@ -11,6 +11,7 @@ from app.core.responses import CursorPaginatedResponse, SuccessResponse
 from app.schemas.occasions import (
     CelebrationChecklistResponse,
     CelebrationGuestResponse,
+    CelebrationGuestHistoryResponse,
     CelebrationResponse,
     GuestRSVPPublicResponse,
     OccasionMoodResponse,
@@ -283,6 +284,18 @@ router.add_api_route(
     summary="List Guests",
     description="Return all guests on the celebration's guest list.",
     operation_id="occasions_list_guests",
+    tags=["Celebrations"],
+)
+
+router.add_api_route(
+    "/celebrations/{celebration_id}/guest-history",
+    ctrl.list_guest_history,
+    methods=["GET"],
+    response_model=SuccessResponse[list[CelebrationGuestHistoryResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="List Guest History",
+    description="Return the append-only history of guest lifecycle events (invited, opened, RSVP changes) for this celebration.",
+    operation_id="occasions_list_guest_history",
     tags=["Celebrations"],
 )
 

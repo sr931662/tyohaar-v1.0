@@ -188,6 +188,20 @@ class CelebrationGuestResponse(BaseSchema):
     invitation_opened_at: datetime | None = None
     created_at: datetime
 
+
+class CelebrationGuestHistoryResponse(BaseSchema):
+    """A single guest lifecycle event (invited, opened, RSVP changed, checked in)."""
+
+    model_config = _ORM
+
+    id: uuid.UUID
+    celebration_guest_id: uuid.UUID
+    celebration_id: uuid.UUID
+    event_type: str
+    previous_status: RSVPStatus | None = None
+    new_status: RSVPStatus | None = None
+    occurred_at: datetime
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def display_status(self) -> str:

@@ -25,6 +25,7 @@ from app.schemas.occasions import (
     CelebrationGuestCreate,
     CelebrationGuestResponse,
     CelebrationGuestUpdate,
+    CelebrationGuestHistoryResponse,
     CelebrationResponse,
     CelebrationUpdate,
     GuestRSVPPublicResponse,
@@ -455,6 +456,28 @@ class OccasionService(BaseService):
 
     # ── 4. Celebration Guests ──────────────────────────────────────────────────
 
+    @staticmethod
+    async def _write_guest_history(
+        uow,
+        *,
+        guest_id: UUID,
+        celebration_id: UUID,
+        event_type,
+        previous_status=None,
+        new_status=None,
+    ) -> None:
+        from app.models.occasions.celebration_guest_history import CelebrationGuestHistory
+
+        await uow.occasions.guest_history.create(
+            CelebrationGuestHistory(
+                celebration_guest_id=guest_id,
+                celebration_id=celebration_id,
+                event_type=event_type,
+                previous_status=previous_status,
+                new_status=new_status,
+            )
+        )
+
     async def add_guest(
         self,
         celebration_id: UUID,
@@ -462,6 +485,7 @@ class OccasionService(BaseService):
         data: CelebrationGuestCreate,
     ) -> CelebrationGuestResponse:
         import secrets
+        from app.models.enums import GuestHistoryEventType
 
         async with self._uow() as uow:
             await validate_celebration_ownership(celebration_id, user_id, uow)
@@ -470,6 +494,11 @@ class OccasionService(BaseService):
             payload["celebration_id"] = celebration_id
             payload["rsvp_token"] = secrets.token_urlsafe(24)
             guest = await uow.occasions.guests.create_from_dict(payload)
+            await self._write_guest_history(
+                uow, guest_id=guest.id, celebration_id=celebration_id,
+                event_type=GuestHistoryEventType.INVITED,
+            )
+            await uow.commit()
             return CelebrationGuestResponse.model_validate(guest)
 
     async def update_guest(
@@ -484,9 +513,17 @@ class OccasionService(BaseService):
             guest = await uow.occasions.guests.get_by_id(guest_id)
             if guest is None or guest.celebration_id != celebration_id:
                 raise CelebrationNotFoundError(f"guest {guest_id}")
-            guest = await uow.occasions.guests.update(
-                guest, data.model_dump(exclude_unset=True)
-            )
+            previous_status = guest.rsvp_status
+            update_data = data.model_dump(exclude_unset=True)
+            guest = await uow.occasions.guests.update(guest, update_data)
+            if "rsvp_status" in update_data and guest.rsvp_status != previous_status:
+                from app.models.enums import GuestHistoryEventType
+                await self._write_guest_history(
+                    uow, guest_id=guest.id, celebration_id=celebration_id,
+                    event_type=GuestHistoryEventType.RSVP_CHANGED,
+                    previous_status=previous_status, new_status=guest.rsvp_status,
+                )
+            await uow.commit()
             return CelebrationGuestResponse.model_validate(guest)
 
     async def remove_guest(
@@ -512,6 +549,16 @@ class OccasionService(BaseService):
             guests = await uow.occasions.guests.find_by_celebration(celebration_id)
             return [CelebrationGuestResponse.model_validate(g) for g in guests]
 
+    async def list_guest_history(
+        self,
+        celebration_id: UUID,
+        user_id: UUID,
+    ) -> list[CelebrationGuestHistoryResponse]:
+        async with self._uow() as uow:
+            await validate_celebration_ownership(celebration_id, user_id, uow)
+            history = await uow.occasions.guest_history.find_by_celebration(celebration_id)
+            return [CelebrationGuestHistoryResponse.model_validate(h) for h in history]
+
     # ── Public RSVP (no auth — reached via the guest's shared link) ────────────
 
     async def get_guest_rsvp(self, token: str) -> GuestRSVPPublicResponse:
@@ -532,6 +579,12 @@ class OccasionService(BaseService):
                 guest = await uow.occasions.guests.update(
                     guest, {"invitation_opened_at": datetime.now(tz=timezone.utc)}
                 )
+                from app.models.enums import GuestHistoryEventType
+                await self._write_guest_history(
+                    uow, guest_id=guest.id, celebration_id=guest.celebration_id,
+                    event_type=GuestHistoryEventType.INVITATION_OPENED,
+                )
+                await uow.commit()
 
             can_still_respond = date.today() < celebration.celebration_date
 
@@ -567,6 +620,7 @@ class OccasionService(BaseService):
                 raise BusinessRuleError("The RSVP window for this event has closed.")
 
             now = datetime.now(tz=timezone.utc)
+            previous_status = guest.rsvp_status
             update_payload = {
                 "rsvp_status": data.rsvp_status,
                 "rsvp_responded_at": now,
@@ -577,6 +631,14 @@ class OccasionService(BaseService):
                 update_payload["invitation_opened_at"] = now
 
             guest = await uow.occasions.guests.update(guest, update_payload)
+
+            from app.models.enums import GuestHistoryEventType
+            await self._write_guest_history(
+                uow, guest_id=guest.id, celebration_id=guest.celebration_id,
+                event_type=GuestHistoryEventType.RSVP_CHANGED,
+                previous_status=previous_status, new_status=guest.rsvp_status,
+            )
+            await uow.commit()
 
             return GuestRSVPPublicResponse(
                 guest_name=guest.name,

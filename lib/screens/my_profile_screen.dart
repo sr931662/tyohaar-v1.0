@@ -14,6 +14,7 @@ import '../data/auth_manager.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import 'vendor/vendor_availability_screen.dart';
+import 'guest_history_screen.dart';
 
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
@@ -253,7 +254,45 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           _editableField(context, 'Email Address', _emailController, hint: 'you@example.com', keyboardType: TextInputType.emailAddress),
           _editableField(context, 'Phone Number', _phoneController, hint: '+91 9876543210', keyboardType: TextInputType.phone),
           _field(context, 'Role', _user?.role.toUpperCase() ?? 'CUSTOMER'),
-          
+
+          const SizedBox(height: 32),
+          _sectionHeader('History'),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const GuestHistoryScreen())),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ty.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: ty.line),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(color: ty.saffronSoft, borderRadius: BorderRadius.circular(12)),
+                    child: Icon(Icons.history_rounded, color: ty.saffronDeep, size: 20),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Guest Activity', style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
+                        Text('Invitations sent, opened, and RSVP changes',
+                            style: TyType.sans(12, color: ty.ink3)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: ty.ink3),
+                ],
+              ),
+            ),
+          ),
+
           if (_user?.role == 'vendor') ...[
             const SizedBox(height: 32),
             _sectionHeader('Business Availability'),

@@ -182,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 key: _quickActionsKey,
                 children: [
                   _quickAction(context, Icons.group_outlined, 'Guests', ty.saffron,
-                      () => _push(context, const GuestsScreen(), authAction: 'manage guests')),
+                      () => _push(context, GuestsScreen(celebrationId: _activeCelebration?.id), authAction: 'manage guests')),
                   _quickAction(context, Icons.checklist_rounded, 'My Plans', ty.gold,
                       () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your plans')),
                 ],

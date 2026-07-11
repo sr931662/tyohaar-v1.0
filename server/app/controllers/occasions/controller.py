@@ -22,6 +22,7 @@ from app.schemas.occasions import (
     CelebrationCreate,
     CelebrationGuestCreate,
     CelebrationGuestResponse,
+    CelebrationGuestHistoryResponse,
     CelebrationGuestUpdate,
     CelebrationResponse,
     CelebrationUpdate,
@@ -299,6 +300,17 @@ async def list_guests(
         celebration_id=celebration_id, user_id=current_user.id
     )
     return SuccessResponse(data=guests, message="Guests retrieved.")
+
+
+async def list_guest_history(
+    celebration_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: OccasionServiceDep,
+) -> SuccessResponse[list[CelebrationGuestHistoryResponse]]:
+    history = await service.list_guest_history(
+        celebration_id=celebration_id, user_id=current_user.id
+    )
+    return SuccessResponse(data=history, message="Guest history retrieved.")
 
 
 # ── Public RSVP (no auth) ───────────────────────────────────────────────────────

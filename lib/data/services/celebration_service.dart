@@ -61,4 +61,39 @@ class CelebrationService {
     final List list = response.data['data'] ?? [];
     return list.map((item) => CelebrationChecklistItem.fromJson(item)).toList();
   }
+
+  Future<List<GuestHistoryEvent>> listGuestHistory(String celebrationId) async {
+    final response = await _api.dio.get('celebrations/$celebrationId/guest-history');
+    final List list = response.data['data'] ?? [];
+    return list.map((item) => GuestHistoryEvent.fromJson(item)).toList();
+  }
+}
+
+class GuestHistoryEvent {
+  final String id;
+  final String celebrationGuestId;
+  final String eventType;
+  final String? previousStatus;
+  final String? newStatus;
+  final DateTime occurredAt;
+
+  GuestHistoryEvent({
+    required this.id,
+    required this.celebrationGuestId,
+    required this.eventType,
+    this.previousStatus,
+    this.newStatus,
+    required this.occurredAt,
+  });
+
+  factory GuestHistoryEvent.fromJson(Map<String, dynamic> json) {
+    return GuestHistoryEvent(
+      id: json['id'] as String,
+      celebrationGuestId: json['celebration_guest_id'] as String,
+      eventType: json['event_type'] as String,
+      previousStatus: json['previous_status'] as String?,
+      newStatus: json['new_status'] as String?,
+      occurredAt: DateTime.tryParse(json['occurred_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
 }

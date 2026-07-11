@@ -20,6 +20,7 @@ from app.models.occasions.celebration import Celebration
 from app.models.occasions.celebration_budget import CelebrationBudget
 from app.models.occasions.celebration_checklist import CelebrationChecklist
 from app.models.occasions.celebration_guest import CelebrationGuest
+from app.models.occasions.celebration_guest_history import CelebrationGuestHistory
 from app.models.occasions.celebration_note import CelebrationNote
 from app.models.occasions.celebration_timeline import CelebrationTimeline
 from app.models.occasions.occasion import Occasion
@@ -170,6 +171,17 @@ class CelebrationGuestRepository(BaseRepository[CelebrationGuest]):
         return await self.find_one(CelebrationGuest.rsvp_token == token)
 
 
+class CelebrationGuestHistoryRepository(BaseRepository[CelebrationGuestHistory]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, CelebrationGuestHistory)
+
+    async def find_by_celebration(self, celebration_id: uuid.UUID) -> list[CelebrationGuestHistory]:
+        return await self.find_many(
+            CelebrationGuestHistory.celebration_id == celebration_id,
+            order_by=CelebrationGuestHistory.occurred_at.desc(),
+        )
+
+
 class CelebrationTimelineRepository(BaseRepository[CelebrationTimeline]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, CelebrationTimeline)
@@ -271,6 +283,7 @@ class OccasionRepositoryAggregate:
         self.tags = OccasionTagRepository(session)
         self.celebrations = CelebrationRepository(session)
         self.guests = CelebrationGuestRepository(session)
+        self.guest_history = CelebrationGuestHistoryRepository(session)
         self.timeline = CelebrationTimelineRepository(session)
         self.notes = CelebrationNoteRepository(session)
         self.budgets = CelebrationBudgetRepository(session)

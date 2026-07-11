@@ -13,7 +13,8 @@ import '../widgets/ty_chip.dart';
 import '../widgets/common.dart';
 
 class GuestsScreen extends StatefulWidget {
-  const GuestsScreen({super.key});
+  final String? celebrationId;
+  const GuestsScreen({super.key, this.celebrationId});
 
   @override
   State<GuestsScreen> createState() => _GuestsScreenState();
@@ -38,10 +39,14 @@ class _GuestsScreenState extends State<GuestsScreen> {
   Future<void> _loadGuests() async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      final celebrations = await _celebrationService.listCelebrations();
-      if (celebrations.isNotEmpty) {
-        _activeCelebrationId = celebrations.first.id;
-        final guests = await _celebrationService.listGuests(_activeCelebrationId!);
+      String? celebrationId = widget.celebrationId;
+      if (celebrationId == null) {
+        final celebrations = await _celebrationService.listCelebrations();
+        celebrationId = celebrations.isNotEmpty ? celebrations.first.id : null;
+      }
+      if (celebrationId != null) {
+        _activeCelebrationId = celebrationId;
+        final guests = await _celebrationService.listGuests(celebrationId);
         if (mounted) setState(() { _guests = guests; _isLoading = false; });
       } else {
         if (mounted) setState(() => _isLoading = false);

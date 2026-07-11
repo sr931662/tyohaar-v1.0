@@ -477,6 +477,14 @@ class RSVPStatus(str, enum.Enum):
     NO_RESPONSE = "no_response"
 
 
+class GuestHistoryEventType(str, enum.Enum):
+    """Lifecycle events recorded in CelebrationGuestHistory (append-only audit log)."""
+    INVITED = "invited"
+    INVITATION_OPENED = "invitation_opened"
+    RSVP_CHANGED = "rsvp_changed"
+    CHECKED_IN = "checked_in"
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Notifications
 # ──────────────────────────────────────────────────────────────────────────────
