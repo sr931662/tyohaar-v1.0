@@ -44,6 +44,11 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Guest> _guests = [];
   List<CelebrationChecklistItem> _checklist = [];
   bool _isLoading = true;
+  // Tracks the separate (post-Future.wait) booking fetch so the hero card
+  // can keep showing a placeholder instead of jumping straight to the
+  // generic illustration fallback while the real package cover is still
+  // in flight.
+  bool _isBookingLoading = false;
   String? _error;
   final GlobalKey _quickActionsKey = GlobalKey();
 
@@ -76,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final celebrations = results[2] as List<Celebration>;
         if (celebrations.isNotEmpty) {
           _activeCelebration = celebrations.first;
+          _isBookingLoading = true;
           _loadGuests(_activeCelebration!.id);
           _loadChecklist(_activeCelebration!.id);
           _loadActiveBooking(_activeCelebration!.id);
@@ -119,11 +125,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadActiveBooking(String celebrationId) async {
     try {
       final bookings = await _bookingService.listByCelebration(celebrationId);
-      if (mounted && bookings.isNotEmpty) {
-        setState(() => _activeBooking = bookings.first);
+      if (mounted) {
+        setState(() {
+          if (bookings.isNotEmpty) _activeBooking = bookings.first;
+          _isBookingLoading = false;
+        });
       }
     } catch (e) {
       debugPrint('Error loading active booking: $e');
+      if (mounted) setState(() => _isBookingLoading = false);
     }
   }
 
@@ -284,20 +294,27 @@ class _HomeScreenState extends State<HomeScreen> {
             Positioned.fill(
               child: ClipRRect(
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
-                child: CachedNetworkImage(
-                  imageUrl: heroUrl ?? '',
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: resp.h(440), arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius))),
-                  errorWidget: (context, url, error) {
-                    final local = _activeCelebration?.occasionName != null 
-                        ? OccasionAssets.getRelatedBackground(_activeCelebration!.occasionName!) 
-                        : null;
-                    return Image.asset(
-                      local ?? 'assets/images/Landing page image.png',
-                      fit: BoxFit.cover,
-                    );
-                  },
-                ),
+                // While the booking (and its real package cover image) is
+                // still loading, keep showing a plain placeholder instead of
+                // rendering an empty-URL CachedNetworkImage — that would
+                // error immediately and flash the generic illustration
+                // fallback before the real cover image ever gets a chance.
+                child: (heroUrl == null && _isBookingLoading)
+                    ? PhotoPlaceholder(tint: 'saffron', height: resp.h(440), arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius)))
+                    : CachedNetworkImage(
+                        imageUrl: heroUrl ?? '',
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: resp.h(440), arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius))),
+                        errorWidget: (context, url, error) {
+                          final local = _activeCelebration?.occasionName != null
+                              ? OccasionAssets.getRelatedBackground(_activeCelebration!.occasionName!)
+                              : null;
+                          return Image.asset(
+                            local ?? 'assets/images/Landing page image.png',
+                            fit: BoxFit.cover,
+                          );
+                        },
+                      ),
               ),
             ),
             Positioned(

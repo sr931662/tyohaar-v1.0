@@ -37,6 +37,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
   String _daysLeft = '--';
   String _hoursLeft = '--';
   bool _isLoading = true;
+  bool _isLiked = false;
   final GlobalKey _heroKey = GlobalKey();
 
   @override
@@ -71,8 +72,10 @@ class _EventHubScreenState extends State<EventHubScreen> {
       List<PackageItem> packageItems = [];
       if (booking?.packageId != null) {
         try {
-          package = await _packageService.getPackageDetails(booking!.packageId!);
-          packageItems = await _packageService.listPackageItems(booking.packageId!);
+          package =
+              await _packageService.getPackageDetails(booking!.packageId!);
+          packageItems =
+              await _packageService.listPackageItems(booking.packageId!);
         } catch (e) {
           debugPrint('Error loading package details: $e');
         }
@@ -109,7 +112,8 @@ class _EventHubScreenState extends State<EventHubScreen> {
             TutorialStep(
               targetKey: _heroKey,
               title: 'Your celebration, at a glance',
-              description: 'Track the countdown, guest RSVPs, and checklist progress for this event right here.',
+              description:
+                  'Track the countdown, guest RSVPs, and checklist progress for this event right here.',
             ),
           ]);
         });
@@ -126,212 +130,275 @@ class _EventHubScreenState extends State<EventHubScreen> {
     final resp = context.resp;
 
     if (_isLoading) {
-      return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+      return Scaffold(
+          backgroundColor: ty.paper,
+          body: const Center(child: CircularProgressIndicator()));
     }
 
     if (_celebration == null) {
       return Scaffold(
         backgroundColor: ty.paper,
         appBar: tyAppBar(context, title: 'Event Hub'),
-        body: Center(child: Text('No active celebration', style: TyType.sans(resp.sp(16), color: ty.ink2))),
+        body: Center(
+            child: Text('No active celebration',
+                style: TyType.sans(resp.sp(16), color: ty.ink2))),
       );
     }
 
     final totalGuests = _guests.length;
     final pct = _celebration?.completionPercentage ?? 0;
-    final nextTask = _checklist.where((t) => !t.isCompleted).map((t) => t.title).firstOrNull ?? 'All tasks complete!';
+    final nextTask = _checklist
+            .where((t) => !t.isCompleted)
+            .map((t) => t.title)
+            .firstOrNull ??
+        'All tasks complete!';
 
     final dt = _celebration?.celebrationDate;
     final date = dt != null ? '${dt.day}/${dt.month}/${dt.year}' : '';
 
     return Scaffold(
       backgroundColor: ty.paper,
-      body: RefreshIndicator(
-        onRefresh: _load,
-        color: ty.saffron,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            Stack(
-              key: _heroKey,
-              children: [
-                CachedNetworkImage(
-                  imageUrl: _celebration?.heroImageUrl ?? '',
-                  height: resp.h(360),
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => PhotoPlaceholder(
-                      tint: 'saffron', height: resp.h(360), arch: false, radius: BorderRadius.zero),
-                  errorWidget: (context, url, error) => OccasionAssets.getFallback(
-                      _celebration?.occasionName ?? _celebration?.title ?? '',
-                      arch: false),
-                ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          ty.paper,
-                          Colors.black.withOpacity(0.3),
-                          Colors.black.withOpacity(0.35)
-                        ],
-                        stops: const [0.02, 0.55, 1],
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: RefreshIndicator(
+              onRefresh: _load,
+              color: ty.saffron,
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  Stack(
+                    key: _heroKey,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: _celebration?.heroImageUrl ?? '',
+                        height: resp.h(360),
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => PhotoPlaceholder(
+                            tint: 'saffron',
+                            height: resp.h(360),
+                            arch: false,
+                            radius: BorderRadius.zero),
+                        errorWidget: (context, url, error) =>
+                            OccasionAssets.getFallback(
+                                _celebration?.occasionName ??
+                                    _celebration?.title ??
+                                    '',
+                                arch: false),
                       ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + resp.h(8),
-                  left: resp.w(18),
-                  right: resp.w(18),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _glass(context, Icons.chevron_left_rounded,
-                          () => Navigator.of(context).maybePop()),
-                      _glass(context, Icons.favorite_border_rounded, () {}),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: resp.w(20),
-                  right: resp.w(20),
-                  bottom: resp.h(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TyPill(
-                          _celebration?.occasionName ?? 'Celebration',
-                          background: ty.saffron,
-                          foreground: ty.onPrimary),
-                      SizedBox(height: resp.h(12)),
-                      Text(_celebration?.title ?? '',
-                          style: TyType.display(resp.sp(38), color: Colors.white)),
-                      SizedBox(height: resp.h(8)),
-                      Row(children: [
-                        Icon(Icons.event, size: resp.sp(16), color: Colors.white70),
-                        SizedBox(width: resp.w(8)),
-                        Text('$date', style: TyType.sans(resp.sp(14), color: Colors.white70)),
-                      ]),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Transform.translate(
-              offset: Offset(0, resp.h(-14)),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(resp.w(18), 0, resp.w(18), resp.h(28)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _stat(context, _daysLeft, 'days'),
-                        SizedBox(width: resp.w(10)),
-                        _stat(context, _hoursLeft, 'hrs'),
-                        SizedBox(width: resp.w(10)),
-                        _stat(context, '$totalGuests', 'guests'),
-                      ],
-                    ),
-                    SizedBox(height: resp.h(22)),
-                    const SectionHeader('The plan'),
-                    Container(
-                      padding: EdgeInsets.all(resp.w(16)),
-                      decoration: _card(ty, resp),
-                      child: Row(
-                        children: [
-                          ProgressRing(
-                            percent: pct.toDouble(),
-                            size: resp.w(56),
-                            center: Text('$pct%',
-                                style: TyType.sans(resp.sp(14),
-                                    color: ty.ink, weight: FontWeight.w800)),
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                ty.paper,
+                                Colors.black.withOpacity(0.3),
+                                Colors.black.withOpacity(0.35)
+                              ],
+                              stops: const [0.02, 0.55, 1],
+                            ),
                           ),
-                          SizedBox(width: resp.w(16)),
-                          Expanded(
+                        ),
+                      ),
+                      Positioned(
+                        left: resp.w(20),
+                        right: resp.w(20),
+                        bottom: resp.h(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TyPill(_celebration?.occasionName ?? 'Celebration',
+                                background: ty.saffron,
+                                foreground: ty.onPrimary),
+                            SizedBox(height: resp.h(12)),
+                            Text(_celebration?.title ?? '',
+                                style: TyType.display(resp.sp(38),
+                                    color: Colors.white)),
+                            SizedBox(height: resp.h(8)),
+                            Row(children: [
+                              Icon(Icons.event,
+                                  size: resp.sp(16), color: Colors.white70),
+                              SizedBox(width: resp.w(8)),
+                              Text('$date',
+                                  style: TyType.sans(resp.sp(14),
+                                      color: Colors.white70)),
+                            ]),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  Transform.translate(
+                    offset: Offset(0, resp.h(-14)),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                          resp.w(18), 0, resp.w(18), resp.h(28)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _stat(context, _daysLeft, 'days'),
+                              SizedBox(width: resp.w(10)),
+                              _stat(context, _hoursLeft, 'hrs'),
+                              SizedBox(width: resp.w(10)),
+                              _stat(context, '$totalGuests', 'guests'),
+                            ],
+                          ),
+                          SizedBox(height: resp.h(22)),
+                          const SectionHeader('The plan'),
+                          Container(
+                            padding: EdgeInsets.all(resp.w(16)),
+                            decoration: _card(ty, resp),
+                            child: Row(
+                              children: [
+                                ProgressRing(
+                                  percent: pct.toDouble(),
+                                  size: resp.w(56),
+                                  center: Text('$pct%',
+                                      style: TyType.sans(resp.sp(14),
+                                          color: ty.ink,
+                                          weight: FontWeight.w800)),
+                                ),
+                                SizedBox(width: resp.w(16)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('On track',
+                                          style: TyType.sans(resp.sp(15),
+                                              color: ty.ink,
+                                              weight: FontWeight.w700)),
+                                      SizedBox(height: resp.h(2)),
+                                      Text('Next: $nextTask',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TyType.sans(resp.sp(12.5),
+                                              color: ty.ink2)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: resp.h(24)),
+                          SectionHeader('Package details'),
+                          _buildPackageSection(context),
+                          SizedBox(height: resp.h(18)),
+                          SectionHeader('The gathering', action: 'Manage',
+                              onAction: () {
+                            Navigator.of(context)
+                                .push(MaterialPageRoute(
+                                    builder: (_) => const GuestsScreen()))
+                                .then((_) => _load());
+                          }),
+                          Container(
+                            padding: EdgeInsets.all(resp.w(16)),
+                            decoration: _card(ty, resp),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('On track',
-                                    style: TyType.sans(resp.sp(15),
-                                        color: ty.ink, weight: FontWeight.w700)),
-                                SizedBox(height: resp.h(2)),
-                                Text('Next: $nextTask',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                                Row(
+                                  children: [
+                                    if (_guests.isNotEmpty)
+                                      SizedBox(
+                                        width: resp.w(110),
+                                        height: resp.h(36),
+                                        child: Stack(
+                                          children: [
+                                            for (int i = 0;
+                                                i < _guests.length.clamp(0, 4);
+                                                i++)
+                                              Positioned(
+                                                left: i * resp.w(20.0),
+                                                child: TyAvatar(
+                                                    name: _guests[i].name,
+                                                    index: i,
+                                                    size: resp.w(36)),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    SizedBox(width: resp.w(8)),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('$totalGuests loved ones',
+                                              style: TyType.sans(resp.sp(15),
+                                                  color: ty.ink,
+                                                  weight: FontWeight.w700)),
+                                          Text(
+                                              '${_guests.length} households invited',
+                                              style: TyType.sans(resp.sp(12.5),
+                                                  color: ty.ink2)),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.chevron_right_rounded,
+                                        color: ty.ink3, size: resp.sp(24)),
+                                  ],
+                                ),
+                                if (_guests.isNotEmpty) ...[
+                                  SizedBox(height: resp.h(14)),
+                                  Divider(color: ty.line, height: 1),
+                                  SizedBox(height: resp.h(14)),
+                                  _buildRsvpBreakdown(context),
+                                ],
                               ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    SizedBox(height: resp.h(24)),
-                    SectionHeader('Package details'),
-                    _buildPackageSection(context),
-                    SizedBox(height: resp.h(18)),
-                    SectionHeader('The gathering', action: 'Manage', onAction: () {
-                      Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => const GuestsScreen()))
-                          .then((_) => _load());
-                    }),
-                    Container(
-                      padding: EdgeInsets.all(resp.w(16)),
-                      decoration: _card(ty, resp),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              if (_guests.isNotEmpty)
-                                SizedBox(
-                                  width: resp.w(110),
-                                  height: resp.h(36),
-                                  child: Stack(
-                                    children: [
-                                      for (int i = 0; i < _guests.length.clamp(0, 4); i++)
-                                        Positioned(
-                                          left: i * resp.w(20.0),
-                                          child: TyAvatar(
-                                              name: _guests[i].name, index: i, size: resp.w(36)),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              SizedBox(width: resp.w(8)),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('$totalGuests loved ones',
-                                        style: TyType.sans(resp.sp(15),
-                                            color: ty.ink, weight: FontWeight.w700)),
-                                    Text('${_guests.length} households invited',
-                                        style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
-                                  ],
-                                ),
-                              ),
-                              Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.sp(24)),
-                            ],
-                          ),
-                          if (_guests.isNotEmpty) ...[
-                            SizedBox(height: resp.h(14)),
-                            Divider(color: ty.line, height: 1),
-                            SizedBox(height: resp.h(14)),
-                            _buildRsvpBreakdown(context),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          // Fixed top bar — sits above the scrolling content so it never
+          // scrolls away, with its own scrim so the back/like buttons stay
+          // legible over any hero image or card content behind them.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.fromLTRB(
+                  resp.w(18),
+                  MediaQuery.of(context).padding.top + resp.h(8),
+                  resp.w(18),
+                  resp.h(16)),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black.withOpacity(0.45), Colors.transparent],
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _glass(context, Icons.chevron_left_rounded,
+                      () => Navigator.of(context).maybePop()),
+                  _glass(
+                    context,
+                    _isLiked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    () => setState(() => _isLiked = !_isLiked),
+                    iconColor: _isLiked ? ty.rose : Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -352,7 +419,8 @@ class _EventHubScreenState extends State<EventHubScreen> {
 
     return GestureDetector(
       onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => PackageDetailScreen(package: pkg)))
+          .push(MaterialPageRoute(
+              builder: (_) => PackageDetailScreen(package: pkg)))
           .then((_) => _load()),
       child: Container(
         padding: EdgeInsets.all(resp.w(16)),
@@ -370,9 +438,15 @@ class _EventHubScreenState extends State<EventHubScreen> {
                     height: resp.w(56),
                     fit: BoxFit.cover,
                     placeholder: (context, url) => PhotoPlaceholder(
-                        tint: 'saffron', height: resp.w(56), width: resp.w(56), arch: false),
+                        tint: 'saffron',
+                        height: resp.w(56),
+                        width: resp.w(56),
+                        arch: false),
                     errorWidget: (context, url, error) => PhotoPlaceholder(
-                        tint: 'saffron', height: resp.w(56), width: resp.w(56), arch: false),
+                        tint: 'saffron',
+                        height: resp.w(56),
+                        width: resp.w(56),
+                        arch: false),
                   ),
                 ),
                 SizedBox(width: resp.w(12)),
@@ -387,11 +461,13 @@ class _EventHubScreenState extends State<EventHubScreen> {
                               color: ty.ink, weight: FontWeight.w700)),
                       SizedBox(height: resp.h(2)),
                       Text('₹${pkg.price.toStringAsFixed(0)}',
-                          style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600)),
+                          style: TyType.sans(resp.sp(13),
+                              color: ty.saffronDeep, weight: FontWeight.w600)),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.sp(22)),
+                Icon(Icons.chevron_right_rounded,
+                    color: ty.ink3, size: resp.sp(22)),
               ],
             ),
             if (_packageItems.isNotEmpty) ...[
@@ -407,7 +483,9 @@ class _EventHubScreenState extends State<EventHubScreen> {
                         SizedBox(width: resp.w(8)),
                         Expanded(
                           child: Text(
-                              item.quantity > 1 ? '${item.name} × ${item.quantity}' : item.name,
+                              item.quantity > 1
+                                  ? '${item.name} × ${item.quantity}'
+                                  : item.name,
                               style: TyType.sans(resp.sp(13), color: ty.ink2)),
                         ),
                       ],
@@ -426,7 +504,8 @@ class _EventHubScreenState extends State<EventHubScreen> {
   Widget _buildRsvpBreakdown(BuildContext context) {
     final theme = context.ty;
     final resp = context.resp;
-    final attending = _guests.where((g) => g.displayStatus == 'attending').length;
+    final attending =
+        _guests.where((g) => g.displayStatus == 'attending').length;
     final declined = _guests.where((g) => g.displayStatus == 'declined').length;
     final maybe = _guests.where((g) => g.displayStatus == 'maybe').length;
     final pending = _guests.length - attending - declined - maybe;
@@ -435,8 +514,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
       return Expanded(
         child: Column(
           children: [
-            Text('$count',
-                style: TyType.display(resp.sp(20), color: color)),
+            Text('$count', style: TyType.display(resp.sp(20), color: color)),
             SizedBox(height: resp.h(2)),
             Text(label.toUpperCase(),
                 style: TyType.eyebrow(resp.sp(10), color: theme.ink2)),
@@ -455,7 +533,8 @@ class _EventHubScreenState extends State<EventHubScreen> {
     );
   }
 
-  Widget _glass(BuildContext context, IconData icon, VoidCallback onTap) {
+  Widget _glass(BuildContext context, IconData icon, VoidCallback onTap,
+      {Color? iconColor}) {
     final resp = context.resp;
     return GestureDetector(
       onTap: onTap,
@@ -466,7 +545,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
           color: Colors.white.withOpacity(0.18),
           borderRadius: BorderRadius.circular(resp.w(14)),
         ),
-        child: Icon(icon, color: Colors.white, size: resp.sp(20)),
+        child: Icon(icon, color: iconColor ?? Colors.white, size: resp.sp(20)),
       ),
     );
   }
@@ -476,13 +555,15 @@ class _EventHubScreenState extends State<EventHubScreen> {
     final resp = context.resp;
     return Expanded(
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: resp.h(14), horizontal: resp.w(8)),
+        padding:
+            EdgeInsets.symmetric(vertical: resp.h(14), horizontal: resp.w(8)),
         decoration: _card(ty, resp),
         child: Column(
           children: [
             Text(n, style: TyType.display(resp.sp(26), color: ty.ink)),
             SizedBox(height: resp.h(4)),
-            Text(l.toUpperCase(), style: TyType.eyebrow(resp.sp(11), color: ty.ink2)),
+            Text(l.toUpperCase(),
+                style: TyType.eyebrow(resp.sp(11), color: ty.ink2)),
           ],
         ),
       ),
