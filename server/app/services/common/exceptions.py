@@ -52,3 +52,7 @@ class TermsNotFoundError(NotFoundError):
 
 class PrivacyPolicyNotFoundError(NotFoundError):
     """Raised when no published Privacy Policy version can be found."""
+
+
+class CancellationPolicyNotFoundError(NotFoundError):
+    """Raised when no published Cancellation & Refund Policy version can be found."""

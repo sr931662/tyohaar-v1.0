@@ -14,6 +14,7 @@ from app.schemas.common.response import (
     CityResponse,
     FAQResponse,
     PrivacyPolicyResponse,
+    CancellationPolicyResponse,
     StateResponse,
     TermsVersionResponse,
 )
@@ -406,4 +407,39 @@ router.add_api_route(
     summary="Create Privacy Policy Version (Admin)",
     description="Publish a new Privacy Policy version. Admin access required.",
     operation_id="common_create_privacy_policy_version",
+)
+
+# ── Cancellation & Refund Policy ────────────────────────────────────────────────
+
+router.add_api_route(
+    "/cancellation-policy",
+    ctrl.get_current_cancellation_policy,
+    methods=["GET"],
+    response_model=SuccessResponse[CancellationPolicyResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get Current Cancellation & Refund Policy",
+    description="Return the currently active Cancellation & Refund Policy version. Public endpoint.",
+    operation_id="common_get_current_cancellation_policy",
+)
+
+router.add_api_route(
+    "/cancellation-policy/versions",
+    ctrl.list_cancellation_policy_versions,
+    methods=["GET"],
+    response_model=CursorPaginatedResponse[CancellationPolicyResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List Cancellation Policy Versions (Admin)",
+    description="Return paginated history of all Cancellation & Refund Policy versions. Admin access required.",
+    operation_id="common_list_cancellation_policy_versions",
+)
+
+router.add_api_route(
+    "/cancellation-policy/versions",
+    ctrl.create_cancellation_policy_version,
+    methods=["POST"],
+    response_model=SuccessResponse[CancellationPolicyResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Create Cancellation Policy Version (Admin)",
+    description="Publish a new Cancellation & Refund Policy version. Admin access required.",
+    operation_id="common_create_cancellation_policy_version",
 )

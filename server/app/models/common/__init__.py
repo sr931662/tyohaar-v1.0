@@ -5,6 +5,7 @@ from app.models.common.faq import FAQ
 from app.models.common.app_setting import AppSetting
 from app.models.common.terms import TermsAndConditions
 from app.models.common.privacy_policy import PrivacyPolicy
+from app.models.common.cancellation_policy import CancellationRefundPolicy
 
 __all__ = [
     "State",
@@ -14,4 +15,5 @@ __all__ = [
     "AppSetting",
     "TermsAndConditions",
     "PrivacyPolicy",
+    "CancellationRefundPolicy",
 ]

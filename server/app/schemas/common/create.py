@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated
 
@@ -90,20 +90,30 @@ class TermsCreate(BaseSchema):
     """Admin: publish a new terms & conditions version."""
 
     version: str = Field(max_length=20, description="Semantic version e.g. 1.0.0")
+    title: str = Field(min_length=1, max_length=500, description="Document title")
     content: str = Field(min_length=1, description="Full HTML or Markdown content")
-    effective_from: datetime
+    effective_date: date
     summary: str | None = Field(default=None, description="Short summary of changes for users")
-    is_active: bool = False
 
 
 class PrivacyPolicyCreate(BaseSchema):
     """Admin: publish a new privacy policy version."""
 
     version: str = Field(max_length=20)
+    title: str = Field(min_length=1, max_length=500, description="Document title")
     content: str = Field(min_length=1)
-    effective_from: datetime
+    effective_date: date
     summary: str | None = None
-    is_active: bool = False
+
+
+class CancellationPolicyCreate(BaseSchema):
+    """Admin: publish a new cancellation & refund policy version."""
+
+    version: str = Field(max_length=20)
+    title: str = Field(min_length=1, max_length=500, description="Document title")
+    content: str = Field(min_length=1)
+    effective_date: date
+    summary: str | None = None
 
 
 # Aliases consumed by the common controller

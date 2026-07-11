@@ -352,8 +352,11 @@ function LegalTab() {
   const qc = useQueryClient();
   const [termsOpen, setTermsOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
-  const [termsForm, setTermsForm] = useState({ content: '', version: '', notes: '' });
-  const [privacyForm, setPrivacyForm] = useState({ content: '', version: '', notes: '' });
+  const [cancellationOpen, setCancellationOpen] = useState(false);
+  const emptyForm = { title: '', content: '', version: '', effective_date: '', summary: '' };
+  const [termsForm, setTermsForm] = useState(emptyForm);
+  const [privacyForm, setPrivacyForm] = useState(emptyForm);
+  const [cancellationForm, setCancellationForm] = useState(emptyForm);
 
   const { data: currentTerms } = useQuery({
     queryKey: ['settings', 'terms', 'current'],
@@ -365,21 +368,37 @@ function LegalTab() {
     queryFn: () => settingsApi.getCurrentPrivacy(),
   });
 
+  const { data: currentCancellation } = useQuery({
+    queryKey: ['settings', 'cancellation', 'current'],
+    queryFn: () => settingsApi.getCurrentCancellationPolicy(),
+  });
+
   const { data: termsVersions } = useQuery({
     queryKey: ['settings', 'terms', 'versions'],
     queryFn: () => settingsApi.listTermsVersions({ per_page: 20 }),
   });
 
+  const { data: cancellationVersions } = useQuery({
+    queryKey: ['settings', 'cancellation', 'versions'],
+    queryFn: () => settingsApi.listCancellationPolicyVersions({ per_page: 20 }),
+  });
+
   const createTermsMutation = useMutation({
     mutationFn: (body) => settingsApi.createTermsVersion(body),
     onSuccess: () => { toast.success('Terms version published'); qc.invalidateQueries(['settings', 'terms']); setTermsOpen(false); },
-    onError: () => toast.error('Failed'),
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed'),
   });
 
   const createPrivacyMutation = useMutation({
     mutationFn: (body) => settingsApi.createPrivacyVersion(body),
     onSuccess: () => { toast.success('Privacy policy published'); qc.invalidateQueries(['settings', 'privacy']); setPrivacyOpen(false); },
-    onError: () => toast.error('Failed'),
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed'),
+  });
+
+  const createCancellationMutation = useMutation({
+    mutationFn: (body) => settingsApi.createCancellationPolicyVersion(body),
+    onSuccess: () => { toast.success('Cancellation policy published'); qc.invalidateQueries(['settings', 'cancellation']); setCancellationOpen(false); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed'),
   });
 
   return (
@@ -388,7 +407,7 @@ function LegalTab() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div className="admin-card-title">Terms &amp; Conditions</div>
-          <button className="btn btn-primary btn-sm" onClick={() => { setTermsForm({ content: currentTerms?.content ?? '', version: '', notes: '' }); setTermsOpen(true); }}>Publish New</button>
+          <button className="btn btn-primary btn-sm" onClick={() => { setTermsForm({ ...emptyForm, title: currentTerms?.title ?? 'Terms & Conditions', content: currentTerms?.content ?? '' }); setTermsOpen(true); }}>Publish New</button>
         </div>
         <div className="admin-card-body">
           {currentTerms ? (
@@ -421,7 +440,7 @@ function LegalTab() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div className="admin-card-title">Privacy Policy</div>
-          <button className="btn btn-primary btn-sm" onClick={() => { setPrivacyForm({ content: currentPrivacy?.content ?? '', version: '', notes: '' }); setPrivacyOpen(true); }}>Publish New</button>
+          <button className="btn btn-primary btn-sm" onClick={() => { setPrivacyForm({ ...emptyForm, title: currentPrivacy?.title ?? 'Privacy Policy', content: currentPrivacy?.content ?? '' }); setPrivacyOpen(true); }}>Publish New</button>
         </div>
         <div className="admin-card-body">
           {currentPrivacy ? (
@@ -439,22 +458,76 @@ function LegalTab() {
         </div>
       </div>
 
+      {/* Cancellation & Refund Policy */}
+      <div className="admin-card">
+        <div className="admin-card-header">
+          <div className="admin-card-title">Cancellation &amp; Refund Policy</div>
+          <button className="btn btn-primary btn-sm" onClick={() => { setCancellationForm({ ...emptyForm, title: currentCancellation?.title ?? 'Cancellation & Refund Policy', content: currentCancellation?.content ?? '' }); setCancellationOpen(true); }}>Publish New</button>
+        </div>
+        <div className="admin-card-body">
+          {currentCancellation ? (
+            <>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                Current: v{currentCancellation.version} — {formatDate(currentCancellation.effective_date ?? currentCancellation.created_at)}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', maxHeight: 160, overflowY: 'auto', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {currentCancellation.content?.slice(0, 400)}{currentCancellation.content?.length > 400 ? '…' : ''}
+              </div>
+            </>
+          ) : (
+            <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No Cancellation & Refund Policy published yet.</div>
+          )}
+
+          {cancellationVersions?.items?.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Version History</div>
+              {cancellationVersions.items.map((v) => (
+                <div key={v.id} style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '3px 0' }}>
+                  v{v.version} — {formatDate(v.created_at)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Terms publish modal */}
       <Modal open={termsOpen} onClose={() => setTermsOpen(false)} title="Publish New Terms Version"
-        footer={<><button className="btn btn-secondary" onClick={() => setTermsOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => createTermsMutation.mutate(termsForm)} disabled={!termsForm.content || !termsForm.version || createTermsMutation.isPending}>{createTermsMutation.isPending ? 'Publishing…' : 'Publish'}</button></>}
+        footer={<><button className="btn btn-secondary" onClick={() => setTermsOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => createTermsMutation.mutate(termsForm)} disabled={!termsForm.title || !termsForm.content || !termsForm.version || !termsForm.effective_date || createTermsMutation.isPending}>{createTermsMutation.isPending ? 'Publishing…' : 'Publish'}</button></>}
       >
-        <div className="form-group"><label className="form-label">Version *</label><input className="form-control" value={termsForm.version} onChange={e => setTermsForm(f => ({ ...f, version: e.target.value }))} placeholder="e.g. 1.2" /></div>
+        <div className="form-row-2">
+          <div className="form-group"><label className="form-label">Version *</label><input className="form-control" value={termsForm.version} onChange={e => setTermsForm(f => ({ ...f, version: e.target.value }))} placeholder="e.g. 1.2" /></div>
+          <div className="form-group"><label className="form-label">Effective Date *</label><input type="date" className="form-control" value={termsForm.effective_date} onChange={e => setTermsForm(f => ({ ...f, effective_date: e.target.value }))} /></div>
+        </div>
+        <div className="form-group"><label className="form-label">Title *</label><input className="form-control" value={termsForm.title} onChange={e => setTermsForm(f => ({ ...f, title: e.target.value }))} /></div>
         <div className="form-group"><label className="form-label">Content *</label><textarea className="form-control" rows={8} value={termsForm.content} onChange={e => setTermsForm(f => ({ ...f, content: e.target.value }))} /></div>
-        <div className="form-group"><label className="form-label">Notes</label><input className="form-control" value={termsForm.notes} onChange={e => setTermsForm(f => ({ ...f, notes: e.target.value }))} placeholder="Summary of changes" /></div>
+        <div className="form-group"><label className="form-label">Summary</label><input className="form-control" value={termsForm.summary} onChange={e => setTermsForm(f => ({ ...f, summary: e.target.value }))} placeholder="Short summary of changes for users" /></div>
       </Modal>
 
       {/* Privacy publish modal */}
       <Modal open={privacyOpen} onClose={() => setPrivacyOpen(false)} title="Publish New Privacy Policy"
-        footer={<><button className="btn btn-secondary" onClick={() => setPrivacyOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => createPrivacyMutation.mutate(privacyForm)} disabled={!privacyForm.content || !privacyForm.version || createPrivacyMutation.isPending}>{createPrivacyMutation.isPending ? 'Publishing…' : 'Publish'}</button></>}
+        footer={<><button className="btn btn-secondary" onClick={() => setPrivacyOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => createPrivacyMutation.mutate(privacyForm)} disabled={!privacyForm.title || !privacyForm.content || !privacyForm.version || !privacyForm.effective_date || createPrivacyMutation.isPending}>{createPrivacyMutation.isPending ? 'Publishing…' : 'Publish'}</button></>}
       >
-        <div className="form-group"><label className="form-label">Version *</label><input className="form-control" value={privacyForm.version} onChange={e => setPrivacyForm(f => ({ ...f, version: e.target.value }))} placeholder="e.g. 1.2" /></div>
+        <div className="form-row-2">
+          <div className="form-group"><label className="form-label">Version *</label><input className="form-control" value={privacyForm.version} onChange={e => setPrivacyForm(f => ({ ...f, version: e.target.value }))} placeholder="e.g. 1.2" /></div>
+          <div className="form-group"><label className="form-label">Effective Date *</label><input type="date" className="form-control" value={privacyForm.effective_date} onChange={e => setPrivacyForm(f => ({ ...f, effective_date: e.target.value }))} /></div>
+        </div>
+        <div className="form-group"><label className="form-label">Title *</label><input className="form-control" value={privacyForm.title} onChange={e => setPrivacyForm(f => ({ ...f, title: e.target.value }))} /></div>
         <div className="form-group"><label className="form-label">Content *</label><textarea className="form-control" rows={8} value={privacyForm.content} onChange={e => setPrivacyForm(f => ({ ...f, content: e.target.value }))} /></div>
-        <div className="form-group"><label className="form-label">Notes</label><input className="form-control" value={privacyForm.notes} onChange={e => setPrivacyForm(f => ({ ...f, notes: e.target.value }))} /></div>
+        <div className="form-group"><label className="form-label">Summary</label><input className="form-control" value={privacyForm.summary} onChange={e => setPrivacyForm(f => ({ ...f, summary: e.target.value }))} /></div>
+      </Modal>
+
+      {/* Cancellation policy publish modal */}
+      <Modal open={cancellationOpen} onClose={() => setCancellationOpen(false)} title="Publish New Cancellation & Refund Policy"
+        footer={<><button className="btn btn-secondary" onClick={() => setCancellationOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => createCancellationMutation.mutate(cancellationForm)} disabled={!cancellationForm.title || !cancellationForm.content || !cancellationForm.version || !cancellationForm.effective_date || createCancellationMutation.isPending}>{createCancellationMutation.isPending ? 'Publishing…' : 'Publish'}</button></>}
+      >
+        <div className="form-row-2">
+          <div className="form-group"><label className="form-label">Version *</label><input className="form-control" value={cancellationForm.version} onChange={e => setCancellationForm(f => ({ ...f, version: e.target.value }))} placeholder="e.g. 1.2" /></div>
+          <div className="form-group"><label className="form-label">Effective Date *</label><input type="date" className="form-control" value={cancellationForm.effective_date} onChange={e => setCancellationForm(f => ({ ...f, effective_date: e.target.value }))} /></div>
+        </div>
+        <div className="form-group"><label className="form-label">Title *</label><input className="form-control" value={cancellationForm.title} onChange={e => setCancellationForm(f => ({ ...f, title: e.target.value }))} /></div>
+        <div className="form-group"><label className="form-label">Content *</label><textarea className="form-control" rows={8} value={cancellationForm.content} onChange={e => setCancellationForm(f => ({ ...f, content: e.target.value }))} /></div>
+        <div className="form-group"><label className="form-label">Summary</label><input className="form-control" value={cancellationForm.summary} onChange={e => setCancellationForm(f => ({ ...f, summary: e.target.value }))} placeholder="Short summary shown to customers" /></div>
       </Modal>
     </div>
   );

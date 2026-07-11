@@ -47,6 +47,7 @@ from app.models.common.banner import Banner
 from app.models.common.city import City
 from app.models.common.faq import FAQ
 from app.models.common.privacy_policy import PrivacyPolicy
+from app.models.common.cancellation_policy import CancellationRefundPolicy
 from app.models.common.state import State
 from app.models.common.terms import TermsAndConditions
 from app.models.memberships.membership_plan import MembershipPlan
@@ -385,6 +386,27 @@ async def seed_terms_privacy(session) -> None:
             content="<h1>Privacy Policy</h1><p>Tyohaar collects only the information necessary to provide its services. We do not sell your personal data. Your phone number and email are used for authentication and booking communications only.</p>",
             effective_date=date(2024, 1, 1), status=ContentStatus.PUBLISHED,
             summary="We collect minimal data, never sell it, and protect it with industry-standard encryption.",
+        ))
+    res = await session.execute(select(CancellationRefundPolicy).where(CancellationRefundPolicy.version == "1.0.0"))
+    if not res.scalar_one_or_none():
+        session.add(CancellationRefundPolicy(
+            version="1.0.0", title="Cancellation & Refund Policy", language=Language.ENGLISH,
+            content=(
+                "<h1>Cancellation & Refund Policy</h1>"
+                "<p>You may request cancellation of a booking any time up to 48 hours before "
+                "the scheduled event. Cancellations made within this window are subject to a "
+                "10% cancellation fee, deducted from the refunded amount; the remainder is "
+                "refunded to your original payment method.</p>"
+                "<p>Members with an active plan that includes cancellation-fee protection have "
+                "this fee waived automatically.</p>"
+                "<p>Cancellation requests are reviewed by our team before a refund is processed. "
+                "Refunds are typically credited within 5-7 business days of approval.</p>"
+                "<p>Bookings cancelled within 48 hours of the scheduled event, or after the "
+                "event has started, are not eligible for a refund.</p>"
+            ),
+            effective_date=date(2024, 1, 1), status=ContentStatus.PUBLISHED,
+            summary="Cancel up to 48 hours before your event for a refund minus a 10% fee "
+                    "(waived for protected members). No refund inside the 48-hour window.",
         ))
     await session.flush()
     print("  [+] Terms & Privacy Policy seeded")

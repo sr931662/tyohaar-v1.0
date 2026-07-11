@@ -13,6 +13,7 @@ import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
 import 'event_hub_screen.dart';
+import 'cancel_booking_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -146,57 +147,79 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final ty = context.ty;
     final isDone = b.status == 'completed';
     final dateStr = DateFormat('dd MMM').format(b.scheduledDate);
-    
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => EventHubScreen(celebrationId: b.celebrationId))),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: ty.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: ty.line),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 64,
-              height: 64,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
-                  imageUrl: b.packageCoverUrl ?? '',
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', arch: false),
-                  errorWidget: (context, url, error) => OccasionAssets.getFallback(b.packageName ?? '', arch: false),
+    final isCancellable = !isDone &&
+        b.status != 'cancelled' &&
+        b.scheduledDate.isAfter(DateTime.now());
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ty.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ty.line),
+      ),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => EventHubScreen(celebrationId: b.celebrationId))),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: b.packageCoverUrl ?? '',
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', arch: false),
+                      errorWidget: (context, url, error) => OccasionAssets.getFallback(b.packageName ?? '', arch: false),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(b.packageName ?? 'Custom Booking', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text(dateStr, style: TyType.sans(12, color: ty.ink2)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDone ? ty.leaf.withOpacity(0.1) : ty.saffron.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    b.status.toUpperCase(),
+                    style: TyType.sans(10, color: isDone ? ty.leaf : ty.saffronDeep, weight: FontWeight.w700),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(b.packageName ?? 'Custom Booking', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
-                  const SizedBox(height: 2),
-                  Text(dateStr, style: TyType.sans(12, color: ty.ink2)),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: isDone ? ty.leaf.withOpacity(0.1) : ty.saffron.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                b.status.toUpperCase(),
-                style: TyType.sans(10, color: isDone ? ty.leaf : ty.saffronDeep, weight: FontWeight.w700),
+          ),
+          if (isCancellable) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () async {
+                  final cancelled = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(builder: (_) => CancelBookingScreen(booking: b)));
+                  if (cancelled == true) _loadBookings();
+                },
+                child: Text('Cancel Booking',
+                    style: TyType.sans(12.5, color: ty.rose, weight: FontWeight.w700)),
               ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }

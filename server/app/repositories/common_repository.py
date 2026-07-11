@@ -16,6 +16,7 @@ from app.models.common.banner import Banner
 from app.models.common.city import City
 from app.models.common.faq import FAQ
 from app.models.common.privacy_policy import PrivacyPolicy
+from app.models.common.cancellation_policy import CancellationRefundPolicy
 from app.models.common.state import State
 from app.models.common.terms import TermsAndConditions
 from app.models.enums import BannerTargetAudience, BannerType, ContentStatus, FAQCategory, UserRole
@@ -248,7 +249,7 @@ class TermsRepository(BaseRepository[TermsAndConditions]):
     ) -> TermsAndConditions | None:
         from sqlalchemy import or_
         filters: list[Any] = [
-            TermsAndConditions.content_status == ContentStatus.PUBLISHED,
+            TermsAndConditions.status == ContentStatus.PUBLISHED,
             TermsAndConditions.language == language,
             TermsAndConditions.superseded_by_id.is_(None),
         ]
@@ -263,13 +264,13 @@ class TermsRepository(BaseRepository[TermsAndConditions]):
 
     async def find_published(self) -> list[TermsAndConditions]:
         return await self.find_many(
-            TermsAndConditions.content_status == ContentStatus.PUBLISHED,
+            TermsAndConditions.status == ContentStatus.PUBLISHED,
             order_by=TermsAndConditions.version.desc(),
         )
 
     async def find_requiring_acceptance(self) -> list[TermsAndConditions]:
         return await self.find_many(
-            TermsAndConditions.content_status == ContentStatus.PUBLISHED,
+            TermsAndConditions.status == ContentStatus.PUBLISHED,
             TermsAndConditions.must_accept_version == True,  # noqa: E712
             TermsAndConditions.superseded_by_id.is_(None),
         )
@@ -291,14 +292,14 @@ class PrivacyPolicyRepository(BaseRepository[PrivacyPolicy]):
 
     async def get_current(self, language: str = "en") -> PrivacyPolicy | None:
         return await self.find_one(
-            PrivacyPolicy.content_status == ContentStatus.PUBLISHED,
+            PrivacyPolicy.status == ContentStatus.PUBLISHED,
             PrivacyPolicy.language == language,
             PrivacyPolicy.superseded_by_id.is_(None),
         )
 
     async def find_published(self) -> list[PrivacyPolicy]:
         return await self.find_many(
-            PrivacyPolicy.content_status == ContentStatus.PUBLISHED,
+            PrivacyPolicy.status == ContentStatus.PUBLISHED,
             order_by=PrivacyPolicy.version.desc(),
         )
 
@@ -310,6 +311,34 @@ class PrivacyPolicyRepository(BaseRepository[PrivacyPolicy]):
         return await self.find_one(
             PrivacyPolicy.version == version,
             PrivacyPolicy.language == language,
+        )
+
+
+class CancellationRefundPolicyRepository(BaseRepository[CancellationRefundPolicy]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, CancellationRefundPolicy)
+
+    async def get_current(self, language: str = "en") -> CancellationRefundPolicy | None:
+        return await self.find_one(
+            CancellationRefundPolicy.status == ContentStatus.PUBLISHED,
+            CancellationRefundPolicy.language == language,
+            CancellationRefundPolicy.superseded_by_id.is_(None),
+        )
+
+    async def find_published(self) -> list[CancellationRefundPolicy]:
+        return await self.find_many(
+            CancellationRefundPolicy.status == ContentStatus.PUBLISHED,
+            order_by=CancellationRefundPolicy.version.desc(),
+        )
+
+    async def find_version(
+        self,
+        version: str,
+        language: str = "en",
+    ) -> CancellationRefundPolicy | None:
+        return await self.find_one(
+            CancellationRefundPolicy.version == version,
+            CancellationRefundPolicy.language == language,
         )
 
 
@@ -325,3 +354,4 @@ class CommonRepositoryAggregate:
         self.settings = AppSettingRepository(session)
         self.terms = TermsRepository(session)
         self.privacy_policies = PrivacyPolicyRepository(session)
+        self.cancellation_policies = CancellationRefundPolicyRepository(session)

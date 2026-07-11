@@ -37,6 +37,8 @@ from app.schemas.common import (
     FAQUpdate,
     PrivacyPolicyCreate,
     PrivacyPolicyResponse,
+    CancellationPolicyCreate,
+    CancellationPolicyResponse,
     StateCreate,
     StateResponse,
     StateUpdate,
@@ -55,6 +57,7 @@ from app.services.common.exceptions import (
     CityNotFoundError,
     FAQNotFoundError,
     PrivacyPolicyNotFoundError,
+    CancellationPolicyNotFoundError,
     StateHasCitiesError,
     StateNotFoundError,
     SystemSettingDeleteError,
@@ -467,12 +470,12 @@ class CommonService(BaseService):
             current = await uow.common.terms.get_current()
             if current is not None:
                 await uow.common.terms.update(
-                    current, {"content_status": ContentStatus.ARCHIVED}
+                    current, {"status": ContentStatus.ARCHIVED}
                 )
 
             payload = data.model_dump(exclude_unset=True)
-            payload["content_status"] = ContentStatus.PUBLISHED
-            new_terms = await uow.common.terms.create(payload)
+            payload["status"] = ContentStatus.PUBLISHED
+            new_terms = await uow.common.terms.create_from_dict(payload)
             await uow.commit()
             return TermsResponse.model_validate(new_terms)
 
@@ -499,11 +502,55 @@ class CommonService(BaseService):
             current = await uow.common.privacy_policies.get_current()
             if current is not None:
                 await uow.common.privacy_policies.update(
-                    current, {"content_status": ContentStatus.ARCHIVED}
+                    current, {"status": ContentStatus.ARCHIVED}
                 )
 
             payload = data.model_dump(exclude_unset=True)
-            payload["content_status"] = ContentStatus.PUBLISHED
-            new_policy = await uow.common.privacy_policies.create(payload)
+            payload["status"] = ContentStatus.PUBLISHED
+            new_policy = await uow.common.privacy_policies.create_from_dict(payload)
             await uow.commit()
             return PrivacyPolicyResponse.model_validate(new_policy)
+
+    # ── Cancellation & Refund Policy ────────────────────────────────────────────
+
+    async def get_current_cancellation_policy(self) -> CancellationPolicyResponse:
+        """Return the latest active (published) Cancellation & Refund Policy version."""
+        async with self._uow() as uow:
+            policy = await uow.common.cancellation_policies.get_current()
+            if policy is None:
+                raise CancellationPolicyNotFoundError("CancellationRefundPolicy", "current")
+            return CancellationPolicyResponse.model_validate(policy)
+
+    async def list_cancellation_policy_versions(
+        self,
+        cursor: str | None = None,
+        limit: int = _DEFAULT_LIMIT,
+    ) -> CursorPage[CancellationPolicyResponse]:
+        limit = min(limit, _MAX_LIMIT)
+        async with self._uow() as uow:
+            versions = await uow.common.cancellation_policies.find_published()
+            items = [CancellationPolicyResponse.model_validate(p) for p in versions[:limit]]
+            return CursorPage(items=items, has_more=len(versions) > limit)
+
+    async def create_cancellation_policy_version(
+        self,
+        data: CancellationPolicyCreate,
+        admin_id: UUID,
+    ) -> CancellationPolicyResponse:
+        """
+        Publish a new Cancellation & Refund Policy version. The previous
+        active version is archived before creating the new one.
+        """
+        async with self._uow() as uow:
+            current = await uow.common.cancellation_policies.get_current()
+            if current is not None:
+                await uow.common.cancellation_policies.update(
+                    current, {"status": ContentStatus.ARCHIVED}
+                )
+
+            payload = data.model_dump(exclude_unset=True)
+            payload["status"] = ContentStatus.PUBLISHED
+            payload["author_id"] = admin_id
+            new_policy = await uow.common.cancellation_policies.create_from_dict(payload)
+            await uow.commit()
+            return CancellationPolicyResponse.model_validate(new_policy)

@@ -46,6 +46,29 @@ class PrivacyPolicyVersion {
   }
 }
 
+class CancellationPolicyVersion {
+  final String id;
+  final String content;
+  final String version;
+  final DateTime effectiveDate;
+
+  CancellationPolicyVersion({
+    required this.id,
+    required this.content,
+    required this.version,
+    required this.effectiveDate,
+  });
+
+  factory CancellationPolicyVersion.fromJson(Map<String, dynamic> json) {
+    return CancellationPolicyVersion(
+      id: json['id'] as String,
+      content: json['content'] as String? ?? '',
+      version: json['version'] as String? ?? '1.0',
+      effectiveDate: DateTime.tryParse(json['effective_date'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
 class CityOption {
   final String id;
   final String name;
@@ -105,6 +128,11 @@ class CommonService {
   Future<PrivacyPolicyVersion> getPrivacyPolicy() async {
     final response = await _api.dio.get('common/privacy-policy');
     return PrivacyPolicyVersion.fromJson(response.data['data'] as Map<String, dynamic>);
+  }
+
+  Future<CancellationPolicyVersion> getCancellationPolicy() async {
+    final response = await _api.dio.get('common/cancellation-policy');
+    return CancellationPolicyVersion.fromJson(response.data['data'] as Map<String, dynamic>);
   }
 
   Future<List<StateOption>> listStates() async {

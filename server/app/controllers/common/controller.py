@@ -20,6 +20,7 @@ from app.schemas.common.create import (
     CityCreate,
     FAQCreate,
     PrivacyPolicyCreate,
+    CancellationPolicyCreate,
     StateCreate,
     TermsVersionCreate,
 )
@@ -30,6 +31,7 @@ from app.schemas.common.response import (
     CityResponse,
     FAQResponse,
     PrivacyPolicyResponse,
+    CancellationPolicyResponse,
     StateResponse,
     TermsVersionResponse,
 )
@@ -353,3 +355,28 @@ async def create_privacy_policy_version(
 ) -> SuccessResponse[PrivacyPolicyResponse]:
     result = await service.create_privacy_policy_version(data=body, admin_id=admin.id)
     return SuccessResponse(data=result, message="Privacy policy version created.")
+
+
+async def get_current_cancellation_policy(
+    service: CommonServiceDep,
+) -> SuccessResponse[CancellationPolicyResponse]:
+    result = await service.get_current_cancellation_policy()
+    return SuccessResponse(data=result, message="Current cancellation policy retrieved.")
+
+
+async def list_cancellation_policy_versions(
+    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
+    _admin: AdminDep,
+    service: CommonServiceDep,
+) -> CursorPaginatedResponse[CancellationPolicyResponse]:
+    page = await service.list_cancellation_policy_versions(cursor=pagination.cursor, limit=pagination.page_size)
+    return _cursor_resp(page, pagination.page_size)
+
+
+async def create_cancellation_policy_version(
+    body: CancellationPolicyCreate,
+    admin: AdminDep,
+    service: CommonServiceDep,
+) -> SuccessResponse[CancellationPolicyResponse]:
+    result = await service.create_cancellation_policy_version(data=body, admin_id=admin.id)
+    return SuccessResponse(data=result, message="Cancellation policy version created.")

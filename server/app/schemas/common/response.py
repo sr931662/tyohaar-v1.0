@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -119,9 +119,10 @@ class TermsResponse(BaseSchema):
 
     id: uuid.UUID
     version: str
+    title: str
     content: str
-    is_active: bool
-    effective_from: datetime
+    status: str
+    effective_date: date
     summary: str | None = None
     created_at: datetime
 
@@ -133,9 +134,25 @@ class PrivacyPolicyResponse(BaseSchema):
 
     id: uuid.UUID
     version: str
+    title: str
     content: str
-    is_active: bool
-    effective_from: datetime
+    status: str
+    effective_date: date
+    summary: str | None = None
+    created_at: datetime
+
+
+class CancellationPolicyResponse(BaseSchema):
+    """Cancellation & refund policy version response."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    version: str
+    title: str
+    content: str
+    status: str
+    effective_date: date
     summary: str | None = None
     created_at: datetime
 

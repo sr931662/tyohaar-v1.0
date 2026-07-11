@@ -111,4 +111,14 @@ export const settingsApi = {
 
   createPrivacyVersion: (body) =>
     apiClient.post('/common/privacy-policy/versions', body).then(extractData),
+
+  // Cancellation & Refund Policy
+  getCurrentCancellationPolicy: () =>
+    apiClient.get('/common/cancellation-policy').then(extractData),
+
+  listCancellationPolicyVersions: (params) =>
+    apiClient.get('/common/cancellation-policy/versions', { params }).then(extractPaginated),
+
+  createCancellationPolicyVersion: (body) =>
+    apiClient.post('/common/cancellation-policy/versions', body).then(extractData),
 };
