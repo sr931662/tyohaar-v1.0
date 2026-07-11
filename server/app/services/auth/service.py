@@ -50,6 +50,7 @@ from app.services.auth.helpers import (
     generate_token,
     hash_otp,
     hash_token,
+    otp_email_html,
 )
 from app.services.auth.validators import (
     validate_otp_for_verification,
@@ -474,13 +475,38 @@ class AuthService(BaseService):
             # commit happens automatically when context exits cleanly
 
         # Side effect AFTER transaction commits
-        logger.info(
-            "[SMS STUB] OTP for %s via %s (purpose=%s): %s",
-            phone,
-            channel,
-            purpose,
-            raw_otp,
-        )
+        if channel == OTPDeliveryChannel.EMAIL:
+            from app.services.exceptions import ExternalServiceError
+            from app.services.notifications.email_client import send_email
+
+            purpose_label = {
+                OTPPurpose.PASSWORD_RESET: "reset your password",
+                OTPPurpose.REGISTRATION: "complete your registration",
+                OTPPurpose.EMAIL_VERIFICATION: "verify your email",
+                OTPPurpose.ACCOUNT_DELETION: "confirm account deletion",
+            }.get(purpose, "verify your identity")
+
+            try:
+                await send_email(
+                    to=phone,  # `phone` is the generic identifier; email here
+                    subject=f"Your Tyohaar verification code: {raw_otp}",
+                    html_body=otp_email_html(raw_otp, purpose_label, settings.OTP_EXPIRE_MINUTES),
+                    text_body=f"Your Tyohaar verification code is {raw_otp}. "
+                    f"It expires in {settings.OTP_EXPIRE_MINUTES} minutes.",
+                )
+            except Exception as exc:
+                logger.exception("Failed to email OTP to %s", phone)
+                raise ExternalServiceError(
+                    "Email", "Could not send the verification code. Please try again."
+                ) from exc
+        else:
+            logger.info(
+                "[SMS STUB] OTP for %s via %s (purpose=%s): %s",
+                phone,
+                channel,
+                purpose,
+                raw_otp,
+            )
 
         return OTPSentResponse(
             status=OTPStatus.PENDING,

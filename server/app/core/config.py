@@ -111,6 +111,23 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_SECRET: str = ""
     RAZORPAY_WEBHOOK_SECRET: str = ""
 
+    # ── Email (Gmail SMTP via App Password) ─────────────────────────────────
+    # Uses Gmail's SMTP relay with an App Password (not the account's real
+    # password — Gmail requires 2-Step Verification to be enabled first).
+    # Generate one at myaccount.google.com/apppasswords ("Mail" → your device
+    # name), then set SMTP_USERNAME to the full Gmail address and
+    # SMTP_PASSWORD to the 16-character app password (spaces are fine, they
+    # are stripped before use). SMTP_FROM_EMAIL defaults to SMTP_USERNAME
+    # when left blank.
+    # Leave SMTP_USERNAME/SMTP_PASSWORD blank in dev; OTP emails and other
+    # transactional emails return a clear error until set.
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_FROM_NAME: str = "Tyohaar"
+
     # ── Push Notifications (Firebase Cloud Messaging) ───────────────────────
     # console.firebase.google.com → Project Settings → Service Accounts →
     # "Generate new private key". Paste the FULL JSON contents of the

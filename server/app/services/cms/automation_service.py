@@ -189,6 +189,35 @@ class AutomationService(BaseService):
                     # Fire notification via service
                     result["output"] = {"notification_queued": True, "user_id": str(user_id)}
 
+            elif action_type == "send_email":
+                from app.services.notifications.email_client import is_configured, send_email
+
+                to = params.get("to")
+                if not to:
+                    user_id = payload.get("user_id") or params.get("user_id")
+                    if user_id:
+                        async with self._uow() as uow:
+                            user = await uow.users.users.get_by_id(user_id)
+                            to = user.email if user else None
+
+                subject = params.get("subject", "Notification from Tyohaar")
+                body = params.get("body", "")
+
+                if not to:
+                    result["status"] = "skipped"
+                    result["output"] = {"reason": "No recipient email resolved."}
+                elif not is_configured():
+                    result["status"] = "skipped"
+                    result["output"] = {"reason": "Email is not configured (SMTP_USERNAME/SMTP_PASSWORD unset)."}
+                else:
+                    await send_email(
+                        to=to,
+                        subject=subject,
+                        html_body=f"<div style=\"font-family: sans-serif; font-size: 15px; color: #2A2018;\">{body}</div>",
+                        text_body=body,
+                    )
+                    result["output"] = {"sent": True, "to": to}
+
             elif action_type == "generate_invoice":
                 booking_id = payload.get("booking_id") or params.get("booking_id")
                 result["output"] = {"invoice_queued": True, "booking_id": str(booking_id) if booking_id else None}

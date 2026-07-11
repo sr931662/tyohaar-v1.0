@@ -22,6 +22,23 @@ def generate_otp() -> str:
     return str(secrets.randbelow(1_000_000)).zfill(6)
 
 
+def otp_email_html(otp: str, purpose_label: str, expire_minutes: int) -> str:
+    """Minimal inline-styled HTML body for an OTP email (no external assets)."""
+    return f"""\
+<div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
+  <h2 style="color: #2A2018; margin: 0 0 16px;">Tyohaar</h2>
+  <p style="color: #2A2018; font-size: 15px; line-height: 1.6;">
+    Use the code below to {purpose_label}. It expires in {expire_minutes} minutes.
+  </p>
+  <div style="background: #F6F1E8; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+    <span style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #C8791E;">{otp}</span>
+  </div>
+  <p style="color: #6B5D50; font-size: 13px; line-height: 1.6;">
+    If you didn't request this code, you can safely ignore this email.
+  </p>
+</div>"""
+
+
 def hash_otp(phone: str, otp: str, secret_key: str) -> str:
     """HMAC-SHA256(key=secret_key, msg=phone+otp). Returns hex digest."""
     msg = (phone + otp).encode("utf-8")

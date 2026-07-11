@@ -105,6 +105,50 @@ class NotificationService(BaseService):
                 if device is not None:
                     await uow.users.devices.update(device, {"is_active": False})
 
+    # ── Email dispatch ────────────────────────────────────────────────────────
+
+    async def _dispatch_email(
+        self,
+        notification_id: UUID,
+        user_id: UUID,
+        title: str,
+        body: str,
+    ) -> None:
+        """
+        Best-effort SMTP dispatch for an EMAIL-channel notification that was
+        already written to the table as PENDING. Flips it to SENT/FAILED
+        based on the outcome. No-ops silently if SMTP isn't configured yet —
+        the row just stays PENDING, same as today. Mirrors _dispatch_push.
+        """
+        from app.services.notifications.email_client import is_configured, send_email
+
+        if not is_configured():
+            return
+
+        async with self._uow() as uow:
+            user = await uow.users.users.get_by_id(user_id)
+            if user is None or not user.email:
+                return
+
+            new_status = NotificationStatus.FAILED
+            try:
+                await send_email(
+                    to=user.email,
+                    subject=title,
+                    html_body=f"<div style=\"font-family: sans-serif; font-size: 15px; color: #2A2018;\">{body}</div>",
+                    text_body=body,
+                )
+                new_status = NotificationStatus.SENT
+            except Exception:
+                logger.exception("Email dispatch failed for notification %s", notification_id)
+
+            notif = await uow.notifications.notifications.get_by_id(notification_id)
+            if notif is not None:
+                await uow.notifications.notifications.update(notif, {
+                    "notification_status": new_status,
+                    "sent_at": datetime.now(tz=timezone.utc) if new_status == NotificationStatus.SENT else None,
+                })
+
     # ── Send ──────────────────────────────────────────────────────────────────
 
     async def send_notification(
@@ -135,6 +179,8 @@ class NotificationService(BaseService):
 
         if channel == NotificationChannel.PUSH:
             await self._dispatch_push(notification.id, recipient_id, data.title, data.body, data.action_url)
+        elif channel == NotificationChannel.EMAIL:
+            await self._dispatch_email(notification.id, recipient_id, data.title, data.body)
 
         logger.info(
             "dispatch_stub (no real channel configured) user_id=%s notification_id=%s channel=%s status=%s",
@@ -176,6 +222,8 @@ class NotificationService(BaseService):
 
         if channel == NotificationChannel.PUSH:
             await self._dispatch_push(notification.id, data.user_id, title, body)
+        elif channel == NotificationChannel.EMAIL:
+            await self._dispatch_email(notification.id, data.user_id, title, body)
 
         return result
 
