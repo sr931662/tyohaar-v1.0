@@ -366,6 +366,33 @@ class OccasionService(BaseService):
             celebration = await uow.occasions.celebrations.create_from_dict(payload)
             return CelebrationResponse.model_validate(celebration)
 
+    async def _attach_display_data(self, uow, celebrations: list) -> list[CelebrationResponse]:
+        """
+        Batch-fetch occasion name/hero image and theme colors/cover image
+        for a list of celebrations. CelebrationResponse doesn't nest these
+        relationships, so the client can't resolve them from bare
+        occasion_id/theme_id alone (e.g. the invitation card needs the
+        chosen theme's colors, not the app's default saffron gradient).
+        """
+        occasion_ids = list({c.occasion_id for c in celebrations if c.occasion_id})
+        theme_ids = list({c.theme_id for c in celebrations if c.theme_id})
+        occasions = await uow.occasions.occasions.get_by_ids(occasion_ids)
+        themes = await uow.occasions.themes.get_by_ids(theme_ids) if theme_ids else []
+        occasions_by_id = {o.id: o for o in occasions}
+        themes_by_id = {t.id: t for t in themes}
+
+        results = []
+        for c in celebrations:
+            response = CelebrationResponse.model_validate(c)
+            occ = occasions_by_id.get(c.occasion_id)
+            theme = themes_by_id.get(c.theme_id) if c.theme_id else None
+            response.occasion_name = occ.name if occ else None
+            response.occasion_hero_image_url = occ.banner_url if occ else None
+            response.theme_colors = theme.colors if theme else None
+            response.theme_cover_image_url = theme.cover_image_url if theme else None
+            results.append(response)
+        return results
+
     async def get_celebration(
         self,
         celebration_id: UUID,
@@ -375,7 +402,8 @@ class OccasionService(BaseService):
             celebration = await validate_celebration_ownership(
                 celebration_id, user_id, uow
             )
-            return CelebrationResponse.model_validate(celebration)
+            enriched = await self._attach_display_data(uow, [celebration])
+            return enriched[0]
 
     async def list_celebrations(
         self,
@@ -392,8 +420,9 @@ class OccasionService(BaseService):
                 cursor=cursor,
                 limit=limit,
             )
+            items = await self._attach_display_data(uow, page.items)
             return SchemaCursorPage(
-                items=[CelebrationResponse.model_validate(c) for c in page.items],
+                items=items,
                 next_cursor=page.next_cursor,
                 has_more=page.has_next,
             )

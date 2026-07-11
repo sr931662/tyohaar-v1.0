@@ -895,6 +895,11 @@ class Celebration {
   final String? venueAddress;
   final int completionPercentage;
   final double? estimatedBudget;
+  // Chosen theme's color palette (e.g. {"primary": "#...", "secondary": "#..."})
+  // and cover image, denormalized onto CelebrationResponse since the theme
+  // relationship isn't nested. Null when no theme was picked during planning.
+  final Map<String, String>? themeColors;
+  final String? themeCoverImageUrl;
 
   Celebration({
     required this.id,
@@ -910,17 +915,22 @@ class Celebration {
     this.venueAddress,
     this.completionPercentage = 0,
     this.estimatedBudget,
+    this.themeColors,
+    this.themeCoverImageUrl,
   });
 
   factory Celebration.fromJson(Map<String, dynamic> json) {
-    final occasion = json['occasion'] as Map?;
+    final rawThemeColors = json['theme_colors'] as Map?;
     return Celebration(
       id: json['id'] as String,
       title: json['title'] as String? ?? 'Untitled',
       occasionId: json['occasion_id'] as String?,
-      occasionName: occasion?['name'] as String?,
-      category: occasion?['category'] as String?,
-      heroImageUrl: occasion?['cover_image_url'] as String?,
+      occasionName: json['occasion_name'] as String?,
+      category: null,
+      themeColors: rawThemeColors
+          ?.map((k, v) => MapEntry(k.toString(), v.toString())),
+      themeCoverImageUrl: json['theme_cover_image_url'] as String?,
+      heroImageUrl: json['occasion_hero_image_url'] as String?,
       status: json['status'] as String?,
       celebrationDate: json['celebration_date'] != null
           ? DateTime.tryParse(json['celebration_date'] as String)

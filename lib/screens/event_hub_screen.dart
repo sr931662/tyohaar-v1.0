@@ -203,7 +203,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       TyPill(
-                          '${_celebration?.category ?? 'Celebration'} · ${_celebration?.occasionName ?? ""}',
+                          _celebration?.occasionName ?? 'Celebration',
                           background: ty.saffron,
                           foreground: ty.onPrimary),
                       SizedBox(height: resp.h(12)),

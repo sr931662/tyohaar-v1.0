@@ -27,12 +27,34 @@ class InvitationCard extends StatelessWidget {
     return byteData?.buffer.asUint8List();
   }
 
+  /// Parses a hex color string like "#FF5733" or "FF5733" into a [Color].
+  /// Returns null for anything that isn't a valid 6/8-digit hex color.
+  static Color? _parseHexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    var value = hex.replaceFirst('#', '');
+    if (value.length == 6) value = 'FF$value';
+    if (value.length != 8) return null;
+    final parsed = int.tryParse(value, radix: 16);
+    return parsed != null ? Color(parsed) : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
     final date = celebration.celebrationDate;
     final dateStr = date != null ? DateFormat('EEEE, d MMMM yyyy').format(date) : '';
     final venue = celebration.venueName ?? celebration.venueAddress ?? '';
+
+    // Occasion-based layout, theme-dependent: prefer the customer's chosen
+    // theme colors/cover image over the app's default saffron gradient and
+    // the occasion's generic hero image, so the card actually reflects the
+    // plan's customization rather than a one-size-fits-all look.
+    final themeColors = celebration.themeColors;
+    final primary = _parseHexColor(themeColors?['primary']) ?? ty.saffron;
+    final secondary = _parseHexColor(themeColors?['secondary']) ?? ty.saffronDeep;
+    final coverImageUrl = (celebration.themeCoverImageUrl?.isNotEmpty ?? false)
+        ? celebration.themeCoverImageUrl
+        : celebration.heroImageUrl;
 
     return RepaintBoundary(
       key: boundaryKey,
@@ -44,7 +66,7 @@ class InvitationCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [ty.saffron, ty.saffronDeep],
+            colors: [primary, secondary],
           ),
         ),
         child: Column(
@@ -52,20 +74,15 @@ class InvitationCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              child: celebration.heroImageUrl != null && celebration.heroImageUrl!.isNotEmpty
+              child: coverImageUrl != null && coverImageUrl.isNotEmpty
                   ? CachedNetworkImage(
-                      imageUrl: celebration.heroImageUrl!,
+                      imageUrl: coverImageUrl,
                       height: 200,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(height: 200, color: Colors.white24),
+                      errorWidget: (_, __, ___) => _logoPlaceholder(),
                     )
-                  : Container(
-                      height: 200,
-                      width: double.infinity,
-                      color: Colors.white.withOpacity(0.15),
-                      child: const Icon(Icons.celebration_rounded, color: Colors.white, size: 64),
-                    ),
+                  : _logoPlaceholder(),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
@@ -123,6 +140,20 @@ class InvitationCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _logoPlaceholder() {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      color: Colors.white.withOpacity(0.15),
+      alignment: Alignment.center,
+      child: Image.asset(
+        'assets/images/tyohaar-mark.png',
+        width: 84,
+        height: 84,
       ),
     );
   }

@@ -152,6 +152,14 @@ class CelebrationResponse(BaseSchema):
     # Timestamps
     created_at: datetime
     updated_at: datetime
+    # Denormalized display data — the backend does not nest occasion/theme
+    # objects, so the customer app cannot resolve names/colors/images from
+    # occasion_id/theme_id alone. Populated by the service layer at read
+    # time (batch-fetched, not a relationship load).
+    occasion_name: str | None = None
+    occasion_hero_image_url: str | None = None
+    theme_colors: dict[str, str] | None = None
+    theme_cover_image_url: str | None = None
 
 
 class CelebrationGuestResponse(BaseSchema):
