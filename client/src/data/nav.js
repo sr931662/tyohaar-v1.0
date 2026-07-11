@@ -30,7 +30,7 @@ export const footerColumns = [
   {
     title: 'Company',
     links: [
-      { label: 'Our story', href: '#' },
+      { label: 'Our story', href: '/about' },
       { label: 'Careers', href: '#' },
       { label: 'Press', href: '#' },
       { label: 'Contact', href: '#' },

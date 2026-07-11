@@ -7,6 +7,8 @@ import Navbar from './components/layout/Navbar.jsx';
 // Unified workspace login (vendor + admin/staff — routes to the right portal by role)
 const WorkspaceLoginPage = lazy(() => import('./workspace/pages/WorkspaceLoginPage.jsx'));
 
+const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
+
 import Footer from './components/layout/Footer.jsx';
 import Hero from './components/sections/Hero.jsx';
 import Marquee from './components/sections/Marquee.jsx';
@@ -99,6 +101,14 @@ export default function App() {
     <Routes>
       {/* Marketing site */}
       <Route path="/" element={<MarketingSite />} />
+      <Route
+        path="/about"
+        element={
+          <Suspense fallback={<AdminFallback />}>
+            <AboutPage />
+          </Suspense>
+        }
+      />
 
       {/* Unified workspace login — routes to /vendor or /admin by role */}
       <Route

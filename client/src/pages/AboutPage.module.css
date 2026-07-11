@@ -1,0 +1,126 @@
+.page { padding-top: 0; }
+
+.hero { background: var(--paper); padding-top: clamp(140px, 16vw, 180px); }
+.heroInner { max-width: 780px; }
+
+.eyebrow {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--saffron, #C8791E);
+  margin-bottom: 14px;
+}
+
+.title {
+  font-size: clamp(30px, 4.4vw, 52px);
+  line-height: 1.1;
+  color: var(--ink);
+  margin: 0 0 20px;
+}
+
+.lede {
+  font-size: clamp(16px, 1.6vw, 19px);
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 640px;
+}
+
+.story { background: var(--surface-2); }
+.storyBody {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.storyBody p {
+  font-size: clamp(15px, 1.3vw, 17px);
+  line-height: 1.7;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.values { background: var(--paper); }
+.valuesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(14px, 1.8vw, 20px);
+}
+.valueCard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: clamp(18px, 2vw, 24px);
+}
+.valueTitle {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+.valueBody {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.team { background: var(--surface-2); }
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(16px, 2vw, 24px);
+  max-width: 800px;
+  margin: 0 auto;
+}
+.founderCard {
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-lg);
+  padding: clamp(20px, 2.4vw, 28px);
+  text-align: center;
+}
+.founderPhoto {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.founderPhoto img { width: 100%; height: 100%; object-fit: cover; }
+.founderPlaceholder {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+.founderName {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--ink);
+  margin: 0;
+}
+.founderTitle {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 4px 0 12px;
+}
+.founderBio {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .valuesGrid { grid-template-columns: 1fr; }
+  .teamGrid { grid-template-columns: 1fr; }
+}
