@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/services/vendor_service.dart';
+import '../utils/currency.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
@@ -276,7 +277,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                   Expanded(
                     child: TyButton(
                       _packages.isNotEmpty
-                          ? 'Add to celebration · ₹${(selectedPkgPrice / 1000).toStringAsFixed(0)}K'
+                          ? 'Add to celebration · ${formatPrice(selectedPkgPrice)}'
                           : 'Contact Vendor',
                       full: true,
                       onTap: () => Navigator.of(context).maybePop(),
@@ -365,7 +366,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                 ],
               ),
             ),
-            Text('₹${(price / 1000).toStringAsFixed(0)}K', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w800)),
+            Text(formatPrice(price), style: TyType.sans(15, color: ty.ink, weight: FontWeight.w800)),
           ],
         ),
       ),

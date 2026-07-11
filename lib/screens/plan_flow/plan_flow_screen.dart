@@ -11,6 +11,7 @@ import '../../data/models.dart';
 import '../../data/services/package_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/booking_service.dart';
+import '../../utils/currency.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
 import 'package:tyohaar/screens/send_invitations_screen.dart';
 import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
@@ -804,7 +805,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 ),
                 Positioned(
                   top: 8, right: 8,
-                  child: TyPill('₹${(p.price / 1000).toStringAsFixed(0)}K'),
+                  child: TyPill(formatPrice(p.price)),
                 ),
               ],
             ),

@@ -6,6 +6,7 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
+import '../utils/currency.dart';
 import '../widgets/common.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
@@ -185,7 +186,7 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
               ),
             ),
             Text(
-              '₹${(p.price / 1000).toStringAsFixed(0)}K',
+              formatPrice(p.price),
               style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800),
             ),
           ],

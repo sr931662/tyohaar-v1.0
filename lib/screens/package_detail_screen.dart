@@ -14,6 +14,7 @@ import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
+import '../utils/currency.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
@@ -203,7 +204,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                           children: [
                             TyPill(_fullPackage.slug ?? _fullPackage.name, background: ty.tint(_fullPackage.tint).withOpacity(0.15), foreground: ty.tint(_fullPackage.tint)),
                             const Spacer(),
-                            Text('Base: ₹${(_fullPackage.price / 1000).toStringAsFixed(0)}K', 
+                            Text('Base: ${formatPrice(_fullPackage.price)}',
                                 style: TyType.sans(resp.sp(14), color: ty.ink2, weight: FontWeight.w600)),
                           ],
                         ),
@@ -250,7 +251,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Estimated Total', style: TyType.sans(resp.sp(12), color: ty.ink3, weight: FontWeight.w600)),
-                  Text('₹${(_totalPrice / 1000).toStringAsFixed(1)}K', style: TyType.display(resp.sp(24), color: ty.ink)),
+                  Text(formatPrice(_totalPrice), style: TyType.display(resp.sp(24), color: ty.ink)),
                 ],
               ),
             ),
@@ -386,7 +387,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                 ],
               ),
             ),
-            Text('+₹${(item.unitPrice / 1000).toStringAsFixed(1)}K',
+            Text('+${formatPrice(item.unitPrice)}',
                 style: TyType.sans(resp.sp(13), color: ty.ink2, weight: FontWeight.w700)),
             SizedBox(width: resp.w(12)),
             Icon(isSelected ? Icons.check_box_rounded : Icons.add_box_outlined,

@@ -9,6 +9,7 @@ import '../data/auth_manager.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../data/services/celebration_service.dart';
+import '../utils/currency.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
@@ -457,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Positioned(
                         top: resp.h(10),
                         right: resp.w(10),
-                        child: TyPill('₹${(p.price / 1000).toStringAsFixed(0)}K'),
+                        child: TyPill(formatPrice(p.price)),
                       ),
                     ],
                   ),

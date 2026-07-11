@@ -7,6 +7,7 @@ import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
+import '../utils/currency.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_chip.dart';
 import '../widgets/common.dart';
@@ -433,7 +434,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 Positioned(
                   top: resp.h(10),
                   right: resp.w(10),
-                  child: TyPill('₹${(p.price / 1000).toStringAsFixed(0)}K'),
+                  child: TyPill(formatPrice(p.price)),
                 ),
               ],
             ),
@@ -518,7 +519,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     children: [
                       Text('Starting from', style: TyType.sans(resp.sp(11), color: ty.ink3)),
                       SizedBox(width: resp.w(4)),
-                      Text('₹${(p.price / 1000).toStringAsFixed(0)}K',
+                      Text(formatPrice(p.price),
                           style: TyType.sans(resp.sp(14),
                               color: ty.ink, weight: FontWeight.w800)),
                       const Spacer(),
