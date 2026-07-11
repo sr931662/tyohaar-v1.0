@@ -26,6 +26,8 @@ from app.schemas.packages import (
     PackageGalleryCreate,
     PackageGalleryResponse,
     PackageItemCreate,
+    PackageItemImageCreate,
+    PackageItemImageResponse,
     PackageItemResponse,
     PackageItemUpdate,
     PackageResponse,
@@ -162,7 +164,13 @@ class PackageService(BaseService):
             response = PackageDetailResponse(
                 **base.model_dump(), pricing=pricing_response, vendor=vendor_info
             )
-            response.items = [PackageItemResponse.model_validate(i) for i in items]
+            images_by_item = await self._batch_item_images(uow, [i.id for i in items])
+            response.items = [
+                PackageItemResponse.model_validate(i).model_copy(
+                    update={"images": images_by_item.get(i.id, [])}
+                )
+                for i in items
+            ]
             response.gallery = [PackageGalleryResponse.model_validate(g) for g in gallery]
             response.discounts = [PackageDiscountResponse.model_validate(d) for d in discounts]
             response.faqs = [PackageFAQResponse.model_validate(f) for f in faqs]
@@ -493,7 +501,98 @@ class PackageService(BaseService):
         async with self._uow() as uow:
             await validate_package_exists(package_id, uow)
             items = await uow.packages.items.find_by_package(package_id)
-            return [PackageItemResponse.model_validate(i) for i in items]
+            images_by_item = await self._batch_item_images(uow, [i.id for i in items])
+            return [
+                PackageItemResponse.model_validate(i).model_copy(
+                    update={"images": images_by_item.get(i.id, [])}
+                )
+                for i in items
+            ]
+
+    @staticmethod
+    async def _batch_item_images(
+        uow, item_ids: list[UUID]
+    ) -> dict[UUID, list[PackageItemImageResponse]]:
+        if not item_ids:
+            return {}
+        images = await uow.packages.item_images.find_by_items(item_ids)
+        result: dict[UUID, list[PackageItemImageResponse]] = {}
+        for img in images:
+            result.setdefault(img.item_id, []).append(
+                PackageItemImageResponse.model_validate(img)
+            )
+        return result
+
+    # ── Package Item Images ────────────────────────────────────────────────────
+
+    async def add_item_image(
+        self,
+        package_id: UUID,
+        item_id: UUID,
+        vendor_id: UUID,
+        data: PackageItemImageCreate,
+    ) -> PackageItemImageResponse:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            item = await uow.packages.items.get_by_id(item_id)
+            if item is None or item.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItem", str(item_id))
+            existing = await uow.packages.item_images.find_by_item(item_id)
+            payload = data.model_dump(exclude_unset=True)
+            payload["item_id"] = item_id
+            payload["sort_order"] = len(existing)
+            img = await uow.packages.item_images.create_from_dict(payload)
+            await uow.commit()
+            return PackageItemImageResponse.model_validate(img)
+
+    async def delete_item_image(
+        self,
+        package_id: UUID,
+        item_id: UUID,
+        image_id: UUID,
+        vendor_id: UUID,
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            img = await uow.packages.item_images.get_by_id(image_id)
+            if img is None or img.item_id != item_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItemImage", str(image_id))
+            await uow.packages.item_images.delete(img)
+            await uow.commit()
+
+    async def admin_add_item_image(
+        self,
+        package_id: UUID,
+        item_id: UUID,
+        data: PackageItemImageCreate,
+    ) -> PackageItemImageResponse:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            item = await uow.packages.items.get_by_id(item_id)
+            if item is None or item.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItem", str(item_id))
+            existing = await uow.packages.item_images.find_by_item(item_id)
+            payload = data.model_dump(exclude_unset=True)
+            payload["item_id"] = item_id
+            payload["sort_order"] = len(existing)
+            img = await uow.packages.item_images.create_from_dict(payload)
+            await uow.commit()
+            return PackageItemImageResponse.model_validate(img)
+
+    async def admin_delete_item_image(
+        self, package_id: UUID, item_id: UUID, image_id: UUID
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            img = await uow.packages.item_images.get_by_id(image_id)
+            if img is None or img.item_id != item_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItemImage", str(image_id))
+            await uow.packages.item_images.delete(img)
+            await uow.commit()
 
     # ── Package Gallery ────────────────────────────────────────────────────────
     # Additional images beyond the single cover_image_url — the cover stays

@@ -62,7 +62,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   List<PackageItem> _packageItems = [];
   bool _loadingItems = false;
-  final Set<String> _selectedItemIds = {};
+  // item.id -> chosen quantity. Presence in this map means the item is
+  // included in the booking (mandatory items are always present).
+  final Map<String, int> _itemQuantities = {};
 
   @override
   void initState() {
@@ -100,9 +102,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       final items = await _packageService.listPackageItems(_pkg!.id);
       setState(() {
         _packageItems = items;
-        _selectedItemIds
-          ..clear()
-          ..addAll(items.where((i) => i.isMandatory).map((i) => i.id));
+        _itemQuantities.clear();
+        for (final i in items.where((i) => i.isMandatory)) {
+          _itemQuantities[i.id] = i.quantity;
+        }
         _loadingItems = false;
       });
     } catch (e) {
@@ -143,7 +146,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     setState(() => _isSubmitting = true);
     try {
       final optionalSelected = _packageItems
-          .where((i) => !i.isMandatory && _selectedItemIds.contains(i.id))
+          .where((i) => !i.isMandatory && _itemQuantities.containsKey(i.id))
           .map((i) => i.id)
           .toList();
 
@@ -162,6 +165,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'address_id': _address?.id,
         'theme_id': (_pkg?.isCustomizable ?? false) ? _theme?.id : null,
         'item_ids': optionalSelected,
+        'item_quantities': _itemQuantities.map((id, qty) => MapEntry(id, qty)),
         'special_instructions': notes.isNotEmpty ? notes : null,
       });
       if (!mounted) return;
@@ -996,46 +1000,128 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _itemRow(BuildContext context, PackageItem item, {required bool locked}) {
     final ty = context.ty;
-    final selected = _selectedItemIds.contains(item.id);
+    final selected = _itemQuantities.containsKey(item.id);
+    final qty = _itemQuantities[item.id] ?? item.quantity;
+    final thumbnail = item.imageUrls.isNotEmpty ? item.imageUrls.first : item.iconUrl;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: _cardDeco(ty),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            children: [
+              if (thumbnail != null)
+                GestureDetector(
+                  onTap: item.imageUrls.length > 1 ? () => _openItemGallery(context, item) : null,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: thumbnail,
+                      width: 44, height: 44, fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => Container(width: 44, height: 44, color: ty.line2),
+                    ),
+                  ),
+                ),
+              if (thumbnail != null) const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                    if (item.description != null)
+                      Text(item.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    if (!locked)
+                      Text('+ ${formatPrice(item.unitPrice)} / ${item.unit ?? "unit"}', style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+              if (locked && !item.isQuantityAdjustable)
+                Icon(Icons.check_circle_rounded, color: ty.saffron, size: 22)
+              else if (!locked)
+                Switch.adaptive(
+                  value: selected,
+                  activeTrackColor: ty.saffron,
+                  onChanged: (v) => setState(() {
+                    if (v) {
+                      _itemQuantities[item.id] = item.quantity;
+                    } else {
+                      _itemQuantities.remove(item.id);
+                    }
+                  }),
+                ),
+            ],
+          ),
+          if (item.isQuantityAdjustable && (locked || selected)) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
-                if (item.description != null)
-                  Text(item.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
-                if (!locked)
-                  Text('+ ₹${item.unitPrice.toStringAsFixed(0)}', style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700)),
+                Text('Qty: ${item.unit ?? ""}', style: TyType.sans(12, color: ty.ink3)),
+                const SizedBox(width: 10),
+                _qtyStepper(
+                  context,
+                  value: qty,
+                  min: locked ? item.quantity : item.quantity,
+                  max: item.maxQuantity ?? 999,
+                  onChanged: (v) => setState(() => _itemQuantities[item.id] = v),
+                ),
               ],
             ),
-          ),
-          if (locked)
-            Icon(Icons.check_circle_rounded, color: ty.saffron, size: 22)
-          else
-            Switch.adaptive(
-              value: selected,
-              activeTrackColor: ty.saffron,
-              onChanged: (v) => setState(() {
-                if (v) _selectedItemIds.add(item.id); else _selectedItemIds.remove(item.id);
-              }),
-            ),
+          ],
         ],
       ),
     );
+  }
+
+  Widget _qtyStepper(BuildContext context, {required int value, required int min, required int max, required ValueChanged<int> onChanged}) {
+    final ty = context.ty;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: ty.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ty.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.remove_circle_outline_rounded, size: 20, color: value > min ? ty.ink2 : ty.line2),
+            onPressed: value > min ? () => onChanged(value - 1) : null,
+          ),
+          SizedBox(
+            width: 28,
+            child: Text('$value', textAlign: TextAlign.center, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.add_circle_outline_rounded, size: 20, color: value < max ? ty.saffron : ty.line2),
+            onPressed: value < max ? () => onChanged(value + 1) : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openItemGallery(BuildContext context, PackageItem item) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _ItemImageGalleryScreen(images: item.imageUrls, title: item.name),
+      fullscreenDialog: true,
+    ));
   }
 
   // ── Step 5: Summary ─────────────────────────────────────────────────────
 
   Widget _summaryStep(BuildContext context) {
     final ty = context.ty;
-    final selectedOptional = _packageItems.where((i) => !i.isMandatory && _selectedItemIds.contains(i.id)).toList();
-    final itemsTotal = selectedOptional.fold<double>(0, (s, i) => s + i.unitPrice);
+    final selectedOptional = _packageItems.where((i) => !i.isMandatory && _itemQuantities.containsKey(i.id)).toList();
+    final itemsTotal = selectedOptional.fold<double>(
+      0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1045,7 +1131,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         if ((_pkg?.isCustomizable ?? false) && _theme != null)
           _summaryCard(context, 'Theme', _theme!.name, onEdit: () => _jumpTo(3)),
         if (selectedOptional.isNotEmpty)
-          _summaryCard(context, 'Add-ons', selectedOptional.map((i) => i.name).join(', '), onEdit: () => _jumpTo(4)),
+          _summaryCard(context, 'Add-ons', selectedOptional.map((i) {
+            final qty = _itemQuantities[i.id] ?? i.quantity;
+            return qty > 1 ? '${i.name} ×$qty' : i.name;
+          }).join(', '), onEdit: () => _jumpTo(4)),
         _summaryCard(context, 'Date & Time', '${DateFormat('d MMMM yyyy').format(_eventDate)} · 6:30 PM', onEdit: () => _jumpTo(1)),
         _summaryCard(context, 'Guest Count', '$_totalGuests Guests', onEdit: () => _jumpTo(2)),
         const SizedBox(height: 16),
@@ -1290,6 +1379,73 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Package item photo viewer ────────────────────────────────────────────────
+// Same swipeable-slider pattern as the package detail screen's image
+// gallery, scoped to a single package item's photos.
+
+class _ItemImageGalleryScreen extends StatefulWidget {
+  final List<String> images;
+  final String title;
+  const _ItemImageGalleryScreen({required this.images, required this.title});
+
+  @override
+  State<_ItemImageGalleryScreen> createState() => _ItemImageGalleryScreenState();
+}
+
+class _ItemImageGalleryScreenState extends State<_ItemImageGalleryScreen> {
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(widget.title),
+      ),
+      body: Stack(
+        children: [
+          PageView.builder(
+            itemCount: widget.images.length,
+            onPageChanged: (i) => setState(() => _index = i),
+            itemBuilder: (context, i) => InteractiveViewer(
+              child: CachedNetworkImage(
+                imageUrl: widget.images[i],
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+          ),
+          if (widget.images.length > 1)
+            Positioned(
+              bottom: 24,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(widget.images.length, (i) {
+                  final active = i == _index;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: active ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: active ? Colors.white : Colors.white.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -130,6 +130,12 @@ export const vendorPackagesApi = {
     vendorClient.post(`/packages/${packageId}/gallery`, body).then(extractData),
   deleteGalleryItem: (packageId, galleryId) =>
     vendorClient.delete(`/packages/${packageId}/gallery/${galleryId}`).then(extractData),
+
+  // Item images
+  addItemImage: (packageId, itemId, body) =>
+    vendorClient.post(`/packages/${packageId}/items/${itemId}/images`, body).then(extractData),
+  deleteItemImage: (packageId, itemId, imageId) =>
+    vendorClient.delete(`/packages/${packageId}/items/${itemId}/images/${imageId}`).then(extractData),
 };
 
 // ── Occasions (reference data for package linking) ─────────────────────────────

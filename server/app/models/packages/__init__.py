@@ -1,6 +1,7 @@
 from app.models.packages.package_category import PackageCategory
 from app.models.packages.package import Package, package_occasions
 from app.models.packages.package_item import PackageItem
+from app.models.packages.package_item_image import PackageItemImage
 from app.models.packages.package_item_vendor import PackageItemVendor
 from app.models.packages.package_addon import PackageAddon
 from app.models.packages.package_customization import PackageCustomization, CustomizationOptionType
@@ -16,6 +17,7 @@ __all__ = [
     "Package",
     "package_occasions",
     "PackageItem",
+    "PackageItemImage",
     "PackageItemVendor",
     "PackageAddon",
     "PackageCustomization",

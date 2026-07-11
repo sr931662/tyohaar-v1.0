@@ -26,6 +26,7 @@ __all__ = [
     "PackageCategoryResponse",
     "PackageResponse",
     "PackageItemResponse",
+    "PackageItemImageResponse",
     "PackageGalleryResponse",
     "PackagePricingResponse",
     "PackageDiscountResponse",
@@ -102,6 +103,18 @@ class PackageResponse(BaseSchema):
     updated_at: datetime
 
 
+class PackageItemImageResponse(BaseSchema):
+    """Public response shape for a PackageItemImage."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    item_id: uuid.UUID
+    image_url: str
+    sort_order: int = 0
+    created_at: datetime
+
+
 class PackageItemResponse(BaseSchema):
     """Public response shape for a PackageItem."""
 
@@ -112,10 +125,14 @@ class PackageItemResponse(BaseSchema):
     name: str
     description: str | None
     quantity: int
+    max_quantity: int | None = None
     unit: str | None
     base_price: MoneyAmount
     is_mandatory: bool
+    is_customizable: bool = False
+    icon_url: str | None = None
     display_order: int
+    images: list[PackageItemImageResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

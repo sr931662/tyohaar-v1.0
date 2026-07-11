@@ -29,6 +29,7 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.packages.package import Package
+    from app.models.packages.package_item_image import PackageItemImage
     from app.models.packages.package_item_vendor import PackageItemVendor
     from app.models.vendors.vendor_category import VendorCategory
 
@@ -80,7 +81,20 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    quantity: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+        comment="Default/minimum quantity included in the package template.",
+    )
+
+    max_quantity: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Highest quantity a customer may select for this item at booking "
+                "time (e.g. cap balloon bunches at 20). NULL means uncapped — the "
+                "customer can request any quantity >= `quantity`.",
+    )
 
     unit: Mapped[str | None] = mapped_column(
         String(50),
@@ -133,6 +147,13 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     vendor_assignments: Mapped[list[PackageItemVendor]] = relationship(
         "PackageItemVendor",
         back_populates="package_item",
+        lazy="noload",
+        cascade="all, delete-orphan",
+    )
+
+    images: Mapped[list[PackageItemImage]] = relationship(
+        "PackageItemImage",
+        back_populates="item",
         lazy="noload",
         cascade="all, delete-orphan",
     )

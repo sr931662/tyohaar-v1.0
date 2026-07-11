@@ -20,6 +20,7 @@ from app.models.packages.package_discount import PackageDiscount
 from app.models.packages.package_faq import PackageFAQ
 from app.models.packages.package_gallery import PackageGallery
 from app.models.packages.package_item import PackageItem
+from app.models.packages.package_item_image import PackageItemImage
 from app.models.packages.package_item_vendor import PackageItemVendor
 from app.models.packages.package_pricing import PackagePricing
 from app.models.packages.package_review import PackageReview
@@ -156,6 +157,23 @@ class PackageItemRepository(BaseRepository[PackageItem]):
         )
 
 
+class PackageItemImageRepository(BaseRepository[PackageItemImage]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, PackageItemImage)
+
+    async def find_by_item(self, item_id: uuid.UUID) -> list[PackageItemImage]:
+        return await self.find_many(
+            PackageItemImage.item_id == item_id,
+            order_by=PackageItemImage.sort_order.asc(),
+        )
+
+    async def find_by_items(self, item_ids: list[uuid.UUID]) -> list[PackageItemImage]:
+        return await self.find_many(
+            PackageItemImage.item_id.in_(item_ids),
+            order_by=PackageItemImage.sort_order.asc(),
+        )
+
+
 class PackageItemVendorRepository(BaseRepository[PackageItemVendor]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, PackageItemVendor)
@@ -274,6 +292,7 @@ class PackageRepositoryAggregate:
         self.packages = PackageRepository(session)
         self.categories = PackageCategoryRepository(session)
         self.items = PackageItemRepository(session)
+        self.item_images = PackageItemImageRepository(session)
         self.item_vendors = PackageItemVendorRepository(session)
         self.addons = PackageAddonRepository(session)
         self.pricings = PackagePricingRepository(session)

@@ -375,10 +375,16 @@ class PackageItem {
   final String? unit;
   // Backend field: base_price. Was incorrectly read as unit_price.
   final double unitPrice;
+  // Default/minimum quantity from the package template.
   final int quantity;
+  // Highest quantity the customer may pick at booking time. Null = uncapped.
+  final int? maxQuantity;
   // Derived as !is_mandatory. Backend sends is_mandatory, not is_optional.
   final bool isOptional;
   final bool isMandatory;
+  final bool isCustomizable;
+  final String? iconUrl;
+  final List<String> imageUrls;
   final int displayOrder;
 
   const PackageItem({
@@ -388,10 +394,18 @@ class PackageItem {
     this.unit,
     required this.unitPrice,
     required this.quantity,
+    this.maxQuantity,
     required this.isOptional,
     required this.isMandatory,
+    this.isCustomizable = false,
+    this.iconUrl,
+    this.imageUrls = const [],
     this.displayOrder = 0,
   });
+
+  /// Whether the customer can select more than the template default —
+  /// true whenever maxQuantity is null (uncapped) or greater than quantity.
+  bool get isQuantityAdjustable => maxQuantity == null || maxQuantity! > quantity;
 
   factory PackageItem.fromJson(Map<String, dynamic> json) {
     final isMandatory = json['is_mandatory'] as bool? ?? true;
@@ -404,9 +418,17 @@ class PackageItem {
       // Was: json['unit_price'] — backend sends base_price.
       unitPrice: asDouble(json['base_price']),
       quantity: json['quantity'] as int? ?? 1,
+      maxQuantity: json['max_quantity'] as int?,
       isMandatory: isMandatory,
       // Was: json['is_optional'] — backend sends is_mandatory (inverted).
       isOptional: !isMandatory,
+      isCustomizable: json['is_customizable'] as bool? ?? false,
+      iconUrl: json['icon_url'] as String?,
+      imageUrls: (json['images'] as List?)
+              ?.map((img) => img['image_url'] as String? ?? '')
+              .where((u) => u.isNotEmpty)
+              .toList() ??
+          const [],
       displayOrder: json['display_order'] as int? ?? 0,
     );
   }

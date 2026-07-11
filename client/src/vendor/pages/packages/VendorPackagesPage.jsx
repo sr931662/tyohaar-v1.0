@@ -210,8 +210,9 @@ function PackageItemsModal({ pkg, onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, unit: '', base_price: '', is_mandatory: true });
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true });
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [managingImagesFor, setManagingImagesFor] = useState(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['pkg-items', pkg.id],
@@ -240,7 +241,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -250,12 +251,29 @@ function PackageItemsModal({ pkg, onClose }) {
     e.preventDefault();
     if (!newItem.name.trim()) return toast.error('Item name is required.');
     if (!newItem.base_price || isNaN(Number(newItem.base_price))) return toast.error('Enter a valid price.');
-    addMutation.mutate({ ...newItem, quantity: Number(newItem.quantity), base_price: Number(newItem.base_price), unit: newItem.unit || undefined, description: newItem.description || undefined });
+    addMutation.mutate({
+      ...newItem,
+      quantity: Number(newItem.quantity),
+      max_quantity: newItem.max_quantity !== '' ? Number(newItem.max_quantity) : undefined,
+      base_price: Number(newItem.base_price),
+      unit: newItem.unit || undefined,
+      description: newItem.description || undefined,
+    });
   };
 
   const handleUpdate = (itemId) => {
     if (!editForm.name.trim()) return toast.error('Item name is required.');
-    updateMutation.mutate({ itemId, body: { ...editForm, quantity: Number(editForm.quantity), base_price: Number(editForm.base_price), unit: editForm.unit || undefined, description: editForm.description || undefined } });
+    updateMutation.mutate({
+      itemId,
+      body: {
+        ...editForm,
+        quantity: Number(editForm.quantity),
+        max_quantity: editForm.max_quantity !== '' ? Number(editForm.max_quantity) : null,
+        base_price: Number(editForm.base_price),
+        unit: editForm.unit || undefined,
+        description: editForm.description || undefined,
+      },
+    });
   };
 
   const isLocked = pkg.status === 'pending_review';
@@ -300,6 +318,10 @@ function PackageItemsModal({ pkg, onClose }) {
                       Mandatory
                     </label>
                   </div>
+                  <div>
+                    <input className="admin-input" type="number" min={editForm.quantity || 1} value={editForm.max_quantity} onChange={(e) => setEF('max_quantity', e.target.value)} placeholder="Max customer can pick (optional)" />
+                    <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>Leave blank for no cap — e.g. cap balloon bunches at 20.</p>
+                  </div>
                   <input className="admin-input" value={editForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button className="btn btn-secondary btn-sm" onClick={() => setEditingId(null)}>Cancel</button>
@@ -321,6 +343,9 @@ function PackageItemsModal({ pkg, onClose }) {
                   </div>
                   {!isLocked && (
                     <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setManagingImagesFor({ id: item.id, name: item.name, images: item.images })}>
+                        Photos{item.images?.length ? ` (${item.images.length})` : ''}
+                      </button>
                       <button className="btn btn-secondary btn-sm" onClick={() => startEdit(item)}>Edit</button>
                       <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(item)}>✕</button>
                     </div>
@@ -347,6 +372,10 @@ function PackageItemsModal({ pkg, onClose }) {
                     Mandatory
                   </label>
                 </div>
+                <div>
+                  <input className="admin-input" type="number" min={newItem.quantity || 1} value={newItem.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max customer can pick (optional)" />
+                  <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>Leave blank for no cap — e.g. cap balloon bunches at 20. You can add photos after creating the item.</p>
+                </div>
                 <input className="admin-input" value={newItem.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button type="submit" className="btn btn-primary" disabled={addMutation.isPending}>
@@ -365,6 +394,107 @@ function PackageItemsModal({ pkg, onClose }) {
         onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
         title="Remove Item"
         message={`Remove "${confirmDelete?.name}" from this package?`}
+        loading={deleteMutation.isPending}
+      />
+
+      {managingImagesFor && (
+        <PackageItemImagesModal
+          pkgId={pkg.id}
+          item={managingImagesFor}
+          onClose={() => setManagingImagesFor(null)}
+          onChanged={invalidate}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Package Item Photos Modal ───────────────────────────────────────────────────
+// Same idea as the package-level gallery, scoped to one item — e.g. photos
+// of the actual balloon arrangement, cake design, etc. Shown to customers as
+// a swipeable slider on that item in the plan-flow booking screen.
+
+function PackageItemImagesModal({ pkgId, item, onClose, onChanged }) {
+  const qc = useQueryClient();
+  const [uploadUrl, setUploadUrl] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const { data: images = [], isLoading } = useQuery({
+    queryKey: ['pkg-item-images', pkgId, item.id],
+    queryFn: () => vendorPackagesApi.listItems(pkgId).then((items) => items.find((i) => i.id === item.id)?.images ?? []),
+    initialData: item.images ?? [],
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries(['pkg-item-images', pkgId, item.id]);
+    qc.invalidateQueries(['pkg-items', pkgId]);
+    onChanged?.();
+  };
+
+  const addMutation = useMutation({
+    mutationFn: (imageUrl) => vendorPackagesApi.addItemImage(pkgId, item.id, { image_url: imageUrl }),
+    onSuccess: () => { toast.success('Image added.'); invalidate(); setUploadUrl(''); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add image.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (imageId) => vendorPackagesApi.deleteItemImage(pkgId, item.id, imageId),
+    onSuccess: () => { toast.success('Image removed.'); invalidate(); setConfirmDelete(null); },
+    onError: () => toast.error('Failed to remove image.'),
+  });
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="admin-modal-header">
+          <div>
+            <h2 className="admin-modal-title">Item Photos</h2>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>{item.name}</p>
+          </div>
+          <button className="admin-modal-close" onClick={onClose}>×</button>
+        </div>
+        <div style={{ padding: '20px 24px 24px' }}>
+          {isLoading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10, marginBottom: 20 }}>
+              {[0, 1].map((i) => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 10 }} />)}
+            </div>
+          ) : images.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10, marginBottom: 20 }}>
+              {images.map((img) => (
+                <div key={img.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '1/1', background: 'var(--bg-base)' }}>
+                  <img src={img.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                  <button
+                    onClick={() => setConfirmDelete(img)}
+                    style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'rgba(239,68,68,0.85)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: 16 }}>No photos yet for this item.</p>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <ImageUploadField value={uploadUrl} onChange={setUploadUrl} usage="package_image" placeholder="Image URL (https://...)" />
+            </div>
+            <button
+              className="btn btn-primary"
+              disabled={!uploadUrl || addMutation.isPending}
+              onClick={() => addMutation.mutate(uploadUrl)}
+            >
+              {addMutation.isPending ? 'Adding…' : '+ Add'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
+        title="Remove Photo"
+        message="Remove this photo from the item?"
         loading={deleteMutation.isPending}
       />
     </div>

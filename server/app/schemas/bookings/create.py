@@ -92,6 +92,16 @@ class BookingCreate(BaseSchema):
         default_factory=list,
         description="IDs of optional PackageItems (add-ons) selected by the user",
     )
+    item_quantities: dict[str, int] | None = Field(
+        default=None,
+        description="Optional per-item quantity override, keyed by PackageItem "
+                    "id (as string). Applies to both mandatory and selected "
+                    "optional items — e.g. a package ships 5 balloons by "
+                    "default but the customer wants 15 for a bigger event. "
+                    "Items not present here use the package template's default "
+                    "quantity. Clamped server-side to [item.quantity, "
+                    "item.max_quantity or unlimited].",
+    )
 
     @model_validator(mode="after")
     def validate_time_range(self) -> "BookingCreate":

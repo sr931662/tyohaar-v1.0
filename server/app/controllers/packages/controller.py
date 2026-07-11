@@ -35,6 +35,8 @@ from app.schemas.packages import (
     PackageGalleryCreate,
     PackageGalleryResponse,
     PackageItemCreate,
+    PackageItemImageCreate,
+    PackageItemImageResponse,
     PackageItemResponse,
     PackageItemUpdate,
     PackageResponse,
@@ -251,6 +253,40 @@ async def list_gallery(
 ) -> SuccessResponse[list[PackageGalleryResponse]]:
     items = await service.list_gallery(package_id=package_id)
     return SuccessResponse(data=items, message="Gallery retrieved.")
+
+
+async def add_item_image(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: PackageItemImageCreate,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageItemImageResponse]:
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        result = await service.admin_add_item_image(package_id=package_id, item_id=item_id, data=body)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        result = await service.add_item_image(
+            package_id=package_id, item_id=item_id, vendor_id=vendor_id, data=body
+        )
+    return SuccessResponse(data=result, message="Image added.")
+
+
+async def delete_item_image(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    image_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        await service.admin_delete_item_image(package_id=package_id, item_id=item_id, image_id=image_id)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        await service.delete_item_image(
+            package_id=package_id, item_id=item_id, image_id=image_id, vendor_id=vendor_id
+        )
+    return SuccessResponse(data=None, message="Image deleted.")
 
 
 async def set_availability(

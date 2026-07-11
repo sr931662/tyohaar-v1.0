@@ -166,12 +166,26 @@ class BookingService(BaseService):
                 optional_items = [i for i in package_items if not i.is_mandatory and i.id in data.item_ids]
                 selected_items.extend(optional_items)
 
-            # 3. Calculate financials — package base price + selected items.
+            # 3. Resolve per-item quantities — customer may request more than
+            # the package template's default (e.g. 5 balloons isn't enough
+            # for a bigger event), clamped to [template quantity, max_quantity].
+            item_quantities = data.item_quantities or {}
+
+            def _resolve_qty(pi) -> int:
+                requested = item_quantities.get(str(pi.id))
+                if requested is None:
+                    return pi.quantity
+                qty = max(int(requested), pi.quantity)
+                if pi.max_quantity is not None:
+                    qty = min(qty, pi.max_quantity)
+                return qty
+
+            # 4. Calculate financials — package base price + selected items.
             # Package.base_price is the package's own starting price; item
             # rows are line-item add-ons/inclusions on top of it, not a
             # replacement for it (previously this only summed items, so a
             # package with no items priced the booking at ₹0 subtotal).
-            items_total = sum((i.base_price * i.quantity) for i in selected_items)
+            items_total = sum((i.base_price * _resolve_qty(i)) for i in selected_items)
             subtotal = (package.base_price or Decimal("0.00")) + items_total
             platform_fee = Decimal("0.00")  # Platform fee removed project-wide.
             tax_rate = Decimal("0.18")
@@ -206,17 +220,18 @@ class BookingService(BaseService):
             )
             booking = await uow.bookings.bookings.create(booking)
 
-            # 4. Create BookingItem records
+            # 5. Create BookingItem records
             for idx, pi in enumerate(selected_items):
+                qty = _resolve_qty(pi)
                 item = BookingItem(
                     booking_id=booking.id,
                     package_item_id=pi.id,
                     name=pi.name,
                     description=pi.description,
-                    quantity=pi.quantity,
+                    quantity=qty,
                     unit=pi.unit,
                     unit_price=pi.base_price,
-                    final_price=pi.base_price * pi.quantity,
+                    final_price=pi.base_price * qty,
                     is_mandatory=pi.is_mandatory,
                     is_addon=not pi.is_mandatory,
                     display_order=idx,

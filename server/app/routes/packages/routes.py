@@ -13,6 +13,7 @@ from app.schemas.packages import (
     PackageCategoryResponse,
     PackageDetailResponse,
     PackageGalleryResponse,
+    PackageItemImageResponse,
     PackageItemResponse,
     PackageResponse,
     PackageReviewResponse,
@@ -262,6 +263,30 @@ router.add_api_route(
     summary="Delete Gallery Image",
     description="Remove an image from the package's gallery. Vendor ownership or admin access required.",
     operation_id="packages_delete_gallery_item",
+)
+
+# ── Package item images ─────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/{package_id}/items/{item_id}/images",
+    ctrl.add_item_image,
+    methods=["POST"],
+    response_model=SuccessResponse[PackageItemImageResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Add Package Item Image",
+    description="Add a photo to a package item. Vendor ownership or admin access required.",
+    operation_id="packages_add_item_image",
+)
+
+router.add_api_route(
+    "/{package_id}/items/{item_id}/images/{image_id}",
+    ctrl.delete_item_image,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Delete Package Item Image",
+    description="Remove a photo from a package item. Vendor ownership or admin access required.",
+    operation_id="packages_delete_item_image",
 )
 
 # ── Availability ──────────────────────────────────────────────────────────────

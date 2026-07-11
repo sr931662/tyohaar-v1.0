@@ -25,6 +25,7 @@ __all__ = [
     "PackageCategoryCreate",
     "PackageItemCreate",
     "PackageGalleryCreate",
+    "PackageItemImageCreate",
     "PackagePricingCreate",
     "PackageDiscountCreate",
     "PackageReviewCreate",
@@ -130,6 +131,16 @@ class PackageItemCreate(BaseSchema):
     is_mandatory: bool = Field(
         default=True, description="Whether item is always included vs. optional add-on"
     )
+    is_customizable: bool = Field(
+        default=False, description="True if the customer can configure options for this item"
+    )
+    max_quantity: int | None = Field(
+        default=None,
+        ge=1,
+        description="Highest quantity a customer may select at booking time. "
+                    "NULL means uncapped.",
+    )
+    icon_url: str | None = Field(default=None, max_length=500, description="Small icon/thumbnail URL")
     display_order: int = Field(default=0, ge=0, description="Sort order within the package")
 
 
@@ -138,6 +149,12 @@ class PackageGalleryCreate(BaseSchema):
 
     file_url: str = Field(min_length=1, max_length=500, description="CDN URL of the uploaded image")
     caption: str | None = Field(default=None, max_length=500, description="Optional caption")
+
+
+class PackageItemImageCreate(BaseSchema):
+    """Payload required to add a photo to a PackageItem."""
+
+    image_url: str = Field(min_length=1, max_length=500, description="CDN URL of the uploaded image")
 
 
 class PackagePricingCreate(BaseSchema):
