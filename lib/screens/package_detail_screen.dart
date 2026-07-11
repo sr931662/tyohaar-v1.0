@@ -35,6 +35,16 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   bool _isDownloading = false;
   late Package _fullPackage;
   List<PackageItem> _allItems = [];
+  final PageController _imagePageController = PageController();
+  int _currentImageIndex = 0;
+
+  List<String> get _allImageUrls {
+    final urls = <String>[];
+    final cover = _fullPackage.coverImageUrl;
+    if (cover != null && cover.isNotEmpty) urls.add(cover);
+    urls.addAll(_fullPackage.galleryImageUrls.where((u) => u.isNotEmpty && u != cover));
+    return urls;
+  }
 
   @override
   void initState() {
@@ -70,6 +80,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   @override
   void dispose() {
     _guestController.dispose();
+    _imagePageController.dispose();
     super.dispose();
   }
 
@@ -82,10 +93,12 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
 
   // The served image URL already has the Tyohaar watermark baked in
   // server-side (see cloudinary_client.py) — saving it is enough, no
-  // client-side watermarking needed.
-  Future<void> _downloadCoverImage() async {
-    final url = _fullPackage.coverImageUrl;
-    if (url == null || url.isEmpty) return;
+  // client-side watermarking needed. Downloads whichever image is
+  // currently visible in the slider, not always the cover.
+  Future<void> _downloadCurrentImage() async {
+    final urls = _allImageUrls;
+    if (urls.isEmpty || _currentImageIndex >= urls.length) return;
+    final url = urls[_currentImageIndex];
 
     setState(() => _isDownloading = true);
     try {
@@ -109,7 +122,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
       if (bytes == null) throw Exception('Empty image response');
       await Gal.putImageBytes(
         Uint8List.fromList(bytes),
-        name: '${_fullPackage.name}_tyohaar',
+        name: '${_fullPackage.name}_tyohaar_${_currentImageIndex + 1}',
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -157,40 +170,11 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                 actions: [
                   Padding(
                     padding: EdgeInsets.all(resp.w(8)),
-                    child: _isDownloading
-                        ? Padding(
-                            padding: EdgeInsets.all(resp.w(10)),
-                            child: SizedBox(width: resp.w(20), height: resp.w(20), child: const CircularProgressIndicator(strokeWidth: 2)),
-                          )
-                        : _glassIcon(context, Icons.download_rounded, _downloadCoverImage),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(resp.w(8)),
                     child: _verifiedBadge(context),
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CachedNetworkImage(
-                        imageUrl: _fullPackage.coverImageUrl ?? '',
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => PhotoPlaceholder(tint: _fullPackage.tint, height: resp.h(300), arch: false, radius: BorderRadius.zero),
-                        errorWidget: (context, url, error) => OccasionAssets.getFallback(_fullPackage.name, tint: _fullPackage.tint, arch: false),
-                      ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [ty.paper, Colors.transparent],
-                            stops: const [0.0, 0.4],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  background: _imageSlider(context),
                 ),
               ),
               SliverList(
@@ -273,6 +257,95 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _imageSlider(BuildContext context) {
+    final ty = context.ty;
+    final resp = context.resp;
+    final urls = _allImageUrls;
+
+    if (urls.isEmpty) {
+      return PhotoPlaceholder(tint: _fullPackage.tint, height: resp.h(300), arch: false, radius: BorderRadius.zero);
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          controller: _imagePageController,
+          itemCount: urls.length,
+          onPageChanged: (i) => setState(() => _currentImageIndex = i),
+          itemBuilder: (context, i) => CachedNetworkImage(
+            imageUrl: urls[i],
+            fit: BoxFit.cover,
+            placeholder: (context, url) => PhotoPlaceholder(tint: _fullPackage.tint, height: resp.h(300), arch: false, radius: BorderRadius.zero),
+            errorWidget: (context, url, error) => OccasionAssets.getFallback(_fullPackage.name, tint: _fullPackage.tint, arch: false),
+          ),
+        ),
+        IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [ty.paper, Colors.transparent],
+                stops: const [0.0, 0.4],
+              ),
+            ),
+          ),
+        ),
+        // Save/download button — clearly visible against any photo: solid
+        // white pill with a label, bottom-right, above the page dots so it
+        // never overlaps them regardless of image count.
+        Positioned(
+          right: resp.w(14),
+          bottom: resp.h(36),
+          child: GestureDetector(
+            onTap: _isDownloading ? null : _downloadCurrentImage,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: resp.w(14), vertical: resp.h(9)),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(resp.w(20)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 2))],
+              ),
+              child: _isDownloading
+                  ? SizedBox(width: resp.w(16), height: resp.w(16), child: const CircularProgressIndicator(strokeWidth: 2))
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.download_rounded, color: ty.ink, size: resp.sp(16)),
+                        SizedBox(width: resp.w(6)),
+                        Text('Save', style: TyType.sans(resp.sp(12.5), color: ty.ink, weight: FontWeight.w700)),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+        if (urls.length > 1)
+          Positioned(
+            bottom: resp.h(14),
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(urls.length, (i) {
+                final active = i == _currentImageIndex;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: EdgeInsets.symmetric(horizontal: resp.w(3)),
+                  width: active ? resp.w(18) : resp.w(6),
+                  height: resp.w(6),
+                  decoration: BoxDecoration(
+                    color: active ? Colors.white : Colors.white.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(resp.w(3)),
+                  ),
+                );
+              }),
+            ),
+          ),
+      ],
     );
   }
 

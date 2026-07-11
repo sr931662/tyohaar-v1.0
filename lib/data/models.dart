@@ -263,6 +263,10 @@ class Package {
   // Backend field: short_description.
   final String? shortDescription;
   final String? coverImageUrl;
+  // Additional images beyond the cover — populated only on the detail
+  // endpoint (PackageDetailResponse.gallery). Cover is not duplicated here;
+  // the UI is responsible for showing cover first, then these.
+  final List<String> galleryImageUrls;
   // tint is a UI concept — derived client-side; backend has no tint field.
   final String tint;
   // UUID of the linked PackageCategory.
@@ -292,6 +296,7 @@ class Package {
     this.description,
     this.shortDescription,
     this.coverImageUrl,
+    this.galleryImageUrls = const [],
     required this.tint,
     this.categoryId,
     this.status,
@@ -326,6 +331,11 @@ class Package {
       description: json['description'] as String?,
       shortDescription: json['short_description'] as String?,
       coverImageUrl: json['cover_image_url'] as String?,
+      galleryImageUrls: (json['gallery'] as List?)
+              ?.map((g) => g['file_url'] as String? ?? '')
+              .where((u) => u.isNotEmpty)
+              .toList() ??
+          const [],
       // tint is derived — backend has no tint field.
       tint: _deriveTint(categoryId),
       categoryId: categoryId,
