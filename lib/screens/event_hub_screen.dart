@@ -7,14 +7,15 @@ import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../data/models.dart';
 import '../data/services/celebration_service.dart';
-import '../data/services/budget_service.dart' as bs;
+import '../data/services/booking_service.dart';
+import '../data/services/package_service.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/common.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
-import 'budget_screen.dart';
 import 'guests_screen.dart';
+import 'package_detail_screen.dart';
 
 class EventHubScreen extends StatefulWidget {
   final String? celebrationId;
@@ -26,10 +27,13 @@ class EventHubScreen extends StatefulWidget {
 
 class _EventHubScreenState extends State<EventHubScreen> {
   final CelebrationService _celebrationService = CelebrationService();
-  final bs.BudgetService _budgetService = bs.BudgetService();
+  final BookingService _bookingService = BookingService();
+  final PackageService _packageService = PackageService();
   Celebration? _celebration;
   List<Guest> _guests = [];
   List<CelebrationChecklistItem> _checklist = [];
+  Package? _package;
+  List<PackageItem> _packageItems = [];
   String _daysLeft = '--';
   String _hoursLeft = '--';
   bool _isLoading = true;
@@ -55,12 +59,24 @@ class _EventHubScreenState extends State<EventHubScreen> {
       final detailsFuture = _celebrationService.getCelebrationDetails(id);
       final guestsFuture = _celebrationService.listGuests(id);
       final checklistFuture = _celebrationService.listChecklist(id);
-      final budgetFuture = _budgetService.getBudgetForCelebration(id);
-      
+      final bookingsFuture = _bookingService.listByCelebration(id);
+
       final details = await detailsFuture;
       final guests = await guestsFuture;
       final checklist = await checklistFuture;
-      final budget = await budgetFuture;
+      final bookings = await bookingsFuture;
+
+      Booking? booking = bookings.isNotEmpty ? bookings.first : null;
+      Package? package;
+      List<PackageItem> packageItems = [];
+      if (booking?.packageId != null) {
+        try {
+          package = await _packageService.getPackageDetails(booking!.packageId!);
+          packageItems = await _packageService.listPackageItems(booking.packageId!);
+        } catch (e) {
+          debugPrint('Error loading package details: $e');
+        }
+      }
 
       String daysLeft = '--';
       String hoursLeft = '--';
@@ -81,6 +97,8 @@ class _EventHubScreenState extends State<EventHubScreen> {
           _celebration = details;
           _guests = guests;
           _checklist = checklist;
+          _package = package;
+          _packageItems = packageItems;
           _daysLeft = daysLeft;
           _hoursLeft = hoursLeft;
           _isLoading = false;
@@ -253,6 +271,13 @@ class _EventHubScreenState extends State<EventHubScreen> {
                     ),
                     SizedBox(height: resp.h(24)),
                     SectionHeader('Package details'),
+                    _buildPackageSection(context),
+                    SizedBox(height: resp.h(18)),
+                    SectionHeader('The gathering', action: 'Manage', onAction: () {
+                      Navigator.of(context)
+                          .push(MaterialPageRoute(builder: (_) => const GuestsScreen()))
+                          .then((_) => _load());
+                    }),
                     Container(
                       padding: EdgeInsets.all(resp.w(16)),
                       decoration: _card(ty, resp),
@@ -261,74 +286,43 @@ class _EventHubScreenState extends State<EventHubScreen> {
                         children: [
                           Row(
                             children: [
-                              Text('Custom Package',
-                                  style: TyType.sans(resp.sp(16),
-                                      color: ty.ink, weight: FontWeight.w700)),
-                              const Spacer(),
+                              if (_guests.isNotEmpty)
+                                SizedBox(
+                                  width: resp.w(110),
+                                  height: resp.h(36),
+                                  child: Stack(
+                                    children: [
+                                      for (int i = 0; i < _guests.length.clamp(0, 4); i++)
+                                        Positioned(
+                                          left: i * resp.w(20.0),
+                                          child: TyAvatar(
+                                              name: _guests[i].name, index: i, size: resp.w(36)),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              SizedBox(width: resp.w(8)),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('$totalGuests loved ones',
+                                        style: TyType.sans(resp.sp(15),
+                                            color: ty.ink, weight: FontWeight.w700)),
+                                    Text('${_guests.length} households invited',
+                                        style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.sp(24)),
                             ],
                           ),
-                          SizedBox(height: resp.h(12)),
-                          const Text('View details in your plans'),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: resp.h(14)),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _navCard(
-                              context,
-                              Icons.account_balance_wallet_outlined,
-                              'Budget',
-                              '₹${_celebration?.estimatedBudget ?? 0}',
-                              const BudgetScreen()),
-                        ),
-                        SizedBox(width: resp.w(12)),
-                        Expanded(
-                          child: _navCard(context, Icons.group_outlined, 'Guests',
-                              '$totalGuests invited', const GuestsScreen()),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: resp.h(18)),
-                    SectionHeader('The gathering', action: 'Manage', onAction: () {
-                      Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => const GuestsScreen()));
-                    }),
-                    Container(
-                      padding: EdgeInsets.all(resp.w(16)),
-                      decoration: _card(ty, resp),
-                      child: Row(
-                        children: [
-                          if (_guests.isNotEmpty)
-                            SizedBox(
-                              width: resp.w(110),
-                              height: resp.h(36),
-                              child: Stack(
-                                children: [
-                                  for (int i = 0; i < _guests.length.clamp(0, 4); i++)
-                                    Positioned(
-                                      left: i * resp.w(20.0),
-                                      child: TyAvatar(
-                                          name: _guests[i].name, index: i, size: resp.w(36)),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          SizedBox(width: resp.w(8)),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('$totalGuests loved ones',
-                                    style: TyType.sans(resp.sp(15),
-                                        color: ty.ink, weight: FontWeight.w700)),
-                                Text('${_guests.length} households invited',
-                                    style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.sp(24)),
+                          if (_guests.isNotEmpty) ...[
+                            SizedBox(height: resp.h(14)),
+                            Divider(color: ty.line, height: 1),
+                            SizedBox(height: resp.h(14)),
+                            _buildRsvpBreakdown(context),
+                          ],
                         ],
                       ),
                     ),
@@ -339,6 +333,125 @@ class _EventHubScreenState extends State<EventHubScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPackageSection(BuildContext context) {
+    final ty = context.ty;
+    final resp = context.resp;
+    final pkg = _package;
+
+    if (pkg == null) {
+      return Container(
+        padding: EdgeInsets.all(resp.w(16)),
+        decoration: _card(ty, resp),
+        child: Text('No package selected yet',
+            style: TyType.sans(resp.sp(14), color: ty.ink2)),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => PackageDetailScreen(package: pkg)))
+          .then((_) => _load()),
+      child: Container(
+        padding: EdgeInsets.all(resp.w(16)),
+        decoration: _card(ty, resp),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(resp.w(12)),
+                  child: CachedNetworkImage(
+                    imageUrl: pkg.coverImageUrl ?? '',
+                    width: resp.w(56),
+                    height: resp.w(56),
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => PhotoPlaceholder(
+                        tint: 'saffron', height: resp.w(56), width: resp.w(56), arch: false),
+                    errorWidget: (context, url, error) => PhotoPlaceholder(
+                        tint: 'saffron', height: resp.w(56), width: resp.w(56), arch: false),
+                  ),
+                ),
+                SizedBox(width: resp.w(12)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(pkg.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TyType.sans(resp.sp(16),
+                              color: ty.ink, weight: FontWeight.w700)),
+                      SizedBox(height: resp.h(2)),
+                      Text('₹${pkg.price.toStringAsFixed(0)}',
+                          style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.sp(22)),
+              ],
+            ),
+            if (_packageItems.isNotEmpty) ...[
+              SizedBox(height: resp.h(12)),
+              Divider(color: ty.line, height: 1),
+              SizedBox(height: resp.h(12)),
+              ..._packageItems.take(4).map((item) => Padding(
+                    padding: EdgeInsets.only(bottom: resp.h(6)),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_outline_rounded,
+                            size: resp.sp(15), color: ty.saffron),
+                        SizedBox(width: resp.w(8)),
+                        Expanded(
+                          child: Text(
+                              item.quantity > 1 ? '${item.name} × ${item.quantity}' : item.name,
+                              style: TyType.sans(resp.sp(13), color: ty.ink2)),
+                        ),
+                      ],
+                    ),
+                  )),
+              if (_packageItems.length > 4)
+                Text('+ ${_packageItems.length - 4} more',
+                    style: TyType.sans(resp.sp(12.5), color: ty.ink3)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRsvpBreakdown(BuildContext context) {
+    final theme = context.ty;
+    final resp = context.resp;
+    final attending = _guests.where((g) => g.displayStatus == 'attending').length;
+    final declined = _guests.where((g) => g.displayStatus == 'declined').length;
+    final maybe = _guests.where((g) => g.displayStatus == 'maybe').length;
+    final pending = _guests.length - attending - declined - maybe;
+
+    Widget stat(String label, int count, Color color) {
+      return Expanded(
+        child: Column(
+          children: [
+            Text('$count',
+                style: TyType.display(resp.sp(20), color: color)),
+            SizedBox(height: resp.h(2)),
+            Text(label.toUpperCase(),
+                style: TyType.eyebrow(resp.sp(10), color: theme.ink2)),
+          ],
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        stat('Attending', attending, Colors.green.shade600),
+        stat('Maybe', maybe, Colors.orange.shade600),
+        stat('Declined', declined, Colors.red.shade400),
+        stat('Pending', pending, theme.ink3),
+      ],
     );
   }
 
@@ -370,29 +483,6 @@ class _EventHubScreenState extends State<EventHubScreen> {
             Text(n, style: TyType.display(resp.sp(26), color: ty.ink)),
             SizedBox(height: resp.h(4)),
             Text(l.toUpperCase(), style: TyType.eyebrow(resp.sp(11), color: ty.ink2)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _navCard(BuildContext context, IconData icon, String label, String meta, Widget page) {
-    final ty = context.ty;
-    final resp = context.resp;
-    return GestureDetector(
-      onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => page))
-          .then((_) => _load()),
-      child: Container(
-        padding: EdgeInsets.all(resp.w(15)),
-        decoration: _card(ty, resp),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: ty.saffron, size: resp.sp(22)),
-            SizedBox(height: resp.h(10)),
-            Text(label, style: TyType.sans(resp.sp(14.5), color: ty.ink, weight: FontWeight.w700)),
-            Text(meta, style: TyType.sans(resp.sp(12), color: ty.ink2)),
           ],
         ),
       ),

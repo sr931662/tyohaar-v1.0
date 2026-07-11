@@ -9,6 +9,7 @@ import '../data/auth_manager.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../data/services/celebration_service.dart';
+import '../data/services/booking_service.dart';
 import '../utils/currency.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
@@ -17,7 +18,6 @@ import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
 import 'event_hub_screen.dart';
-import 'budget_screen.dart';
 import 'guests_screen.dart';
 import 'plan_flow/plan_flow_screen.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
@@ -34,10 +34,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final PackageService _packageService = PackageService();
   final CelebrationService _celebrationService = CelebrationService();
+  final BookingService _bookingService = BookingService();
 
   List<Package> _bestSellers = [];
   List<Occasion> _occasions = [];
   Celebration? _activeCelebration;
+  Booking? _activeBooking;
   List<Guest> _guests = [];
   List<CelebrationChecklistItem> _checklist = [];
   bool _isLoading = true;
@@ -75,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _activeCelebration = celebrations.first;
           _loadGuests(_activeCelebration!.id);
           _loadChecklist(_activeCelebration!.id);
+          _loadActiveBooking(_activeCelebration!.id);
         }
         _isLoading = false;
         _error = null;
@@ -85,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
           TutorialStep(
             targetKey: _quickActionsKey,
             title: 'Everything for your event',
-            description: 'Manage guests, track your budget, and view your plans right from here.',
+            description: 'Manage guests and view your plans right from here.',
           ),
         ]);
       });
@@ -109,6 +112,17 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _checklist = checklist);
     } catch (e) {
       debugPrint('Error loading checklist: $e');
+    }
+  }
+
+  Future<void> _loadActiveBooking(String celebrationId) async {
+    try {
+      final bookings = await _bookingService.listByCelebration(celebrationId);
+      if (mounted && bookings.isNotEmpty) {
+        setState(() => _activeBooking = bookings.first);
+      }
+    } catch (e) {
+      debugPrint('Error loading active booking: $e');
     }
   }
 
@@ -142,7 +156,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final rsvpdGuests = _guests.where((g) => g.rsvpStatus == 'confirmed').length;
     final pct = _activeCelebration?.completionPercentage ?? 0;
     final pendingTasks = _checklist.where((t) => !t.isCompleted).toList();
-    final openTasks = pendingTasks.take(2).toList();
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -168,26 +181,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   _quickAction(context, Icons.group_outlined, 'Guests', ty.saffron,
                       () => _push(context, const GuestsScreen(), authAction: 'manage guests')),
-                  _quickAction(context, Icons.account_balance_wallet_outlined, 'Budget',
-                      ty.leaf, () => _push(context, const BudgetScreen(), authAction: 'view your budget')),
                   _quickAction(context, Icons.checklist_rounded, 'My Plans', ty.gold,
                       () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your plans')),
                 ],
               ),
               SizedBox(height: resp.h(12)),
 
-              SectionHeader('Up next',
-                  action: 'Timeline',
-                  onAction: () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your timeline')),
-              if (openTasks.isEmpty)
-                _taskRow(context, 'All caught up!', 'No pending tasks right now')
-              else
-                ...openTasks.map((t) => _taskRow(
-                  context,
-                  t.title,
-                  t.timingLabel ?? '',
-                )),
-              SizedBox(height: resp.h(12)),
               _taskRow(
                 context,
                 'Manage Invitations',
@@ -234,18 +233,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final date = dt != null ? '${dt.day}/${dt.month}/${dt.year}' : '';
     final location = _activeCelebration?.venueAddress ?? 'Select Location';
     
-    // Resolve hero image and category from occasions list if needed
-    String? heroUrl = _activeCelebration?.heroImageUrl;
-    String category = _activeCelebration?.category ?? 'Celebration';
-    
-    if (heroUrl == null && _activeCelebration?.occasionId != null) {
+    // Resolve hero image and display name from occasions list if needed.
+    // _activeCelebration.category is the raw category_id UUID (backend does
+    // not nest the occasion object in CelebrationResponse) — never shown to
+    // the user directly. Look up the matching Occasion for a human-readable name.
+    String? heroUrl = _activeBooking?.packageCoverUrl ?? _activeCelebration?.heroImageUrl;
+    String displayLabel = 'Celebration';
+
+    if (_activeCelebration?.occasionId != null) {
       final occ = _occasions.cast<Occasion?>().firstWhere(
         (o) => o?.id == _activeCelebration?.occasionId,
         orElse: () => null
       );
       if (occ != null) {
-        heroUrl = occ.heroImageUrl;
-        category = occ.category;
+        heroUrl ??= occ.heroImageUrl;
+        displayLabel = occ.name;
       }
     }
 
@@ -344,7 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TyType.eyebrow(resp.sp(11.5), color: Colors.white.withOpacity(0.7))),
                   SizedBox(height: resp.h(12)),
                   Row(children: [
-                    TyPill(category),
+                    TyPill(displayLabel),
                     SizedBox(width: resp.w(8)),
                     if (statusLabel != null)
                       TyPill(statusLabel, background: statusColor, foreground: Colors.white),

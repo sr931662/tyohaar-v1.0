@@ -19,7 +19,6 @@ import 'data/services/membership_service.dart';
 import 'data/services/referral_service.dart';
 import 'data/services/common_service.dart';
 import 'data/services/vendor_service.dart';
-import 'data/services/budget_service.dart';
 import 'screens/vendor/vendor_root_nav.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/root_nav.dart';
@@ -46,7 +45,6 @@ class TyohaarApp extends StatelessWidget {
         Provider(create: (_) => ReferralService()),
         Provider(create: (_) => CommonService()),
         Provider(create: (_) => VendorService()),
-        Provider(create: (_) => BudgetService()),
       ],
       child: ListenableBuilder(
         listenable: Listenable.merge([themeController, AppState.instance]),
