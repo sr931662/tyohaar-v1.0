@@ -38,7 +38,11 @@ from app.services.base import BaseService
 _ENTITY_COLUMNS: dict[str, list[str]] = {
     "vendors": ["business_name", "phone", "email", "vendor_type", "city", "state", "pincode", "description"],
     "customers": ["phone", "email", "full_name", "city", "state"],
-    "packages": ["name", "description", "base_price", "currency", "category", "vendor_phone", "min_guests", "max_guests", "duration_hours"],
+    "packages": [
+        "name", "description", "base_price", "currency", "category", "vendor_phone",
+        "min_guests", "max_guests", "duration_hours",
+        "image_1_url", "image_2_url", "image_3_url", "image_4_url", "image_5_url",
+    ],
     "categories": ["name", "slug", "description"],
     "cities": ["name", "state", "pincode_prefix"],
     "states": ["name", "code", "country"],
@@ -131,60 +135,57 @@ class IOService(BaseService):
 
     async def get_import_template(self, entity_type: str) -> bytes:
         """Generate a sample XLSX template for the given entity type."""
-        try:
-            import openpyxl
-            from openpyxl.styles import Font, PatternFill
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill
 
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = entity_type.title()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = entity_type.title()
 
-            columns = _ENTITY_COLUMNS.get(entity_type, [])
-            required = set(_REQUIRED_COLUMNS.get(entity_type, []))
+        columns = _ENTITY_COLUMNS.get(entity_type, [])
+        required = set(_REQUIRED_COLUMNS.get(entity_type, []))
 
-            header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-            required_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
-            header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+        required_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
 
-            for col_idx, col_name in enumerate(columns, start=1):
-                cell = ws.cell(row=1, column=col_idx, value=col_name)
-                cell.font = header_font
-                cell.fill = required_fill if col_name in required else header_fill
-                ws.column_dimensions[chr(64 + col_idx)].width = 20
+        for col_idx, col_name in enumerate(columns, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=col_name)
+            cell.font = header_font
+            cell.fill = required_fill if col_name in required else header_fill
+            ws.column_dimensions[chr(64 + col_idx)].width = 20
 
-            # Add a sample row
-            sample_row = {
-                "business_name": "Sample Vendor", "name": "Sample Item",
-                "phone": "+919999999999", "email": "sample@example.com",
-                "base_price": "5000", "discount_type": "PERCENTAGE",
-                "discount_value": "10", "code": "SAMPLE10",
-                "question": "Sample question?", "answer": "Sample answer.",
-                "key": "sample_key", "value": "sample_value",
-                "plan_name": "Basic Plan", "price": "299",
-                "duration_days": "30", "features": "feature1,feature2",
-                "category": "Photography", "slug": "photography",
-                "description": "Sample description",
-                "city": "Mumbai", "state": "Maharashtra",
-                "country": "India", "code_field": "MH",
-                "valid_from": "2026-01-01", "valid_until": "2026-12-31",
-                "max_uses": "100", "min_order_value": "0",
-                "min_guests": "10", "max_guests": "100",
-                "duration_hours": "4", "currency": "INR",
-                "title_template": "Hello {{name}}", "body_template": "Your {{event}} is ready",
-                "channels": "SMS,EMAIL", "display_order": "1",
-                "pincode_prefix": "400", "pincode": "400001",
-                "business_type": "EVENTS",
-            }
-            for col_idx, col_name in enumerate(columns, start=1):
-                ws.cell(row=2, column=col_idx, value=sample_row.get(col_name, ""))
+        # Add a sample row
+        sample_row = {
+            "business_name": "Sample Vendor", "name": "Sample Item",
+            "phone": "+919999999999", "email": "sample@example.com",
+            "base_price": "5000", "discount_type": "PERCENTAGE",
+            "discount_value": "10", "code": "SAMPLE10",
+            "question": "Sample question?", "answer": "Sample answer.",
+            "key": "sample_key", "value": "sample_value",
+            "plan_name": "Basic Plan", "price": "299",
+            "duration_days": "30", "features": "feature1,feature2",
+            "category": "Photography", "slug": "photography",
+            "description": "Sample description",
+            "city": "Mumbai", "state": "Maharashtra",
+            "country": "India", "code_field": "MH",
+            "valid_from": "2026-01-01", "valid_until": "2026-12-31",
+            "max_uses": "100", "min_order_value": "0",
+            "min_guests": "10", "max_guests": "100",
+            "duration_hours": "4", "currency": "INR",
+            "title_template": "Hello {{name}}", "body_template": "Your {{event}} is ready",
+            "channels": "SMS,EMAIL", "display_order": "1",
+            "pincode_prefix": "400", "pincode": "400001",
+            "business_type": "EVENTS",
+            "image_1_url": "https://example.com/photos/package-cover.jpg",
+            "image_2_url": "https://example.com/photos/package-2.jpg",
+        }
+        for col_idx, col_name in enumerate(columns, start=1):
+            ws.cell(row=2, column=col_idx, value=sample_row.get(col_name, ""))
 
-            buf = io.BytesIO()
-            wb.save(buf)
-            return buf.getvalue()
-        except ImportError:
-            # Return minimal CSV template if openpyxl unavailable
-            columns = _ENTITY_COLUMNS.get(entity_type, [])
-            return (",".join(columns) + "\n").encode("utf-8")
+        buf = io.BytesIO()
+        wb.save(buf)
+        return buf.getvalue()
 
     async def validate_and_preview(
         self,
@@ -434,6 +435,28 @@ class IOService(BaseService):
                 is_active=False,
             )
             session.add(obj)
+            await session.flush()
+
+            # Attach any image_N_url columns as package gallery items —
+            # lets one spreadsheet row set up a full package with photos in
+            # one import instead of a separate manual upload step per image.
+            from app.models.enums import MediaStatus, MediaType, MediaUsage
+            from app.models.packages.package_gallery import PackageGallery
+
+            image_urls = [
+                (row.get(f"image_{i}_url") or "").strip()
+                for i in range(1, 6)
+            ]
+            for sort_order, url in enumerate(u for u in image_urls if u):
+                session.add(PackageGallery(
+                    package_id=obj.id,
+                    media_type=MediaType.IMAGE,
+                    usage=MediaUsage.PACKAGE_IMAGE,
+                    file_url=url,
+                    is_featured=(sort_order == 0),
+                    sort_order=sort_order,
+                    status=MediaStatus.ACTIVE,
+                ))
             await session.flush()
             return obj.id
         elif entity_type == "vendors":
@@ -696,24 +719,16 @@ class IOService(BaseService):
             return json.dumps(data, default=str, indent=2).encode("utf-8"), len(rows), "application/json"
 
         else:  # XLSX
-            try:
-                import openpyxl
-                wb = openpyxl.Workbook()
-                ws = wb.active
-                ws.title = entity_type.title()
-                ws.append(columns)
-                for row in rows:
-                    ws.append([str(row.get(c, "")) for c in columns])
-                buf = io.BytesIO()
-                wb.save(buf)
-                return buf.getvalue(), len(rows), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            except ImportError:
-                import csv
-                buf = io.StringIO()
-                writer = csv.DictWriter(buf, fieldnames=columns, extrasaction="ignore")
-                writer.writeheader()
-                writer.writerows(rows)
-                return buf.getvalue().encode("utf-8"), len(rows), "text/csv"
+            import openpyxl
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = entity_type.title()
+            ws.append(columns)
+            for row in rows:
+                ws.append([str(row.get(c, "")) for c in columns])
+            buf = io.BytesIO()
+            wb.save(buf)
+            return buf.getvalue(), len(rows), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
     async def _fetch_export_rows(
         self,
