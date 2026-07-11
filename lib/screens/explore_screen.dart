@@ -335,35 +335,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     : RefreshIndicator(
                         onRefresh: _loadPackages,
                         color: ty.saffron,
-                        child: ListView(
-                          padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), resp.h(28)),
-                          children: [
-                            if (featured.isNotEmpty && _searchQuery.isEmpty) ...[
-                              const SectionHeader('Featured for you'),
-                              SizedBox(
-                                height: resp.h(220),
-                                child: ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: featured.length,
-                                  separatorBuilder: (_, __) => SizedBox(width: resp.w(13)),
-                                  itemBuilder: (context, i) =>
-                                      _packageFeatured(context, featured[i]),
-                                ),
-                              ),
-                              SizedBox(height: resp.h(24)),
-                            ],
-                            SectionHeader(
-                              _selectedCitySlug.isEmpty
-                                  ? 'Available Packages'
-                                  : 'Packages in $_selectedCityLabel',
-                            ),
-                            ...list.map((p) => _packageRow(context, p)),
-                          ],
-                        ),
+                        child: _buildPackagesList(context, list, featured, resp),
                       ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPackagesList(
+    BuildContext context,
+    List<Package> list,
+    List<Package> featured,
+    TyResponsive resp,
+  ) {
+    final showFeatured = featured.isNotEmpty && _searchQuery.isEmpty;
+
+    // Flatten the featured rail + section header + package rows into a
+    // single index-addressable list so the whole screen can be one lazy
+    // ListView.builder instead of eagerly building every package row.
+    final rows = <Widget Function()>[];
+    if (showFeatured) {
+      rows.add(() => const SectionHeader('Featured for you'));
+      rows.add(() => SizedBox(
+            height: resp.h(220),
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: featured.length,
+              separatorBuilder: (_, __) => SizedBox(width: resp.w(13)),
+              itemBuilder: (context, i) => _packageFeatured(context, featured[i]),
+            ),
+          ));
+      rows.add(() => SizedBox(height: resp.h(24)));
+    }
+    rows.add(() => SectionHeader(
+          _selectedCitySlug.isEmpty ? 'Available Packages' : 'Packages in $_selectedCityLabel',
+        ));
+    for (final p in list) {
+      rows.add(() => _packageRow(context, p));
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), resp.h(28)),
+      itemCount: rows.length,
+      itemBuilder: (_, i) => rows[i](),
     );
   }
 

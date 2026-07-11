@@ -74,23 +74,40 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   key: _bodyKey,
                   child: _bookings.isEmpty
                       ? _buildEmptyState(context)
-                      : ListView(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-              children: [
-                if (upcoming.isNotEmpty) ...[
-                  Text('UPCOMING', style: TyType.eyebrow(11, color: ty.ink3)),
-                  const SizedBox(height: 12),
-                  ...upcoming.map((b) => _bookingCard(context, b)),
-                  const SizedBox(height: 32),
-                ],
-                if (past.isNotEmpty) ...[
-                  Text('PAST', style: TyType.eyebrow(11, color: ty.ink3)),
-                  const SizedBox(height: 12),
-                  ...past.map((b) => _bookingCard(context, b)),
-                ],
-              ],
-            ),
+                      : _buildBookingsList(context, upcoming, past),
                 ),
+    );
+  }
+
+  Widget _buildBookingsList(BuildContext context, List<Booking> upcoming, List<Booking> past) {
+    final ty = context.ty;
+    Text sectionHeader(String label) =>
+        Text(label, style: TyType.eyebrow(11, color: ty.ink3));
+
+    // Flatten sections into a single index-addressable list of row builders
+    // so the whole screen can be a single lazy ListView.builder instead of
+    // eagerly building every booking card up front.
+    final rows = <Widget Function()>[];
+    if (upcoming.isNotEmpty) {
+      rows.add(() => sectionHeader('UPCOMING'));
+      rows.add(() => const SizedBox(height: 12));
+      for (final b in upcoming) {
+        rows.add(() => _bookingCard(context, b));
+      }
+      rows.add(() => const SizedBox(height: 32));
+    }
+    if (past.isNotEmpty) {
+      rows.add(() => sectionHeader('PAST'));
+      rows.add(() => const SizedBox(height: 12));
+      for (final b in past) {
+        rows.add(() => _bookingCard(context, b));
+      }
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+      itemCount: rows.length,
+      itemBuilder: (_, i) => rows[i](),
     );
   }
 

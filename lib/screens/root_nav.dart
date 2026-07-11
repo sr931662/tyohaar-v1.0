@@ -38,12 +38,13 @@ class _RootNavState extends State<RootNav> {
   bool _isScrolled = false;
   int _unreadNotifs = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final ScrollController _homeScrollController = ScrollController();
 
-  final _pages = const [
-    HomeScreen(),
-    PlansScreen(),
-    ExploreScreen(),
-    AccountScreen(),
+  late final _pages = [
+    HomeScreen(scrollController: _homeScrollController),
+    const PlansScreen(),
+    const ExploreScreen(),
+    const AccountScreen(),
   ];
 
   @override
@@ -52,6 +53,28 @@ class _RootNavState extends State<RootNav> {
     _ensureUserLoaded();
     _loadUnreadCount();
     PushService.instance.initialize();
+  }
+
+  @override
+  void dispose() {
+    _homeScrollController.dispose();
+    super.dispose();
+  }
+
+  // Only the Home tab (index 0) tracks scroll-driven header contrast.
+  // IndexedStack keeps HomeScreen's ListView (and its real scroll offset)
+  // alive across tab switches, so when the user returns to Home we must
+  // re-derive _isScrolled from the controller's actual offset instead of
+  // blindly resetting to false — otherwise a header that should still be
+  // opaque (because Home is scrolled) renders transparent with nothing
+  // behind it for contrast.
+  void _setIndex(int i) {
+    setState(() {
+      _index = i;
+      _isScrolled = i == 0 &&
+          _homeScrollController.hasClients &&
+          _homeScrollController.offset > 20;
+    });
   }
 
   Future<void> _loadUnreadCount() async {
@@ -96,15 +119,12 @@ class _RootNavState extends State<RootNav> {
         onNavigate: (i) {
           if (i == 1 || i == 3) {
              AuthManager.instance.checkAuth(
-              context, 
+              context,
               action: i == 1 ? 'view your plans' : 'access your account',
-              onAuthenticated: () => setState(() {
-                _index = i;
-                _isScrolled = false;
-              }),
+              onAuthenticated: () => _setIndex(i),
             );
           } else {
-            setState(() => _index = i);
+            _setIndex(i);
           }
           Navigator.pop(context);
         },
@@ -136,7 +156,7 @@ class _RootNavState extends State<RootNav> {
                 isScrolled: _isScrolled,
                 onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
                 onOpenNotifications: () => _push(context, const NotificationsScreen()).then((_) => _loadUnreadCount()),
-                onOpenProfile: () => setState(() => _index = 3),
+                onOpenProfile: () => _setIndex(3),
                 user: AuthManager.instance.currentUser,
                 unreadCount: _unreadNotifs,
               ),
@@ -153,18 +173,12 @@ class _RootNavState extends State<RootNav> {
           }
           if (i == 1 || i == 3) {
             AuthManager.instance.checkAuth(
-              context, 
+              context,
               action: i == 1 ? 'view your plans' : 'access your account',
-              onAuthenticated: () => setState(() {
-                _index = i;
-                _isScrolled = false;
-              }),
+              onAuthenticated: () => _setIndex(i),
             );
           } else {
-            setState(() {
-              _index = i;
-              _isScrolled = false;
-            });
+            _setIndex(i);
           }
         },
         onCreate: _openCreate,

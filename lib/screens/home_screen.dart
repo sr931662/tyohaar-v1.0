@@ -25,7 +25,8 @@ import 'package:tyohaar/screens/invitation_management_screen.dart';
 import 'package:tyohaar/screens/occasion_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final ScrollController? scrollController;
+  const HomeScreen({super.key, this.scrollController});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -161,6 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onRefresh: _loadData,
       color: ty.saffron,
       child: ListView(
+        controller: widget.scrollController,
         padding: EdgeInsets.zero,
         children: [
         _buildHeroCard(context, pct, totalGuests, pendingTasks.length),
