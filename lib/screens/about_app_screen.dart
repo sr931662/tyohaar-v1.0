@@ -19,12 +19,7 @@ class AboutAppScreen extends StatelessWidget {
             child: Column(
               children: [
                 const SizedBox(height: 24),
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(color: ty.saffron, borderRadius: BorderRadius.circular(28)),
-                  child: const Icon(Icons.celebration_rounded, color: Colors.white, size: 50),
-                ),
+                Image.asset('assets/images/tyohaar-mark.png', width: 100, height: 100),
                 const SizedBox(height: 16),
                 Text('Tyohaar', style: TyType.display(32, color: ty.ink)),
                 Text('Version 1.0.4 (Build 122)', style: TyType.sans(12, color: ty.ink3)),
@@ -39,12 +34,11 @@ class AboutAppScreen extends StatelessWidget {
             style: TyType.sans(15, color: ty.ink2, height: 1.6),
           ),
           const SizedBox(height: 32),
-          _item(context, 'Website', 'www.tyohaar.app'),
-          _item(context, 'Follow us on Instagram', '@tyohaar.app'),
-          _item(context, 'Contact Email', 'hello@tyohaar.app'),
+          _item(context, 'Website', 'www.tyohaar.co'),
+          _item(context, 'Contact Email', 'support@tyohaar.co'),
           const SizedBox(height: 48),
           Center(
-            child: Text('Made with ❤️ in Jaipur, Rajasthan', style: TyType.sans(13, color: ty.ink3)),
+            child: Text('Designed and Developed by MaviCode', style: TyType.sans(13, color: ty.ink3)),
           ),
         ],
       ),

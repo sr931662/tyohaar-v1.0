@@ -16,6 +16,7 @@ import 'my_bookings_screen.dart';
 import 'refer_earn_screen.dart';
 import 'help_screen.dart';
 import 'my_profile_screen.dart';
+import 'membership_plan_screen.dart';
 import 'manage_address_screen.dart';
 import 'about_app_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -128,7 +129,7 @@ class _AccountScreenState extends State<AccountScreen> {
             _menuItem(context, resp, Icons.person_outline_rounded, 'My Profile',
                 onTap: () => _push(context, const MyProfileScreen())),
             _menuItem(context, resp, Icons.card_membership_rounded, 'My Membership Plan',
-                onTap: () => _push(context, const MyProfileScreen())), // Fixed: was pointing to membership which might not be implemented
+                onTap: () => _push(context, const MembershipPlanScreen())),
             _menuItem(context, resp, Icons.place_outlined, 'Manage Addresses',
                 onTap: () => _push(context, const ManageAddressScreen())),
           ]),
