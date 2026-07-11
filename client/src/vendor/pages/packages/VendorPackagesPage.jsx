@@ -204,6 +204,120 @@ function PackageFormModal({ initial, occasions, onClose, onSave, saving }) {
   );
 }
 
+// ── Common Items Modal (vendor-wide item templates) ─────────────────────────────
+// Reusable items owned by the vendor, not tied to any one package. Attached
+// to individual packages from the Package Items modal below.
+
+function CommonItemsModal({ onClose }) {
+  const qc = useQueryClient();
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '' });
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['vendor-common-items'],
+    queryFn: () => vendorPackagesApi.listCommonItems(),
+  });
+
+  const invalidate = () => qc.invalidateQueries(['vendor-common-items']);
+
+  const addMutation = useMutation({
+    mutationFn: (body) => vendorPackagesApi.createCommonItem(body),
+    onSuccess: () => { toast.success('Common item created.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '' }); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to create item.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (itemId) => vendorPackagesApi.deleteCommonItem(itemId),
+    onSuccess: () => { toast.success('Common item deleted.'); invalidate(); setConfirmDelete(null); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to delete item.'),
+  });
+
+  const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
+
+  const handleAdd = (e) => {
+    e.preventDefault();
+    if (!newItem.name.trim()) return toast.error('Item name is required.');
+    if (!newItem.base_price || isNaN(Number(newItem.base_price))) return toast.error('Enter a valid price.');
+    addMutation.mutate({
+      ...newItem,
+      quantity: Number(newItem.quantity),
+      max_quantity: newItem.max_quantity !== '' ? Number(newItem.max_quantity) : undefined,
+      base_price: Number(newItem.base_price),
+      unit: newItem.unit || undefined,
+      description: newItem.description || undefined,
+    });
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <div className="admin-modal lg" onClick={(e) => e.stopPropagation()}>
+        <div className="admin-modal-header">
+          <div>
+            <h2 className="admin-modal-title">Common Items</h2>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+              Reusable items you can attach to any of your packages instead of recreating them each time.
+            </p>
+          </div>
+          <button className="admin-modal-close" onClick={onClose}>×</button>
+        </div>
+        <div style={{ padding: '20px 24px 24px' }}>
+          {isLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+              {[0, 1].map((i) => <div key={i} className="skeleton skeleton-card" style={{ height: 56 }} />)}
+            </div>
+          ) : !items.length ? (
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: '16px 0', marginBottom: 4 }}>No common items yet. Add one below.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              {items.map((item) => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</div>
+                    {item.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{item.description}</div>}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    {item.quantity > 1 && `${item.quantity}${item.unit ? ' ' + item.unit : 'x'} · `}
+                    ₹{Number(item.base_price).toLocaleString('en-IN')}
+                  </div>
+                  <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(item)}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Add Common Item</h4>
+          <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="form-row-2-1" style={{ gap: 10 }}>
+              <input className="admin-input" value={newItem.name} onChange={(e) => setNF('name', e.target.value)} placeholder="Item name *" />
+              <input className="admin-input" type="number" min="0" value={newItem.base_price} onChange={(e) => setNF('base_price', e.target.value)} placeholder="Price (₹) *" />
+            </div>
+            <div className="form-row-3" style={{ gap: 10 }}>
+              <input className="admin-input" type="number" min="1" value={newItem.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
+              <input className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+              <input className="admin-input" type="number" min={newItem.quantity || 1} value={newItem.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
+            </div>
+            <input className="admin-input" value={newItem.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="submit" className="btn btn-primary" disabled={addMutation.isPending}>
+                {addMutation.isPending ? 'Adding…' : '+ Add Common Item'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
+        title="Delete Common Item"
+        message={`Delete "${confirmDelete?.name}"? It will be removed from every package it's attached to.`}
+        loading={deleteMutation.isPending}
+      />
+    </div>
+  );
+}
+
 // ── Package Items Modal ────────────────────────────────────────────────────────
 
 function PackageItemsModal({ pkg, onClose }) {
@@ -213,10 +327,16 @@ function PackageItemsModal({ pkg, onClose }) {
   const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [managingImagesFor, setManagingImagesFor] = useState(null);
+  const [attachingId, setAttachingId] = useState('');
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['pkg-items', pkg.id],
     queryFn: () => vendorPackagesApi.listItems(pkg.id),
+  });
+
+  const { data: commonItems = [] } = useQuery({
+    queryKey: ['vendor-common-items'],
+    queryFn: () => vendorPackagesApi.listCommonItems(),
   });
 
   const invalidate = () => qc.invalidateQueries(['pkg-items', pkg.id]);
@@ -225,6 +345,18 @@ function PackageItemsModal({ pkg, onClose }) {
     mutationFn: (body) => vendorPackagesApi.addItem(pkg.id, { ...body, package_id: pkg.id }),
     onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, unit: '', base_price: '', is_mandatory: true }); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add item.'),
+  });
+
+  const attachMutation = useMutation({
+    mutationFn: (itemId) => vendorPackagesApi.attachCommonItem(pkg.id, itemId),
+    onSuccess: () => { toast.success('Common item attached.'); invalidate(); setAttachingId(''); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to attach item.'),
+  });
+
+  const detachMutation = useMutation({
+    mutationFn: (itemId) => vendorPackagesApi.detachCommonItem(pkg.id, itemId),
+    onSuccess: () => { toast.success('Common item detached.'); invalidate(); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to detach item.'),
   });
 
   const updateMutation = useMutation({
@@ -333,6 +465,7 @@ function PackageItemsModal({ pkg, onClose }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>
                       {item.name}
+                      {item.is_common && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-primary,#6366f1)', fontWeight: 400 }}>common</span>}
                       {!item.is_mandatory && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>optional</span>}
                     </div>
                     {item.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{item.description}</div>}
@@ -343,15 +476,55 @@ function PackageItemsModal({ pkg, onClose }) {
                   </div>
                   {!isLocked && (
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setManagingImagesFor({ id: item.id, name: item.name, images: item.images })}>
-                        Photos{item.images?.length ? ` (${item.images.length})` : ''}
-                      </button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => startEdit(item)}>Edit</button>
-                      <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(item)}>✕</button>
+                      {item.is_common ? (
+                        <button
+                          className="btn btn-sm"
+                          style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }}
+                          onClick={() => detachMutation.mutate(item.id)}
+                          disabled={detachMutation.isPending}
+                        >
+                          Detach
+                        </button>
+                      ) : (
+                        <>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setManagingImagesFor({ id: item.id, name: item.name, images: item.images })}>
+                            Photos{item.images?.length ? ` (${item.images.length})` : ''}
+                          </button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => startEdit(item)}>Edit</button>
+                          <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(item)}>✕</button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {!isLocked && commonItems.length > 0 && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
+              <select
+                className="admin-input"
+                value={attachingId}
+                onChange={(e) => setAttachingId(e.target.value)}
+                style={{ flex: 1 }}
+              >
+                <option value="">Attach a common item…</option>
+                {commonItems
+                  .filter((ci) => !items.some((i) => i.id === ci.id))
+                  .map((ci) => (
+                    <option key={ci.id} value={ci.id}>
+                      {ci.name} · ₹{Number(ci.base_price).toLocaleString('en-IN')}
+                    </option>
+                  ))}
+              </select>
+              <button
+                className="btn btn-secondary"
+                disabled={!attachingId || attachMutation.isPending}
+                onClick={() => attachMutation.mutate(attachingId)}
+              >
+                {attachMutation.isPending ? 'Attaching…' : 'Attach'}
+              </button>
             </div>
           )}
 
@@ -601,6 +774,7 @@ export default function VendorPackagesPage() {
   const [editingPkg, setEditingPkg] = useState(null);
   const [managingItems, setManagingItems] = useState(null);
   const [managingGallery, setManagingGallery] = useState(null);
+  const [showCommonItems, setShowCommonItems] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(null);
   const [confirmUnpublish, setConfirmUnpublish] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -673,6 +847,7 @@ export default function VendorPackagesPage() {
           <p style={{ color: 'var(--text-secondary)' }}>Create packages and submit for admin approval to go live.</p>
         </div>
         <div className="admin-page-header-actions">
+          <button className="btn btn-secondary" onClick={() => setShowCommonItems(true)}>Common Items</button>
           <button className="btn btn-primary" onClick={() => setShowCreate(true)}>+ New Package</button>
         </div>
       </div>
@@ -785,6 +960,9 @@ export default function VendorPackagesPage() {
       )}
       {managingGallery && (
         <PackageGalleryModal pkg={managingGallery} onClose={() => setManagingGallery(null)} />
+      )}
+      {showCommonItems && (
+        <CommonItemsModal onClose={() => setShowCommonItems(false)} />
       )}
 
       <ConfirmDialog

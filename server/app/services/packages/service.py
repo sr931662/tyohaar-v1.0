@@ -18,6 +18,7 @@ from app.schemas.packages import (
     PackageCategoryCreate,
     PackageCategoryResponse,
     PackageCategoryUpdate,
+    CommonPackageItemCreate,
     PackageCreate,
     PackageDetailResponse,
     PackageDiscountResponse,
@@ -124,7 +125,7 @@ class PackageService(BaseService):
 
         async with self._uow() as uow:
             package = await validate_package_exists(package_id, uow)
-            items = await uow.packages.items.find_by_package(package_id)
+            items = await uow.packages.items.find_by_package_including_common(package_id)
             gallery = await uow.packages.gallery.find_by_package(package_id)
             discounts = await uow.packages.discounts.find_active_for_package(package_id)
             faqs = await uow.packages.faqs.find_by_package(package_id)
@@ -500,7 +501,7 @@ class PackageService(BaseService):
     async def list_items(self, package_id: UUID) -> list[PackageItemResponse]:
         async with self._uow() as uow:
             await validate_package_exists(package_id, uow)
-            items = await uow.packages.items.find_by_package(package_id)
+            items = await uow.packages.items.find_by_package_including_common(package_id)
             images_by_item = await self._batch_item_images(uow, [i.id for i in items])
             return [
                 PackageItemResponse.model_validate(i).model_copy(
@@ -508,6 +509,85 @@ class PackageService(BaseService):
                 )
                 for i in items
             ]
+
+    # ── Common (vendor-owned, reusable) Package Items ──────────────────────────
+
+    async def create_common_item(
+        self,
+        vendor_id: UUID,
+        data: CommonPackageItemCreate,
+    ) -> PackageItemResponse:
+        async with self._uow() as uow:
+            payload = data.model_dump(exclude_unset=True)
+            payload["vendor_id"] = vendor_id
+            payload["is_common"] = True
+            payload["package_id"] = None
+            item = await uow.packages.items.create_from_dict(payload)
+            await uow.commit()
+            return PackageItemResponse.model_validate(item)
+
+    async def list_common_items(self, vendor_id: UUID) -> list[PackageItemResponse]:
+        async with self._uow() as uow:
+            items = await uow.packages.items.find_common_for_vendor(vendor_id)
+            images_by_item = await self._batch_item_images(uow, [i.id for i in items])
+            return [
+                PackageItemResponse.model_validate(i).model_copy(
+                    update={"images": images_by_item.get(i.id, [])}
+                )
+                for i in items
+            ]
+
+    async def update_common_item(
+        self,
+        vendor_id: UUID,
+        item_id: UUID,
+        data: PackageItemUpdate,
+    ) -> PackageItemResponse:
+        async with self._uow() as uow:
+            item = await uow.packages.items.get_by_id(item_id)
+            if item is None or not item.is_common or item.vendor_id != vendor_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItem", str(item_id))
+            updated = await uow.packages.items.update(
+                item, data.model_dump(exclude_unset=True)
+            )
+            await uow.commit()
+            return PackageItemResponse.model_validate(updated)
+
+    async def delete_common_item(self, vendor_id: UUID, item_id: UUID) -> None:
+        async with self._uow() as uow:
+            item = await uow.packages.items.get_by_id(item_id)
+            if item is None or not item.is_common or item.vendor_id != vendor_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItem", str(item_id))
+            await uow.packages.items.delete(item)
+            await uow.commit()
+
+    async def attach_common_item(
+        self,
+        vendor_id: UUID,
+        package_id: UUID,
+        item_id: UUID,
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            item = await uow.packages.items.get_by_id(item_id)
+            if item is None or not item.is_common or item.vendor_id != vendor_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItem", str(item_id))
+            await uow.packages.items.link_to_package(package_id, item_id)
+            await uow.commit()
+
+    async def detach_common_item(
+        self,
+        vendor_id: UUID,
+        package_id: UUID,
+        item_id: UUID,
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            await uow.packages.items.unlink_from_package(package_id, item_id)
+            await uow.commit()
 
     @staticmethod
     async def _batch_item_images(

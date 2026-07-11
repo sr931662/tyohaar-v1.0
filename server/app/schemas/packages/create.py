@@ -144,6 +144,34 @@ class PackageItemCreate(BaseSchema):
     display_order: int = Field(default=0, ge=0, description="Sort order within the package")
 
 
+class CommonPackageItemCreate(BaseSchema):
+    """
+    Payload to create a vendor-owned reusable item template.
+
+    Unlike PackageItemCreate, this has no package_id — a common item is
+    created once per vendor and attached to any number of that vendor's
+    packages afterward via the attach/detach endpoints.
+    """
+
+    name: str = Field(min_length=1, max_length=300, description="Item name")
+    description: str | None = Field(default=None, description="Item description")
+    quantity: int = Field(default=1, ge=1, description="Default quantity included")
+    unit: str | None = Field(
+        default=None, max_length=50, description="Unit label, e.g. 'hours', 'pieces'"
+    )
+    base_price: MoneyAmount = Field(description="Item base price")
+    is_customizable: bool = Field(
+        default=False, description="True if the customer can configure options for this item"
+    )
+    max_quantity: int | None = Field(
+        default=None,
+        ge=1,
+        description="Highest quantity a customer may select at booking time. "
+                    "NULL means uncapped.",
+    )
+    icon_url: str | None = Field(default=None, max_length=500, description="Small icon/thumbnail URL")
+
+
 class PackageGalleryCreate(BaseSchema):
     """Payload required to add an additional image to a package's gallery."""
 

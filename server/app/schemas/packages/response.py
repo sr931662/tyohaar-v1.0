@@ -121,7 +121,9 @@ class PackageItemResponse(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
-    package_id: uuid.UUID
+    package_id: uuid.UUID | None = None
+    vendor_id: uuid.UUID | None = None
+    is_common: bool = False
     name: str
     description: str | None
     quantity: int

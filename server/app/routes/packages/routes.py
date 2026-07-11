@@ -230,6 +230,75 @@ router.add_api_route(
     operation_id="packages_delete_item",
 )
 
+# ── Common (vendor-owned, reusable) package items ──────────────────────────────
+
+router.add_api_route(
+    "/vendor/common-items",
+    ctrl.list_common_items,
+    methods=["GET"],
+    response_model=SuccessResponse[list[PackageItemResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="List My Common Items",
+    description="Return the current vendor's reusable item templates.",
+    operation_id="packages_list_common_items",
+)
+
+router.add_api_route(
+    "/vendor/common-items",
+    ctrl.create_common_item,
+    methods=["POST"],
+    response_model=SuccessResponse[PackageItemResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Create Common Item",
+    description="Create a reusable item template owned by the current vendor, "
+                "attachable to any of that vendor's own packages.",
+    operation_id="packages_create_common_item",
+)
+
+router.add_api_route(
+    "/vendor/common-items/{item_id}",
+    ctrl.update_common_item,
+    methods=["PUT"],
+    response_model=SuccessResponse[PackageItemResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Common Item",
+    description="Update a common item template owned by the current vendor.",
+    operation_id="packages_update_common_item",
+)
+
+router.add_api_route(
+    "/vendor/common-items/{item_id}",
+    ctrl.delete_common_item,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Delete Common Item",
+    description="Delete a common item template owned by the current vendor.",
+    operation_id="packages_delete_common_item",
+)
+
+router.add_api_route(
+    "/{package_id}/common-items/{item_id}",
+    ctrl.attach_common_item,
+    methods=["POST"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Attach Common Item",
+    description="Attach one of the vendor's common item templates to this package.",
+    operation_id="packages_attach_common_item",
+)
+
+router.add_api_route(
+    "/{package_id}/common-items/{item_id}",
+    ctrl.detach_common_item,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Detach Common Item",
+    description="Detach a common item template from this package (does not delete the template).",
+    operation_id="packages_detach_common_item",
+)
+
 # ── Package gallery (additional images beyond the cover) ──────────────────────
 
 router.add_api_route(

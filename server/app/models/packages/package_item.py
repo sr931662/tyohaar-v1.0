@@ -14,12 +14,17 @@ from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
     Numeric,
     String,
+    Table,
     Text,
+    func,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -32,6 +37,28 @@ if TYPE_CHECKING:
     from app.models.packages.package_item_image import PackageItemImage
     from app.models.packages.package_item_vendor import PackageItemVendor
     from app.models.vendors.vendor_category import VendorCategory
+
+
+# Join table attaching a common (vendor-owned, reusable) PackageItem to one
+# or more packages, without duplicating the item row. Package-specific items
+# never use this table — they keep the direct package_id FK on PackageItem.
+package_item_links = Table(
+    "package_item_links",
+    Base.metadata,
+    Column(
+        "package_id",
+        PGUUID(as_uuid=True),
+        ForeignKey("packages.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "package_item_id",
+        PGUUID(as_uuid=True),
+        ForeignKey("package_items.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("created_at", DateTime(timezone=True), server_default=func.now(), nullable=False),
+)
 
 
 class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -56,14 +83,40 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_package_items_package_id", "package_id"),
         Index("ix_package_items_category_id", "category_id"),
         Index("ix_package_items_display_order", "package_id", "display_order"),
+        Index("ix_package_items_vendor_id", "vendor_id"),
+        CheckConstraint(
+            "(is_common AND package_id IS NULL) OR (NOT is_common AND package_id IS NOT NULL)",
+            name="ck_package_items_common_xor_package",
+        ),
     )
 
     # ── Ownership ─────────────────────────────────────────────────────────────
 
-    package_id: Mapped[uuid.UUID] = mapped_column(
+    # NULL for common items (which live outside any single package and are
+    # attached to N packages via package_item_links); required for
+    # package-specific items, which keep the direct one-to-many shape.
+    package_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("packages.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+
+    # Set only for common items — the vendor who owns this reusable item
+    # template. NULL for package-specific items (ownership is inherited
+    # from the parent Package.vendor_id instead).
+    vendor_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("vendors.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+
+    is_common: Mapped[bool] = mapped_column(
+        Boolean,
         nullable=False,
+        default=False,
+        comment="True for a vendor-owned reusable item template attached to "
+                "packages via package_item_links; False for a normal "
+                "package-specific item.",
     )
 
     # ── Service Classification ────────────────────────────────────────────────
@@ -133,7 +186,7 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     # ── Relationships ─────────────────────────────────────────────────────────
 
-    package: Mapped[Package] = relationship(
+    package: Mapped[Package | None] = relationship(
         "Package",
         back_populates="items",
         lazy="noload",
@@ -156,6 +209,14 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="item",
         lazy="noload",
         cascade="all, delete-orphan",
+    )
+
+    # Packages this common item is attached to (empty for package-specific
+    # items, which use package_id directly instead of this join table).
+    linked_packages: Mapped[list[Package]] = relationship(
+        "Package",
+        secondary=package_item_links,
+        lazy="noload",
     )
 
     def __repr__(self) -> str:

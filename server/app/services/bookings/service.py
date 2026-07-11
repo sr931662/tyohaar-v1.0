@@ -180,7 +180,7 @@ class BookingService(BaseService):
                 celebration_id = celebration.id
 
             # 1. Fetch mandatory items from package
-            package_items = await uow.packages.items.find_by_package(data.package_id)
+            package_items = await uow.packages.items.find_by_package_including_common(data.package_id)
             selected_items = [i for i in package_items if i.is_mandatory]
 
             # 2. Fetch selected optional items (add-ons)

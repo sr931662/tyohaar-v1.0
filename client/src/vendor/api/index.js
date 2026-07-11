@@ -136,6 +136,21 @@ export const vendorPackagesApi = {
     vendorClient.post(`/packages/${packageId}/items/${itemId}/images`, body).then(extractData),
   deleteItemImage: (packageId, itemId, imageId) =>
     vendorClient.delete(`/packages/${packageId}/items/${itemId}/images/${imageId}`).then(extractData),
+
+  // Common items — vendor-owned reusable item templates, attachable to any
+  // of that vendor's own packages instead of being recreated per package.
+  listCommonItems: () =>
+    vendorClient.get('/packages/vendor/common-items').then(extractList),
+  createCommonItem: (body) =>
+    vendorClient.post('/packages/vendor/common-items', body).then(extractData),
+  updateCommonItem: (itemId, body) =>
+    vendorClient.put(`/packages/vendor/common-items/${itemId}`, body).then(extractData),
+  deleteCommonItem: (itemId) =>
+    vendorClient.delete(`/packages/vendor/common-items/${itemId}`).then(extractData),
+  attachCommonItem: (packageId, itemId) =>
+    vendorClient.post(`/packages/${packageId}/common-items/${itemId}`).then(extractData),
+  detachCommonItem: (packageId, itemId) =>
+    vendorClient.delete(`/packages/${packageId}/common-items/${itemId}`).then(extractData),
 };
 
 // ── Occasions (reference data for package linking) ─────────────────────────────

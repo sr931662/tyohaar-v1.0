@@ -8,6 +8,7 @@ import uuid
 from decimal import Decimal
 
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -19,7 +20,7 @@ from app.models.packages.package_customization import PackageCustomization
 from app.models.packages.package_discount import PackageDiscount
 from app.models.packages.package_faq import PackageFAQ
 from app.models.packages.package_gallery import PackageGallery
-from app.models.packages.package_item import PackageItem
+from app.models.packages.package_item import PackageItem, package_item_links
 from app.models.packages.package_item_image import PackageItemImage
 from app.models.packages.package_item_vendor import PackageItemVendor
 from app.models.packages.package_pricing import PackagePricing
@@ -155,6 +156,50 @@ class PackageItemRepository(BaseRepository[PackageItem]):
             options=[selectinload(PackageItem.vendor_assignments)],
             order_by=PackageItem.display_order.asc(),
         )
+
+    async def find_by_package_including_common(self, package_id: uuid.UUID) -> list[PackageItem]:
+        """Package-specific items plus any common items linked via package_item_links."""
+        direct_stmt = select(PackageItem).where(PackageItem.package_id == package_id)
+        linked_stmt = (
+            select(PackageItem)
+            .join(package_item_links, package_item_links.c.package_item_id == PackageItem.id)
+            .where(package_item_links.c.package_id == package_id)
+        )
+        direct = (await self._session.execute(direct_stmt)).scalars().all()
+        linked = (await self._session.execute(linked_stmt)).scalars().all()
+        combined = list(direct) + [i for i in linked if i.id not in {d.id for d in direct}]
+        combined.sort(key=lambda i: i.display_order)
+        return combined
+
+    async def find_common_for_vendor(self, vendor_id: uuid.UUID) -> list[PackageItem]:
+        return await self.find_many(
+            PackageItem.vendor_id == vendor_id,
+            PackageItem.is_common == True,  # noqa: E712
+            order_by=PackageItem.display_order.asc(),
+        )
+
+    async def link_to_package(self, package_id: uuid.UUID, item_id: uuid.UUID) -> None:
+        stmt = (
+            postgresql.insert(package_item_links)
+            .values(package_id=package_id, package_item_id=item_id)
+            .on_conflict_do_nothing()
+        )
+        await self._session.execute(stmt)
+
+    async def unlink_from_package(self, package_id: uuid.UUID, item_id: uuid.UUID) -> None:
+        stmt = package_item_links.delete().where(
+            package_item_links.c.package_id == package_id,
+            package_item_links.c.package_item_id == item_id,
+        )
+        await self._session.execute(stmt)
+
+    async def is_linked_to_package(self, package_id: uuid.UUID, item_id: uuid.UUID) -> bool:
+        stmt = select(package_item_links.c.package_id).where(
+            package_item_links.c.package_id == package_id,
+            package_item_links.c.package_item_id == item_id,
+        )
+        result = await self._session.execute(stmt)
+        return result.first() is not None
 
 
 class PackageItemImageRepository(BaseRepository[PackageItemImage]):

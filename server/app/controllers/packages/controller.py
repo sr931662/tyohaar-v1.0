@@ -29,6 +29,7 @@ from app.schemas.packages import (
     PackageCategoryCreate,
     PackageCategoryResponse,
     PackageCategoryUpdate,
+    CommonPackageItemCreate,
     PackageCreate,
     PackageDetailResponse,
     PackageFilters,
@@ -213,6 +214,68 @@ async def list_items(
 ) -> SuccessResponse[list[PackageItemResponse]]:
     items = await service.list_items(package_id=package_id)
     return SuccessResponse(data=items, message="Items retrieved.")
+
+
+async def create_common_item(
+    body: CommonPackageItemCreate,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageItemResponse]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    result = await service.create_common_item(vendor_id=vendor_id, data=body)
+    return SuccessResponse(data=result, message="Common item created.")
+
+
+async def list_common_items(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[list[PackageItemResponse]]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    items = await service.list_common_items(vendor_id=vendor_id)
+    return SuccessResponse(data=items, message="Common items retrieved.")
+
+
+async def update_common_item(
+    item_id: uuid.UUID,
+    body: PackageItemUpdate,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageItemResponse]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    result = await service.update_common_item(vendor_id=vendor_id, item_id=item_id, data=body)
+    return SuccessResponse(data=result, message="Common item updated.")
+
+
+async def delete_common_item(
+    item_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    await service.delete_common_item(vendor_id=vendor_id, item_id=item_id)
+    return SuccessResponse(data=None, message="Common item deleted.")
+
+
+async def attach_common_item(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    await service.attach_common_item(vendor_id=vendor_id, package_id=package_id, item_id=item_id)
+    return SuccessResponse(data=None, message="Common item attached.")
+
+
+async def detach_common_item(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    await service.detach_common_item(vendor_id=vendor_id, package_id=package_id, item_id=item_id)
+    return SuccessResponse(data=None, message="Common item detached.")
 
 
 async def add_gallery_item(
