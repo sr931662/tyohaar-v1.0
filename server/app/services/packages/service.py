@@ -9,7 +9,7 @@ from app.models.packages.package_availability import PackageAvailability
 from app.models.packages.package_category import PackageCategory
 from app.models.packages.package_item import PackageItem
 from app.models.packages.package_review import PackageReview
-from app.models.enums import PackageStatus
+from app.models.enums import MediaStatus, MediaType, MediaUsage, PackageStatus
 from app.schemas.base import CursorPage
 from app.schemas.packages import (
     PackageAvailabilityCreate,
@@ -23,6 +23,8 @@ from app.schemas.packages import (
     PackageDiscountResponse,
     PackageFAQResponse,
     PackageFilters,
+    PackageGalleryCreate,
+    PackageGalleryResponse,
     PackageItemCreate,
     PackageItemResponse,
     PackageItemUpdate,
@@ -121,6 +123,7 @@ class PackageService(BaseService):
         async with self._uow() as uow:
             package = await validate_package_exists(package_id, uow)
             items = await uow.packages.items.find_by_package(package_id)
+            gallery = await uow.packages.gallery.find_by_package(package_id)
             discounts = await uow.packages.discounts.find_active_for_package(package_id)
             faqs = await uow.packages.faqs.find_by_package(package_id)
             pricing_rows = await uow.packages.pricings.find_by_package(package_id)
@@ -160,6 +163,7 @@ class PackageService(BaseService):
                 **base.model_dump(), pricing=pricing_response, vendor=vendor_info
             )
             response.items = [PackageItemResponse.model_validate(i) for i in items]
+            response.gallery = [PackageGalleryResponse.model_validate(g) for g in gallery]
             response.discounts = [PackageDiscountResponse.model_validate(d) for d in discounts]
             response.faqs = [PackageFAQResponse.model_validate(f) for f in faqs]
             return response
@@ -490,6 +494,79 @@ class PackageService(BaseService):
             await validate_package_exists(package_id, uow)
             items = await uow.packages.items.find_by_package(package_id)
             return [PackageItemResponse.model_validate(i) for i in items]
+
+    # ── Package Gallery ────────────────────────────────────────────────────────
+    # Additional images beyond the single cover_image_url — the cover stays
+    # the authoritative thumbnail/card image; gallery items are supplementary
+    # photos shown in a swipeable slider on the package detail page.
+
+    async def add_gallery_item(
+        self,
+        package_id: UUID,
+        vendor_id: UUID,
+        data: PackageGalleryCreate,
+    ) -> PackageGalleryResponse:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            existing = await uow.packages.gallery.find_by_package(package_id)
+            payload = data.model_dump(exclude_unset=True)
+            payload["package_id"] = package_id
+            payload["media_type"] = MediaType.IMAGE
+            payload["usage"] = MediaUsage.PRODUCT_IMAGE
+            payload["status"] = MediaStatus.ACTIVE
+            payload["sort_order"] = len(existing)
+            item = await uow.packages.gallery.create_from_dict(payload)
+            await uow.commit()
+            return PackageGalleryResponse.model_validate(item)
+
+    async def delete_gallery_item(
+        self,
+        package_id: UUID,
+        gallery_id: UUID,
+        vendor_id: UUID,
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            item = await uow.packages.gallery.get_by_id(gallery_id)
+            if item is None or item.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageGalleryItem", str(gallery_id))
+            await uow.packages.gallery.delete(item)
+            await uow.commit()
+
+    async def admin_add_gallery_item(
+        self,
+        package_id: UUID,
+        data: PackageGalleryCreate,
+    ) -> PackageGalleryResponse:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            existing = await uow.packages.gallery.find_by_package(package_id)
+            payload = data.model_dump(exclude_unset=True)
+            payload["package_id"] = package_id
+            payload["media_type"] = MediaType.IMAGE
+            payload["usage"] = MediaUsage.PRODUCT_IMAGE
+            payload["status"] = MediaStatus.ACTIVE
+            payload["sort_order"] = len(existing)
+            item = await uow.packages.gallery.create_from_dict(payload)
+            await uow.commit()
+            return PackageGalleryResponse.model_validate(item)
+
+    async def admin_delete_gallery_item(self, package_id: UUID, gallery_id: UUID) -> None:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            item = await uow.packages.gallery.get_by_id(gallery_id)
+            if item is None or item.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageGalleryItem", str(gallery_id))
+            await uow.packages.gallery.delete(item)
+            await uow.commit()
+
+    async def list_gallery(self, package_id: UUID) -> list[PackageGalleryResponse]:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            items = await uow.packages.gallery.find_by_package(package_id)
+            return [PackageGalleryResponse.model_validate(i) for i in items]
 
     # ── Package Availability ──────────────────────────────────────────────────
 

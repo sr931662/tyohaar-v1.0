@@ -26,6 +26,7 @@ __all__ = [
     "PackageCategoryResponse",
     "PackageResponse",
     "PackageItemResponse",
+    "PackageGalleryResponse",
     "PackagePricingResponse",
     "PackageDiscountResponse",
     "PackageReviewResponse",
@@ -117,6 +118,19 @@ class PackageItemResponse(BaseSchema):
     display_order: int
     created_at: datetime
     updated_at: datetime
+
+
+class PackageGalleryResponse(BaseSchema):
+    """Public response shape for a PackageGallery image."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    package_id: uuid.UUID
+    file_url: str
+    caption: str | None = None
+    sort_order: int = 0
+    created_at: datetime
 
 
 class PackagePricingResponse(BaseSchema):
@@ -221,6 +235,12 @@ class PackageDetailResponse(PackageResponse):
     )
     items: list[PackageItemResponse] = Field(
         default_factory=list, description="Package items ordered by display_order"
+    )
+    gallery: list[PackageGalleryResponse] = Field(
+        default_factory=list,
+        description="Additional images beyond the cover — ordered by sort_order. "
+                    "The cover image (cover_image_url) is always shown first on "
+                    "the client and is not duplicated in this list.",
     )
     discounts: list[PackageDiscountResponse] = Field(
         default_factory=list, description="Active and upcoming discounts"

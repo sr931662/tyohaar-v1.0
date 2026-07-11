@@ -32,6 +32,8 @@ from app.schemas.packages import (
     PackageCreate,
     PackageDetailResponse,
     PackageFilters,
+    PackageGalleryCreate,
+    PackageGalleryResponse,
     PackageItemCreate,
     PackageItemResponse,
     PackageItemUpdate,
@@ -209,6 +211,46 @@ async def list_items(
 ) -> SuccessResponse[list[PackageItemResponse]]:
     items = await service.list_items(package_id=package_id)
     return SuccessResponse(data=items, message="Items retrieved.")
+
+
+async def add_gallery_item(
+    package_id: uuid.UUID,
+    body: PackageGalleryCreate,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageGalleryResponse]:
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        result = await service.admin_add_gallery_item(package_id=package_id, data=body)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        result = await service.add_gallery_item(
+            package_id=package_id, vendor_id=vendor_id, data=body
+        )
+    return SuccessResponse(data=result, message="Image added.")
+
+
+async def delete_gallery_item(
+    package_id: uuid.UUID,
+    gallery_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        await service.admin_delete_gallery_item(package_id=package_id, gallery_id=gallery_id)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        await service.delete_gallery_item(
+            package_id=package_id, gallery_id=gallery_id, vendor_id=vendor_id
+        )
+    return SuccessResponse(data=None, message="Image deleted.")
+
+
+async def list_gallery(
+    package_id: uuid.UUID,
+    service: PackageServiceDep,
+) -> SuccessResponse[list[PackageGalleryResponse]]:
+    items = await service.list_gallery(package_id=package_id)
+    return SuccessResponse(data=items, message="Gallery retrieved.")
 
 
 async def set_availability(

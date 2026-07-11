@@ -371,6 +371,98 @@ function PackageItemsModal({ pkg, onClose }) {
   );
 }
 
+// ── Package Gallery Modal ───────────────────────────────────────────────────────
+// Additional images beyond the single cover image (set in the main package
+// form) — shown to customers as a swipeable slider on the package detail
+// page, with the cover image always first.
+
+function PackageGalleryModal({ pkg, onClose }) {
+  const qc = useQueryClient();
+  const [uploadUrl, setUploadUrl] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const { data: gallery = [], isLoading } = useQuery({
+    queryKey: ['pkg-gallery', pkg.id],
+    queryFn: () => vendorPackagesApi.listGallery(pkg.id),
+  });
+
+  const invalidate = () => qc.invalidateQueries(['pkg-gallery', pkg.id]);
+
+  const addMutation = useMutation({
+    mutationFn: (fileUrl) => vendorPackagesApi.addGalleryItem(pkg.id, { file_url: fileUrl }),
+    onSuccess: () => { toast.success('Image added.'); invalidate(); setUploadUrl(''); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add image.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (galleryId) => vendorPackagesApi.deleteGalleryItem(pkg.id, galleryId),
+    onSuccess: () => { toast.success('Image removed.'); invalidate(); setConfirmDelete(null); },
+    onError: () => toast.error('Failed to remove image.'),
+  });
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <div className="admin-modal lg" onClick={(e) => e.stopPropagation()}>
+        <div className="admin-modal-header">
+          <div>
+            <h2 className="admin-modal-title">Package Photos</h2>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>{pkg.name}</p>
+          </div>
+          <button className="admin-modal-close" onClick={onClose}>×</button>
+        </div>
+        <div style={{ padding: '20px 24px 24px' }}>
+          <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', marginBottom: 16 }}>
+            The cover image (set on the package form) always shows first to customers. Add more photos here — customers can swipe through all of them on the package page.
+          </p>
+
+          {isLoading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginBottom: 20 }}>
+              {[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 10 }} />)}
+            </div>
+          ) : gallery.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginBottom: 20 }}>
+              {gallery.map((item) => (
+                <div key={item.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '4/3', background: 'var(--bg-base)' }}>
+                  <img src={item.file_url} alt={item.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                  <button
+                    onClick={() => setConfirmDelete(item)}
+                    style={{ position: 'absolute', top: 5, right: 5, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(239,68,68,0.85)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: 16 }}>No additional photos yet. Add your first one below.</p>
+          )}
+
+          <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Add Photo</h4>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <ImageUploadField value={uploadUrl} onChange={setUploadUrl} usage="package_image" placeholder="Image URL (https://...)" />
+            </div>
+            <button
+              className="btn btn-primary"
+              disabled={!uploadUrl || addMutation.isPending}
+              onClick={() => addMutation.mutate(uploadUrl)}
+            >
+              {addMutation.isPending ? 'Adding…' : '+ Add'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
+        title="Remove Photo"
+        message="Remove this photo from the package gallery?"
+        loading={deleteMutation.isPending}
+      />
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function VendorPackagesPage() {
@@ -378,6 +470,7 @@ export default function VendorPackagesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingPkg, setEditingPkg] = useState(null);
   const [managingItems, setManagingItems] = useState(null);
+  const [managingGallery, setManagingGallery] = useState(null);
   const [confirmSubmit, setConfirmSubmit] = useState(null);
   const [confirmUnpublish, setConfirmUnpublish] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -517,6 +610,7 @@ export default function VendorPackagesPage() {
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button className="btn btn-secondary btn-sm" onClick={() => setEditingPkg(p)}>Edit</button>
                       <button className="btn btn-secondary btn-sm" onClick={() => setManagingItems(p)}>Items</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setManagingGallery(p)}>Photos</button>
                       {p.status === 'draft' && (
                         <button className="btn btn-primary btn-sm" onClick={() => setConfirmSubmit(p)}>Submit</button>
                       )}
@@ -558,6 +652,9 @@ export default function VendorPackagesPage() {
       )}
       {managingItems && (
         <PackageItemsModal pkg={managingItems} onClose={() => setManagingItems(null)} />
+      )}
+      {managingGallery && (
+        <PackageGalleryModal pkg={managingGallery} onClose={() => setManagingGallery(null)} />
       )}
 
       <ConfirmDialog

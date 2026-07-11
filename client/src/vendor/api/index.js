@@ -122,6 +122,14 @@ export const vendorPackagesApi = {
     vendorClient.put(`/packages/${packageId}/items/${itemId}`, body).then(extractData),
   deleteItem: (packageId, itemId) =>
     vendorClient.delete(`/packages/${packageId}/items/${itemId}`).then(extractData),
+
+  // Gallery (additional images beyond the cover)
+  listGallery: (packageId) =>
+    vendorClient.get(`/packages/${packageId}/gallery`).then(extractList),
+  addGalleryItem: (packageId, body) =>
+    vendorClient.post(`/packages/${packageId}/gallery`, body).then(extractData),
+  deleteGalleryItem: (packageId, galleryId) =>
+    vendorClient.delete(`/packages/${packageId}/gallery/${galleryId}`).then(extractData),
 };
 
 // ── Occasions (reference data for package linking) ─────────────────────────────

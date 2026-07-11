@@ -12,6 +12,7 @@ from app.schemas.packages import (
     PackageAvailabilityResponse,
     PackageCategoryResponse,
     PackageDetailResponse,
+    PackageGalleryResponse,
     PackageItemResponse,
     PackageResponse,
     PackageReviewResponse,
@@ -226,6 +227,41 @@ router.add_api_route(
     summary="Delete Package Item",
     description="Remove an item from the package. Vendor ownership or admin access required.",
     operation_id="packages_delete_item",
+)
+
+# ── Package gallery (additional images beyond the cover) ──────────────────────
+
+router.add_api_route(
+    "/{package_id}/gallery",
+    ctrl.list_gallery,
+    methods=["GET"],
+    response_model=SuccessResponse[list[PackageGalleryResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="List Package Gallery",
+    description="Return additional images for the package, ordered by sort_order. Public endpoint.",
+    operation_id="packages_list_gallery",
+)
+
+router.add_api_route(
+    "/{package_id}/gallery",
+    ctrl.add_gallery_item,
+    methods=["POST"],
+    response_model=SuccessResponse[PackageGalleryResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Add Gallery Image",
+    description="Add an additional image to the package's gallery. Vendor ownership or admin access required.",
+    operation_id="packages_add_gallery_item",
+)
+
+router.add_api_route(
+    "/{package_id}/gallery/{gallery_id}",
+    ctrl.delete_gallery_item,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Delete Gallery Image",
+    description="Remove an image from the package's gallery. Vendor ownership or admin access required.",
+    operation_id="packages_delete_gallery_item",
 )
 
 # ── Availability ──────────────────────────────────────────────────────────────

@@ -221,7 +221,7 @@ class PackageGalleryRepository(BaseRepository[PackageGallery]):
     async def find_by_package(self, package_id: uuid.UUID) -> list[PackageGallery]:
         return await self.find_many(
             PackageGallery.package_id == package_id,
-            order_by=PackageGallery.display_order.asc(),
+            order_by=PackageGallery.sort_order.asc(),
         )
 
 

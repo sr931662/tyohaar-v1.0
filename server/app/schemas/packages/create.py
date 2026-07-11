@@ -24,6 +24,7 @@ __all__ = [
     "PackageCreate",
     "PackageCategoryCreate",
     "PackageItemCreate",
+    "PackageGalleryCreate",
     "PackagePricingCreate",
     "PackageDiscountCreate",
     "PackageReviewCreate",
@@ -130,6 +131,13 @@ class PackageItemCreate(BaseSchema):
         default=True, description="Whether item is always included vs. optional add-on"
     )
     display_order: int = Field(default=0, ge=0, description="Sort order within the package")
+
+
+class PackageGalleryCreate(BaseSchema):
+    """Payload required to add an additional image to a package's gallery."""
+
+    file_url: str = Field(min_length=1, max_length=500, description="CDN URL of the uploaded image")
+    caption: str | None = Field(default=None, max_length=500, description="Optional caption")
 
 
 class PackagePricingCreate(BaseSchema):
