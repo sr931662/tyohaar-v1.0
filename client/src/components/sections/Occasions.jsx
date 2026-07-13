@@ -2,11 +2,13 @@ import { motion } from 'framer-motion';
 import SectionHeading from '../ui/SectionHeading.jsx';
 import Emblem from '../ui/Emblem.jsx';
 import HangingLights from '../ui/HangingLights.jsx';
-import { occasions } from '../../data/occasions.js';
+import { useOccasions } from '../../hooks/useOccasions.js';
 import { bloom, stagger, inView } from '../../lib/motion';
 import styles from './Occasions.module.css';
 
 export default function Occasions() {
+  const { occasions } = useOccasions();
+
   return (
     <section id="occasions" className={`ty-section ${styles.section}`}>
       {/* Cascading fairy-light strings hanging from the top edges, with a soft glow behind */}
@@ -43,7 +45,7 @@ export default function Occasions() {
               style={{ '--tint': `var(--${o.tint})` }}
             >
               <div className={styles.emblem}>
-                <Emblem type={o.emblem} tint={o.tint} size={44} />
+                <Emblem type={o.emblem} tint={o.tint} size={44} iconUrl={o.iconUrl} />
               </div>
               <h3 className={styles.name}>{o.en}</h3>
               <p className={styles.sub}>{o.sub}</p>

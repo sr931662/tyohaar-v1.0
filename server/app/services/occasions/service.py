@@ -377,20 +377,27 @@ class OccasionService(BaseService):
         """
         occasion_ids = list({c.occasion_id for c in celebrations if c.occasion_id})
         theme_ids = list({c.theme_id for c in celebrations if c.theme_id})
+        mood_ids = list({c.mood_id for c in celebrations if c.mood_id})
         occasions = await uow.occasions.occasions.get_by_ids(occasion_ids)
         themes = await uow.occasions.themes.get_by_ids(theme_ids) if theme_ids else []
+        moods = await uow.occasions.moods.get_by_ids(mood_ids) if mood_ids else []
         occasions_by_id = {o.id: o for o in occasions}
         themes_by_id = {t.id: t for t in themes}
+        moods_by_id = {m.id: m for m in moods}
 
         results = []
         for c in celebrations:
             response = CelebrationResponse.model_validate(c)
             occ = occasions_by_id.get(c.occasion_id)
             theme = themes_by_id.get(c.theme_id) if c.theme_id else None
+            mood = moods_by_id.get(c.mood_id) if c.mood_id else None
             response.occasion_name = occ.name if occ else None
             response.occasion_hero_image_url = occ.banner_url if occ else None
             response.theme_colors = theme.colors if theme else None
             response.theme_cover_image_url = theme.cover_image_url if theme else None
+            response.mood_name = mood.name if mood else None
+            response.mood_slug = mood.slug if mood else None
+            response.mood_emoji = mood.emoji if mood else None
             results.append(response)
         return results
 

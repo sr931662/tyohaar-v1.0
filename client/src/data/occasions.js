@@ -1,7 +1,7 @@
 // Occasion taxonomy — English + mother-tongue name, emblem & signature tint.
 // Tints map to CSS custom-property names defined in index.css.
 
-export const occasions = [
+export const FALLBACK_OCCASIONS = [
   { id: 'birthday',    en: 'Birthday',           sub: 'जन्मदिन',         emblem: 'cake',     tint: 'saffron', blurb: 'From a baby’s first to a grandparent’s grand.' },
   { id: 'anniversary', en: 'Anniversary',        sub: 'सालगिरह',         emblem: 'wine',     tint: 'rose',    blurb: 'Years worth toasting, together.' },
   { id: 'housewarm',   en: 'Housewarming',       sub: 'गृह प्रवेश',        emblem: 'house',    tint: 'leaf',    blurb: 'Bless the new threshold, the right way.' },

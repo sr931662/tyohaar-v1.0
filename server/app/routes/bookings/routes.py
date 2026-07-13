@@ -13,6 +13,7 @@ from app.schemas.bookings import (
     BookingCancellationResponse,
     BookingDetailResponse,
     BookingInvoiceResponse,
+    BookingItemResponse,
     BookingRescheduleResponse,
     BookingResponse,
     BookingStatusHistoryResponse,
@@ -123,6 +124,18 @@ router.add_api_route(
     summary="Unassign Vendor (Admin)",
     description="Remove a vendor assignment from a booking. Admin access required.",
     operation_id="bookings_unassign_vendor",
+)
+
+router.add_api_route(
+    "/{booking_id}/items/{item_id}/prep-time",
+    ctrl.update_booking_item_prep_time,
+    methods=["PATCH"],
+    response_model=SuccessResponse[BookingItemResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Set Booking Item Prep Time (Vendor)",
+    description="Vendor sets/updates the setup/prep time required before this item's "
+                "scheduled start. Requires the calling vendor to be assigned to the item.",
+    operation_id="bookings_update_booking_item_prep_time",
 )
 
 # ── Cancellations ─────────────────────────────────────────────────────────────

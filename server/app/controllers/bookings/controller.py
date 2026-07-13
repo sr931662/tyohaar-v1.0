@@ -24,6 +24,8 @@ from app.schemas.bookings import (
     BookingDetailResponse,
     BookingFilters,
     BookingInvoiceResponse,
+    BookingItemPrepTimeUpdate,
+    BookingItemResponse,
     BookingRescheduleCreate,
     BookingRescheduleResponse,
     BookingResponse,
@@ -147,6 +149,22 @@ async def unassign_vendor(
         admin_id=current_user.id,
     )
     return SuccessResponse(data=None, message="Vendor unassigned.")
+
+
+async def update_booking_item_prep_time(
+    booking_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: BookingItemPrepTimeUpdate,
+    vendor_id: CurrentVendorIdDep,
+    service: BookingServiceDep,
+) -> SuccessResponse[BookingItemResponse]:
+    result = await service.update_booking_item_prep_time(
+        booking_id=booking_id,
+        item_id=item_id,
+        vendor_id=vendor_id,
+        prep_time_minutes=body.prep_time_minutes,
+    )
+    return SuccessResponse(data=result, message="Prep time updated.")
 
 
 async def request_cancellation(

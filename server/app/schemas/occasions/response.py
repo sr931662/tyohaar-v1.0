@@ -160,6 +160,9 @@ class CelebrationResponse(BaseSchema):
     occasion_hero_image_url: str | None = None
     theme_colors: dict[str, str] | None = None
     theme_cover_image_url: str | None = None
+    mood_name: str | None = None
+    mood_slug: str | None = None
+    mood_emoji: str | None = None
 
 
 class CelebrationGuestResponse(BaseSchema):

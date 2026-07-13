@@ -1,7 +1,7 @@
 // TY.jsx — all window.TY primitives as a proper ES module.
 // Consumed only by Screens.jsx. Keep raw inline styles; this is app-demo code.
 import React from 'react';
-import { occasions as OCCASIONS_DATA } from '../data/occasions.js';
+import { FALLBACK_OCCASIONS as OCCASIONS_DATA } from '../data/occasions.js';
 import EmblemComponent from '../components/ui/Emblem.jsx';
 
 /* ─── data ─── */

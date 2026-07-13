@@ -61,3 +61,7 @@ class CelebrationRequiredError(BusinessRuleError):
 class AssignmentNotFoundError(NotFoundError):
     def __init__(self, assignment_id: str | None = None) -> None:
         super().__init__("BookingAssignment", assignment_id)
+
+
+class VendorAssignmentOwnershipError(PermissionError):
+    default_message = "You are not assigned to this booking item."

@@ -92,19 +92,14 @@ async def validate_coupon_applicable(
 
     # Per-user usage limit check
     if coupon.per_user_limit is not None:
-        # Count how many times this user has already used this coupon
-        # We infer from completed payments that reference this coupon code.
-        # The canonical approach is to query a coupon_redemptions table if it exists;
-        # here we query payment records for this user that carried this coupon.
-        # For now we check via the payments repo — if no dedicated redemption table exists.
-        user_payments = await uow.payments.payments.find_by_payer(user_id, limit=1000)
-        # We don't have a direct coupon_id on Payment; guard against over-redemption
-        # by relying on the per_user_limit field. If a dedicated redemption table exists,
-        # replace this with a direct count query.
-        # Minimal implementation: no per-user history table means we cannot enforce
-        # this at this layer — the model's per_user_limit is advisory here.
-        # TODO: implement when coupon_redemptions table is available.
-        pass
+        redemption_count = await uow.payments.coupon_redemptions.count_for_user(
+            coupon.id, user_id
+        )
+        if redemption_count >= coupon.per_user_limit:
+            raise CouponUserLimitReachedError(
+                f"You have already used coupon '{coupon.code}' the maximum "
+                f"{coupon.per_user_limit} time(s) allowed."
+            )
 
 
 def validate_refund_amount(payment: Payment, refund_amount: Decimal) -> None:

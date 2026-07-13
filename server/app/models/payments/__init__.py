@@ -13,6 +13,7 @@ INTERNAL: PaymentSplit.vendor_id must NEVER be exposed to customers.
 """
 
 from app.models.payments.coupon import Coupon
+from app.models.payments.coupon_redemption import CouponRedemption
 from app.models.payments.payment_transaction import PaymentTransaction
 from app.models.payments.payment_split import PaymentSplit, SplitType
 from app.models.payments.refund import Refund, RefundType, RefundReason
@@ -30,6 +31,7 @@ from app.models.payments.transaction import (
 __all__ = [
     # Models
     "Coupon",
+    "CouponRedemption",
     "Payment",
     "PaymentTransaction",
     "PaymentSplit",

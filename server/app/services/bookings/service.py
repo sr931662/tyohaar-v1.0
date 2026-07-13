@@ -23,6 +23,7 @@ from app.schemas.bookings import (
     BookingDetailResponse,
     BookingFilters,
     BookingInvoiceResponse,
+    BookingItemResponse,
     BookingResponse,
     BookingRescheduleCreate,
     BookingRescheduleResponse,
@@ -39,6 +40,7 @@ from app.services.bookings.exceptions import (
     BookingOwnershipError,
     BookingStatusTransitionError,
     CelebrationRequiredError,
+    VendorAssignmentOwnershipError,
     VendorNotAvailableError,
 )
 from app.services.bookings.helpers import (
@@ -257,6 +259,7 @@ class BookingService(BaseService):
                     is_mandatory=pi.is_mandatory,
                     is_addon=not pi.is_mandatory,
                     display_order=idx,
+                    prep_time_minutes=pi.prep_time_minutes,
                 )
                 await uow.bookings.items.create(item)
 
@@ -487,8 +490,67 @@ class BookingService(BaseService):
         return BookingResponse.model_validate(booking)
 
     async def _release_vendor_payment(self, booking_id: UUID) -> None:
-        """Stub: release vendor payment after booking completion."""
-        pass  # TODO: integrate with payment service
+        """
+        Queue a PENDING VendorSettlement for each vendor who delivered an item
+        on this booking, after service completion.
+
+        Gross amount per vendor is the sum of `final_price` for the booking
+        items they were ACCEPTED/COMPLETED-assigned to. `platform_fee` mirrors
+        the same PLATFORM_FEE_PERCENTAGE applied when the booking was priced;
+        commission/TDS/GST are left at 0 pending finance's rate configuration
+        and are finalised by admin before payout, matching the existing
+        settlement-review workflow (see VendorSettlement.status).
+        """
+        from app.models.enums import SettlementStatus
+        from app.models.vendors.vendor_settlement import VendorSettlement
+        from app.services.payments.constants import PLATFORM_FEE_PERCENTAGE
+
+        async with self._uow() as uow:
+            items = await uow.bookings.items.find_many(
+                uow.bookings.items._model.booking_id == booking_id,
+            )
+            if not items:
+                return
+
+            assignments = await uow.bookings.assignments.find_many(
+                uow.bookings.assignments._model.booking_id == booking_id,
+            )
+            vendor_by_item = {
+                a.booking_item_id: a.vendor_id
+                for a in assignments
+                if a.assignment_status in (AssignmentStatus.ACCEPTED, AssignmentStatus.COMPLETED)
+            }
+
+            gross_by_vendor: dict[UUID, Decimal] = {}
+            for item in items:
+                vendor_id = vendor_by_item.get(item.id)
+                if vendor_id is None:
+                    continue
+                gross_by_vendor[vendor_id] = gross_by_vendor.get(vendor_id, Decimal("0")) + item.final_price
+
+            if not gross_by_vendor:
+                return
+
+            booking = await uow.bookings.bookings.get_by_id(booking_id)
+            period = booking.scheduled_date if booking else datetime.now(tz=timezone.utc).date()
+
+            for vendor_id, gross in gross_by_vendor.items():
+                fee = (gross * PLATFORM_FEE_PERCENTAGE).quantize(Decimal("0.01"))
+                await uow.vendors.settlements.create_from_dict({
+                    "vendor_id": vendor_id,
+                    "booking_id": booking_id,
+                    "gross_amount": gross,
+                    "commission_amount": Decimal("0.00"),
+                    "platform_fee": fee,
+                    "tds_amount": Decimal("0.00"),
+                    "gst_on_fee": Decimal("0.00"),
+                    "net_amount": gross - fee,
+                    "settlement_period_start": period,
+                    "settlement_period_end": period,
+                    "status": SettlementStatus.PENDING,
+                })
+
+            await uow.commit()
 
     # ── Vendor assignment ─────────────────────────────────────────────────────
 
@@ -571,6 +633,35 @@ class BookingService(BaseService):
             )
 
             await uow.commit()
+
+    async def update_booking_item_prep_time(
+        self,
+        booking_id: UUID,
+        item_id: UUID,
+        vendor_id: UUID,
+        prep_time_minutes: int,
+    ) -> BookingItemResponse:
+        """Vendor sets/updates the setup/prep time required before this item's start."""
+        async with self._uow() as uow:
+            item = await uow.bookings.items.get_by_id(item_id)
+            if item is None or item.booking_id != booking_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("BookingItem", str(item_id))
+
+            assignment = await uow.bookings.assignments.find_one(
+                uow.bookings.assignments._model.booking_item_id == item_id,
+                uow.bookings.assignments._model.vendor_id == vendor_id,
+            )
+            if assignment is None:
+                raise VendorAssignmentOwnershipError(
+                    f"Vendor {vendor_id} is not assigned to booking item {item_id}."
+                )
+
+            updated = await uow.bookings.items.update(
+                item, {"prep_time_minutes": prep_time_minutes}
+            )
+            await uow.commit()
+            return BookingItemResponse.model_validate(updated)
 
     # ── Cancellation ──────────────────────────────────────────────────────────
 
@@ -676,14 +767,45 @@ class BookingService(BaseService):
             await uow.commit()
 
         if approved:
-            # Side effect: process refund (stub)
-            await self._process_refund(booking_id)
+            # Side effect: process refund
+            await self._process_refund(booking_id, admin_id)
 
         return BookingResponse.model_validate(booking)
 
-    async def _process_refund(self, booking_id: UUID) -> None:
-        """Stub: initiate refund after cancellation approval."""
-        pass  # TODO: integrate with payment service
+    async def _process_refund(self, booking_id: UUID, admin_id: UUID) -> None:
+        """
+        Look up the booking's completed payment and the approved cancellation's
+        refund_amount, then delegate to PaymentService.initiate_refund (which
+        already handles the ledger entry and gateway refund call).
+        """
+        from app.schemas.payments import RefundCreate
+        from app.services.payments.service import PaymentService
+
+        async with self._uow() as uow:
+            cancellation = await uow.bookings.cancellations.find_by_booking(booking_id)
+            if cancellation is None or not cancellation.refund_eligible or not cancellation.refund_amount:
+                return
+            refund_amount = cancellation.refund_amount
+
+            payments = await uow.payments.payments.find_by_booking(booking_id)
+            completed_payment = next(
+                (p for p in payments if p.payment_status == PaymentStatus.COMPLETED), None
+            )
+            if completed_payment is None or refund_amount <= 0:
+                return
+            payment_id = completed_payment.id
+
+        payment_service = PaymentService()
+        await payment_service.initiate_refund(
+            payment_id=payment_id,
+            data=RefundCreate(
+                payment_id=payment_id,
+                booking_id=booking_id,
+                amount=refund_amount,
+                reason="Booking cancellation approved",
+            ),
+            admin_id=admin_id,
+        )
 
     # ── Reschedule ────────────────────────────────────────────────────────────
 

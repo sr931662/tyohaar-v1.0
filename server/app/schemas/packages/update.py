@@ -112,6 +112,7 @@ class PackageItemUpdate(BaseSchema):
     max_quantity: int | None = Field(default=None, ge=1)
     icon_url: str | None = Field(default=None, max_length=500)
     display_order: int | None = Field(default=None, ge=0)
+    prep_time_minutes: int | None = Field(default=None, ge=0, le=1440)
 
 
 class PackagePricingUpdate(BaseSchema):

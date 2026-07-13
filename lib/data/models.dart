@@ -900,6 +900,10 @@ class Celebration {
   // relationship isn't nested. Null when no theme was picked during planning.
   final Map<String, String>? themeColors;
   final String? themeCoverImageUrl;
+  // Chosen mood (OccasionMood — distinct from InvitationTemplate.mood, which
+  // is an unrelated template-categorization string), denormalized the same
+  // way as theme_colors since CelebrationResponse doesn't nest relationships.
+  final CelebrationMood? mood;
 
   Celebration({
     required this.id,
@@ -917,6 +921,7 @@ class Celebration {
     this.estimatedBudget,
     this.themeColors,
     this.themeCoverImageUrl,
+    this.mood,
   });
 
   factory Celebration.fromJson(Map<String, dynamic> json) {
@@ -942,7 +947,27 @@ class Celebration {
       estimatedBudget: json['estimated_budget'] != null
           ? double.tryParse(json['estimated_budget'].toString())
           : null,
+      mood: CelebrationMood.fromJson(json),
     );
+  }
+}
+
+/// The chosen atmosphere/vibe for a celebration (e.g. "elegant", "grand",
+/// "fun", "romantic"), denormalized onto CelebrationResponse as
+/// mood_name/mood_slug/mood_emoji. Null when `mood` is entirely absent
+/// (e.g. no mood was picked during planning).
+class CelebrationMood {
+  final String name;
+  final String slug;
+  final String? emoji;
+
+  const CelebrationMood({required this.name, required this.slug, this.emoji});
+
+  static CelebrationMood? fromJson(Map<String, dynamic> json) {
+    final slug = json['mood_slug'] as String?;
+    final name = json['mood_name'] as String?;
+    if (slug == null || name == null) return null;
+    return CelebrationMood(name: name, slug: slug, emoji: json['mood_emoji'] as String?);
   }
 }
 

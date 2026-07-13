@@ -29,17 +29,10 @@ async def validate_package_ownership(
     vendor_id: UUID,
     uow: UnitOfWork,
 ) -> Package:
-    """
-    Return the Package if it exists and is owned by vendor_id.
-
-    Note: The Package model does not carry a direct vendor_id column (packages
-    are platform-level). Ownership is established at the PackageItemVendor level.
-    This validator checks existence; route-level guards enforce vendor access.
-    """
+    """Return the Package if it exists and is owned by vendor_id."""
     package = await validate_package_exists(package_id, uow)
-    # Placeholder: real ownership logic lives in the vendor-item mapping.
-    # If the package has a vendor_id field in a future migration, compare here.
-    _ = vendor_id  # intentionally unused until vendor ownership column is added
+    if package.vendor_id != vendor_id:
+        raise PackageOwnershipError(f"Vendor {vendor_id} does not own package {package_id}.")
     return package
 
 

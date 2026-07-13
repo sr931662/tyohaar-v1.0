@@ -30,6 +30,7 @@ from app.schemas.bookings.update import (
     BookingUpdate,
     BookingFinancialsUpdate,
     BookingInvoiceUpdate,
+    BookingItemPrepTimeUpdate,
 )
 
 # ── response ───────────────────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ __all__ = [
     "BookingUpdate",
     "BookingFinancialsUpdate",
     "BookingInvoiceUpdate",
+    "BookingItemPrepTimeUpdate",
     # response
     "BookingResponse",
     "BookingItemResponse",

@@ -883,6 +883,29 @@ class PaymentService(BaseService):
                 applied_code=code,
             )
 
+    async def record_coupon_redemption(
+        self,
+        coupon_id: uuid.UUID,
+        user_id: uuid.UUID,
+        payment_id: uuid.UUID,
+    ) -> None:
+        """
+        Record a successful coupon redemption and increment the coupon's
+        denormalized `times_used` counter. Call this once a coupon's discount
+        has actually been applied to a completed payment.
+        """
+        async with self._uow() as uow:
+            coupon = await uow.payments.coupons.get_by_id(coupon_id)
+            if coupon is None:
+                raise CouponNotFoundError(str(coupon_id))
+            await uow.payments.coupon_redemptions.create_from_dict({
+                "coupon_id": coupon_id,
+                "user_id": user_id,
+                "payment_id": payment_id,
+            })
+            await uow.payments.coupons.update(coupon, {"times_used": coupon.times_used + 1})
+            await uow.commit()
+
     async def list_active_coupons(
         self, user_id: uuid.UUID | None = None
     ) -> list[CouponResponse]:

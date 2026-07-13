@@ -205,6 +205,16 @@ class BookingItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    # ── Vendor Logistics ──────────────────────────────────────────────────────
+
+    prep_time_minutes: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Vendor-suggested setup/prep time (minutes) required before "
+                "scheduled_start_at. Snapshotted from PackageItem.prep_time_minutes "
+                "at booking time; vendor may override after assignment.",
+    )
+
     # ── Relationships ─────────────────────────────────────────────────────────
 
     booking: Mapped[Booking] = relationship(

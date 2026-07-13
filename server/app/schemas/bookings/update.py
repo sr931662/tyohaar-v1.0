@@ -26,6 +26,7 @@ __all__ = [
     "BookingUpdate",
     "BookingFinancialsUpdate",
     "BookingInvoiceUpdate",
+    "BookingItemPrepTimeUpdate",
 ]
 
 
@@ -124,3 +125,14 @@ class BookingInvoiceUpdate(BaseSchema):
     issued_at: datetime | None = None
     due_at: datetime | None = None
     pdf_url: str | None = Field(default=None, max_length=2048)
+
+
+class BookingItemPrepTimeUpdate(BaseSchema):
+    """
+    Vendor-submitted payload for suggesting/updating the setup/prep time
+    required before this booking item's scheduled start.
+    """
+
+    prep_time_minutes: int = Field(
+        ge=0, le=1440, description="Setup/prep time in minutes required before scheduled_start_at"
+    )

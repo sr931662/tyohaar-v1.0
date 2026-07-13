@@ -32,6 +32,7 @@ from app.models.enums import (
     TransactionType,
 )
 from app.models.payments.coupon import Coupon
+from app.models.payments.coupon_redemption import CouponRedemption
 from app.models.payments.invoice import Invoice, InvoiceEntityType
 from app.models.payments.payment import Payment
 from app.models.payments.payment_attempt import PaymentAttempt
@@ -618,6 +619,17 @@ class PlatformTransactionRepository(BaseRepository[Transaction]):
         return await self.find_one(Transaction.gateway_reference == gateway_reference)
 
 
+class CouponRedemptionRepository(BaseRepository[CouponRedemption]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, CouponRedemption)
+
+    async def count_for_user(self, coupon_id: uuid.UUID, user_id: uuid.UUID) -> int:
+        return await self.count(
+            CouponRedemption.coupon_id == coupon_id,
+            CouponRedemption.user_id == user_id,
+        )
+
+
 class PaymentRepositoryAggregate:
     """Groups all payment-domain sub-repositories."""
 
@@ -630,5 +642,6 @@ class PaymentRepositoryAggregate:
         self.refunds = RefundRepository(session)
         self.webhooks = PaymentWebhookRepository(session)
         self.coupons = CouponRepository(session)
+        self.coupon_redemptions = CouponRedemptionRepository(session)
         self.invoices = InvoiceRepository(session)
         self.ledger = PlatformTransactionRepository(session)

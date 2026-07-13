@@ -142,6 +142,10 @@ class PackageItemCreate(BaseSchema):
     )
     icon_url: str | None = Field(default=None, max_length=500, description="Small icon/thumbnail URL")
     display_order: int = Field(default=0, ge=0, description="Sort order within the package")
+    prep_time_minutes: int | None = Field(
+        default=None, ge=0, le=1440,
+        description="Vendor-suggested setup/prep time (minutes) required before the event's scheduled start",
+    )
 
 
 class CommonPackageItemCreate(BaseSchema):
@@ -170,6 +174,10 @@ class CommonPackageItemCreate(BaseSchema):
                     "NULL means uncapped.",
     )
     icon_url: str | None = Field(default=None, max_length=500, description="Small icon/thumbnail URL")
+    prep_time_minutes: int | None = Field(
+        default=None, ge=0, le=1440,
+        description="Vendor-suggested setup/prep time (minutes) required before the event's scheduled start",
+    )
 
 
 class PackageGalleryCreate(BaseSchema):

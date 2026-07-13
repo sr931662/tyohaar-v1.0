@@ -197,6 +197,13 @@ class IOService(BaseService):
         is_dry_run: bool = False,
     ) -> tuple[ImportPreviewResponse, uuid.UUID]:
         """Parse, validate, and create an ImportLog. Returns preview + log_id."""
+        if entity_type not in EXECUTABLE_ENTITY_TYPES:
+            from app.services.exceptions import ValidationError
+            raise ValidationError(
+                f"Bulk import for entity_type='{entity_type}' is not supported yet. "
+                f"Supported types: {', '.join(sorted(EXECUTABLE_ENTITY_TYPES))}.",
+                field="entity_type",
+            )
         rows = self._parse_file(content, filename)
         total = len(rows)
         seen_keys: set[str] = set()

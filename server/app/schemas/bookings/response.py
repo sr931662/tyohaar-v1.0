@@ -13,10 +13,10 @@ SECURITY:
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
@@ -97,8 +97,25 @@ class BookingItemResponse(BaseSchema):
     final_price: MoneyAmount
     is_addon: bool = False
     notes: str | None
+    scheduled_start_at: datetime | None = Field(
+        default=None, description="When this specific service is scheduled to start"
+    )
+    prep_time_minutes: int | None = Field(
+        default=None,
+        description="Vendor-suggested setup/prep time (minutes) required before scheduled_start_at",
+    )
+    required_arrival_at: datetime | None = Field(
+        default=None,
+        description="Computed: scheduled_start_at minus prep_time_minutes — when the vendor must arrive",
+    )
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="after")
+    def _derive_required_arrival_at(self):
+        if self.scheduled_start_at is not None and self.prep_time_minutes is not None:
+            self.required_arrival_at = self.scheduled_start_at - timedelta(minutes=self.prep_time_minutes)
+        return self
 
 
 class BookingCancellationResponse(BaseSchema):

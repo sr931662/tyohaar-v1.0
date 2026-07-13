@@ -1,11 +1,12 @@
 import Diya from '../ui/Diya.jsx';
-import { occasions } from '../../data/occasions.js';
+import { useOccasions } from '../../hooks/useOccasions.js';
 import styles from './Marquee.module.css';
 
-// Build a doubled track for a seamless loop.
-const items = [...occasions, ...occasions];
-
 export default function Marquee() {
+  const { occasions } = useOccasions();
+  // Build a doubled track for a seamless loop.
+  const items = [...occasions, ...occasions];
+
   return (
     <div className={styles.band} aria-hidden="true">
       <div className={styles.track}>

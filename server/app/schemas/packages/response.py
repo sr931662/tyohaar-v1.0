@@ -134,6 +134,7 @@ class PackageItemResponse(BaseSchema):
     is_customizable: bool = False
     icon_url: str | None = None
     display_order: int
+    prep_time_minutes: int | None = None
     images: list[PackageItemImageResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime

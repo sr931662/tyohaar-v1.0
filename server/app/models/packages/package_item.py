@@ -184,6 +184,15 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # ── Vendor Logistics ──────────────────────────────────────────────────────
+
+    prep_time_minutes: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Vendor-suggested setup/prep time (minutes) required before the "
+                "event's scheduled start. Copied onto BookingItem at booking time.",
+    )
+
     # ── Relationships ─────────────────────────────────────────────────────────
 
     package: Mapped[Package | None] = relationship(

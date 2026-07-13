@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
 import '../theme/colors.dart';
+import '../theme/mood_styles.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
 
@@ -46,12 +47,15 @@ class InvitationCard extends StatelessWidget {
     final venue = celebration.venueName ?? celebration.venueAddress ?? '';
 
     // Occasion-based layout, theme-dependent: prefer the customer's chosen
-    // theme colors/cover image over the app's default saffron gradient and
-    // the occasion's generic hero image, so the card actually reflects the
-    // plan's customization rather than a one-size-fits-all look.
+    // theme colors/cover image over the mood-driven gradient and the
+    // occasion's generic hero image, so the card actually reflects the
+    // plan's customization rather than a one-size-fits-all look. When no
+    // explicit theme was picked, fall back to the celebration's mood
+    // (elegant/grand/fun/romantic) instead of a flat hardcoded saffron.
     final themeColors = celebration.themeColors;
-    final primary = _parseHexColor(themeColors?['primary']) ?? ty.saffron;
-    final secondary = _parseHexColor(themeColors?['secondary']) ?? ty.saffronDeep;
+    final moodStyle = moodStyleFor(celebration.mood?.slug);
+    final primary = _parseHexColor(themeColors?['primary']) ?? moodStyle.primary(ty);
+    final secondary = _parseHexColor(themeColors?['secondary']) ?? moodStyle.secondary(ty);
     final coverImageUrl = (celebration.themeCoverImageUrl?.isNotEmpty ?? false)
         ? celebration.themeCoverImageUrl
         : celebration.heroImageUrl;
@@ -93,6 +97,27 @@ class InvitationCard extends StatelessWidget {
                     (celebration.occasionName ?? 'CELEBRATION').toUpperCase(),
                     style: TyType.eyebrow(12, color: Colors.white.withOpacity(0.85)),
                   ),
+                  if (celebration.mood != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(moodStyle.icon, size: 13, color: Colors.white.withOpacity(0.9)),
+                          const SizedBox(width: 5),
+                          Text(
+                            celebration.mood!.name,
+                            style: TyType.sans(11, color: Colors.white.withOpacity(0.9), weight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   Text(
                     "You're Invited to",
