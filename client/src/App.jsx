@@ -43,7 +43,7 @@ const VendorReviewsPage         = lazy(() => import('./vendor/pages/reviews/Vend
 const VendorNotificationsPage   = lazy(() => import('./vendor/pages/notifications/VendorNotificationsPage.jsx'));
 const VendorSupportPage         = lazy(() => import('./vendor/pages/support/VendorSupportPage.jsx'));
 
-// Admin pages — lazy loaded for code splitting
+// Admin pages — lazy loaded for code splitting!
 const DashboardPage         = lazy(() => import('./admin/pages/dashboard/DashboardPage.jsx'));
 const VendorsPage           = lazy(() => import('./admin/pages/vendors/VendorsPage.jsx'));
 const VendorDetailPage      = lazy(() => import('./admin/pages/vendors/VendorDetailPage.jsx'));
