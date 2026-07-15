@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -172,6 +172,25 @@ class Settings(BaseSettings):
                 "(postgresql:// or postgresql+asyncpg://)."
             )
         return v
+
+    @model_validator(mode="after")
+    def validate_production_hardening(self) -> "Settings":
+        if self.is_production:
+            if self.ALLOWED_ORIGINS_RAW.strip() == "*":
+                raise ValueError(
+                    "ALLOWED_ORIGINS must be set to explicit origins in production — "
+                    "wildcard '*' combined with allow_credentials=True is a CORS security "
+                    "hole. Set ALLOWED_ORIGINS=https://tyohaar.co,https://www.tyohaar.co "
+                    "(or your real domains) in the environment."
+                )
+            if self.ALLOWED_HOSTS_RAW.strip() == "*":
+                raise ValueError(
+                    "ALLOWED_HOSTS must be set to explicit hostnames in production — "
+                    "wildcard '*' disables Host-header validation. Set "
+                    "ALLOWED_HOSTS=tyohaar.co,www.tyohaar.co (or your real hosts) in "
+                    "the environment."
+                )
+        return self
 
 
 @lru_cache(maxsize=1)

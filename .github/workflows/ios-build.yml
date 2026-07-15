@@ -54,7 +54,15 @@ jobs:
         run: flutter pub get
 
       - name: Build IPA
-        run: flutter build ios --${{ github.event.inputs.build_mode }} --no-codesign
+        env:
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+        run: |
+          if [ -n "$RAZORPAY_KEY_ID" ]; then
+            flutter build ios --${{ github.event.inputs.build_mode }} --no-codesign --dart-define=RAZORPAY_KEY_ID=$RAZORPAY_KEY_ID
+          else
+            echo "::warning::RAZORPAY_KEY_ID secret is not set — building with the compiled-in test placeholder key (rzp_test_PLACEHOLDER_KEY). Add the RAZORPAY_KEY_ID repo secret before shipping a build that takes real payments."
+            flutter build ios --${{ github.event.inputs.build_mode }} --no-codesign
+          fi
 
       - name: Archive Production Artifacts
         uses: actions/upload-artifact@v4

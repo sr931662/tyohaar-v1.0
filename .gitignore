@@ -62,6 +62,7 @@ dist/
 # Secrets — never commit
 server/.env
 server/.env.*
+!server/.env.example
 client/.env
 client/.env.local
 client/.env.production
