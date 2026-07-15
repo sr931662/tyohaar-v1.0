@@ -26,6 +26,7 @@ from app.models.enums import (
     Currency,
     InvoiceStatus,
     PaymentStatus,
+    VerificationStatus,
 )
 
 
@@ -36,8 +37,41 @@ __all__ = [
     "BookingRescheduleResponse",
     "BookingStatusHistoryResponse",
     "BookingInvoiceResponse",
+    "BookingCustomerSummary",
+    "BookingVendorSummary",
     "BookingDetailResponse",
 ]
+
+
+class BookingCustomerSummary(BaseSchema):
+    """
+    Lightweight customer contact snapshot, attached to BookingDetailResponse
+    for admin/support requesters only — never populated for customer or
+    vendor callers of the same endpoint.
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    full_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+
+
+class BookingVendorSummary(BaseSchema):
+    """
+    Lightweight vendor summary for the package-owner vendor, attached to
+    BookingDetailResponse for admin/support requesters only — never
+    populated for customer or vendor callers of the same endpoint.
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    business_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    verification_status: VerificationStatus | None = None
 
 
 class BookingResponse(BaseSchema):
@@ -210,4 +244,10 @@ class BookingDetailResponse(BookingResponse):
     )
     invoices: list[BookingInvoiceResponse] = Field(
         default_factory=list, description="All invoices associated with this booking"
+    )
+    customer: BookingCustomerSummary | None = Field(
+        default=None, description="Customer contact snapshot — admin/support requesters only"
+    )
+    vendor: BookingVendorSummary | None = Field(
+        default=None, description="Package-owner vendor summary — admin/support requesters only"
     )

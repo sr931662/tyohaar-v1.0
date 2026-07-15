@@ -20,6 +20,7 @@ from app.schemas.bookings import (
     BookingCancellationCreate,
     BookingCancellationResponse,
     BookingCreate,
+    BookingCustomerSummary,
     BookingDetailResponse,
     BookingFilters,
     BookingInvoiceResponse,
@@ -28,6 +29,7 @@ from app.schemas.bookings import (
     BookingRescheduleCreate,
     BookingRescheduleResponse,
     BookingStatusHistoryResponse,
+    BookingVendorSummary,
 )
 from app.services.base import BaseService
 from app.services.bookings.constants import (
@@ -288,6 +290,42 @@ class BookingService(BaseService):
         packages = await uow.packages.packages.get_by_ids(package_ids)
         return {p.id: (p.name, p.cover_image_url) for p in packages}
 
+    async def _attach_customer_info(self, uow, customer_id: UUID) -> BookingCustomerSummary | None:
+        """Fetch a lightweight customer contact snapshot for admin/support-only display."""
+        user = await uow.users.users.get_by_id(customer_id)
+        if user is None:
+            return None
+        return BookingCustomerSummary(
+            id=user.id,
+            full_name=user.full_name,
+            phone=user.phone,
+            email=user.email,
+        )
+
+    async def _attach_vendor_info(self, uow, package_id: UUID | None) -> BookingVendorSummary | None:
+        """
+        Fetch the package-owner vendor's summary (business name + contact) for
+        admin/support-only display. This is the vendor whose package was
+        selected — not necessarily the only vendor delivering line items
+        (see BookingAssignment for per-item dispatch).
+        """
+        if package_id is None:
+            return None
+        package = await uow.packages.packages.get_by_id(package_id)
+        if package is None:
+            return None
+        vendor = await uow.vendors.vendors.get_by_id(package.vendor_id)
+        if vendor is None:
+            return None
+        vendor_user = await uow.users.users.get_by_id(vendor.user_id)
+        return BookingVendorSummary(
+            id=vendor.id,
+            business_name=vendor.business_name,
+            phone=vendor_user.phone if vendor_user else None,
+            email=vendor_user.email if vendor_user else None,
+            verification_status=vendor.verification_status,
+        )
+
     async def get_booking(
         self,
         booking_id: UUID,
@@ -310,6 +348,16 @@ class BookingService(BaseService):
             response = BookingDetailResponse.model_validate(booking)
             response.package_name = name
             response.package_cover_url = cover_url
+
+            # Customer contact + vendor identity are only ever attached for
+            # admin/support requesters — never for the customer's own view or
+            # a vendor's own view of the same endpoint, to preserve the
+            # existing invariant that customers and vendors never see each
+            # other's identity through this shared endpoint.
+            if requester_role in ("admin", "super_admin"):
+                response.customer = await self._attach_customer_info(uow, booking.customer_id)
+                response.vendor = await self._attach_vendor_info(uow, booking.package_id)
+
             return response
 
     async def list_bookings(

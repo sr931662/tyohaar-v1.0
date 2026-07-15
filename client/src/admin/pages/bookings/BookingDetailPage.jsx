@@ -125,11 +125,21 @@ export default function BookingDetailPage() {
           <div className="admin-card">
             <div className="admin-card-header"><div className="admin-card-title">Customer</div></div>
             <div className="admin-card-body">
-              {/* BookingResponse sends customer_id (UUID) only — no nested user object.
-                  Show ID as reference; full name requires a separate /users/{id} call. */}
+              {/* BookingDetailResponse.customer is admin/support-only — populated by get_booking */}
+              <div className="admin-detail-row"><div className="admin-detail-label">Name</div><div className="admin-detail-value">{b.customer?.full_name ?? '—'}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Email</div><div className="admin-detail-value">{b.customer?.email ?? '—'}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Phone</div><div className="admin-detail-value">{b.customer?.phone ?? '—'}</div></div>
               <div className="admin-detail-row"><div className="admin-detail-label">Customer ID</div><div className="admin-detail-value"><code style={{ fontSize: 12 }}>{b.customer_id?.slice(0, 8) ?? '—'}</code></div></div>
-              <div className="admin-detail-row"><div className="admin-detail-label">Email</div><div className="admin-detail-value">—</div></div>
-              <div className="admin-detail-row"><div className="admin-detail-label">Phone</div><div className="admin-detail-value">—</div></div>
+            </div>
+          </div>
+          <div className="admin-card">
+            <div className="admin-card-header"><div className="admin-card-title">Vendor</div></div>
+            <div className="admin-card-body">
+              {/* BookingDetailResponse.vendor is the package-owner vendor, admin/support-only */}
+              <div className="admin-detail-row"><div className="admin-detail-label">Business Name</div><div className="admin-detail-value">{b.vendor?.business_name ?? 'Not assigned'}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Email</div><div className="admin-detail-value">{b.vendor?.email ?? '—'}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Phone</div><div className="admin-detail-value">{b.vendor?.phone ?? '—'}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Verification</div><div className="admin-detail-value">{b.vendor?.verification_status ? <StatusBadge status={b.vendor.verification_status} /> : '—'}</div></div>
             </div>
           </div>
           <div className="admin-card">

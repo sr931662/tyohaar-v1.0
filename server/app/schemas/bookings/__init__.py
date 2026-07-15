@@ -42,6 +42,8 @@ from app.schemas.bookings.response import (
     BookingRescheduleResponse,
     BookingStatusHistoryResponse,
     BookingInvoiceResponse,
+    BookingCustomerSummary,
+    BookingVendorSummary,
     BookingDetailResponse,
 )
 
@@ -93,6 +95,8 @@ __all__ = [
     "BookingRescheduleResponse",
     "BookingStatusHistoryResponse",
     "BookingInvoiceResponse",
+    "BookingCustomerSummary",
+    "BookingVendorSummary",
     "BookingDetailResponse",
     # filters
     "BookingFilters",
