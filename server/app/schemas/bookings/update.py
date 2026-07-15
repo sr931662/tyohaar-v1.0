@@ -27,7 +27,19 @@ __all__ = [
     "BookingFinancialsUpdate",
     "BookingInvoiceUpdate",
     "BookingItemPrepTimeUpdate",
+    "BookingPSTUpdate",
 ]
+
+
+class BookingPSTUpdate(BaseSchema):
+    """
+    Vendor-submitted payload for providing the Preparation Starting Time [PST]
+    for a confirmed booking.
+    """
+
+    preparation_start_time: time = Field(
+        description="The time the vendor will arrive/start preparation at the location"
+    )
 
 
 class BookingUpdate(BaseSchema):

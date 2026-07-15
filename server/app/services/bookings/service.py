@@ -407,7 +407,9 @@ class BookingService(BaseService):
             )
 
             await uow.commit()
-            return BookingResponse.model_validate(booking)
+
+        await self.notify_vendor_if_confirmed_and_paid(booking_id)
+        return BookingResponse.model_validate(booking)
 
     async def start_booking(
         self,
@@ -488,6 +490,105 @@ class BookingService(BaseService):
         # Side effect: trigger vendor payment release (stub)
         await self._release_vendor_payment(booking_id)
         return BookingResponse.model_validate(booking)
+
+    async def update_pst(
+        self,
+        booking_id: UUID,
+        vendor_id: UUID,
+        pst_time: time,
+    ) -> BookingResponse:
+        """
+        Allows a vendor to set the Preparation Starting Time [PST] for a booking
+        they are assigned to.
+        """
+        async with self._uow() as uow:
+            booking = await validate_booking_exists(booking_id, uow)
+
+            # Security: Ensure this vendor has an ACCEPTED assignment for this booking
+            # We use the internal assignment mapping to verify.
+            assignments = await uow.bookings.assignments.find_many(
+                uow.bookings.assignments._model.booking_id == booking_id,
+                uow.bookings.assignments._model.vendor_id == vendor_id,
+                uow.bookings.assignments._model.assignment_status == AssignmentStatus.ACCEPTED,
+            )
+
+            if not assignments:
+                # If no assignment found, check if the package belongs to this vendor
+                package = await uow.packages.packages.get_by_id(booking.package_id)
+                if package is None or package.vendor_id != vendor_id:
+                    raise VendorNotAvailableError(
+                        f"Vendor {vendor_id} is not authorized to update PST for booking {booking_id}."
+                    )
+
+            booking = await uow.bookings.bookings.update(
+                booking,
+                {"preparation_start_time": pst_time},
+            )
+
+            await self._write_history_event(
+                uow,
+                booking_id=booking.id,
+                event_type=BookingEventType.SCHEDULE_CHANGED,
+                actor_type=BookingActorType.VENDOR,
+                actor_id=vendor_id,
+                event_label="Preparation time set",
+                description=f"Vendor set PST to {pst_time.strftime('%H:%M')}",
+                context_data={"pst": pst_time.strftime("%H:%M")},
+            )
+
+            await uow.commit()
+            return BookingResponse.model_validate(booking)
+
+    async def notify_vendor_if_confirmed_and_paid(self, booking_id: UUID) -> None:
+        """
+        Notify the vendor whose package was selected once a booking is BOTH
+        confirmed (booking_status == CONFIRMED) and paid (payment_status ==
+        COMPLETED). Safe to call from either the confirmation path or the
+        payment-completion path, in any order — idempotent via a lookup on
+        existing BOOKING_CONFIRMED notifications for this booking+vendor.
+        """
+        from app.models.enums import NotificationChannel, NotificationType
+        from app.schemas.notifications.create import NotificationCreate
+        from app.services.notifications.service import NotificationService
+
+        async with self._uow() as uow:
+            booking = await uow.bookings.bookings.get_by_id(booking_id)
+            if booking is None:
+                return
+            if booking.booking_status != BookingStatus.CONFIRMED or booking.payment_status != PaymentStatus.COMPLETED:
+                return
+
+            package = await uow.packages.packages.get_by_id(booking.package_id)
+            if package is None:
+                return
+            vendor = await uow.vendors.vendors.get_by_id(package.vendor_id)
+            if vendor is None:
+                return
+
+            existing = await uow.notifications.notifications.find_many(
+                uow.notifications.notifications._model.recipient_id == vendor.user_id,
+                uow.notifications.notifications._model.reference_type == "booking",
+                uow.notifications.notifications._model.reference_id == booking.id,
+                uow.notifications.notifications._model.notification_type == NotificationType.BOOKING_CONFIRMED,
+            )
+            if existing:
+                return
+
+            vendor_user_id = vendor.user_id
+
+        await NotificationService().send_notification(
+            user_id=vendor_user_id,
+            data=NotificationCreate(
+                user_id=vendor_user_id,
+                notification_type=NotificationType.BOOKING_CONFIRMED,
+                channel=NotificationChannel.IN_APP,
+                title="New confirmed booking",
+                body=f"Booking {booking.booking_number} is confirmed and paid. "
+                     f"Please provide your Preparation Starting Time (PST).",
+                reference_type="booking",
+                reference_id=booking.id,
+            ),
+        )
 
     async def _release_vendor_payment(self, booking_id: UUID) -> None:
         """

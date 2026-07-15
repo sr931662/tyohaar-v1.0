@@ -242,6 +242,12 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         comment="total_amount − amount_paid. Updated by service layer.",
     )
 
+    preparation_start_time: Mapped[time | None] = mapped_column(
+        Time,
+        nullable=True,
+        comment="Preparation Starting Time [PST] provided by the vendor",
+    )
+
     # ── Important Timestamps ──────────────────────────────────────────────────
 
     confirmed_at: Mapped[datetime | None] = mapped_column(

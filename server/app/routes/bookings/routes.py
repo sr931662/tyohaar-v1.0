@@ -138,6 +138,19 @@ router.add_api_route(
     operation_id="bookings_update_booking_item_prep_time",
 )
 
+router.add_api_route(
+    "/{booking_id}/pst",
+    ctrl.update_pst,
+    methods=["PATCH"],
+    response_model=SuccessResponse[BookingResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Set Preparation Starting Time (Vendor)",
+    description="Vendor sets/updates the Preparation Starting Time [PST] — when they "
+                "will arrive/start preparation at the customer's event location. "
+                "Requires the calling vendor to be assigned to the booking.",
+    operation_id="bookings_update_pst",
+)
+
 # ── Cancellations ─────────────────────────────────────────────────────────────
 
 router.add_api_route(

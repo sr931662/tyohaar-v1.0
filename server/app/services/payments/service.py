@@ -396,6 +396,7 @@ class PaymentService(BaseService):
         now = datetime.now(tz=timezone.utc)
         payment_outcome: tuple[uuid.UUID, bool, str, Decimal] | None = None
         referral_trigger: tuple[uuid.UUID, Decimal, uuid.UUID] | None = None
+        vendor_notify_booking_id: uuid.UUID | None = None
 
         async with self._uow() as uow:
             already_seen = False
@@ -467,6 +468,7 @@ class PaymentService(BaseService):
 
                     payment_outcome = (payment.payer_id, True, payment.payment_number, payment.final_amount)
                     referral_trigger = (payment.payer_id, payment.final_amount, payment.booking_id)
+                    vendor_notify_booking_id = payment.booking_id
                 else:
                     await uow.payments.payments.update(payment, {
                         "payment_status": PaymentStatus.FAILED,
@@ -501,6 +503,13 @@ class PaymentService(BaseService):
                 )
             except Exception:
                 logger.exception("Referral reward trigger failed for referee=%s booking=%s", referee_id, booking_id)
+
+        if vendor_notify_booking_id is not None:
+            try:
+                from app.services.bookings.service import BookingService
+                await BookingService().notify_vendor_if_confirmed_and_paid(vendor_notify_booking_id)
+            except Exception:
+                logger.exception("Vendor booking-confirmed notification failed for booking=%s", vendor_notify_booking_id)
 
     async def verify_payment(
         self,
@@ -585,6 +594,12 @@ class PaymentService(BaseService):
             )
         except Exception:
             logger.exception("Referral reward trigger failed for referee=%s booking=%s", payer_id, booking_id)
+
+        try:
+            from app.services.bookings.service import BookingService
+            await BookingService().notify_vendor_if_confirmed_and_paid(booking_id)
+        except Exception:
+            logger.exception("Vendor booking-confirmed notification failed for booking=%s", booking_id)
 
         return result
 

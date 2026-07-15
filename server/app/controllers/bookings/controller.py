@@ -26,6 +26,7 @@ from app.schemas.bookings import (
     BookingInvoiceResponse,
     BookingItemPrepTimeUpdate,
     BookingItemResponse,
+    BookingPSTUpdate,
     BookingRescheduleCreate,
     BookingRescheduleResponse,
     BookingResponse,
@@ -165,6 +166,20 @@ async def update_booking_item_prep_time(
         prep_time_minutes=body.prep_time_minutes,
     )
     return SuccessResponse(data=result, message="Prep time updated.")
+
+
+async def update_pst(
+    booking_id: uuid.UUID,
+    body: BookingPSTUpdate,
+    vendor_id: CurrentVendorIdDep,
+    service: BookingServiceDep,
+) -> SuccessResponse[BookingResponse]:
+    result = await service.update_pst(
+        booking_id=booking_id,
+        vendor_id=vendor_id,
+        pst_time=body.preparation_start_time,
+    )
+    return SuccessResponse(data=result, message="Preparation Starting Time updated.")
 
 
 async def request_cancellation(

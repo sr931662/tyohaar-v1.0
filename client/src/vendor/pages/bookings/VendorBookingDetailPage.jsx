@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { vendorBookingsApi } from '../../api';
 import StatusBadge from '../../../admin/components/ui/StatusBadge';
 import { SkeletonCard } from '../../../admin/components/ui/Skeleton';
-import { ConfirmDialog } from '../../../admin/components/ui/Modal';
+import Modal, { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import { formatDate, formatDateTime, formatCurrency } from '../../../admin/utils/format';
 
 function Section({ title, children }) {
@@ -35,6 +35,8 @@ export default function VendorBookingDetailPage() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [confirmStart, setConfirmStart] = useState(false);
   const [confirmComplete, setConfirmComplete] = useState(false);
+  const [pstModalOpen, setPstModalOpen] = useState(false);
+  const [pstValue, setPstValue] = useState('');
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ['vendor-booking', bookingId],
@@ -65,6 +67,12 @@ export default function VendorBookingDetailPage() {
     mutationFn: () => vendorBookingsApi.complete(bookingId),
     onSuccess: () => { toast.success('Service marked as completed'); invalidate(); setConfirmComplete(false); },
     onError: (err) => toast.error(err?.response?.data?.error?.message ?? 'Failed to complete service'),
+  });
+
+  const setPstMutation = useMutation({
+    mutationFn: () => vendorBookingsApi.setPst(bookingId, `${pstValue}:00`),
+    onSuccess: () => { toast.success('Preparation Starting Time saved'); invalidate(); setPstModalOpen(false); },
+    onError: (err) => toast.error(err?.response?.data?.error?.message ?? 'Failed to save PST'),
   });
 
   if (isLoading) return (
@@ -107,6 +115,14 @@ export default function VendorBookingDetailPage() {
           </div>
         </div>
         <div className="admin-page-header-actions">
+          {b.booking_status === 'confirmed' && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => { setPstValue(b.preparation_start_time ? b.preparation_start_time.slice(0, 5) : ''); setPstModalOpen(true); }}
+            >
+              {b.preparation_start_time ? 'Update PST' : 'Set PST'}
+            </button>
+          )}
           {b.booking_status === 'confirmed' && (
             <button
               className="btn btn-primary"
@@ -152,6 +168,7 @@ export default function VendorBookingDetailPage() {
               <Row label="Scheduled Date" value={b.scheduled_date ? formatDate(b.scheduled_date) : null} />
               <Row label="Start Time" value={b.scheduled_start_time} />
               <Row label="End Time" value={b.scheduled_end_time} />
+              <Row label="Preparation Start Time (PST)" value={b.preparation_start_time} />
               <Row label="Special Instructions" value={b.special_instructions} />
             </Section>
           </div>
@@ -285,6 +302,35 @@ export default function VendorBookingDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Set PST modal */}
+      <Modal
+        open={pstModalOpen}
+        onClose={() => setPstModalOpen(false)}
+        title="Preparation Starting Time"
+        footer={
+          <>
+            <button className="btn btn-secondary" onClick={() => setPstModalOpen(false)}>Cancel</button>
+            <button
+              className="btn btn-primary"
+              onClick={() => setPstMutation.mutate()}
+              disabled={!pstValue || setPstMutation.isPending}
+            >
+              {setPstMutation.isPending ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Save'}
+            </button>
+          </>
+        }
+      >
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 12 }}>
+          Set the time you'll arrive and begin preparation at the customer's event location.
+        </p>
+        <input
+          type="time"
+          className="form-control"
+          value={pstValue}
+          onChange={(e) => setPstValue(e.target.value)}
+        />
+      </Modal>
 
       {/* Confirm dialogs */}
       <ConfirmDialog

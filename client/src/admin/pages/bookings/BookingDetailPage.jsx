@@ -139,6 +139,8 @@ export default function BookingDetailPage() {
               <div className="admin-detail-row"><div className="admin-detail-label">Celebration ID</div><div className="admin-detail-value"><code style={{ fontSize: 12 }}>{b.celebration_id?.slice(0, 8) ?? '—'}</code></div></div>
               {/* was: b.event_date — backend sends scheduled_date */}
               <div className="admin-detail-row"><div className="admin-detail-label">Event Date</div><div className="admin-detail-value">{formatDateTime(b.scheduled_date)}</div></div>
+              {/* Vendor-provided PST [Preparation Starting Time] — set via PATCH /bookings/{id}/pst, auto-synced here */}
+              <div className="admin-detail-row"><div className="admin-detail-label">Preparation Start Time (PST)</div><div className="admin-detail-value">{b.preparation_start_time ?? '—'}</div></div>
               {/* guest_count is on CelebrationResponse, not BookingResponse */}
               <div className="admin-detail-row"><div className="admin-detail-label">Package ID</div><div className="admin-detail-value"><code style={{ fontSize: 12 }}>{b.package_id?.slice(0, 8) ?? '—'}</code></div></div>
               {/* was: b.special_notes — backend sends special_instructions */}

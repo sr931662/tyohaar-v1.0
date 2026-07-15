@@ -72,6 +72,15 @@ class InvitationCard extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [primary, secondary],
           ),
+          boxShadow: [
+            BoxShadow(color: secondary.withOpacity(0.35), blurRadius: 24, offset: const Offset(0, 12)),
+          ],
+        ),
+        // A thin frame in the theme's own tone gives the card a "printed
+        // invitation" edge instead of a flat gradient block.
+        foregroundDecoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.white.withOpacity(0.28), width: 1.5),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -88,84 +97,120 @@ class InvitationCard extends StatelessWidget {
                     )
                   : _logoPlaceholder(),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    (celebration.occasionName ?? 'CELEBRATION').toUpperCase(),
-                    style: TyType.eyebrow(12, color: Colors.white.withOpacity(0.85)),
+            Stack(
+              children: [
+                // Faint watermark motif, rotated, sitting behind the text —
+                // theme-tinted so it never fights the copy for attention.
+                Positioned(
+                  right: -18,
+                  top: -6,
+                  child: Transform.rotate(
+                    angle: 0.35,
+                    child: Icon(moodStyle.icon, size: 120, color: Colors.white.withOpacity(0.06)),
                   ),
-                  if (celebration.mood != null) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        (celebration.occasionName ?? 'CELEBRATION').toUpperCase(),
+                        style: TyType.eyebrow(12, color: Colors.white.withOpacity(0.85)),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(moodStyle.icon, size: 13, color: Colors.white.withOpacity(0.9)),
-                          const SizedBox(width: 5),
-                          Text(
-                            celebration.mood!.name,
-                            style: TyType.sans(11, color: Colors.white.withOpacity(0.9), weight: FontWeight.w600),
+                      if (celebration.mood != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(moodStyle.icon, size: 13, color: Colors.white.withOpacity(0.9)),
+                              const SizedBox(width: 5),
+                              Text(
+                                celebration.mood!.name,
+                                style: TyType.sans(11, color: Colors.white.withOpacity(0.9), weight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      Text(
+                        "You're Invited to",
+                        textAlign: TextAlign.center,
+                        style: TyType.sans(14, color: Colors.white.withOpacity(0.9), spacing: 0.3),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 10),
-                  Text(
-                    "You're Invited to",
-                    textAlign: TextAlign.center,
-                    style: TyType.sans(14, color: Colors.white.withOpacity(0.9)),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    celebration.title,
-                    textAlign: TextAlign.center,
-                    style: TyType.display(26, color: Colors.white),
-                  ),
-                  const SizedBox(height: 16),
-                  if (dateStr.isNotEmpty) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.event_rounded, size: 15, color: Colors.white70),
-                        const SizedBox(width: 6),
-                        Text(dateStr, style: TyType.sans(13.5, color: Colors.white70)),
+                      const SizedBox(height: 6),
+                      Text(
+                        celebration.title,
+                        textAlign: TextAlign.center,
+                        style: TyType.display(28, color: Colors.white, height: 1.15),
+                      ),
+                      const SizedBox(height: 12),
+                      _flourishDivider(),
+                      const SizedBox(height: 16),
+                      if (dateStr.isNotEmpty) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.event_rounded, size: 15, color: Colors.white70),
+                            const SizedBox(width: 6),
+                            Text(dateStr, style: TyType.sans(13.5, color: Colors.white70)),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
                       ],
-                    ),
-                    const SizedBox(height: 6),
-                  ],
-                  if (venue.isNotEmpty)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.place_outlined, size: 15, color: Colors.white70),
-                        const SizedBox(width: 6),
-                        Flexible(child: Text(venue, style: TyType.sans(13.5, color: Colors.white70), textAlign: TextAlign.center)),
-                      ],
-                    ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text('Presented by Tyohaar', style: TyType.sans(11, color: Colors.white.withOpacity(0.85), weight: FontWeight.w700)),
+                      if (venue.isNotEmpty)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.place_outlined, size: 15, color: Colors.white70),
+                            const SizedBox(width: 6),
+                            Flexible(child: Text(venue, style: TyType.sans(13.5, color: Colors.white70), textAlign: TextAlign.center)),
+                          ],
+                        ),
+                      const SizedBox(height: 22),
+                      Container(height: 1, width: 40, color: Colors.white.withOpacity(0.25)),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        child: Text('Presented by Tyohaar', style: TyType.sans(11, color: Colors.white.withOpacity(0.85), weight: FontWeight.w700)),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// A small "❖ — ❖" flourish that separates the title from the
+  /// date/venue block, in place of a plain gap.
+  Widget _flourishDivider() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 28, height: 1, color: Colors.white.withOpacity(0.35)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Icon(Icons.diamond_outlined, size: 10, color: Colors.white.withOpacity(0.55)),
+        ),
+        Container(width: 28, height: 1, color: Colors.white.withOpacity(0.35)),
+      ],
     );
   }
 
