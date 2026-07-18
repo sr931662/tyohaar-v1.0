@@ -18,4 +18,7 @@ export const discountsApi = {
 
   deactivate: (couponId) =>
     apiClient.delete(`/payments/coupons/${couponId}`).then(extractData),
+
+  analytics: () =>
+    apiClient.get('/payments/coupons/analytics').then(extractData),
 };

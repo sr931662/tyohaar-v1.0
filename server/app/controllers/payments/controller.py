@@ -23,6 +23,7 @@ from app.schemas.payments.update import CouponUpdate
 from app.schemas.payments.response import (
     CouponResponse,
     CouponValidationResponse,
+    DiscountAnalyticsOverview,
     DiscountEvaluationResponse,
     PaymentResponse,
     RefundResponse,
@@ -243,6 +244,14 @@ async def preview_discount(
 ) -> SuccessResponse[DiscountEvaluationResponse]:
     result = await service.preview_discount(data=body, customer_id=current_user.id)
     return SuccessResponse(data=result, message="Discount evaluated.")
+
+
+async def get_discount_analytics(
+    current_user: AdminDep,
+    service: PaymentServiceDep,
+) -> SuccessResponse[DiscountAnalyticsOverview]:
+    result = await service.get_discount_analytics()
+    return SuccessResponse(data=result, message="Discount analytics retrieved.")
 
 
 async def create_payment_split(

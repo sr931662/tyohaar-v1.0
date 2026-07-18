@@ -45,6 +45,8 @@ from app.schemas.payments.response import (
     CouponValidationResponse,
     AppliedDiscountItem,
     DiscountEvaluationResponse,
+    TopCouponStat,
+    DiscountAnalyticsOverview,
     PaymentWebhookResponse,
 )
 
@@ -101,6 +103,8 @@ __all__ = [
     "CouponValidationResponse",
     "AppliedDiscountItem",
     "DiscountEvaluationResponse",
+    "TopCouponStat",
+    "DiscountAnalyticsOverview",
     "PaymentWebhookResponse",
     # filters
     "PaymentFilters",

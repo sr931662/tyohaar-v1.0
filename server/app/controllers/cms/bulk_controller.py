@@ -10,6 +10,7 @@ from app.core.responses import SuccessResponse
 from app.schemas.cms.bulk import (
     BulkAvailabilityUpdateRequest,
     BulkCouponGenerateRequest,
+    BulkDiscountActionRequest,
     BulkMembershipAssignRequest,
     BulkNotificationRequest,
     BulkOperationResult,
@@ -98,6 +99,27 @@ async def generate_coupons(
     svc: BulkServiceDep,
 ) -> SuccessResponse[BulkOperationResult]:
     return SuccessResponse(data=await svc.generate_coupons(request), message="Coupons generated")
+
+
+async def enable_discounts(
+    request: BulkDiscountActionRequest,
+    svc: BulkServiceDep,
+) -> SuccessResponse[BulkOperationResult]:
+    return SuccessResponse(data=await svc.enable_discounts(request), message="Discounts enabled")
+
+
+async def disable_discounts(
+    request: BulkDiscountActionRequest,
+    svc: BulkServiceDep,
+) -> SuccessResponse[BulkOperationResult]:
+    return SuccessResponse(data=await svc.disable_discounts(request), message="Discounts disabled")
+
+
+async def archive_discounts(
+    request: BulkDiscountActionRequest,
+    svc: BulkServiceDep,
+) -> SuccessResponse[BulkOperationResult]:
+    return SuccessResponse(data=await svc.archive_discounts(request), message="Discounts archived")
 
 
 async def assign_memberships(

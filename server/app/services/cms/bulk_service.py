@@ -341,31 +341,52 @@ class BulkService(BaseService):
     # ── Coupon Generation ─────────────────────────────────────────────────────
 
     async def generate_coupons(self, request: BulkCouponGenerateRequest) -> BulkOperationResult:
-        from app.models.payments.coupon import Coupon
+        """
+        Auto-generate N unique coupon codes with identical discount config
+        (e.g. individualized referral/influencer codes). Builds a proper
+        Coupon row via the same dict-create path as create_coupon — this
+        previously constructed Coupon(...) with field names that don't
+        exist on the model (discount_type/max_uses/current_uses) and would
+        have raised a TypeError on every call; fixed to use the real
+        coupon_type/total_usage_limit/times_used fields.
+        """
         from datetime import datetime
+
+        from app.models.enums import CouponAdminStatus, CouponApplicability, CouponType
+
+        try:
+            coupon_type = CouponType(request.discount_type.lower())
+        except ValueError:
+            return self._make_result(
+                "generate_coupons", [], [],
+                [{"id": "-", "error": f"Unknown discount_type '{request.discount_type}'"}],
+            )
 
         succeeded: list[str] = []
         failed: list[dict[str, Any]] = []
         alphabet = string.ascii_uppercase + string.digits
 
         async with self._uow() as uow:
-            for i in range(request.count):
+            for _ in range(request.count):
                 suffix = "".join(secrets.choice(alphabet) for _ in range(8))
                 code = f"{request.prefix}{suffix}"
                 try:
-                    coupon = Coupon(
-                        code=code,
-                        discount_type=request.discount_type,
-                        discount_value=request.discount_value,
-                        max_uses=request.max_uses,
-                        valid_from=datetime.fromisoformat(request.valid_from),
-                        valid_until=datetime.fromisoformat(request.valid_until),
-                        min_order_value=request.min_order_value,
-                        is_active=True,
-                        current_uses=0,
-                    )
-                    uow.session.add(coupon)
-                    await uow.session.flush()
+                    await uow.payments.coupons.create({
+                        "code": code,
+                        "is_automatic": False,
+                        "title": f"Bulk generated — {code}",
+                        "coupon_type": coupon_type,
+                        "applicability": CouponApplicability.ALL,
+                        "discount_value": request.discount_value,
+                        "total_usage_limit": request.max_uses,
+                        "valid_from": datetime.fromisoformat(request.valid_from),
+                        "valid_until": datetime.fromisoformat(request.valid_until),
+                        "min_order_value": request.min_order_value,
+                        "admin_status": CouponAdminStatus.PUBLISHED,
+                        "is_active": True,
+                        "is_system_generated": True,
+                        "times_used": 0,
+                    })
                     succeeded.append(code)
                 except Exception as exc:
                     failed.append({"id": code, "error": str(exc)})
@@ -373,6 +394,60 @@ class BulkService(BaseService):
 
         fake_ids = [uuid.uuid4() for _ in range(request.count)]
         return self._make_result("generate_coupons", fake_ids, succeeded, failed)
+
+    # ── Discount Bulk Actions ────────────────────────────────────────────────
+
+    async def _bulk_coupon_status_update(
+        self, request: BulkIDsRequest, values: dict[str, Any], operation: str
+    ) -> BulkOperationResult:
+        from app.models.payments.coupon import Coupon
+
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for coupon_id in request.ids:
+                try:
+                    stmt = (
+                        update(Coupon)
+                        .where(Coupon.id == coupon_id)
+                        .values(**values)
+                        .returning(Coupon.id)
+                    )
+                    result = await uow.session.execute(stmt)
+                    if result.fetchone():
+                        succeeded.append(str(coupon_id))
+                    else:
+                        failed.append({"id": str(coupon_id), "error": "Discount not found"})
+                except Exception as exc:
+                    failed.append({"id": str(coupon_id), "error": str(exc)})
+            await uow.commit()
+        return self._make_result(operation, request.ids, succeeded, failed)
+
+    async def enable_discounts(self, request: BulkIDsRequest) -> BulkOperationResult:
+        return await self._bulk_coupon_status_update(
+            request, {"is_active": True}, "enable_discounts"
+        )
+
+    async def disable_discounts(self, request: BulkIDsRequest) -> BulkOperationResult:
+        from datetime import datetime, timezone
+        return await self._bulk_coupon_status_update(
+            request,
+            {"is_active": False, "deactivated_at": datetime.now(tz=timezone.utc)},
+            "disable_discounts",
+        )
+
+    async def archive_discounts(self, request: BulkIDsRequest) -> BulkOperationResult:
+        from datetime import datetime, timezone
+        from app.models.enums import CouponAdminStatus
+        return await self._bulk_coupon_status_update(
+            request,
+            {
+                "admin_status": CouponAdminStatus.ARCHIVED,
+                "is_active": False,
+                "deactivated_at": datetime.now(tz=timezone.utc),
+            },
+            "archive_discounts",
+        )
 
     # ── Membership Bulk Assign ────────────────────────────────────────────────
 

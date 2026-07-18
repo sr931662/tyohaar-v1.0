@@ -26,6 +26,10 @@ class BulkPackageActionRequest(BulkIDsRequest):
     pass
 
 
+class BulkDiscountActionRequest(BulkIDsRequest):
+    pass
+
+
 class BulkPriceUpdateRequest(_Base):
     ids: list[uuid.UUID] = Field(..., min_length=1, max_length=500)
     adjustment_type: str = Field(..., description="FIXED | PERCENTAGE")
@@ -53,9 +57,12 @@ class BulkNotificationRequest(_Base):
 class BulkCouponGenerateRequest(_Base):
     count: int = Field(..., ge=1, le=1000)
     prefix: str = Field(default="TYO", max_length=10)
-    discount_type: str = Field(..., description="PERCENTAGE | FIXED")
+    discount_type: str = Field(
+        default="percentage",
+        description="One of the Coupon.coupon_type values: percentage | fixed_amount | fixed_price | free_service | cashback",
+    )
     discount_value: Decimal
-    max_uses: int = Field(default=1)
+    max_uses: int = Field(default=1, description="total_usage_limit for each generated code")
     valid_from: str
     valid_until: str
     min_order_value: Decimal = Field(default=Decimal("0"))

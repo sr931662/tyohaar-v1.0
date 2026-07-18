@@ -34,9 +34,11 @@ from app.schemas.payments.create import CouponCreate, DiscountPreviewRequest, Pa
 from app.schemas.payments.response import (
     CouponResponse,
     CouponValidationResponse,
+    DiscountAnalyticsOverview,
     DiscountEvaluationResponse,
     PaymentResponse,
     RefundResponse,
+    TopCouponStat,
 )
 from app.schemas.payments.filters import CouponFilters, PaymentFilters
 from app.services.base import BaseService
@@ -1124,6 +1126,94 @@ class PaymentService(BaseService):
                 package_id=data.package_id,
                 occasion_id=data.occasion_id,
                 coupon_code=data.coupon_code,
+            )
+
+    async def get_discount_analytics(self) -> DiscountAnalyticsOverview:
+        """
+        Admin discount analytics summary. Single-pass aggregations, no N+1
+        (mirrors the style already established in AnalyticsService) — the
+        one exception is the status breakdown, which fetches just the
+        columns needed to compute Coupon.effective_status in Python since
+        that's a derived property (admin_status + date-window comparison),
+        not something worth re-implementing as raw SQL for what's always a
+        small (admin-managed) row count.
+        """
+        from sqlalchemy import func, select
+
+        from app.models.bookings.booking import Booking
+        from app.models.payments.coupon import Coupon
+        from app.models.payments.coupon_redemption import CouponRedemption
+        from app.models.payments.payment import Payment
+
+        async with self._uow() as uow:
+            session = uow.session
+
+            status_rows = (
+                await session.execute(select(Coupon.admin_status, Coupon.valid_from, Coupon.valid_until))
+            ).all()
+            counts = {"draft": 0, "scheduled": 0, "active": 0, "paused": 0, "expired": 0, "archived": 0}
+            now = datetime.now(tz=timezone.utc)
+            for admin_status, valid_from, valid_until in status_rows:
+                if admin_status == CouponAdminStatus.ARCHIVED:
+                    counts["archived"] += 1
+                elif admin_status == CouponAdminStatus.DRAFT:
+                    counts["draft"] += 1
+                elif admin_status == CouponAdminStatus.PAUSED:
+                    counts["paused"] += 1
+                elif valid_from > now:
+                    counts["scheduled"] += 1
+                elif valid_until is not None and valid_until < now:
+                    counts["expired"] += 1
+                else:
+                    counts["active"] += 1
+
+            total_used = (
+                await session.execute(select(func.count()).select_from(CouponRedemption))
+            ).scalar_one() or 0
+
+            discounted_bookings = select(Booking.id, Booking.total_amount, Booking.discount_amount, Booking.payment_status).where(
+                Booking.applied_coupon_ids.is_not(None)
+            )
+            booking_rows = (await session.execute(discounted_bookings)).all()
+            total_offered = len(booking_rows)
+            completed_rows = [r for r in booking_rows if r.payment_status == PaymentStatus.COMPLETED]
+            revenue_generated = sum((r.total_amount for r in completed_rows), Decimal("0.00"))
+            revenue_lost = sum((r.discount_amount for r in completed_rows), Decimal("0.00"))
+            conversion_rate = (len(completed_rows) / total_offered * 100) if total_offered else 0.0
+
+            top_stmt = (
+                select(
+                    Coupon.id, Coupon.title, Coupon.code, Coupon.times_used,
+                    func.coalesce(func.sum(Payment.final_amount), Decimal("0.00")).label("revenue"),
+                )
+                .outerjoin(CouponRedemption, CouponRedemption.coupon_id == Coupon.id)
+                .outerjoin(Payment, Payment.id == CouponRedemption.payment_id)
+                .where(Coupon.times_used > 0)
+                .group_by(Coupon.id, Coupon.title, Coupon.code, Coupon.times_used)
+                .order_by(Coupon.times_used.desc())
+                .limit(5)
+            )
+            top_rows = (await session.execute(top_stmt)).all()
+
+            return DiscountAnalyticsOverview(
+                total_discounts=len(status_rows),
+                draft_count=counts["draft"],
+                scheduled_count=counts["scheduled"],
+                active_count=counts["active"],
+                paused_count=counts["paused"],
+                expired_count=counts["expired"],
+                archived_count=counts["archived"],
+                total_times_used=total_used,
+                total_revenue_generated=revenue_generated,
+                total_revenue_lost=revenue_lost,
+                conversion_rate=round(conversion_rate, 1),
+                top_coupons=[
+                    TopCouponStat(
+                        coupon_id=row.id, title=row.title, code=row.code,
+                        times_used=row.times_used, revenue_generated=row.revenue,
+                    )
+                    for row in top_rows
+                ],
             )
 
     # ── Splits ────────────────────────────────────────────────────────────────

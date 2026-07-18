@@ -41,6 +41,8 @@ __all__ = [
     "CouponValidationResponse",
     "AppliedDiscountItem",
     "DiscountEvaluationResponse",
+    "TopCouponStat",
+    "DiscountAnalyticsOverview",
     "PaymentWebhookResponse",
 ]
 
@@ -260,6 +262,46 @@ class DiscountEvaluationResponse(BaseSchema):
         default=None,
         description="If a coupon_code was supplied but rejected, the human-readable reason",
     )
+
+
+class TopCouponStat(BaseSchema):
+    """One row in the discount analytics 'top performing' leaderboard."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    coupon_id: uuid.UUID
+    title: str
+    code: str | None
+    times_used: int
+    revenue_generated: MoneyAmount = Field(default=Decimal("0.00"))
+
+
+class DiscountAnalyticsOverview(BaseSchema):
+    """
+    Admin discount analytics summary.
+
+    conversion_rate is computed as (bookings with an applied discount whose
+    payment reached COMPLETED) / (all bookings with an applied discount) —
+    the closest honest proxy available without a separate impressions/
+    evaluation-log table (evaluate() is read-only and isn't itself logged).
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    total_discounts: int
+    draft_count: int
+    scheduled_count: int
+    active_count: int
+    paused_count: int
+    expired_count: int
+    archived_count: int
+
+    total_times_used: int
+    total_revenue_generated: MoneyAmount = Field(default=Decimal("0.00"))
+    total_revenue_lost: MoneyAmount = Field(default=Decimal("0.00"))
+    conversion_rate: float = Field(default=0.0, description="Percentage, 0-100")
+
+    top_coupons: list[TopCouponStat] = Field(default_factory=list)
 
 
 class PaymentWebhookResponse(BaseSchema):

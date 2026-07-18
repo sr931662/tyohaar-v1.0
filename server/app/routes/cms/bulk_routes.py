@@ -7,10 +7,13 @@ from fastapi import APIRouter
 from app.controllers.cms.bulk_controller import (
     activate_vendors,
     approve_vendors,
+    archive_discounts,
     archive_packages,
     assign_memberships,
     bulk_price_update,
     bulk_send_notifications,
+    disable_discounts,
+    enable_discounts,
     generate_coupons,
     publish_packages,
     reject_vendors,
@@ -87,6 +90,24 @@ router.add_api_route(
     generate_coupons,
     methods=["POST"],
     summary="Bulk generate coupon codes",
+)
+router.add_api_route(
+    "/coupons/enable",
+    enable_discounts,
+    methods=["POST"],
+    summary="Bulk enable discounts",
+)
+router.add_api_route(
+    "/coupons/disable",
+    disable_discounts,
+    methods=["POST"],
+    summary="Bulk disable discounts",
+)
+router.add_api_route(
+    "/coupons/archive",
+    archive_discounts,
+    methods=["POST"],
+    summary="Bulk archive discounts",
 )
 router.add_api_route(
     "/memberships/assign",

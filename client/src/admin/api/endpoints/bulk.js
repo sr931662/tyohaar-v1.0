@@ -33,6 +33,15 @@ export const bulkApi = {
   generateCoupons: (body) =>
     apiClient.post(`${BASE}/coupons/generate`, body).then(extractData),
 
+  enableDiscounts: (ids) =>
+    apiClient.post(`${BASE}/coupons/enable`, { ids }).then(extractData),
+
+  disableDiscounts: (ids) =>
+    apiClient.post(`${BASE}/coupons/disable`, { ids }).then(extractData),
+
+  archiveDiscounts: (ids) =>
+    apiClient.post(`${BASE}/coupons/archive`, { ids }).then(extractData),
+
   assignMemberships: (body) =>
     apiClient.post(`${BASE}/memberships/assign`, body).then(extractData),
 };

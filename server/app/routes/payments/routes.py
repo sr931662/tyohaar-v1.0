@@ -11,6 +11,7 @@ from app.core.responses import CursorPaginatedResponse, SuccessResponse
 from app.schemas.payments.response import (
     CouponResponse,
     CouponValidationResponse,
+    DiscountAnalyticsOverview,
     DiscountEvaluationResponse,
     PaymentResponse,
     RefundResponse,
@@ -85,6 +86,17 @@ router.add_api_route(
     summary="List All Discounts (Admin)",
     description="Return every discount regardless of status (draft/scheduled/active/paused/expired/archived). Admin access required.",
     operation_id="payments_list_coupons_admin",
+)
+
+router.add_api_route(
+    "/coupons/analytics",
+    ctrl.get_discount_analytics,
+    methods=["GET"],
+    response_model=SuccessResponse[DiscountAnalyticsOverview],
+    status_code=status.HTTP_200_OK,
+    summary="Discount Analytics Overview (Admin)",
+    description="Status breakdown, usage counts, revenue generated/lost, conversion rate, and top performing discounts. Admin access required.",
+    operation_id="payments_get_discount_analytics",
 )
 
 router.add_api_route(
