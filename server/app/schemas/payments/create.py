@@ -16,6 +16,7 @@ from pydantic import Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
+    CouponAdminStatus,
     CouponApplicability,
     CouponType,
     Currency,
@@ -29,6 +30,7 @@ __all__ = [
     "RefundCreate",
     "CouponCreate",
     "CouponValidateRequest",
+    "DiscountPreviewRequest",
 ]
 
 
@@ -119,36 +121,87 @@ class CouponCreate(BaseSchema):
     here (admin-only create endpoint) but excluded from public responses.
     """
 
-    code: str = Field(
+    code: str | None = Field(
+        default=None,
         min_length=3,
         max_length=50,
-        description="Coupon code (auto-uppercased and stripped)",
+        description="Coupon code (auto-uppercased and stripped). Omit for an automatic discount.",
     )
-    title: str = Field(min_length=1, max_length=200, description="Short display title")
-    description: str | None = Field(default=None, description="Detailed description")
+    is_automatic: bool = Field(
+        default=False,
+        description="True = no code required; the engine evaluates eligibility automatically.",
+    )
+    title: str = Field(min_length=1, max_length=200, description="Internal/admin display name")
+    public_offer_title: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Customer-facing marketing title, e.g. 'Diwali Dhamaka — 15% OFF!'",
+    )
+    description: str | None = Field(default=None, description="Internal description")
+    terms_and_conditions: str | None = Field(
+        default=None, description="Customer-facing terms & conditions"
+    )
     coupon_type: CouponType = Field(description="Discount mechanism type")
     applicability: CouponApplicability = Field(description="Which bookings are eligible")
     discount_value: Decimal = Field(
         ge=Decimal("0"),
         decimal_places=2,
-        description="Percentage (0-100) or fixed amount depending on coupon_type",
+        description="Percentage (0-100), fixed amount, or target fixed price depending on coupon_type",
     )
     max_discount_amount: MoneyAmount | None = Field(
         default=None,
         description="Cap applied to PERCENTAGE discounts (e.g. max ₹500 off)",
     )
     currency: Currency = Field(default=Currency.INR)
+    priority: int = Field(
+        default=100,
+        description="Lower number = preferred first when multiple non-stackable discounts are eligible",
+    )
+    is_stackable: bool = Field(
+        default=False,
+        description="True = can combine with other eligible discounts",
+    )
+    condition_rules: dict | None = Field(
+        default=None,
+        description=(
+            "Condition tree for date/behavior-based automatic discounts "
+            "(Weekend Offer, Happy Hours, Birthday Month) — "
+            "{'op': 'AND'|'OR', 'clauses': [{'field','operator','value'}]}"
+        ),
+    )
+    admin_status: CouponAdminStatus = Field(
+        default=CouponAdminStatus.DRAFT,
+        description="Admin-controlled state (draft/published/paused/archived)",
+    )
+    banner_image_url: str | None = Field(default=None, max_length=2048)
+    theme_color_hex: str | None = Field(default=None)
     min_order_value: MoneyAmount | None = Field(
         default=None,
         description="Minimum booking subtotal required to apply this coupon",
+    )
+    min_package_value: MoneyAmount | None = Field(
+        default=None,
+        description="Minimum price of the specific package being booked (distinct from min_order_value)",
     )
     first_booking_only: bool = Field(
         default=False,
         description="Restrict to users who have never booked before",
     )
+    repeat_customers_only: bool = Field(
+        default=False,
+        description="Restrict to users with at least one prior completed booking",
+    )
+    referral_users_only: bool = Field(
+        default=False,
+        description="Restrict to users who signed up via a referral",
+    )
     eligible_membership_tiers: list[str] | None = Field(
         default=None,
         description="Membership tier names eligible for this coupon (MEMBERSHIP_ONLY type)",
+    )
+    eligible_customer_group_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="Reserved for future use — no customer-group entity exists yet",
     )
     applicable_vendor_ids: list[uuid.UUID] | None = Field(
         default=None,
@@ -157,6 +210,10 @@ class CouponCreate(BaseSchema):
     applicable_package_ids: list[uuid.UUID] | None = Field(
         default=None,
         description="Specific package UUIDs this coupon applies to (SPECIFIC_PACKAGE type)",
+    )
+    applicable_occasion_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="Specific occasion UUIDs this coupon applies to",
     )
     applicable_occasion_categories: list[str] | None = Field(
         default=None,
@@ -167,6 +224,9 @@ class CouponCreate(BaseSchema):
     )
     per_user_limit: int | None = Field(
         default=None, ge=1, description="Maximum redemptions per individual user"
+    )
+    max_uses_per_day: int | None = Field(
+        default=None, ge=1, description="Maximum redemptions platform-wide per calendar day (UTC)"
     )
     valid_from: datetime = Field(description="UTC datetime when coupon becomes active")
     valid_until: datetime | None = Field(
@@ -183,8 +243,18 @@ class CouponCreate(BaseSchema):
 
     @field_validator("code", mode="before")
     @classmethod
-    def normalise_code(cls, v: str) -> str:
-        return v.upper().strip()
+    def normalise_code(cls, v: str | None) -> str | None:
+        return v.upper().strip() if v else v
+
+    @field_validator("theme_color_hex")
+    @classmethod
+    def validate_theme_color_hex(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        import re
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", v):
+            raise ValueError("theme_color_hex must be a 6-digit hex color, e.g. '#C8A96E'")
+        return v
 
     @model_validator(mode="after")
     def validate_coupon_consistency(self) -> "CouponCreate":
@@ -198,6 +268,15 @@ class CouponCreate(BaseSchema):
             and self.discount_value > Decimal("100")
         ):
             raise ValueError("discount_value cannot exceed 100 for PERCENTAGE coupons")
+        if self.coupon_type in (CouponType.BUY_X_GET_Y, CouponType.FREE_ADDON):
+            raise ValueError(
+                f"coupon_type '{self.coupon_type.value}' is reserved for future use "
+                "and cannot be created yet."
+            )
+        if self.is_automatic and self.code is not None:
+            raise ValueError("An automatic discount cannot also have a coupon code.")
+        if not self.is_automatic and self.code is None:
+            raise ValueError("code is required unless is_automatic is True.")
         return self
 
 
@@ -219,3 +298,26 @@ class CouponValidateRequest(BaseSchema):
     @classmethod
     def normalise_code(cls, v: str) -> str:
         return v.upper().strip()
+
+
+class DiscountPreviewRequest(BaseSchema):
+    """
+    Request body for the full discount-engine preview endpoint.
+
+    Returns every applicable discount (automatic + the given coupon code,
+    if any) combined per the engine's priority/stacking rules — the same
+    evaluation `create_booking` uses to compute `discount_amount`, exposed
+    read-only for checkout-time price display.
+    """
+
+    subtotal: MoneyAmount = Field(description="Current basket subtotal before any discount")
+    package_id: uuid.UUID | None = Field(default=None)
+    occasion_id: uuid.UUID | None = Field(default=None)
+    coupon_code: str | None = Field(
+        default=None, max_length=50, description="Optional coupon code to also evaluate"
+    )
+
+    @field_validator("coupon_code", mode="before")
+    @classmethod
+    def normalise_coupon_code(cls, v: str | None) -> str | None:
+        return v.upper().strip() if v else v

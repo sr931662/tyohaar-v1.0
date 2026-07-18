@@ -68,6 +68,7 @@ const ImportExportPage      = lazy(() => import('./admin/pages/io/ImportExportPa
 const AutomationPage        = lazy(() => import('./admin/pages/automation/AutomationPage.jsx'));
 const GlobalSearchPage      = lazy(() => import('./admin/pages/search/GlobalSearchPage.jsx'));
 const ReferralsPage         = lazy(() => import('./admin/pages/referrals/ReferralsPage.jsx'));
+const DiscountsPage         = lazy(() => import('./admin/pages/discounts/DiscountsPage.jsx'));
 
 function MarketingSite() {
   return (
@@ -195,6 +196,7 @@ export default function App() {
                 <Route path="automation" element={<AutomationPage />} />
                 <Route path="search" element={<GlobalSearchPage />} />
                 <Route path="referrals" element={<ReferralsPage />} />
+                <Route path="discounts" element={<DiscountsPage />} />
               </Route>
             </Routes>
           </AdminAuthProvider>

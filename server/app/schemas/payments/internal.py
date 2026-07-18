@@ -123,6 +123,23 @@ class CouponInternal(CouponResponse):
         default=None,
         description="Occasion categories this coupon targets (internal targeting).",
     )
+    applicable_occasion_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="Specific occasion UUIDs this coupon targets (internal targeting).",
+    )
+    repeat_customers_only: bool = Field(default=False)
+    referral_users_only: bool = Field(default=False)
+    eligible_customer_group_ids: list[uuid.UUID] | None = Field(
+        default=None, description="Reserved for future use"
+    )
+    min_package_value: MoneyAmount | None = Field(default=None)
+    max_uses_per_day: int | None = Field(default=None)
+    max_uses_per_vendor: int | None = Field(default=None, description="Reserved for future use")
+    max_uses_per_package: int | None = Field(default=None, description="Reserved for future use")
+    condition_rules: dict | None = Field(
+        default=None,
+        description="Condition tree for date/behavior-based automatic discounts",
+    )
     deactivated_at: datetime | None = Field(
         default=None,
         description="UTC datetime when the coupon was deactivated",

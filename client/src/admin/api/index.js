@@ -19,3 +19,4 @@ export { automationApi } from './endpoints/automation';
 export { searchApi } from './endpoints/search';
 export { budgetsApi } from './endpoints/budgets';
 export { referralsApi } from './endpoints/referrals';
+export { discountsApi } from './endpoints/discounts';

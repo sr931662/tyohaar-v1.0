@@ -92,6 +92,11 @@ class BookingCreate(BaseSchema):
         default_factory=list,
         description="IDs of optional PackageItems (add-ons) selected by the user",
     )
+    coupon_code: str | None = Field(
+        default=None,
+        max_length=50,
+        description="Optional coupon code to apply — evaluated server-side by the discount engine alongside any automatic discounts",
+    )
     item_quantities: dict[str, int] | None = Field(
         default=None,
         description="Optional per-item quantity override, keyed by PackageItem "

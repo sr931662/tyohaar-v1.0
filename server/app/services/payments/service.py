@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.enums import (
+    CouponAdminStatus,
     CouponType,
     PaymentStatus,
     RefundStatus,
@@ -29,14 +30,15 @@ from app.models.payments.payment_attempt import PaymentAttemptStatus
 from app.models.payments.refund import RefundReason, RefundType
 from app.models.payments.transaction import PartyType, TransactionDirection
 from app.schemas.base import CursorPage
-from app.schemas.payments.create import CouponCreate, PaymentCreate, RefundCreate
+from app.schemas.payments.create import CouponCreate, DiscountPreviewRequest, PaymentCreate, RefundCreate
 from app.schemas.payments.response import (
     CouponResponse,
     CouponValidationResponse,
+    DiscountEvaluationResponse,
     PaymentResponse,
     RefundResponse,
 )
-from app.schemas.payments.filters import PaymentFilters
+from app.schemas.payments.filters import CouponFilters, PaymentFilters
 from app.services.base import BaseService
 from app.services.exceptions import BusinessRuleError, ExternalServiceError, NotFoundError
 from app.services.payments.exceptions import (
@@ -397,6 +399,7 @@ class PaymentService(BaseService):
         payment_outcome: tuple[uuid.UUID, bool, str, Decimal] | None = None
         referral_trigger: tuple[uuid.UUID, Decimal, uuid.UUID] | None = None
         vendor_notify_booking_id: uuid.UUID | None = None
+        discount_redeem_trigger: tuple[list, uuid.UUID, uuid.UUID] | None = None
 
         async with self._uow() as uow:
             already_seen = False
@@ -469,6 +472,8 @@ class PaymentService(BaseService):
                     payment_outcome = (payment.payer_id, True, payment.payment_number, payment.final_amount)
                     referral_trigger = (payment.payer_id, payment.final_amount, payment.booking_id)
                     vendor_notify_booking_id = payment.booking_id
+                    if booking is not None and booking.applied_coupon_ids:
+                        discount_redeem_trigger = (booking.applied_coupon_ids, payment.payer_id, payment.id)
                 else:
                     await uow.payments.payments.update(payment, {
                         "payment_status": PaymentStatus.FAILED,
@@ -510,6 +515,18 @@ class PaymentService(BaseService):
                 await BookingService().notify_vendor_if_confirmed_and_paid(vendor_notify_booking_id)
             except Exception:
                 logger.exception("Vendor booking-confirmed notification failed for booking=%s", vendor_notify_booking_id)
+
+        if discount_redeem_trigger is not None:
+            coupon_ids_raw, redeem_user_id, redeem_payment_id = discount_redeem_trigger
+            try:
+                from app.services.payments.discount_engine import DiscountEngine
+                await DiscountEngine().record_usage(
+                    coupon_ids=[uuid.UUID(cid) for cid in coupon_ids_raw],
+                    user_id=redeem_user_id,
+                    payment_id=redeem_payment_id,
+                )
+            except Exception:
+                logger.exception("Discount usage recording failed for payment=%s", redeem_payment_id)
 
     async def verify_payment(
         self,
@@ -582,6 +599,7 @@ class PaymentService(BaseService):
             payment_number = payment.payment_number
             final_amount = payment.final_amount
             booking_id = payment.booking_id
+            applied_coupon_ids = booking.applied_coupon_ids if booking is not None else None
 
             result = PaymentResponse.model_validate(payment)
 
@@ -600,6 +618,17 @@ class PaymentService(BaseService):
             await BookingService().notify_vendor_if_confirmed_and_paid(booking_id)
         except Exception:
             logger.exception("Vendor booking-confirmed notification failed for booking=%s", booking_id)
+
+        if applied_coupon_ids:
+            try:
+                from app.services.payments.discount_engine import DiscountEngine
+                await DiscountEngine().record_usage(
+                    coupon_ids=[uuid.UUID(cid) for cid in applied_coupon_ids],
+                    user_id=payer_id,
+                    payment_id=payment_id,
+                )
+            except Exception:
+                logger.exception("Discount usage recording failed for payment=%s", payment_id)
 
         return result
 
@@ -962,6 +991,140 @@ class PaymentService(BaseService):
                 "is_active": False,
                 "deactivated_at": datetime.now(tz=timezone.utc),
             })
+
+    async def archive_coupon(self, coupon_id: uuid.UUID, admin_id: uuid.UUID) -> CouponResponse:
+        """Soft-delete: archived discounts are permanently excluded from evaluation."""
+        async with self._uow() as uow:
+            coupon = await uow.payments.coupons.get_by_id(coupon_id)
+            if coupon is None:
+                raise CouponNotFoundError(str(coupon_id))
+            updated = await uow.payments.coupons.update(coupon, {
+                "admin_status": CouponAdminStatus.ARCHIVED,
+                "is_active": False,
+                "deactivated_at": datetime.now(tz=timezone.utc),
+            })
+            return CouponResponse.model_validate(updated)
+
+    async def duplicate_coupon(self, coupon_id: uuid.UUID, admin_id: uuid.UUID) -> CouponResponse:
+        """
+        Clone a discount as a new DRAFT — code is cleared (or suffixed) since
+        codes must stay unique; automatic discounts keep their targeting/value
+        config but always start unpublished so admins review before going live.
+        """
+        async with self._uow() as uow:
+            source = await uow.payments.coupons.get_by_id(coupon_id)
+            if source is None:
+                raise CouponNotFoundError(str(coupon_id))
+
+            new_code = None
+            if source.code:
+                candidate = f"{source.code}-COPY"
+                suffix = 2
+                while await uow.payments.coupons.find_by_code(candidate) is not None:
+                    candidate = f"{source.code}-COPY{suffix}"
+                    suffix += 1
+                new_code = candidate
+
+            clone = await uow.payments.coupons.create({
+                "code": new_code,
+                "is_automatic": source.is_automatic,
+                "title": f"{source.title} (Copy)",
+                "public_offer_title": source.public_offer_title,
+                "description": source.description,
+                "terms_and_conditions": source.terms_and_conditions,
+                "coupon_type": source.coupon_type,
+                "applicability": source.applicability,
+                "discount_value": source.discount_value,
+                "max_discount_amount": source.max_discount_amount,
+                "currency": source.currency,
+                "priority": source.priority,
+                "is_stackable": source.is_stackable,
+                "condition_rules": source.condition_rules,
+                "admin_status": CouponAdminStatus.DRAFT,
+                "banner_image_url": source.banner_image_url,
+                "theme_color_hex": source.theme_color_hex,
+                "min_order_value": source.min_order_value,
+                "min_package_value": source.min_package_value,
+                "first_booking_only": source.first_booking_only,
+                "repeat_customers_only": source.repeat_customers_only,
+                "referral_users_only": source.referral_users_only,
+                "eligible_membership_tiers": source.eligible_membership_tiers,
+                "eligible_customer_group_ids": source.eligible_customer_group_ids,
+                "applicable_vendor_ids": source.applicable_vendor_ids,
+                "applicable_package_ids": source.applicable_package_ids,
+                "applicable_occasion_ids": source.applicable_occasion_ids,
+                "applicable_occasion_categories": source.applicable_occasion_categories,
+                "total_usage_limit": source.total_usage_limit,
+                "per_user_limit": source.per_user_limit,
+                "max_uses_per_day": source.max_uses_per_day,
+                "valid_from": source.valid_from,
+                "valid_until": source.valid_until,
+                "is_system_generated": False,
+                "created_by_id": admin_id,
+                "times_used": 0,
+                "is_active": True,
+            })
+            return CouponResponse.model_validate(clone)
+
+    async def list_coupons_admin(
+        self,
+        filters: CouponFilters | None,
+        cursor: str | None,
+        limit: int,
+    ) -> CursorPage[CouponResponse]:
+        """Admin listing — every status (draft/scheduled/active/paused/expired/archived), unlike list_active_coupons."""
+        async with self._uow() as uow:
+            model = uow.payments.coupons._model
+            filter_args = []
+            if filters is not None:
+                if filters.coupon_type is not None:
+                    filter_args.append(model.coupon_type == filters.coupon_type)
+                if filters.applicability is not None:
+                    filter_args.append(model.applicability == filters.applicability)
+                if filters.is_active is not None:
+                    filter_args.append(model.is_active == filters.is_active)
+                if filters.is_system_generated is not None:
+                    filter_args.append(model.is_system_generated == filters.is_system_generated)
+                if filters.admin_status is not None:
+                    filter_args.append(model.admin_status == filters.admin_status)
+                if filters.is_automatic is not None:
+                    filter_args.append(model.is_automatic == filters.is_automatic)
+                if filters.search:
+                    pattern = f"%{filters.search}%"
+                    filter_args.append(
+                        (model.title.ilike(pattern)) | (model.code.ilike(pattern))
+                    )
+
+            page = await uow.payments.coupons.cursor_paginate(
+                *filter_args,
+                cursor=cursor,
+                limit=limit,
+            )
+            return CursorPage(
+                items=[CouponResponse.model_validate(c) for c in page.items],
+                next_cursor=page.next_cursor,
+                has_more=page.has_next,
+            )
+
+    async def preview_discount(
+        self, data: DiscountPreviewRequest, customer_id: uuid.UUID
+    ) -> DiscountEvaluationResponse:
+        """
+        Checkout-time preview — same DiscountEngine.evaluate() call
+        create_booking makes, exposed read-only so the client can show the
+        price breakdown before actually creating the booking.
+        """
+        from app.services.payments.discount_engine import DiscountEngine
+
+        async with self._uow() as uow:
+            return await DiscountEngine().evaluate(
+                uow,
+                customer_id=customer_id,
+                subtotal=data.subtotal,
+                package_id=data.package_id,
+                occasion_id=data.occasion_id,
+                coupon_code=data.coupon_code,
+            )
 
     # ── Splits ────────────────────────────────────────────────────────────────
 

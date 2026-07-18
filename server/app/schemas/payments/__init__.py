@@ -26,6 +26,7 @@ from app.schemas.payments.create import (
     RefundCreate,
     CouponCreate,
     CouponValidateRequest,
+    DiscountPreviewRequest,
 )
 
 # ── update ─────────────────────────────────────────────────────────────────────
@@ -42,6 +43,8 @@ from app.schemas.payments.response import (
     CouponResponse,
     CouponPublicResponse,
     CouponValidationResponse,
+    AppliedDiscountItem,
+    DiscountEvaluationResponse,
     PaymentWebhookResponse,
 )
 
@@ -85,6 +88,7 @@ __all__ = [
     "RefundCreate",
     "CouponCreate",
     "CouponValidateRequest",
+    "DiscountPreviewRequest",
     # update
     "PaymentUpdate",
     "RefundUpdate",
@@ -95,6 +99,8 @@ __all__ = [
     "CouponResponse",
     "CouponPublicResponse",
     "CouponValidationResponse",
+    "AppliedDiscountItem",
+    "DiscountEvaluationResponse",
     "PaymentWebhookResponse",
     # filters
     "PaymentFilters",

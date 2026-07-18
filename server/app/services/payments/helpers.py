@@ -11,6 +11,7 @@ import string
 from datetime import datetime, timezone
 from decimal import ROUND_DOWN, Decimal
 
+from app.models.enums import CouponType
 from app.services.payments.constants import (
     COUPON_TYPE_PERCENTAGE,
     GST_ON_PLATFORM_FEE,
@@ -73,6 +74,50 @@ def calculate_coupon_discount(
 
     # Never exceed the order amount
     return min(raw_discount, amount)
+
+
+def calculate_discount_amount(
+    amount: Decimal,
+    coupon_type: CouponType,
+    discount_value: Decimal,
+    max_discount: Decimal | None,
+    *,
+    package_base_price: Decimal | None = None,
+) -> Decimal:
+    """
+    DiscountEngine's calculation entrypoint — branches on the actual
+    CouponType enum (unlike the older calculate_coupon_discount, which only
+    ever distinguishes 'percentage' vs. everything-else-as-flat). Supports
+    PERCENTAGE, FIXED_AMOUNT, FIXED_PRICE, FREE_SERVICE. CASHBACK is granted
+    post-completion (not deducted at checkout), so it returns 0 here.
+
+    Raises ValueError for the reserved-not-yet-implemented types
+    (BUY_X_GET_Y, FREE_ADDON) — callers should never reach here for those,
+    since CouponCreate/CouponUpdate already reject creating/activating them.
+    """
+    if coupon_type == CouponType.PERCENTAGE:
+        raw_discount = (amount * discount_value / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_DOWN
+        )
+        if max_discount is not None:
+            raw_discount = min(raw_discount, max_discount)
+        safety_cap = (amount * MAX_COUPON_DISCOUNT_PERCENTAGE).quantize(
+            Decimal("0.01"), rounding=ROUND_DOWN
+        )
+        raw_discount = min(raw_discount, safety_cap)
+    elif coupon_type == CouponType.FIXED_AMOUNT:
+        raw_discount = discount_value.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    elif coupon_type == CouponType.FIXED_PRICE:
+        base = package_base_price if package_base_price is not None else amount
+        raw_discount = max(Decimal("0.00"), base - discount_value)
+    elif coupon_type == CouponType.FREE_SERVICE:
+        raw_discount = amount
+    elif coupon_type == CouponType.CASHBACK:
+        return Decimal("0.00")
+    else:
+        raise ValueError(f"coupon_type '{coupon_type}' is not yet supported by the discount engine.")
+
+    return max(Decimal("0.00"), min(raw_discount, amount))
 
 
 def apply_membership_discount(subtotal: Decimal, discount_percentage: Decimal) -> Decimal:

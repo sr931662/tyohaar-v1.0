@@ -629,6 +629,19 @@ class CouponRedemptionRepository(BaseRepository[CouponRedemption]):
             CouponRedemption.user_id == user_id,
         )
 
+    async def count_for_coupon_since(self, coupon_id: uuid.UUID, since: datetime) -> int:
+        return await self.count(
+            CouponRedemption.coupon_id == coupon_id,
+            CouponRedemption.redeemed_at >= since,
+        )
+
+    async def exists_for_payment(self, coupon_id: uuid.UUID, payment_id: uuid.UUID) -> bool:
+        existing = await self.find_one(
+            CouponRedemption.coupon_id == coupon_id,
+            CouponRedemption.payment_id == payment_id,
+        )
+        return existing is not None
+
 
 class PaymentRepositoryAggregate:
     """Groups all payment-domain sub-repositories."""

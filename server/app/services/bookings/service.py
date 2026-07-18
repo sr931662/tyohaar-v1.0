@@ -155,8 +155,8 @@ class BookingService(BaseService):
             package = await validate_package_available(data.package_id, data.scheduled_date, uow)
 
             celebration_id = data.celebration_id
+            occasion_id = data.occasion_id
             if celebration_id is None:
-                occasion_id = data.occasion_id
                 if occasion_id is None:
                     from sqlalchemy import select
 
@@ -214,9 +214,29 @@ class BookingService(BaseService):
             items_total = sum((i.base_price * _resolve_qty(i)) for i in selected_items)
             subtotal = (package.base_price or Decimal("0.00")) + items_total
             platform_fee = Decimal("0.00")  # Platform fee removed project-wide.
+
+            # 4b. Discount engine — evaluates automatic discounts plus the
+            # optional coupon_code, in the SAME transaction as this booking
+            # so eligibility reads are consistent with what's being written.
+            from app.services.payments.discount_engine import DiscountEngine
+            discount_result = await DiscountEngine().evaluate(
+                uow,
+                customer_id=customer_id,
+                subtotal=subtotal,
+                package_id=data.package_id,
+                occasion_id=occasion_id,
+                coupon_code=data.coupon_code,
+            )
+            discount_amount = discount_result.total_discount
+            applied_coupon_ids = [str(item.coupon_id) for item in discount_result.applied_discounts]
+
+            # Tax is computed on the post-discount taxable base, matching what
+            # invoice generation already assumes (taxable_amount = subtotal -
+            # discount_amount) — see verify_payment's invoice block.
+            taxable_amount = subtotal - discount_amount
             tax_rate = Decimal("0.18")
-            tax_amount = (subtotal * tax_rate).quantize(Decimal("0.01"))
-            total_amount = subtotal + tax_amount + platform_fee
+            tax_amount = (taxable_amount * tax_rate).quantize(Decimal("0.01"))
+            total_amount = taxable_amount + tax_amount + platform_fee
 
             booking_ref = generate_booking_reference()
 
@@ -236,7 +256,8 @@ class BookingService(BaseService):
                 payment_status=PaymentStatus.PENDING,
                 currency=data.currency,
                 subtotal=subtotal,
-                discount_amount=Decimal("0.00"),
+                discount_amount=discount_amount,
+                applied_coupon_ids=applied_coupon_ids or None,
                 tax_amount=tax_amount,
                 platform_fee=platform_fee,
                 total_amount=total_amount,

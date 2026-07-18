@@ -11,6 +11,7 @@ from app.core.responses import CursorPaginatedResponse, SuccessResponse
 from app.schemas.payments.response import (
     CouponResponse,
     CouponValidationResponse,
+    DiscountEvaluationResponse,
     PaymentResponse,
     RefundResponse,
 )
@@ -60,6 +61,44 @@ router.add_api_route(
 )
 
 router.add_api_route(
+    "/coupons/preview",
+    ctrl.preview_discount,
+    methods=["POST"],
+    response_model=SuccessResponse[DiscountEvaluationResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Preview Discount Evaluation",
+    description=(
+        "Evaluate every applicable discount (automatic + an optional coupon "
+        "code) for a basket and return the resolved, itemized result — the "
+        "same evaluation create_booking uses, exposed read-only for "
+        "checkout-time price display. All calculation happens server-side."
+    ),
+    operation_id="payments_preview_discount",
+)
+
+router.add_api_route(
+    "/coupons/admin",
+    ctrl.list_coupons_admin,
+    methods=["GET"],
+    response_model=CursorPaginatedResponse[CouponResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List All Discounts (Admin)",
+    description="Return every discount regardless of status (draft/scheduled/active/paused/expired/archived). Admin access required.",
+    operation_id="payments_list_coupons_admin",
+)
+
+router.add_api_route(
+    "/coupons/{coupon_id}",
+    ctrl.update_coupon,
+    methods=["PATCH"],
+    response_model=SuccessResponse[CouponResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Discount (Admin)",
+    description="Partially update a discount's configuration. Admin access required.",
+    operation_id="payments_update_coupon",
+)
+
+router.add_api_route(
     "/coupons/{coupon_id}",
     ctrl.deactivate_coupon,
     methods=["DELETE"],
@@ -68,6 +107,28 @@ router.add_api_route(
     summary="Deactivate Coupon (Admin)",
     description="Deactivate a coupon so it can no longer be redeemed. Admin access required.",
     operation_id="payments_deactivate_coupon",
+)
+
+router.add_api_route(
+    "/coupons/{coupon_id}/duplicate",
+    ctrl.duplicate_coupon,
+    methods=["POST"],
+    response_model=SuccessResponse[CouponResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Duplicate Discount (Admin)",
+    description="Clone a discount as a new unpublished draft. Admin access required.",
+    operation_id="payments_duplicate_coupon",
+)
+
+router.add_api_route(
+    "/coupons/{coupon_id}/archive",
+    ctrl.archive_coupon,
+    methods=["POST"],
+    response_model=SuccessResponse[CouponResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Archive Discount (Admin)",
+    description="Soft-delete a discount — permanently excluded from evaluation. Admin access required.",
+    operation_id="payments_archive_coupon",
 )
 
 # ── Invoices (static — must precede /{payment_id}) ───────────────────────────

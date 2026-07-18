@@ -12,8 +12,11 @@ from decimal import Decimal
 
 from pydantic import Field, field_validator, model_validator
 
+import uuid
+
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
+    CouponAdminStatus,
     PaymentMethod,
     PaymentStatus,
     RefundStatus,
@@ -107,7 +110,9 @@ class CouponUpdate(BaseSchema):
     """
 
     title: str | None = Field(default=None, min_length=1, max_length=200)
+    public_offer_title: str | None = Field(default=None, max_length=300)
     description: str | None = None
+    terms_and_conditions: str | None = None
     discount_value: Decimal | None = Field(
         default=None,
         ge=Decimal("0"),
@@ -115,9 +120,28 @@ class CouponUpdate(BaseSchema):
         description="Updated discount magnitude",
     )
     max_discount_amount: MoneyAmount | None = None
+    priority: int | None = Field(default=None)
+    is_stackable: bool | None = Field(default=None)
+    condition_rules: dict | None = None
+    admin_status: CouponAdminStatus | None = Field(
+        default=None, description="Admin-controlled state (draft/published/paused/archived)"
+    )
+    banner_image_url: str | None = Field(default=None, max_length=2048)
+    theme_color_hex: str | None = Field(default=None)
     min_order_value: MoneyAmount | None = None
+    min_package_value: MoneyAmount | None = None
+    first_booking_only: bool | None = Field(default=None)
+    repeat_customers_only: bool | None = Field(default=None)
+    referral_users_only: bool | None = Field(default=None)
+    eligible_membership_tiers: list[str] | None = None
+    eligible_customer_group_ids: list[uuid.UUID] | None = None
+    applicable_vendor_ids: list[uuid.UUID] | None = None
+    applicable_package_ids: list[uuid.UUID] | None = None
+    applicable_occasion_ids: list[uuid.UUID] | None = None
+    applicable_occasion_categories: list[str] | None = None
     total_usage_limit: int | None = Field(default=None, ge=1)
     per_user_limit: int | None = Field(default=None, ge=1)
+    max_uses_per_day: int | None = Field(default=None, ge=1)
     valid_from: datetime | None = None
     valid_until: datetime | None = None
     is_active: bool | None = Field(
@@ -127,6 +151,16 @@ class CouponUpdate(BaseSchema):
         default=None,
         description="UTC datetime when the coupon was deactivated (set by service layer)",
     )
+
+    @field_validator("theme_color_hex")
+    @classmethod
+    def validate_theme_color_hex(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        import re
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", v):
+            raise ValueError("theme_color_hex must be a 6-digit hex color, e.g. '#C8A96E'")
+        return v
 
     @model_validator(mode="after")
     def validate_date_range(self) -> "CouponUpdate":

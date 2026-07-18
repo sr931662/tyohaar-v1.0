@@ -37,6 +37,7 @@ from app.schemas.cms.automation import (
     AutomationToggleResponse,
 )
 from app.services.base import BaseService
+from app.services.common.rule_conditions import evaluate_conditions
 
 
 class AutomationService(BaseService):
@@ -123,49 +124,6 @@ class AutomationService(BaseService):
         )
 
     # ── Execution Engine ──────────────────────────────────────────────────────
-
-    def _evaluate_conditions(
-        self, conditions: dict[str, Any] | None, payload: dict[str, Any]
-    ) -> bool:
-        """Evaluate a simple condition tree against the event payload."""
-        if not conditions:
-            return True
-
-        op = conditions.get("op", "AND")
-        clauses = conditions.get("clauses", [])
-
-        results = []
-        for clause in clauses:
-            if "op" in clause:
-                results.append(self._evaluate_conditions(clause, payload))
-            else:
-                field = clause.get("field", "")
-                operator = clause.get("operator", "eq")
-                expected = clause.get("value")
-                actual = payload.get(field)
-
-                if operator == "eq":
-                    results.append(actual == expected)
-                elif operator == "neq":
-                    results.append(actual != expected)
-                elif operator == "gte":
-                    results.append(float(actual or 0) >= float(expected or 0))
-                elif operator == "lte":
-                    results.append(float(actual or 0) <= float(expected or 0))
-                elif operator == "gt":
-                    results.append(float(actual or 0) > float(expected or 0))
-                elif operator == "lt":
-                    results.append(float(actual or 0) < float(expected or 0))
-                elif operator == "in":
-                    results.append(actual in (expected or []))
-                elif operator == "contains":
-                    results.append(str(expected or "") in str(actual or ""))
-                else:
-                    results.append(True)
-
-        if not results:
-            return True
-        return all(results) if op == "AND" else any(results)
 
     async def _execute_action(
         self,
@@ -254,7 +212,7 @@ class AutomationService(BaseService):
                 rules = await uow.cms.automation_rules.find_by_trigger(trigger_event)
 
             for rule in rules:
-                if not self._evaluate_conditions(rule.conditions, payload):
+                if not evaluate_conditions(rule.conditions, payload):
                     continue
 
                 log_id = await self._run_rule(

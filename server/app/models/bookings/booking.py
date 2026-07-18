@@ -26,6 +26,7 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -205,6 +206,17 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         nullable=False,
         default=Decimal("0.00"),
         comment="Total discount applied (coupon + promotional)",
+    )
+
+    applied_coupon_ids: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment=(
+            "UUID strings of the Coupon(s) evaluated and locked into "
+            "discount_amount at booking-creation time by DiscountEngine. "
+            "Redeemed (CouponRedemption rows + times_used increment) once "
+            "payment is confirmed — see DiscountEngine.record_usage."
+        ),
     )
 
     tax_amount: Mapped[Decimal] = mapped_column(

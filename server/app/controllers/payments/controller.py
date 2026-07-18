@@ -17,11 +17,13 @@ from app.core.permissions import AdminDep, CurrentVendorIdDep
 from app.models.enums import UserRole
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
-from app.schemas.payments.create import CouponCreate, PaymentCreate, RefundCreate
-from app.schemas.payments.filters import PaymentFilters
+from app.schemas.payments.create import CouponCreate, DiscountPreviewRequest, PaymentCreate, RefundCreate
+from app.schemas.payments.filters import CouponFilters, PaymentFilters
+from app.schemas.payments.update import CouponUpdate
 from app.schemas.payments.response import (
     CouponResponse,
     CouponValidationResponse,
+    DiscountEvaluationResponse,
     PaymentResponse,
     RefundResponse,
 )
@@ -189,6 +191,58 @@ async def deactivate_coupon(
 ) -> SuccessResponse[None]:
     await service.deactivate_coupon(coupon_id=coupon_id, admin_id=current_user.id)
     return SuccessResponse(data=None, message="Coupon deactivated.")
+
+
+async def update_coupon(
+    coupon_id: uuid.UUID,
+    body: CouponUpdate,
+    current_user: AdminDep,
+    service: PaymentServiceDep,
+) -> SuccessResponse[CouponResponse]:
+    result = await service.update_coupon(coupon_id=coupon_id, data=body, admin_id=current_user.id)
+    return SuccessResponse(data=result, message="Discount updated.")
+
+
+async def duplicate_coupon(
+    coupon_id: uuid.UUID,
+    current_user: AdminDep,
+    service: PaymentServiceDep,
+) -> SuccessResponse[CouponResponse]:
+    result = await service.duplicate_coupon(coupon_id=coupon_id, admin_id=current_user.id)
+    return SuccessResponse(data=result, message="Discount duplicated.")
+
+
+async def archive_coupon(
+    coupon_id: uuid.UUID,
+    current_user: AdminDep,
+    service: PaymentServiceDep,
+) -> SuccessResponse[CouponResponse]:
+    result = await service.archive_coupon(coupon_id=coupon_id, admin_id=current_user.id)
+    return SuccessResponse(data=result, message="Discount archived.")
+
+
+async def list_coupons_admin(
+    current_user: AdminDep,
+    filters: Annotated[CouponFilters, Depends()],
+    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
+    service: PaymentServiceDep,
+) -> CursorPaginatedResponse[CouponResponse]:
+    page = await service.list_coupons_admin(
+        filters=filters, cursor=pagination.cursor, limit=pagination.page_size
+    )
+    return CursorPaginatedResponse(
+        data=page.items,
+        meta=CursorMeta(cursor=page.next_cursor, has_next=page.has_more, page_size=pagination.page_size),
+    )
+
+
+async def preview_discount(
+    body: DiscountPreviewRequest,
+    current_user: CurrentUserDep,
+    service: PaymentServiceDep,
+) -> SuccessResponse[DiscountEvaluationResponse]:
+    result = await service.preview_discount(data=body, customer_id=current_user.id)
+    return SuccessResponse(data=result, message="Discount evaluated.")
 
 
 async def create_payment_split(

@@ -408,8 +408,14 @@ class InvoiceStatus(str, enum.Enum):
 class CouponType(str, enum.Enum):
     PERCENTAGE = "percentage"
     FIXED_AMOUNT = "fixed_amount"
+    FIXED_PRICE = "fixed_price"
     FREE_SERVICE = "free_service"
     CASHBACK = "cashback"
+    # Reserved for future implementation — the discount engine explicitly
+    # rejects creating/activating a coupon with these types today (see
+    # DiscountEngine.SUPPORTED_TYPES) rather than silently no-oping.
+    BUY_X_GET_Y = "buy_x_get_y"
+    FREE_ADDON = "free_addon"
 
 
 class CouponApplicability(str, enum.Enum):
@@ -419,6 +425,28 @@ class CouponApplicability(str, enum.Enum):
     SPECIFIC_VENDOR = "specific_vendor"
     SPECIFIC_PACKAGE = "specific_package"
     MEMBERSHIP_ONLY = "membership_only"
+
+
+class CouponAdminStatus(str, enum.Enum):
+    """
+    Admin-controlled state. The full customer-facing status (draft/
+    scheduled/active/paused/expired/archived) is derived at read time by
+    combining this with valid_from/valid_until — see Coupon.effective_status.
+    """
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    PAUSED = "paused"
+    ARCHIVED = "archived"
+
+
+class CouponEffectiveStatus(str, enum.Enum):
+    """Fully-derived customer/admin-facing status — never stored, always computed."""
+    DRAFT = "draft"
+    SCHEDULED = "scheduled"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    EXPIRED = "expired"
+    ARCHIVED = "archived"
 
 
 
@@ -600,6 +628,7 @@ class MediaUsage(str, enum.Enum):
     OCCASION_COVER = "occasion_cover"
     OCCASION_ICON = "occasion_icon"
     OCCASION_BANNER = "occasion_banner"
+    DISCOUNT_BANNER = "discount_banner"
     VENDOR_DOCUMENT = "vendor_document"
     BANNER = "banner"
 

@@ -9,7 +9,7 @@ a coupon, how many times, and on which products.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -31,7 +31,13 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
-from app.models.enums import CouponApplicability, CouponType, Currency
+from app.models.enums import (
+    CouponAdminStatus,
+    CouponApplicability,
+    CouponEffectiveStatus,
+    CouponType,
+    Currency,
+)
 from app.models.mixins import NotesMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
@@ -105,26 +111,52 @@ class Coupon(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
 
     # ── Code & Description ────────────────────────────────────────────────────
 
-    code: Mapped[str] = mapped_column(
+    code: Mapped[str | None] = mapped_column(
         String(50),
-        nullable=False,
+        nullable=True,
         unique=True,
         comment=(
             "Uppercase alphanumeric code entered by customers at checkout. "
+            "NULL for automatic (no-code) discounts — see is_automatic. "
             "Service layer normalizes input to uppercase before lookup."
+        ),
+    )
+
+    is_automatic: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment=(
+            "True = the engine evaluates and applies this discount without a "
+            "code (first booking, weekend offer, festival offer, etc). "
+            "Must be the inverse of `code IS NOT NULL` — enforced by the "
+            "service layer, not a DB constraint (SQLite/JSONB portability)."
         ),
     )
 
     title: Mapped[str] = mapped_column(
         String(200),
         nullable=False,
-        comment="Customer-visible name e.g. 'DIWALI2024 – 15% off all bookings'.",
+        comment="Internal/admin display name, e.g. 'Diwali 2026 15% Off'.",
+    )
+
+    public_offer_title: Mapped[str | None] = mapped_column(
+        String(300),
+        nullable=True,
+        comment="Customer-facing marketing title, e.g. 'Diwali Dhamaka — 15% OFF!'.",
     )
 
     description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
-        comment="Customer-visible description with eligibility summary and terms.",
+        comment="Internal description — eligibility summary and admin notes on intent.",
+    )
+
+    terms_and_conditions: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Customer-facing terms & conditions shown alongside the offer.",
     )
 
     # ── Discount Configuration ────────────────────────────────────────────────
@@ -145,7 +177,8 @@ class Coupon(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
         nullable=False,
         comment=(
             "For PERCENTAGE: percentage to deduct (e.g., 15.00 = 15%). "
-            "For FIXED_AMOUNT / CASHBACK: monetary amount in `currency`."
+            "For FIXED_AMOUNT / CASHBACK: monetary amount in `currency`. "
+            "For FIXED_PRICE: the target final price the package becomes."
         ),
     )
 
@@ -162,6 +195,68 @@ class Coupon(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
         SAEnum(Currency, name="currency", native_enum=False),
         nullable=False,
         default=Currency.INR,
+    )
+
+    # ── Priority & Stacking ───────────────────────────────────────────────────
+    # priority mirrors AutomationRule.priority's exact convention (lower number
+    # = evaluated/preferred first) for consistency across the codebase.
+
+    priority: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=100,
+        server_default="100",
+        comment="Lower number = preferred first when multiple non-stackable discounts are eligible",
+    )
+
+    is_stackable: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment=(
+            "True = this discount can combine with other eligible discounts. "
+            "False = mutually exclusive; the engine picks one exclusive "
+            "discount by priority (tie-broken by highest amount) and layers "
+            "all eligible stackable discounts on top of it."
+        ),
+    )
+
+    condition_rules: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment=(
+            "Condition tree for automatic discounts needing more than a flat "
+            "date range (Weekend Offer, Happy Hours, Birthday Month). Same "
+            "shape as AutomationRule.conditions: "
+            "{'op': 'AND'|'OR', 'clauses': [{'field','operator','value'}]}, "
+            "evaluated by the shared app.services.common.rule_conditions."
+            "evaluate_conditions() against a per-booking payload dict."
+        ),
+    )
+
+    # ── Status (admin-controlled subset — see effective_status property) ─────
+
+    admin_status: Mapped[CouponAdminStatus] = mapped_column(
+        SAEnum(CouponAdminStatus, name="coupon_admin_status", native_enum=False),
+        nullable=False,
+        default=CouponAdminStatus.DRAFT,
+        server_default=CouponAdminStatus.DRAFT.value,
+        comment="Admin-set state. scheduled/active/expired are derived — see effective_status.",
+    )
+
+    # ── Presentation ──────────────────────────────────────────────────────────
+
+    banner_image_url: Mapped[str | None] = mapped_column(
+        String(2048),
+        nullable=True,
+        comment="Promotional banner image shown on the offer's customer-facing card.",
+    )
+
+    theme_color_hex: Mapped[str | None] = mapped_column(
+        String(7),
+        nullable=True,
+        comment="Brand/accent color for this offer's card, e.g. '#C8A96E'.",
     )
 
     # ── Eligibility ───────────────────────────────────────────────────────────
@@ -209,6 +304,50 @@ class Coupon(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
         ),
     )
 
+    applicable_occasion_ids: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment=(
+            "UUID strings of specific Occasions this coupon applies to — distinct "
+            "from applicable_occasion_categories (category-level). NULL means no "
+            "specific-occasion restriction."
+        ),
+    )
+
+    repeat_customers_only: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment="If True, only customers with at least one prior completed booking can redeem.",
+    )
+
+    referral_users_only: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment="If True, only customers who signed up via a referral can redeem.",
+    )
+
+    eligible_customer_group_ids: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment=(
+            "Reserved for future use — no customer-group entity exists yet in "
+            "this codebase, so this field is stored but unenforced."
+        ),
+    )
+
+    min_package_value: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
+        nullable=True,
+        comment=(
+            "Minimum price of the specific package being booked (Package.base_price), "
+            "distinct from min_order_value which is the whole booking subtotal."
+        ),
+    )
+
     # ── Usage Limits ──────────────────────────────────────────────────────────
 
     total_usage_limit: Mapped[int | None] = mapped_column(
@@ -224,6 +363,24 @@ class Coupon(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
             "Maximum times a single customer can use this coupon. "
             "NULL means once (most common); set to higher for multi-use coupons."
         ),
+    )
+
+    max_uses_per_day: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Maximum redemptions allowed platform-wide per calendar day (UTC). NULL means unlimited.",
+    )
+
+    max_uses_per_vendor: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Reserved for future use — not yet enforced by the discount engine.",
+    )
+
+    max_uses_per_package: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Reserved for future use — not yet enforced by the discount engine.",
     )
 
     times_used: Mapped[int] = mapped_column(
@@ -302,6 +459,26 @@ class Coupon(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
         if self.total_usage_limit is None:
             return None
         return max(0, self.total_usage_limit - self.times_used)
+
+    @property
+    def effective_status(self) -> CouponEffectiveStatus:
+        """
+        Fully-derived status combining admin_status with the validity window,
+        computed live so expired/scheduled/active transitions need no cron job.
+        """
+        if self.admin_status == CouponAdminStatus.ARCHIVED:
+            return CouponEffectiveStatus.ARCHIVED
+        if self.admin_status == CouponAdminStatus.DRAFT:
+            return CouponEffectiveStatus.DRAFT
+        if self.admin_status == CouponAdminStatus.PAUSED:
+            return CouponEffectiveStatus.PAUSED
+        # admin_status == PUBLISHED — derive from the validity window
+        now = datetime.now(tz=timezone.utc)
+        if self.valid_from > now:
+            return CouponEffectiveStatus.SCHEDULED
+        if self.valid_until is not None and self.valid_until < now:
+            return CouponEffectiveStatus.EXPIRED
+        return CouponEffectiveStatus.ACTIVE
 
     def __repr__(self) -> str:
         return (

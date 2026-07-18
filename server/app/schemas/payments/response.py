@@ -21,7 +21,9 @@ from pydantic import ConfigDict, Field, computed_field
 
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
+    CouponAdminStatus,
     CouponApplicability,
+    CouponEffectiveStatus,
     CouponType,
     Currency,
     PaymentMethod,
@@ -37,6 +39,8 @@ __all__ = [
     "CouponResponse",
     "CouponPublicResponse",
     "CouponValidationResponse",
+    "AppliedDiscountItem",
+    "DiscountEvaluationResponse",
     "PaymentWebhookResponse",
 ]
 
@@ -117,14 +121,22 @@ class CouponResponse(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
-    code: str
+    code: str | None
+    is_automatic: bool
     title: str
+    public_offer_title: str | None
     description: str | None
+    terms_and_conditions: str | None
     coupon_type: CouponType
     applicability: CouponApplicability
     discount_value: Decimal
     max_discount_amount: MoneyAmount | None
     currency: Currency
+    priority: int
+    is_stackable: bool
+    admin_status: CouponAdminStatus
+    banner_image_url: str | None
+    theme_color_hex: str | None
     min_order_value: MoneyAmount | None
     first_booking_only: bool
     total_usage_limit: int | None
@@ -152,6 +164,24 @@ class CouponResponse(BaseSchema):
         if self.total_usage_limit is None:
             return False
         return self.times_used >= self.total_usage_limit
+
+    @computed_field
+    @property
+    def effective_status(self) -> CouponEffectiveStatus:
+        """Fully-derived status (draft/scheduled/active/paused/expired/archived)."""
+        if self.admin_status == CouponAdminStatus.ARCHIVED:
+            return CouponEffectiveStatus.ARCHIVED
+        if self.admin_status == CouponAdminStatus.DRAFT:
+            return CouponEffectiveStatus.DRAFT
+        if self.admin_status == CouponAdminStatus.PAUSED:
+            return CouponEffectiveStatus.PAUSED
+        from datetime import timezone as _timezone
+        now = datetime.now(tz=_timezone.utc)
+        if self.valid_from > now:
+            return CouponEffectiveStatus.SCHEDULED
+        if self.valid_until is not None and self.valid_until < now:
+            return CouponEffectiveStatus.EXPIRED
+        return CouponEffectiveStatus.ACTIVE
 
 
 class CouponPublicResponse(BaseSchema):
@@ -196,6 +226,39 @@ class CouponValidationResponse(BaseSchema):
     error_message: str | None = Field(
         default=None,
         description="Reason for rejection when is_valid=False",
+    )
+
+
+class AppliedDiscountItem(BaseSchema):
+    """One discount included in a DiscountEvaluationResponse's applied list."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    coupon_id: uuid.UUID
+    title: str
+    public_offer_title: str | None = None
+    code: str | None = Field(default=None, description="Null for automatic discounts")
+    coupon_type: CouponType
+    discount_amount: MoneyAmount
+
+
+class DiscountEvaluationResponse(BaseSchema):
+    """
+    Full itemized result from DiscountEngine.evaluate — the single shape
+    returned by both the checkout-time preview endpoint and used internally
+    by create_booking. All discount calculation happens server-side; clients
+    only ever display this result, never compute discounts themselves.
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    original_amount: MoneyAmount
+    applied_discounts: list[AppliedDiscountItem] = Field(default_factory=list)
+    total_discount: MoneyAmount = Field(default=Decimal("0.00"))
+    final_amount: MoneyAmount
+    coupon_error: str | None = Field(
+        default=None,
+        description="If a coupon_code was supplied but rejected, the human-readable reason",
     )
 
 

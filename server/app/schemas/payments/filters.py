@@ -15,6 +15,7 @@ from pydantic import Field, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
+    CouponAdminStatus,
     CouponApplicability,
     CouponType,
     PaymentMethod,
@@ -134,6 +135,12 @@ class CouponFilters(BaseSchema):
     )
     is_system_generated: bool | None = Field(
         default=None, description="Return only platform-generated (or admin-created) coupons"
+    )
+    admin_status: CouponAdminStatus | None = Field(
+        default=None, description="Filter by admin-controlled state (draft/published/paused/archived)"
+    )
+    is_automatic: bool | None = Field(
+        default=None, description="Return only automatic (or only code-based) discounts"
     )
     search: str | None = Field(
         default=None,

@@ -11,6 +11,7 @@ import '../../data/models.dart';
 import '../../data/services/package_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/booking_service.dart';
+import '../../data/services/payment_service.dart';
 import '../../utils/currency.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
 import 'package:tyohaar/screens/send_invitations_screen.dart';
@@ -37,7 +38,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   final PackageService _packageService = PackageService();
   final UserService _userService = UserService();
   final BookingService _bookingService = BookingService();
+  final PaymentService _paymentService = PaymentService();
   bool _isSubmitting = false;
+
+  // Coupon entry — automatic discounts need no UI (applied silently by the
+  // backend at booking creation); this only handles the optional code path.
+  final _couponCtrl = TextEditingController();
+  DiscountPreview? _discountPreview;
+  bool _couponLoading = false;
+  String? _couponError;
 
   // 0 Occasion · 1 Details · 2 Guests · 3 Package · 4 Package Items · 5 Summary
   static const _stepCount = 6;
@@ -117,7 +126,35 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _couponCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _applyCoupon() async {
+    final code = _couponCtrl.text.trim();
+    if (code.isEmpty) return;
+    setState(() { _couponLoading = true; _couponError = null; });
+    try {
+      final basePrice = _pkg?.price ?? 0;
+      final selectedOptional = _packageItems.where((i) => !i.isMandatory && _itemQuantities.containsKey(i.id));
+      final itemsTotal = selectedOptional.fold<double>(
+        0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
+      );
+      final preview = await _paymentService.previewDiscount(
+        subtotal: basePrice + itemsTotal,
+        packageId: _pkg?.id,
+        occasionId: _occasion?.id,
+        couponCode: code,
+      );
+      setState(() {
+        _discountPreview = preview;
+        _couponError = preview.couponError;
+      });
+    } catch (e) {
+      setState(() => _couponError = 'Could not validate this code. Please try again.');
+    } finally {
+      if (mounted) setState(() => _couponLoading = false);
+    }
   }
 
   void _next() {
@@ -167,6 +204,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'item_ids': optionalSelected,
         'item_quantities': _itemQuantities.map((id, qty) => MapEntry(id, qty)),
         'special_instructions': notes.isNotEmpty ? notes : null,
+        if (_couponCtrl.text.trim().isNotEmpty && _couponError == null)
+          'coupon_code': _couponCtrl.text.trim(),
       });
       if (!mounted) return;
       // pushReplacement (not push) so backing out of PaymentScreen can't
@@ -1171,19 +1210,74 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        _sectionHeader('Price Breakdown'),
+        _sectionHeader('Promo Code'),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: _cardDeco(ty),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _priceRow('Package Base Price', _pkg?.price.toInt() ?? 0),
-              if (itemsTotal > 0) _priceRow('Add-ons', itemsTotal.toInt()),
-              _priceRow('GST (18%)', (((_pkg?.price ?? 0) + itemsTotal) * 0.18).toInt()),
-              const Divider(height: 24),
-              _priceRow('Total Amount', (((_pkg?.price ?? 0) + itemsTotal) * 1.18).toInt(), bold: true),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _couponCtrl,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: const InputDecoration(
+                        hintText: 'Have a promo code?',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  TyButton(
+                    _couponLoading ? 'Checking…' : 'Apply',
+                    kind: TyButtonKind.soft,
+                    onTap: _couponLoading ? null : _applyCoupon,
+                  ),
+                ],
+              ),
+              if (_couponError != null) ...[
+                const SizedBox(height: 8),
+                Text(_couponError!, style: TyType.sans(12.5, color: Colors.red.shade700)),
+              ],
+              if (_discountPreview != null && _couponError == null && _discountPreview!.appliedDiscounts.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Applied: ${_discountPreview!.appliedDiscounts.map((d) => d.publicOfferTitle ?? d.title).join(', ')}',
+                  style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
+                ),
+              ],
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+        _sectionHeader('Price Breakdown'),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: _cardDeco(ty),
+          child: Builder(builder: (context) {
+            // Automatic discounts already reflect in the preview once a
+            // customer reaches this step (evaluated as soon as a coupon is
+            // applied); the authoritative amount is always recomputed
+            // server-side at booking creation regardless of what's shown here.
+            final preview = _discountPreview;
+            final hasDiscount = preview != null && _couponError == null && preview.totalDiscount > 0;
+            final subtotal = (_pkg?.price ?? 0) + itemsTotal;
+            final tax = (hasDiscount ? (subtotal - preview.totalDiscount) : subtotal) * 0.18;
+            final total = hasDiscount ? (subtotal - preview.totalDiscount) + tax : subtotal + tax;
+            return Column(
+              children: [
+                _priceRow('Package Base Price', _pkg?.price.toInt() ?? 0),
+                if (itemsTotal > 0) _priceRow('Add-ons', itemsTotal.toInt()),
+                if (hasDiscount) _priceRow('Discount', -preview.totalDiscount.toInt()),
+                _priceRow('GST (18%)', tax.toInt()),
+                const Divider(height: 24),
+                _priceRow('Total Amount', total.toInt(), bold: true),
+              ],
+            );
+          }),
         ),
       ],
     );
