@@ -84,6 +84,10 @@ class Occasion {
   final String? thumbnailUrl;
   // Raw icon URL returned by backend (icon_url field).
   final String? iconUrl;
+  // Backend field: theme_color_hex — brand/accent color for this occasion's
+  // cards, e.g. '#C8A96E'. Null for occasions not yet migrated by an admin,
+  // in which case callers should fall back to _getCategoryTint().
+  final String? themeColorHex;
 
   const Occasion({
     required this.id,
@@ -96,6 +100,7 @@ class Occasion {
     this.heroImageUrl,
     this.thumbnailUrl,
     this.iconUrl,
+    this.themeColorHex,
   });
 
   // Compatibility constructor for positional arguments (kept for existing callsites).
@@ -110,6 +115,7 @@ class Occasion {
     this.heroImageUrl,
     this.thumbnailUrl,
     this.iconUrl,
+    this.themeColorHex,
   });
 
   factory Occasion.fromJson(Map<String, dynamic> json) {
@@ -128,7 +134,19 @@ class Occasion {
       category: category,
       heroImageUrl: json['banner_url'] as String?,
       thumbnailUrl: json['thumbnail_url'] as String?,
+      themeColorHex: json['theme_color_hex'] as String?,
     );
+  }
+
+  /// Parses [themeColorHex] into a [Color], or null if absent/invalid —
+  /// callers should fall back to `context.ty.tint(o.tint)` when this is null.
+  Color? get themeColor {
+    final hex = themeColorHex;
+    if (hex == null || hex.isEmpty) return null;
+    var value = hex.replaceFirst('#', '');
+    if (value.length != 6) return null;
+    final parsed = int.tryParse(value, radix: 16);
+    return parsed != null ? Color(0xFF000000 | parsed) : null;
   }
 
   static IconData _parseIcon(String? name) {

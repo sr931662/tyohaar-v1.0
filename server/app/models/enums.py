@@ -598,6 +598,8 @@ class MediaUsage(str, enum.Enum):
     PRODUCT_IMAGE = "product_image"
     PACKAGE_IMAGE = "package_image"
     OCCASION_COVER = "occasion_cover"
+    OCCASION_ICON = "occasion_icon"
+    OCCASION_BANNER = "occasion_banner"
     VENDOR_DOCUMENT = "vendor_document"
     BANNER = "banner"
 

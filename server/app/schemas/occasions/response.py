@@ -54,6 +54,7 @@ class OccasionResponse(BaseSchema):
     icon_url: str | None = None
     banner_url: str | None = None
     thumbnail_url: str | None = None
+    theme_color_hex: str | None = None
     is_active: bool
     display_order: int
     is_featured: bool

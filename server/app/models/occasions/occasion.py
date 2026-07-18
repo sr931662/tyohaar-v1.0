@@ -164,6 +164,12 @@ class Occasion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment="Square thumbnail for grid-style browse screens",
     )
 
+    theme_color_hex: Mapped[str | None] = mapped_column(
+        String(7),
+        nullable=True,
+        comment="Brand/accent color for this occasion's cards, e.g. '#C8A96E'",
+    )
+
     # ── Discovery ─────────────────────────────────────────────────────────────
 
     display_order: Mapped[int] = mapped_column(

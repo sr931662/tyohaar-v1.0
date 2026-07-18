@@ -374,9 +374,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           childAspectRatio: 1.3,
           children: list.map((o) {
             final on = _occasion?.id == o.id;
-            final c = ty.tint(o.tint);
+            final c = o.themeColor ?? ty.tint(o.tint);
 
-            final String? networkImage = o.thumbnailUrl;
+            // Prefer the admin-uploaded Cover Image (banner_url); fall back
+            // to the Thumbnail (thumbnail_url) for occasions only carrying
+            // the older field, then to the bundled local asset, then to a
+            // flat tinted card — kept fully backward compatible so occasions
+            // that haven't been re-uploaded through the new admin form still
+            // render sensibly instead of a broken/blank card.
+            final String? networkImage = o.heroImageUrl ?? o.thumbnailUrl;
             final String? localImage = OccasionAssets.getRelatedBackground(o.name);
             final bool hasImage = networkImage != null || localImage != null;
 
@@ -430,7 +436,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                         children: [
                           Emblem(
                             icon: o.icon,
+                            imageUrl: o.iconUrl,
                             tint: hasImage ? 'white' : o.tint,
+                            tintColor: hasImage ? Colors.white : o.themeColor,
                             size: 28,
                           ),
                           const Spacer(),

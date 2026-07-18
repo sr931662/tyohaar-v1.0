@@ -7,6 +7,7 @@ resource. They are NOT ORM-mapped (no from_attributes).
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import date, time
 from decimal import Decimal
@@ -212,6 +213,10 @@ class OccasionCreate(BaseSchema):
         max_length=2048,
         description="Square card image shown in occasion grids (e.g. the customer 'Other Moments' cards).",
     )
+    theme_color_hex: str | None = Field(
+        default=None,
+        description="Brand/accent color for this occasion's cards, e.g. '#C8A96E'",
+    )
     display_order: int = Field(
         default=0,
         ge=0,
@@ -221,6 +226,15 @@ class OccasionCreate(BaseSchema):
         default=False,
         description="Whether this occasion is highlighted on the home screen",
     )
+
+    @field_validator("theme_color_hex")
+    @classmethod
+    def validate_theme_color_hex(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", v):
+            raise ValueError("theme_color_hex must be a 6-digit hex color, e.g. '#C8A96E'")
+        return v
 
 
 class GuestRSVPSubmit(BaseSchema):

@@ -12,6 +12,7 @@ import '../data/services/celebration_service.dart';
 import '../data/services/booking_service.dart';
 import '../utils/currency.dart';
 import '../widgets/avatar.dart';
+import '../widgets/emblem.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/common.dart';
@@ -512,20 +513,12 @@ class _HomeScreenState extends State<HomeScreen> {
               width: resp.w(110),
               child: Column(
                 children: [
-                  Container(
-                    width: resp.w(80),
-                    height: resp.w(80),
-                    decoration: BoxDecoration(
-                      color: ty.tint(f.tint).withOpacity(0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        f.icon,
-                        color: ty.tint(f.tint),
-                        size: resp.sp(32),
-                      ),
-                    ),
+                  Emblem(
+                    icon: f.icon,
+                    imageUrl: f.iconUrl,
+                    tint: f.tint,
+                    tintColor: f.themeColor,
+                    size: resp.w(80),
                   ),
                   SizedBox(height: resp.h(8)),
                   Text(f.name,

@@ -22,6 +22,12 @@ function UnderDevelopment({ label }) {
   );
 }
 
+const EMPTY_OCCASION_FORM = {
+  name: '', description: '', is_active: true,
+  thumbnail_url: '', icon_url: '', banner_url: '',
+  theme_color_hex: '', display_order: '0', is_featured: false,
+};
+
 const EMPTY_THEME_FORM = {
   name: '', description: '', cover_image_url: '', thumbnail_url: '',
   primary_color: '#C8A96E', secondary_color: '', accent_color: '', background_color: '',
@@ -197,7 +203,7 @@ export default function OccasionsPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [form, setForm] = useState({ name: '', description: '', is_active: true, thumbnail_url: '' });
+  const [form, setForm] = useState(EMPTY_OCCASION_FORM);
 
   const { data, isLoading } = useQuery({
     queryKey: ['occasions', { page, perPage }],
@@ -206,7 +212,14 @@ export default function OccasionsPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: (body) => editItem ? occasionsApi.update(editItem.id, body) : occasionsApi.create(body),
+    mutationFn: (body) => {
+      const payload = {
+        ...body,
+        display_order: parseInt(body.display_order, 10) || 0,
+        theme_color_hex: body.theme_color_hex || null,
+      };
+      return editItem ? occasionsApi.update(editItem.id, payload) : occasionsApi.create(payload);
+    },
     onSuccess: () => {
       toast.success(editItem ? 'Updated' : 'Created');
       qc.invalidateQueries(['occasions']);
@@ -232,6 +245,11 @@ export default function OccasionsPage() {
       description: item.description ?? '',
       is_active: item.is_active ?? true,
       thumbnail_url: item.thumbnail_url ?? '',
+      icon_url: item.icon_url ?? '',
+      banner_url: item.banner_url ?? '',
+      theme_color_hex: item.theme_color_hex ?? '',
+      display_order: String(item.display_order ?? 0),
+      is_featured: item.is_featured ?? false,
     });
     setNewOpen(true);
   };
@@ -252,7 +270,7 @@ export default function OccasionsPage() {
           <p>Manage occasion types, categories, moods, tags, and themes</p>
         </div>
         {activeTab === 'occasions' && (
-          <button className="btn btn-primary" onClick={() => { setEditItem(null); setForm({ name: '', description: '', is_active: true, thumbnail_url: '' }); setNewOpen(true); }}>
+          <button className="btn btn-primary" onClick={() => { setEditItem(null); setForm(EMPTY_OCCASION_FORM); setNewOpen(true); }}>
             + New Occasion
           </button>
         )}
@@ -322,19 +340,63 @@ export default function OccasionsPage() {
           <label className="form-label required">Name</label>
           <input className="form-control" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Birthday" />
         </div>
+        {editItem && (
+          <div className="form-group">
+            <label className="form-label">Slug</label>
+            <input className="form-control" value={editItem.slug ?? ''} disabled />
+            <div className="form-hint">Auto-generated from Name on creation. Cannot be changed (avoids breaking existing links).</div>
+          </div>
+        )}
         <div className="form-group">
           <label className="form-label">Description</label>
           <textarea className="form-control" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} />
         </div>
         <div className="form-group">
-          <label className="form-label">Card Image</label>
+          <label className="form-label">Icon</label>
+          <ImageUploadField
+            value={form.icon_url}
+            onChange={(url) => setForm(f => ({ ...f, icon_url: url }))}
+            usage="occasion_icon"
+            label="Upload"
+          />
+          <div className="form-hint">Small icon shown floating on the occasion card.</div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Cover / Background Image</label>
+          <ImageUploadField
+            value={form.banner_url}
+            onChange={(url) => setForm(f => ({ ...f, banner_url: url }))}
+            usage="occasion_banner"
+            label="Upload"
+          />
+          <div className="form-hint">Full-bleed background image for the occasion card in the customer app.</div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Thumbnail / List Image</label>
           <ImageUploadField
             value={form.thumbnail_url}
             onChange={(url) => setForm(f => ({ ...f, thumbnail_url: url }))}
             usage="occasion_cover"
             label="Upload"
           />
-          <div className="form-hint">Shown on occasion cards in the customer app (e.g. "Other Moments").</div>
+          <div className="form-hint">Square image used in admin list views and compact grids.</div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Theme Color</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="color" value={form.theme_color_hex || '#C8A96E'} onChange={e => setForm(f => ({ ...f, theme_color_hex: e.target.value }))} style={{ width: 44, height: 36, padding: 2 }} />
+            <input className="form-control" value={form.theme_color_hex} onChange={e => setForm(f => ({ ...f, theme_color_hex: e.target.value }))} placeholder="Optional, e.g. #C8A96E" />
+          </div>
+        </div>
+        <div className="form-row-2">
+          <div className="form-group">
+            <label className="form-label">Display Order</label>
+            <input className="form-control" type="number" value={form.display_order} onChange={e => setForm(f => ({ ...f, display_order: e.target.value }))} />
+          </div>
+          <div className="form-check">
+            <input type="checkbox" id="is_featured" checked={form.is_featured} onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))} />
+            <label htmlFor="is_featured">Featured (promoted on home screen)</label>
+          </div>
         </div>
         <div className="form-check">
           <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />

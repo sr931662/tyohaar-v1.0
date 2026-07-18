@@ -61,11 +61,16 @@ from app.services.occasions.validators import (
 # notes — these models exist in the DB layer but were not included in the
 # frozen schema layer v1.0. Defined here to avoid modifying frozen files.
 # ---------------------------------------------------------------------------
+import re as _re
 from datetime import datetime as _datetime
 from typing import Any as _Any
 
+from pydantic import field_validator as _field_validator
+
 from app.models.occasions.celebration_timeline import TimelineEventType as _TimelineEventType
 from app.schemas.base import BaseSchema as _BaseSchema
+
+_HEX_COLOR_RE = r"#[0-9A-Fa-f]{6}"
 
 
 class OccasionCategoryCreate(_BaseSchema):
@@ -132,8 +137,18 @@ class OccasionUpdate(_BaseSchema):
     icon_url: str | None = None
     banner_url: str | None = None
     thumbnail_url: str | None = None
+    theme_color_hex: str | None = None
     display_order: int | None = None
     is_featured: bool | None = None
+
+    @_field_validator("theme_color_hex")
+    @classmethod
+    def _validate_theme_color_hex(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not _re.fullmatch(_HEX_COLOR_RE, v):
+            raise ValueError("theme_color_hex must be a 6-digit hex color, e.g. '#C8A96E'")
+        return v
 
 
 class CelebrationTimelineCreate(_BaseSchema):
