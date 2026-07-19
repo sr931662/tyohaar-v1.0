@@ -77,6 +77,16 @@ class BookingService(BaseService):
         d = data.scheduled_date
         return datetime(d.year, d.month, d.day, t.hour, t.minute, t.second, tzinfo=timezone.utc)
 
+    async def _resolve_vendor_actor_user_id(self, uow, vendor_id: UUID) -> UUID:
+        """
+        Booking history/status tables attribute actors via users.id, while
+        vendor-facing endpoints authenticate with vendors.id.
+        """
+        vendor = await uow.vendors.vendors.get_by_id(vendor_id)
+        if vendor is None:
+            raise VendorNotAvailableError(f"Vendor {vendor_id} does not exist.")
+        return vendor.user_id
+
     async def _write_history_event(
         self,
         uow,
@@ -524,20 +534,21 @@ class BookingService(BaseService):
                     f"Vendor {vendor_id} has no assignment on booking {booking_id}."
                 )
 
+            actor_user_id = await self._resolve_vendor_actor_user_id(uow, vendor_id)
             old_status = booking.booking_status
             booking = await uow.bookings.bookings.update(
                 booking, {"booking_status": BookingStatus.IN_PROGRESS}
             )
 
             await self._write_status_history(
-                uow, booking.id, old_status, BookingStatus.IN_PROGRESS, vendor_id
+                uow, booking.id, old_status, BookingStatus.IN_PROGRESS, actor_user_id
             )
             await self._write_history_event(
                 uow,
                 booking_id=booking.id,
                 event_type=BookingEventType.STATUS_CHANGED,
                 actor_type=BookingActorType.VENDOR,
-                actor_id=vendor_id,
+                actor_id=actor_user_id,
                 event_label="Service started",
                 context_data={"new_status": BookingStatus.IN_PROGRESS.value},
             )
@@ -554,6 +565,7 @@ class BookingService(BaseService):
             booking = await validate_booking_exists(booking_id, uow)
             validate_status_transition_allowed(booking, "completed")
 
+            actor_user_id = await self._resolve_vendor_actor_user_id(uow, vendor_id)
             old_status = booking.booking_status
             now = datetime.now(tz=timezone.utc)
             booking = await uow.bookings.bookings.update(
@@ -565,14 +577,14 @@ class BookingService(BaseService):
             )
 
             await self._write_status_history(
-                uow, booking.id, old_status, BookingStatus.COMPLETED, vendor_id
+                uow, booking.id, old_status, BookingStatus.COMPLETED, actor_user_id
             )
             await self._write_history_event(
                 uow,
                 booking_id=booking.id,
                 event_type=BookingEventType.STATUS_CHANGED,
                 actor_type=BookingActorType.VENDOR,
-                actor_id=vendor_id,
+                actor_id=actor_user_id,
                 event_label="Service completed",
                 context_data={"new_status": BookingStatus.COMPLETED.value},
             )
@@ -616,6 +628,7 @@ class BookingService(BaseService):
                         f"Vendor {vendor_id} is not authorized to update PST for booking {booking_id}."
                     )
 
+            actor_user_id = await self._resolve_vendor_actor_user_id(uow, vendor_id)
             booking = await uow.bookings.bookings.update(
                 booking,
                 {
@@ -632,7 +645,7 @@ class BookingService(BaseService):
                 booking_id=booking.id,
                 event_type=BookingEventType.SCHEDULE_CHANGED,
                 actor_type=BookingActorType.VENDOR,
-                actor_id=vendor_id,
+                actor_id=actor_user_id,
                 event_label="Preparation time set",
                 description=f"Vendor set preparation start to {pretty}",
                 context_data={"preparation_start_at": pst_at.isoformat()},
