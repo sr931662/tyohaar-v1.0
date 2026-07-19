@@ -117,7 +117,8 @@ class _AccountScreenState extends State<AccountScreen> {
       displacement: topPadding,
       color: ty.saffron,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(resp.w(18), topPadding, resp.w(18), resp.h(28)),
+        padding: EdgeInsets.fromLTRB(resp.w(18), topPadding, resp.w(18),
+            resp.h(28) + MediaQuery.of(context).padding.bottom),
         children: [
           Text('Account', style: TyType.display(resp.sp(26), color: ty.ink)),
           SizedBox(height: resp.h(24)),

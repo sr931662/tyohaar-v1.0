@@ -11,6 +11,7 @@ class PackageService {
     String? occasionId,
     String? query,
     String? city,
+    bool? featured,
   }) async {
     final response = await _api.dio.get(
       'packages',
@@ -19,6 +20,7 @@ class PackageService {
         if (occasionId != null) 'occasion_id': occasionId,
         if (query != null) 'search': query,
         if (city != null) 'city': city,
+        if (featured != null) 'is_featured': featured,
         'page_size': 100, // Ensure we fetch enough packages for the initial view
       },
     );

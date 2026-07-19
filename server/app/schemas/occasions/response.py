@@ -240,6 +240,10 @@ class GuestRSVPPublicResponse(BaseSchema):
     celebration_date: date
     venue_name: str | None = None
     venue_address: str | None = None
+    theme_colors: dict | None = Field(
+        default=None,
+        description="Color palette from the celebration theme: {primary, secondary, accent, background}",
+    )
 
 
 class CelebrationChecklistResponse(BaseSchema):

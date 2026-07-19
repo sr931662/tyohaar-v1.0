@@ -10,6 +10,7 @@ import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../data/services/celebration_service.dart';
 import '../data/services/booking_service.dart';
+import '../data/services/user_service.dart';
 import '../utils/currency.dart';
 import '../widgets/avatar.dart';
 import '../widgets/emblem.dart';
@@ -17,10 +18,9 @@ import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
-import '../widgets/tutorial/tutorial_overlay.dart';
 import 'event_hub_screen.dart';
-import 'guests_screen.dart';
-import 'plan_flow/plan_flow_screen.dart';
+import 'manage_address_screen.dart';
+import 'membership_plan_screen.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
 import 'package:tyohaar/screens/invitation_management_screen.dart';
 import 'package:tyohaar/screens/occasion_detail_screen.dart';
@@ -37,8 +37,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final PackageService _packageService = PackageService();
   final CelebrationService _celebrationService = CelebrationService();
   final BookingService _bookingService = BookingService();
+  final UserService _userService = UserService();
 
-  List<Package> _bestSellers = [];
+  List<Package> _featured = [];
+  String? _cityName;
   List<Occasion> _occasions = [];
   Celebration? _activeCelebration;
   Booking? _activeBooking;
@@ -51,7 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // in flight.
   bool _isBookingLoading = false;
   String? _error;
-  final GlobalKey _quickActionsKey = GlobalKey();
 
   @override
   void initState() {
@@ -59,13 +60,43 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
+  /// The customer's city, taken from their default (or first) saved address.
+  Future<String?> _loadCity() async {
+    if (!AuthManager.instance.isAuthenticated) return null;
+    try {
+      final addresses = await _userService.getAddresses();
+      if (addresses.isEmpty) return null;
+      final address = addresses.firstWhere((a) => a.isDefault, orElse: () => addresses.first);
+      final city = address.city.trim();
+      return city.isEmpty ? null : city;
+    } catch (e) {
+      debugPrint('Error loading addresses: $e');
+      return null;
+    }
+  }
+
+  /// Featured packages, preferring the customer's city. Falls back to
+  /// unfiltered featured packages when the city yields nothing (e.g. the
+  /// free-text address city doesn't match any serviceable city slug).
+  Future<List<Package>> _loadFeatured(String? city) async {
+    try {
+      if (city != null) {
+        final slug = city.toLowerCase().replaceAll(RegExp(r'\s+'), '-');
+        final inCity = await _packageService.listPackages(featured: true, city: slug);
+        if (inCity.isNotEmpty) return inCity;
+      }
+      return await _packageService.listPackages(featured: true);
+    } catch (e) {
+      debugPrint('Error loading packages: $e');
+      return <Package>[];
+    }
+  }
+
   Future<void> _loadData() async {
     try {
+      final city = await _loadCity();
       final results = await Future.wait([
-        _packageService.listPackages().catchError((e) {
-          debugPrint('Error loading packages: $e');
-          return <Package>[];
-        }),
+        _loadFeatured(city),
         _packageService.listOccasions().catchError((e) {
           debugPrint('Error loading occasions: $e');
           return <Occasion>[];
@@ -77,7 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ]);
 
       setState(() {
-        _bestSellers = results[0] as List<Package>;
+        _cityName = city;
+        _featured = results[0] as List<Package>;
         _occasions = results[1] as List<Occasion>;
         final celebrations = results[2] as List<Celebration>;
         if (celebrations.isNotEmpty) {
@@ -89,16 +121,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         _isLoading = false;
         _error = null;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        TutorialOverlay.show(context, screenKey: 'home', steps: [
-          TutorialStep(
-            targetKey: _quickActionsKey,
-            title: 'Everything for your event',
-            description: 'Manage guests and view your plans right from here.',
-          ),
-        ]);
       });
     } catch (e) {
       if (mounted) setState(() { _error = 'Could not load home data.'; _isLoading = false; });
@@ -174,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
       color: ty.saffron,
       child: ListView(
         controller: widget.scrollController,
-        padding: EdgeInsets.zero,
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         children: [
         _buildHeroCard(context, pct, totalGuests, pendingTasks.length),
 
@@ -183,22 +205,17 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_bestSellers.isNotEmpty) ...[
-                SectionHeader('Best Selling Packages'),
-                _packageRail(context, _bestSellers),
+              if (_featured.isNotEmpty) ...[
+                _featuredHeader(context),
+                _packageRail(context, _featured),
                 SizedBox(height: resp.h(12)),
               ],
 
-              Row(
-                key: _quickActionsKey,
-                children: [
-                  _quickAction(context, Icons.group_outlined, 'Guests', ty.saffron,
-                      () => _push(context, GuestsScreen(celebrationId: _activeCelebration?.id), authAction: 'manage guests')),
-                  _quickAction(context, Icons.checklist_rounded, 'My Plans', ty.gold,
-                      () => _push(context, const PlanFlowScreen(startStep: 4), authAction: 'view your plans')),
-                ],
-              ),
-              SizedBox(height: resp.h(12)),
+              if (_occasions.isNotEmpty) ...[
+                SectionHeader('Browse by Occasion'),
+                _festivalRail(context, _occasions),
+                SizedBox(height: resp.h(12)),
+              ],
 
               _taskRow(
                 context,
@@ -400,7 +417,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _membershipBanner(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
-    return Container(
+    return GestureDetector(
+      onTap: () => _push(context, const MembershipPlanScreen(), authAction: 'view membership plans'),
+      child: Container(
       padding: EdgeInsets.all(resp.w(20)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -442,6 +461,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w700)),
           ),
         ],
+      ),
       ),
     );
   }
@@ -604,37 +624,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _quickAction(
-      BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
-    final ty = context.ty;
-    final resp = context.resp;
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: resp.w(4.5)),
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: EdgeInsets.fromLTRB(resp.w(6), resp.h(14), resp.w(6), resp.h(11)),
-            decoration: _cardDecoration(ty, resp),
-            child: Column(
-              children: [
-                Container(
-                  width: resp.w(38),
-                  height: resp.w(38),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.14),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: color, size: resp.w(20)),
-                ),
-                SizedBox(height: resp.h(7)),
-                Text(label,
-                    style: TyType.sans(resp.sp(11.5), color: ty.ink, weight: FontWeight.w700)),
-              ],
-            ),
-          ),
-        ),
-      ),
+  /// "Featured Packages in `<city>`" when the customer's address city is
+  /// known; otherwise "near you" with a "Set city" action that opens the
+  /// address flow (home reloads on return via [_push]).
+  Widget _featuredHeader(BuildContext context) {
+    final canSetCity = _cityName == null && AuthManager.instance.isAuthenticated;
+    return SectionHeader(
+      _cityName != null
+          ? 'Featured Packages in $_cityName'
+          : 'Featured Packages near you',
+      action: canSetCity ? 'Set city' : null,
+      onAction: canSetCity
+          ? () => _push(context, const ManageAddressScreen(), authAction: 'manage your address')
+          : null,
     );
   }
 

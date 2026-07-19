@@ -73,7 +73,8 @@ class _PlansScreenState extends State<PlansScreen> {
       displacement: topPadding,
       color: ty.saffron,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(resp.w(18), topPadding, resp.w(18), resp.h(28)),
+        padding: EdgeInsets.fromLTRB(resp.w(18), topPadding, resp.w(18),
+            resp.h(28) + MediaQuery.of(context).padding.bottom),
         children: [
           Row(
             children: [

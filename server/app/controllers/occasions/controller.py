@@ -348,21 +348,57 @@ async def get_guest_rsvp_page(token: str):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>You're Invited — Tyohaar</title>
 <style>
-  :root { color-scheme: light; }
+  :root {
+    --primary: #F97316;
+    --secondary: #FFF0DE;
+    --background: #FFF8F0;
+    --text: #1A1A1A;
+    --card-bg: #ffffff;
+    color-scheme: light;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-         background: #FFF8F0; margin: 0; padding: 24px 16px; color: #1A1A1A; }
-  .card { max-width: 420px; margin: 0 auto; background: #fff; border-radius: 24px;
-          padding: 28px 22px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
-  .eyebrow { font-size: 11px; letter-spacing: 1.5px; color: #F97316; font-weight: 700; text-transform: uppercase; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--background);
+    margin: 0;
+    padding: 24px 16px;
+    color: var(--text);
+    transition: background 0.3s ease;
+  }
+  .card {
+    max-width: 420px;
+    margin: 0 auto;
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 28px 22px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+  }
+  .eyebrow { font-size: 11px; letter-spacing: 1.5px; color: var(--primary); font-weight: 700; text-transform: uppercase; }
   h1 { font-size: 22px; margin: 8px 0 4px; }
   .meta { color: #666; font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
-  .status { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px;
-            font-weight: 700; background: #FFF0DE; color: #F97316; margin-bottom: 16px; }
+  .status {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--secondary);
+    color: var(--primary);
+    margin-bottom: 16px;
+  }
   .btns { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
-  button { padding: 14px; border-radius: 14px; border: 1.5px solid #eee; background: #fff;
-           font-size: 15px; font-weight: 700; cursor: pointer; }
-  button.primary { background: #F97316; color: #fff; border: none; }
+  button {
+    padding: 14px;
+    border-radius: 14px;
+    border: 1.5px solid #eee;
+    background: var(--card-bg);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  button.primary { background: var(--primary); color: #fff; border: none; }
+  button:active { transform: scale(0.98); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .note { font-size: 13px; color: #999; margin-top: 18px; text-align: center; }
   .error { color: #E11D48; font-size: 14px; }
@@ -380,7 +416,20 @@ async def get_guest_rsvp_page(token: str):
         const res = await fetch(apiBase);
         const body = await res.json();
         if (!res.ok) throw new Error(body.message || 'This invite link is invalid or has expired.');
-        render(body.data);
+
+        const data = body.data;
+        if (data.theme_colors) {
+          const root = document.documentElement;
+          if (data.theme_colors.primary) root.style.setProperty('--primary', data.theme_colors.primary);
+          if (data.theme_colors.secondary) root.style.setProperty('--secondary', data.theme_colors.secondary);
+          if (data.theme_colors.background) root.style.setProperty('--background', data.theme_colors.background);
+          // Auto-generate a lighter secondary if not provided
+          if (data.theme_colors.primary && !data.theme_colors.secondary) {
+            root.style.setProperty('--secondary', data.theme_colors.primary + '20'); // 12% opacity
+          }
+        }
+
+        render(data);
       } catch (e) {
         document.getElementById('app').innerHTML = '<p class="error">' + e.message + '</p>';
       }
@@ -407,6 +456,8 @@ async def get_guest_rsvp_page(token: str):
     }
 
     async function submitRsvp(status) {
+      const btns = document.querySelectorAll('button');
+      btns.forEach(b => b.disabled = true);
       try {
         const res = await fetch(apiBase, {
           method: 'POST',
@@ -418,6 +469,7 @@ async def get_guest_rsvp_page(token: str):
         document.getElementById('app').innerHTML = '<div class="thanks"><h1>Thanks!</h1><p class="meta">Your response has been recorded.</p></div>';
       } catch (e) {
         alert(e.message);
+        btns.forEach(b => b.disabled = false);
       }
     }
 

@@ -469,7 +469,12 @@ class PaymentService(BaseService):
 
                     booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
                     if booking is not None:
-                        await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.COMPLETED})
+                        updates = {"payment_status": PaymentStatus.COMPLETED}
+                        # Auto-confirm booking if it was PENDING
+                        if booking.booking_status == BookingStatus.PENDING:
+                            updates["booking_status"] = BookingStatus.CONFIRMED
+                            updates["confirmed_at"] = now
+                        await uow.bookings.bookings.update(booking, updates)
 
                     payment_outcome = (payment.payer_id, True, payment.payment_number, payment.final_amount)
                     referral_trigger = (payment.payer_id, payment.final_amount, payment.booking_id)
@@ -595,7 +600,12 @@ class PaymentService(BaseService):
 
             booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
             if booking is not None:
-                await uow.bookings.bookings.update(booking, {"payment_status": PaymentStatus.COMPLETED})
+                updates = {"payment_status": PaymentStatus.COMPLETED}
+                # Auto-confirm booking if it was PENDING
+                if booking.booking_status == BookingStatus.PENDING:
+                    updates["booking_status"] = BookingStatus.CONFIRMED
+                    updates["confirmed_at"] = now
+                await uow.bookings.bookings.update(booking, updates)
 
             payer_id = payment.payer_id
             payment_number = payment.payment_number

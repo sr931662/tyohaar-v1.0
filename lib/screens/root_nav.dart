@@ -1,12 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/theme_controller.dart';
 import '../theme/responsive.dart';
-import '../data/app_state.dart';
 import '../data/auth_manager.dart';
 import '../data/models.dart';
 import '../data/services/user_service.dart';
@@ -114,6 +114,11 @@ class _RootNavState extends State<RootNav> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
+      // Content flows under the floating dock so the gaps around it show
+      // the page behind; each tab's scroll view adds bottom clearance
+      // (MediaQuery.padding.bottom includes the navbar height) so nothing
+      // ends up permanently hidden behind the bar.
+      extendBody: true,
       drawer: _AppSidebar(
         user: AuthManager.instance.currentUser,
         onNavigate: (i) {
@@ -489,47 +494,157 @@ class _BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
-    return Container(
-      decoration: BoxDecoration(
-        color: ty.paper.withOpacity(0.96),
-        border: Border(top: BorderSide(color: ty.line2)),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        resp.w(14),
+        0,
+        resp.w(14),
+        MediaQuery.of(context).padding.bottom + resp.h(10),
       ),
-      padding: EdgeInsets.only(
-        top: resp.h(8),
-        bottom: MediaQuery.of(context).padding.bottom + resp.h(8),
-      ),
-      child: Row(
-        children: [
-          _navItem(context, 0, Icons.home_outlined, Icons.home_rounded, 'Home'),
-          _navItem(context, 1, Icons.event_note_outlined, Icons.event_note_rounded, 'Plans'),
-          Expanded(child: _centerButton(context)),
-          _navItem(context, 2, Icons.storefront_outlined, Icons.storefront_rounded, 'Packages'),
-          _navItem(context, 3, Icons.person_outline_rounded, Icons.person_rounded, 'Account'),
-        ],
+      child: Container(
+            height: resp.h(72),
+            decoration: BoxDecoration(
+              color: ty.surface,
+              borderRadius: BorderRadius.circular(resp.w(28)),
+              border: Border.all(color: ty.line2),
+              boxShadow: [
+                BoxShadow(
+                  color: ty.isDark ? Colors.black.withOpacity(0.35) : ty.ink.withOpacity(0.08),
+                  blurRadius: resp.w(20),
+                  offset: Offset(0, resp.h(8)),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                _DockItem(
+                  selected: index == 0,
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home_rounded,
+                  label: 'Home',
+                  onTap: () => onTap(0),
+                ),
+                _DockItem(
+                  selected: index == 1,
+                  icon: Icons.event_note_outlined,
+                  activeIcon: Icons.event_note_rounded,
+                  label: 'Plans',
+                  onTap: () => onTap(1),
+                ),
+                SizedBox(
+                  width: resp.w(72),
+                  child: Center(child: _CenterButton(onTap: onCreate)),
+                ),
+                _DockItem(
+                  selected: index == 2,
+                  icon: Icons.storefront_outlined,
+                  activeIcon: Icons.storefront_rounded,
+                  label: 'Packages',
+                  onTap: () => onTap(2),
+                ),
+                _DockItem(
+                  selected: index == 3,
+                  icon: Icons.person_outline_rounded,
+                  activeIcon: Icons.person_rounded,
+                  label: 'Account',
+                  onTap: () => onTap(3),
+                ),
+              ],
+            ),
       ),
     );
   }
+}
 
-  Widget _navItem(BuildContext context, int i, IconData icon, IconData active, String label) {
+/// A single dock destination: icon over an always-visible label, with a
+/// "diya glow" halo, gentle icon lift, and a marigold dot when active.
+/// Fixed column layout — nothing expands horizontally, so long labels
+/// simply ellipsize instead of wrapping.
+class _DockItem extends StatelessWidget {
+  final bool selected;
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _DockItem({
+    required this.selected,
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
-    final selected = index == i;
-    final color = selected ? ty.saffron : ty.ink3;
+    final activeColor = ty.isDark ? ty.saffron : ty.saffronDeep;
+    final color = selected ? activeColor : ty.ink3;
+
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => onTap(i),
+        onTap: () {
+          if (!selected) HapticFeedback.selectionClick();
+          onTap();
+        },
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(selected ? active : icon, color: color, size: resp.sp(24)),
-            SizedBox(height: resp.h(4)),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: resp.sp(10.5),
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                color: color,
+            SizedBox(
+              height: resp.h(30),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Diya glow halo behind the active icon.
+                  AnimatedScale(
+                    scale: selected ? 1.0 : 0.4,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      opacity: selected ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 350),
+                      child: Container(
+                        width: resp.w(40),
+                        height: resp.w(40),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              ty.saffron.withOpacity(0.28),
+                              ty.saffron.withOpacity(0.0),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  AnimatedSlide(
+                    offset: selected ? Offset(0, resp.h(-3) / resp.h(30)) : Offset.zero,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    child: Icon(
+                      selected ? activeIcon : icon,
+                      size: resp.sp(22),
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: resp.w(2)),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: resp.sp(9.5),
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: color,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
           ],
@@ -537,29 +652,81 @@ class _BottomBar extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _centerButton(BuildContext context) {
+/// The raised "Start a celebration" button — a warm gradient disc with a
+/// slow breathing glow so it keeps drawing the eye without being loud.
+class _CenterButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _CenterButton({required this.onTap});
+
+  @override
+  State<_CenterButton> createState() => _CenterButtonState();
+}
+
+class _CenterButtonState extends State<_CenterButton> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2000),
+  )..repeat(reverse: true);
+  bool _pressed = false;
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
     return GestureDetector(
-      onTap: onCreate,
-      child: Transform.translate(
-        offset: Offset(0, resp.h(-12)),
-        child: Container(
-          width: resp.w(56),
-          height: resp.w(56),
-          decoration: BoxDecoration(
-            color: ty.saffron,
-            borderRadius: BorderRadius.circular(resp.w(20)),
-            boxShadow: [
-              BoxShadow(
-                color: ty.saffron.withOpacity(0.55),
-                blurRadius: resp.w(22),
-                offset: Offset(0, resp.h(8)),
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        widget.onTap();
+      },
+      child: AnimatedBuilder(
+        animation: _pulse,
+        builder: (context, child) {
+          final glow = 0.35 + (_pulse.value * 0.25);
+          return Container(
+            width: resp.w(60),
+            height: resp.w(60),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: ty.saffron.withOpacity(glow),
+                  blurRadius: resp.w(24 + _pulse.value * 8),
+                  spreadRadius: resp.w(1 + _pulse.value * 2),
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        child: AnimatedScale(
+          scale: _pressed ? 0.92 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: Container(
+            width: resp.w(50),
+            height: resp.w(50),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [ty.saffron, ty.gold],
               ),
-            ],
+            ),
+            child: Icon(Icons.add_rounded, color: ty.onPrimary, size: resp.sp(26)),
           ),
-          child: Icon(Icons.add_rounded, color: ty.onPrimary, size: resp.sp(30)),
         ),
       ),
     );

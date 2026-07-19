@@ -610,6 +610,12 @@ class OccasionService(BaseService):
 
             can_still_respond = date.today() < celebration.celebration_date
 
+            theme_colors = None
+            if celebration.theme_id:
+                theme = await uow.occasions.themes.get_by_id(celebration.theme_id)
+                if theme:
+                    theme_colors = theme.colors
+
             return GuestRSVPPublicResponse(
                 guest_name=guest.name,
                 rsvp_status=guest.rsvp_status,
@@ -618,6 +624,7 @@ class OccasionService(BaseService):
                 celebration_date=celebration.celebration_date,
                 venue_name=celebration.venue_name,
                 venue_address=celebration.venue_address,
+                theme_colors=theme_colors,
             )
 
     async def submit_guest_rsvp(self, token: str, data: GuestRSVPSubmit) -> GuestRSVPPublicResponse:

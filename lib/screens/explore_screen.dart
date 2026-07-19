@@ -376,7 +376,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
 
     return ListView.builder(
-      padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), resp.h(28)),
+      padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18),
+          resp.h(28) + MediaQuery.of(context).padding.bottom),
       itemCount: rows.length,
       itemBuilder: (_, i) => rows[i](),
     );
