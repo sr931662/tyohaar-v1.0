@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ssl
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -36,13 +37,24 @@ _db_url, _connect_args = _build_engine_args(settings.DATABASE_URL)
 engine = create_async_engine(
     _db_url,
     echo=False,
-    connect_args=_connect_args,
-    # Cloud SQL closes idle connections and Cloud Run pauses/recycles
-    # instances, so pooled connections go stale between requests. Without
-    # this, the pool hands out a dead connection and asyncpg raises
-    # "connection is closed" → 503. pre_ping validates (and transparently
-    # replaces) a connection before each use; recycle proactively retires
-    # connections older than the idle window.
+    connect_args={
+        **_connect_args,
+        # Neon's pooled endpoints (and any PgBouncer in transaction mode)
+        # multiplex client connections across backend connections, which
+        # breaks asyncpg's cached named prepared statements — a statement
+        # prepared on one backend is executed on another, failing mid-flush
+        # and killing the connection (503 "database error"). The documented
+        # SQLAlchemy recipe: disable both statement caches and give every
+        # prepared statement a unique name. Harmless (slightly slower) on
+        # direct, non-pooled connections.
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
+    },
+    # Managed Postgres closes idle connections and Cloud Run pauses/recycles
+    # instances, so pooled connections go stale between requests. pre_ping
+    # validates (and transparently replaces) a connection before each use;
+    # recycle proactively retires connections older than the idle window.
     pool_pre_ping=True,
     pool_recycle=1800,
 )
