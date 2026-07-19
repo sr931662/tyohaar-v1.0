@@ -37,6 +37,14 @@ engine = create_async_engine(
     _db_url,
     echo=False,
     connect_args=_connect_args,
+    # Cloud SQL closes idle connections and Cloud Run pauses/recycles
+    # instances, so pooled connections go stale between requests. Without
+    # this, the pool hands out a dead connection and asyncpg raises
+    # "connection is closed" → 503. pre_ping validates (and transparently
+    # replaces) a connection before each use; recycle proactively retires
+    # connections older than the idle window.
+    pool_pre_ping=True,
+    pool_recycle=1800,
 )
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
