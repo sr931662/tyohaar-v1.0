@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
@@ -61,6 +62,8 @@ from app.services.bookings.validators import (
     validate_status_transition_allowed,
     validate_vendor_availability_for_booking,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class BookingService(BaseService):
@@ -419,14 +422,36 @@ class BookingService(BaseService):
         limit: int,
     ) -> CursorPage[BookingResponse]:
         async with self._uow() as uow:
-            # Derive bookings assigned to this vendor via assignments
+            # A vendor's bookings come from two sources, unioned:
+            #  1. Explicit per-item assignments (multi-vendor bookings).
+            #  2. Bookings whose package this vendor owns (the common
+            #     single-vendor case) — these never get an assignment row at
+            #     creation, so without this they'd never surface here.
+            from app.models.packages.package import Package
+
             assignments = await uow.bookings.assignments.find_by_vendor(vendor_id, limit=1000)
-            booking_ids = list({a.booking_id for a in assignments})
-            if not booking_ids:
+            booking_ids = {a.booking_id for a in assignments}
+
+            owned_packages = await uow.packages.packages.find_many(
+                Package.vendor_id == vendor_id
+            )
+            owned_package_ids = [p.id for p in owned_packages]
+
+            conditions = []
+            if booking_ids:
+                conditions.append(uow.bookings.bookings._model.id.in_(booking_ids))
+            if owned_package_ids:
+                conditions.append(
+                    uow.bookings.bookings._model.package_id.in_(owned_package_ids)
+                )
+
+            if not conditions:
                 return CursorPage(items=[], next_cursor=None, has_more=False)
 
+            from sqlalchemy import or_
+
             page = await uow.bookings.bookings.cursor_paginate(
-                uow.bookings.bookings._model.id.in_(booking_ids),
+                or_(*conditions) if len(conditions) > 1 else conditions[0],
                 cursor=cursor,
                 limit=limit,
             )
@@ -564,11 +589,13 @@ class BookingService(BaseService):
         self,
         booking_id: UUID,
         vendor_id: UUID,
-        pst_time: time,
+        pst_at: datetime,
     ) -> BookingResponse:
         """
-        Allows a vendor to set the Preparation Starting Time [PST] for a booking
-        they are assigned to.
+        Allows a vendor to set the Preparation Starting Time [PST] — the full
+        date + time they will arrive and begin preparation — for a booking they
+        are assigned to (or whose package they own). Notifies the customer on
+        all channels (in-app, email, push) once saved.
         """
         async with self._uow() as uow:
             booking = await validate_booking_exists(booking_id, uow)
@@ -591,9 +618,15 @@ class BookingService(BaseService):
 
             booking = await uow.bookings.bookings.update(
                 booking,
-                {"preparation_start_time": pst_time},
+                {
+                    "preparation_start_at": pst_at,
+                    # Mirror the time component into the legacy column so older
+                    # readers of preparation_start_time keep working.
+                    "preparation_start_time": pst_at.time(),
+                },
             )
 
+            pretty = pst_at.strftime("%d %b %Y, %I:%M %p")
             await self._write_history_event(
                 uow,
                 booking_id=booking.id,
@@ -601,12 +634,68 @@ class BookingService(BaseService):
                 actor_type=BookingActorType.VENDOR,
                 actor_id=vendor_id,
                 event_label="Preparation time set",
-                description=f"Vendor set PST to {pst_time.strftime('%H:%M')}",
-                context_data={"pst": pst_time.strftime("%H:%M")},
+                description=f"Vendor set preparation start to {pretty}",
+                context_data={"preparation_start_at": pst_at.isoformat()},
             )
 
+            customer_id = booking.customer_id
+            booking_number = booking.booking_number
             await uow.commit()
-            return BookingResponse.model_validate(booking)
+
+        await self._notify_customer_pst(customer_id, booking_id, booking_number, pst_at)
+        return BookingResponse.model_validate(booking)
+
+    async def _notify_customer_pst(
+        self,
+        customer_id: UUID,
+        booking_id: UUID,
+        booking_number: str,
+        pst_at: datetime,
+    ) -> None:
+        """
+        Tell the customer their vendor has scheduled a preparation start time,
+        fanning out across every channel: IN_APP (notification screen), EMAIL,
+        and PUSH (device status bar). Email/push are best-effort and no-op
+        silently until SMTP / Firebase credentials are configured.
+        """
+        from app.models.enums import NotificationChannel, NotificationType
+        from app.schemas.notifications.create import NotificationCreate
+        from app.services.notifications.service import NotificationService
+
+        pretty = pst_at.strftime("%d %b %Y at %I:%M %p")
+        title = "Preparation time scheduled"
+        body = (
+            f"Your vendor for booking {booking_number} will begin preparation "
+            f"on {pretty}."
+        )
+        action_url = f"/bookings/{booking_id}"
+        service = NotificationService()
+        for channel in (
+            NotificationChannel.IN_APP,
+            NotificationChannel.EMAIL,
+            NotificationChannel.PUSH,
+        ):
+            try:
+                await service.send_notification(
+                    user_id=customer_id,
+                    data=NotificationCreate(
+                        user_id=customer_id,
+                        notification_type=NotificationType.BOOKING_UPDATED,
+                        channel=channel,
+                        title=title,
+                        body=body,
+                        action_url=action_url,
+                        reference_type="booking",
+                        reference_id=booking_id,
+                    ),
+                )
+            except Exception:
+                # One channel failing (e.g. transient FCM/SMTP error) must not
+                # block the others or fail the PST update itself.
+                logger.exception(
+                    "PST notification failed on channel %s for booking %s",
+                    channel, booking_id,
+                )
 
     async def notify_vendor_if_confirmed_and_paid(self, booking_id: UUID) -> None:
         """

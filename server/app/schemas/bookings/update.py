@@ -34,11 +34,12 @@ __all__ = [
 class BookingPSTUpdate(BaseSchema):
     """
     Vendor-submitted payload for providing the Preparation Starting Time [PST]
-    for a confirmed booking.
+    for a confirmed booking — the full date + time the vendor will arrive and
+    begin preparation at the customer's event location.
     """
 
-    preparation_start_time: time = Field(
-        description="The time the vendor will arrive/start preparation at the location"
+    preparation_start_at: datetime = Field(
+        description="Date + time the vendor will arrive/start preparation at the location"
     )
 
 

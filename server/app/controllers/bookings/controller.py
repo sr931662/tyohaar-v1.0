@@ -177,7 +177,7 @@ async def update_pst(
     result = await service.update_pst(
         booking_id=booking_id,
         vendor_id=vendor_id,
-        pst_time=body.preparation_start_time,
+        pst_at=body.preparation_start_at,
     )
     return SuccessResponse(data=result, message="Preparation Starting Time updated.")
 

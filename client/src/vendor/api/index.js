@@ -171,8 +171,8 @@ export const vendorBookingsApi = {
     vendorClient.post(`/bookings/${bookingId}/start`).then(extractData),
   complete: (bookingId) =>
     vendorClient.post(`/bookings/${bookingId}/complete`).then(extractData),
-  setPst: (bookingId, preparation_start_time) =>
-    vendorClient.patch(`/bookings/${bookingId}/pst`, { preparation_start_time }).then(extractData),
+  setPst: (bookingId, preparation_start_at) =>
+    vendorClient.patch(`/bookings/${bookingId}/pst`, { preparation_start_at }).then(extractData),
   history: (bookingId) =>
     vendorClient.get(`/bookings/${bookingId}/history`).then(extractList),
   statusHistory: (bookingId) =>

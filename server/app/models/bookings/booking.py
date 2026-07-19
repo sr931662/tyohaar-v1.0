@@ -257,7 +257,15 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
     preparation_start_time: Mapped[time | None] = mapped_column(
         Time,
         nullable=True,
-        comment="Preparation Starting Time [PST] provided by the vendor",
+        comment="Preparation Starting Time [PST] provided by the vendor "
+                "(legacy time-only mirror of preparation_start_at)",
+    )
+
+    preparation_start_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Full date + time at which the vendor will arrive/start "
+                "preparation at the customer's event location (PST)",
     )
 
     # ── Important Timestamps ──────────────────────────────────────────────────

@@ -485,6 +485,8 @@ class Booking {
   final String? cancellationReason;
   final DateTime? confirmedAt;
   final DateTime? completedAt;
+  // Vendor-provided preparation start date + time (PST), null until set.
+  final DateTime? preparationStartAt;
   final DateTime createdAt;
 
   Booking({
@@ -505,6 +507,7 @@ class Booking {
     this.cancellationReason,
     this.confirmedAt,
     this.completedAt,
+    this.preparationStartAt,
     required this.createdAt,
   });
 
@@ -530,6 +533,9 @@ class Booking {
           : null,
       completedAt: json['completed_at'] != null
           ? DateTime.tryParse(json['completed_at'] as String)
+          : null,
+      preparationStartAt: json['preparation_start_at'] != null
+          ? DateTime.tryParse(json['preparation_start_at'] as String)
           : null,
       createdAt: DateTime.parse(json['created_at']),
     );

@@ -28,6 +28,15 @@ function Row({ label, value }) {
 
 const TAB_LABELS = ['Overview', 'Items', 'History'];
 
+// ISO datetime → "YYYY-MM-DDTHH:mm" in local time for <input type="datetime-local">.
+function toLocalInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function VendorBookingDetailPage() {
   const { bookingId } = useParams();
   const navigate = useNavigate();
@@ -70,9 +79,10 @@ export default function VendorBookingDetailPage() {
   });
 
   const setPstMutation = useMutation({
-    mutationFn: () => vendorBookingsApi.setPst(bookingId, `${pstValue}:00`),
-    onSuccess: () => { toast.success('Preparation Starting Time saved'); invalidate(); setPstModalOpen(false); },
-    onError: (err) => toast.error(err?.response?.data?.error?.message ?? 'Failed to save PST'),
+    // datetime-local yields "YYYY-MM-DDTHH:mm"; send full ISO datetime.
+    mutationFn: () => vendorBookingsApi.setPst(bookingId, new Date(pstValue).toISOString()),
+    onSuccess: () => { toast.success('Preparation start time saved'); invalidate(); setPstModalOpen(false); },
+    onError: (err) => toast.error(err?.response?.data?.error?.message ?? 'Failed to save preparation time'),
   });
 
   if (isLoading) return (
@@ -118,9 +128,9 @@ export default function VendorBookingDetailPage() {
           {b.booking_status === 'confirmed' && (
             <button
               className="btn btn-secondary"
-              onClick={() => { setPstValue(b.preparation_start_time ? b.preparation_start_time.slice(0, 5) : ''); setPstModalOpen(true); }}
+              onClick={() => { setPstValue(toLocalInput(b.preparation_start_at)); setPstModalOpen(true); }}
             >
-              {b.preparation_start_time ? 'Update PST' : 'Set PST'}
+              {b.preparation_start_at ? 'Update Prep Time' : 'Set Prep Time'}
             </button>
           )}
           {b.booking_status === 'confirmed' && (
@@ -168,7 +178,7 @@ export default function VendorBookingDetailPage() {
               <Row label="Scheduled Date" value={b.scheduled_date ? formatDate(b.scheduled_date) : null} />
               <Row label="Start Time" value={b.scheduled_start_time} />
               <Row label="End Time" value={b.scheduled_end_time} />
-              <Row label="Preparation Start Time (PST)" value={b.preparation_start_time} />
+              <Row label="Preparation Start" value={b.preparation_start_at ? formatDateTime(b.preparation_start_at) : null} />
               <Row label="Special Instructions" value={b.special_instructions} />
             </Section>
           </div>
@@ -307,7 +317,7 @@ export default function VendorBookingDetailPage() {
       <Modal
         open={pstModalOpen}
         onClose={() => setPstModalOpen(false)}
-        title="Preparation Starting Time"
+        title="Preparation Start Date & Time"
         footer={
           <>
             <button className="btn btn-secondary" onClick={() => setPstModalOpen(false)}>Cancel</button>
@@ -322,10 +332,10 @@ export default function VendorBookingDetailPage() {
         }
       >
         <p style={{ color: 'var(--text-secondary)', marginBottom: 12 }}>
-          Set the time you'll arrive and begin preparation at the customer's event location.
+          Set the date and time you'll arrive and begin preparation at the customer's event location. The customer is notified by email, in-app and push once you save.
         </p>
         <input
-          type="time"
+          type="datetime-local"
           className="form-control"
           value={pstValue}
           onChange={(e) => setPstValue(e.target.value)}

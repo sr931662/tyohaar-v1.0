@@ -107,7 +107,8 @@ class BookingResponse(BaseSchema):
     total_amount: MoneyAmount
     amount_paid: MoneyAmount
     amount_due: MoneyAmount
-    preparation_start_time: time | None = Field(default=None, description="PST [Preparation Starting Time] provided by the vendor")
+    preparation_start_time: time | None = Field(default=None, description="Legacy time-only mirror of preparation_start_at")
+    preparation_start_at: datetime | None = Field(default=None, description="PST [Preparation Starting Time] — full date + time provided by the vendor")
     # Lifecycle timestamps
     confirmed_at: datetime | None
     completed_at: datetime | None

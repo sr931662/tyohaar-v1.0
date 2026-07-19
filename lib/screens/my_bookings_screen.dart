@@ -187,6 +187,22 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       Text(b.packageName ?? 'Custom Booking', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
                       const SizedBox(height: 2),
                       Text(dateStr, style: TyType.sans(12, color: ty.ink2)),
+                      if (b.preparationStartAt != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.schedule_rounded, size: 13, color: ty.saffronDeep),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Prep starts ${DateFormat('dd MMM, h:mm a').format(b.preparationStartAt!.toLocal())}',
+                                style: TyType.sans(11.5, color: ty.saffronDeep, weight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
