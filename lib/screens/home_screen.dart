@@ -383,26 +383,36 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TyType.eyebrow(resp.sp(11.5), color: Colors.white.withOpacity(0.7))),
                   SizedBox(height: resp.h(12)),
                   Row(children: [
-                    TyPill(displayLabel),
+                    Flexible(child: TyPill(displayLabel)),
                     SizedBox(width: resp.w(8)),
                     if (statusLabel != null)
-                      TyPill(statusLabel, background: statusColor, foreground: Colors.white),
+                      Flexible(
+                          child: TyPill(statusLabel,
+                              background: statusColor,
+                              foreground: Colors.white)),
                   ]),
                   SizedBox(height: resp.h(14)),
-                  Text(title, style: TyType.display(resp.sp(34), color: Colors.white)),
+                  Text(title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TyType.display(resp.sp(34), color: Colors.white)),
                   SizedBox(height: resp.h(6)),
                   Row(children: [
                     Icon(Icons.event, size: resp.sp(15), color: Colors.white70),
                     SizedBox(width: resp.w(6)),
-                    Text('$date · $location',
-                        style: TyType.sans(resp.sp(14), color: Colors.white70)),
+                    Expanded(
+                      child: Text('$date · $location',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TyType.sans(resp.sp(14), color: Colors.white70)),
+                    ),
                   ]),
                   SizedBox(height: resp.h(20)),
                   Row(
                     children: [
                       _stackedAvatars(context, _guests, totalGuests),
                       const Spacer(),
-                      _progressChip(context, pct, pendingTaskCount),
+                      Flexible(child: _progressChip(context, pct, pendingTaskCount)),
                     ],
                   ),
                 ],

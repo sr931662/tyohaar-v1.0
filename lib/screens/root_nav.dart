@@ -276,6 +276,8 @@ class _StickyHeader extends StatelessWidget {
                 SizedBox(height: resp.h(1)),
                 Text(
                   'Namaste, ${user?.firstName ?? user?.displayName.split(' ').first ?? 'there'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TyType.display(resp.sp(22), color: foregroundColor),
                 ),
               ],
