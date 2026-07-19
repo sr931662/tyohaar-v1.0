@@ -184,6 +184,13 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    cover_image_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="Item's cover/thumbnail image, shown on item rows and as the "
+                "first slide of its gallery (mirrors Package.cover_image_url)",
+    )
+
     # ── Vendor Logistics ──────────────────────────────────────────────────────
 
     prep_time_minutes: Mapped[int | None] = mapped_column(

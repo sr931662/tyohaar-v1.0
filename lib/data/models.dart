@@ -402,6 +402,8 @@ class PackageItem {
   final bool isMandatory;
   final bool isCustomizable;
   final String? iconUrl;
+  // Item's cover/thumbnail image (mirrors Package.coverImageUrl).
+  final String? coverImageUrl;
   final List<String> imageUrls;
   final int displayOrder;
 
@@ -417,6 +419,7 @@ class PackageItem {
     required this.isMandatory,
     this.isCustomizable = false,
     this.iconUrl,
+    this.coverImageUrl,
     this.imageUrls = const [],
     this.displayOrder = 0,
   });
@@ -424,6 +427,13 @@ class PackageItem {
   /// Whether the customer can select more than the template default —
   /// true whenever maxQuantity is null (uncapped) or greater than quantity.
   bool get isQuantityAdjustable => maxQuantity == null || maxQuantity! > quantity;
+
+  /// Cover first, then gallery images deduped against it — the list a
+  /// gallery viewer should page through.
+  List<String> get allImageUrls => [
+        if (coverImageUrl != null && coverImageUrl!.isNotEmpty) coverImageUrl!,
+        ...imageUrls.where((u) => u != coverImageUrl),
+      ];
 
   factory PackageItem.fromJson(Map<String, dynamic> json) {
     final isMandatory = json['is_mandatory'] as bool? ?? true;
@@ -442,6 +452,7 @@ class PackageItem {
       isOptional: !isMandatory,
       isCustomizable: json['is_customizable'] as bool? ?? false,
       iconUrl: json['icon_url'] as String?,
+      coverImageUrl: json['cover_image_url'] as String?,
       imageUrls: (json['images'] as List?)
               ?.map((img) => img['image_url'] as String? ?? '')
               .where((u) => u.isNotEmpty)

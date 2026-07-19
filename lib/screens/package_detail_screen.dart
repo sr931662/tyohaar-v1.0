@@ -218,8 +218,14 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                               style:
                                   TyType.eyebrow(resp.sp(12), color: ty.ink3)),
                           SizedBox(height: resp.h(16)),
-                          ..._fullPackage.inclusions
-                              .map((item) => _inclusionRow(context, item)),
+                          // Prefer PackageItem-backed rows (with images) and
+                          // fall back to the plain inclusion strings.
+                          if (_coreItems.isNotEmpty)
+                            ..._coreItems
+                                .map((item) => _coreItemRow(context, item))
+                          else
+                            ..._fullPackage.inclusions
+                                .map((item) => _inclusionRow(context, item)),
                           SizedBox(height: resp.h(32)),
                           Text('Guest Count',
                               style:
@@ -445,6 +451,152 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
     );
   }
 
+  /// A core (mandatory) item row: check mark + name, with a tappable photo
+  /// thumbnail when the item has a cover/gallery.
+  Widget _coreItemRow(BuildContext context, PackageItem item) {
+    final ty = context.ty;
+    final resp = context.resp;
+    final hasImages = item.allImageUrls.isNotEmpty;
+    return Padding(
+      padding: EdgeInsets.only(bottom: resp.h(12)),
+      child: GestureDetector(
+        onTap: hasImages ? () => _showItemGallery(context, item) : null,
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(resp.w(6)),
+              decoration: BoxDecoration(
+                  color: ty.leaf.withOpacity(0.1), shape: BoxShape.circle),
+              child:
+                  Icon(Icons.check_rounded, color: ty.leaf, size: resp.sp(16)),
+            ),
+            SizedBox(width: resp.w(12)),
+            Expanded(
+              child: Text(
+                  item.quantity > 1 ? '${item.quantity}x ${item.name}' : item.name,
+                  style: TyType.sans(resp.sp(14.5),
+                      color: ty.ink, weight: FontWeight.w600)),
+            ),
+            if (hasImages) _itemThumb(context, item, size: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Small rounded thumbnail (cover first, else first gallery image) that
+  /// opens the item's swipeable photo viewer.
+  Widget _itemThumb(BuildContext context, PackageItem item,
+      {double size = 44}) {
+    final ty = context.ty;
+    final resp = context.resp;
+    final urls = item.allImageUrls;
+    if (urls.isEmpty) return const SizedBox.shrink();
+    return GestureDetector(
+      onTap: () => _showItemGallery(context, item),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(resp.w(10)),
+        child: CachedNetworkImage(
+          imageUrl: urls.first,
+          width: resp.w(size),
+          height: resp.w(size),
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(
+              width: resp.w(size), height: resp.w(size), color: ty.surface),
+          errorWidget: (_, __, ___) => Container(
+            width: resp.w(size),
+            height: resp.w(size),
+            color: ty.surface,
+            child: Icon(Icons.image_not_supported_outlined,
+                color: ty.ink3, size: resp.sp(18)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Bottom-sheet swipeable gallery for one item — cover first, then its
+  /// gallery images (same viewing pattern as the package image slider).
+  void _showItemGallery(BuildContext context, PackageItem item) {
+    final urls = item.allImageUrls;
+    if (urls.isEmpty) return;
+    final ty = context.ty;
+    final resp = context.resp;
+    int current = 0;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: ty.paper,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(resp.w(24)))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(16), resp.w(18),
+              MediaQuery.of(ctx).padding.bottom + resp.h(20)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item.name,
+                  style: TyType.sans(resp.sp(17),
+                      color: ty.ink, weight: FontWeight.w700)),
+              if (item.description != null && item.description!.isNotEmpty) ...[
+                SizedBox(height: resp.h(4)),
+                Text(item.description!,
+                    style: TyType.sans(resp.sp(12.5), color: ty.ink3)),
+              ],
+              SizedBox(height: resp.h(14)),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(resp.w(18)),
+                child: SizedBox(
+                  height: resp.h(300),
+                  width: double.infinity,
+                  child: PageView.builder(
+                    itemCount: urls.length,
+                    onPageChanged: (i) => setSheetState(() => current = i),
+                    itemBuilder: (_, i) => CachedNetworkImage(
+                      imageUrl: urls[i],
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(color: ty.surface),
+                      errorWidget: (_, __, ___) => Container(
+                        color: ty.surface,
+                        child: Icon(Icons.image_not_supported_outlined,
+                            color: ty.ink3, size: resp.sp(32)),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (urls.length > 1) ...[
+                SizedBox(height: resp.h(12)),
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(
+                      urls.length,
+                      (i) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: EdgeInsets.symmetric(horizontal: resp.w(3)),
+                        width: current == i ? resp.w(18) : resp.w(6),
+                        height: resp.w(6),
+                        decoration: BoxDecoration(
+                          color: current == i ? ty.saffron : ty.ink3,
+                          borderRadius: BorderRadius.circular(resp.w(3)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _guestStepper(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
@@ -520,8 +672,11 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.add_circle_outline_rounded,
-                color: isSelected ? ty.saffron : ty.ink3, size: resp.sp(20)),
+            if (item.allImageUrls.isNotEmpty)
+              _itemThumb(context, item)
+            else
+              Icon(Icons.add_circle_outline_rounded,
+                  color: isSelected ? ty.saffron : ty.ink3, size: resp.sp(20)),
             SizedBox(width: resp.w(16)),
             Expanded(
               child: Column(

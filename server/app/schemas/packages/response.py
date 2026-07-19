@@ -133,6 +133,7 @@ class PackageItemResponse(BaseSchema):
     is_mandatory: bool
     is_customizable: bool = False
     icon_url: str | None = None
+    cover_image_url: str | None = None
     display_order: int
     prep_time_minutes: int | None = None
     images: list[PackageItemImageResponse] = Field(default_factory=list)

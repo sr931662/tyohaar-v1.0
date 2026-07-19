@@ -324,7 +324,7 @@ function PackageItemsModal({ pkg, onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true });
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [managingImagesFor, setManagingImagesFor] = useState(null);
   const [attachingId, setAttachingId] = useState('');
@@ -343,7 +343,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.addItem(pkg.id, { ...body, package_id: pkg.id }),
-    onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, unit: '', base_price: '', is_mandatory: true }); },
+    onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' }); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add item.'),
   });
 
@@ -373,7 +373,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, cover_image_url: item.cover_image_url ?? '' });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -390,6 +390,7 @@ function PackageItemsModal({ pkg, onClose }) {
       base_price: Number(newItem.base_price),
       unit: newItem.unit || undefined,
       description: newItem.description || undefined,
+      cover_image_url: newItem.cover_image_url || undefined,
     });
   };
 
@@ -404,6 +405,7 @@ function PackageItemsModal({ pkg, onClose }) {
         base_price: Number(editForm.base_price),
         unit: editForm.unit || undefined,
         description: editForm.description || undefined,
+        cover_image_url: editForm.cover_image_url || null,
       },
     });
   };
@@ -455,6 +457,13 @@ function PackageItemsModal({ pkg, onClose }) {
                     <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>Leave blank for no cap — e.g. cap balloon bunches at 20.</p>
                   </div>
                   <input className="admin-input" value={editForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
+                  <ImageUploadField
+                    label="Cover image"
+                    value={editForm.cover_image_url}
+                    onChange={(url) => setEF('cover_image_url', url)}
+                    usage="package_image"
+                    placeholder="Cover image URL (https://...)"
+                  />
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button className="btn btn-secondary btn-sm" onClick={() => setEditingId(null)}>Cancel</button>
                     <button className="btn btn-primary btn-sm" onClick={() => handleUpdate(item.id)} disabled={updateMutation.isPending}>Save</button>
@@ -462,6 +471,14 @@ function PackageItemsModal({ pkg, onClose }) {
                 </div>
               ) : (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                  {(item.cover_image_url || item.images?.[0]?.image_url) && (
+                    <img
+                      src={item.cover_image_url || item.images[0].image_url}
+                      alt=""
+                      style={{ width: 42, height: 42, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border-subtle)', flexShrink: 0 }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>
                       {item.name}
@@ -487,7 +504,7 @@ function PackageItemsModal({ pkg, onClose }) {
                         </button>
                       ) : (
                         <>
-                          <button className="btn btn-secondary btn-sm" onClick={() => setManagingImagesFor({ id: item.id, name: item.name, images: item.images })}>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setManagingImagesFor(item)}>
                             Photos{item.images?.length ? ` (${item.images.length})` : ''}
                           </button>
                           <button className="btn btn-secondary btn-sm" onClick={() => startEdit(item)}>Edit</button>
@@ -547,9 +564,16 @@ function PackageItemsModal({ pkg, onClose }) {
                 </div>
                 <div>
                   <input className="admin-input" type="number" min={newItem.quantity || 1} value={newItem.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max customer can pick (optional)" />
-                  <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>Leave blank for no cap — e.g. cap balloon bunches at 20. You can add photos after creating the item.</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>Leave blank for no cap — e.g. cap balloon bunches at 20. More gallery photos can be added after creating the item.</p>
                 </div>
                 <input className="admin-input" value={newItem.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />
+                <ImageUploadField
+                  label="Cover image (optional)"
+                  value={newItem.cover_image_url}
+                  onChange={(url) => setNF('cover_image_url', url)}
+                  usage="package_image"
+                  placeholder="Cover image URL (https://...)"
+                />
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button type="submit" className="btn btn-primary" disabled={addMutation.isPending}>
                     {addMutation.isPending ? 'Adding…' : '+ Add Item'}
@@ -592,11 +616,13 @@ function PackageItemImagesModal({ pkgId, item, onClose, onChanged }) {
   const [uploadUrl, setUploadUrl] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  const { data: images = [], isLoading } = useQuery({
+  const { data: liveItem, isLoading } = useQuery({
     queryKey: ['pkg-item-images', pkgId, item.id],
-    queryFn: () => vendorPackagesApi.listItems(pkgId).then((items) => items.find((i) => i.id === item.id)?.images ?? []),
-    initialData: item.images ?? [],
+    queryFn: () => vendorPackagesApi.listItems(pkgId).then((items) => items.find((i) => i.id === item.id) ?? item),
+    initialData: item,
   });
+  const images = liveItem?.images ?? [];
+  const coverUrl = liveItem?.cover_image_url ?? null;
 
   const invalidate = () => {
     qc.invalidateQueries(['pkg-item-images', pkgId, item.id]);
@@ -616,6 +642,12 @@ function PackageItemImagesModal({ pkgId, item, onClose, onChanged }) {
     onError: () => toast.error('Failed to remove image.'),
   });
 
+  const coverMutation = useMutation({
+    mutationFn: (imageUrl) => vendorPackagesApi.updateItem(pkgId, item.id, { cover_image_url: imageUrl }),
+    onSuccess: () => { toast.success('Cover updated.'); invalidate(); },
+    onError: () => toast.error('Failed to set cover.'),
+  });
+
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
       <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
@@ -633,15 +665,27 @@ function PackageItemImagesModal({ pkgId, item, onClose, onChanged }) {
             </div>
           ) : images.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10, marginBottom: 20 }}>
-              {images.map((img) => (
-                <div key={img.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '1/1', background: 'var(--bg-base)' }}>
-                  <img src={img.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  <button
-                    onClick={() => setConfirmDelete(img)}
-                    style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'rgba(239,68,68,0.85)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}
-                  >×</button>
-                </div>
-              ))}
+              {images.map((img) => {
+                const isCover = coverUrl === img.image_url;
+                return (
+                  <div key={img.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: isCover ? '2px solid var(--color-primary,#6366f1)' : '1px solid var(--border-subtle)', aspectRatio: '1/1', background: 'var(--bg-base)' }}>
+                    <img src={img.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                    <button
+                      onClick={() => setConfirmDelete(img)}
+                      style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'rgba(239,68,68,0.85)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}
+                    >×</button>
+                    {isCover ? (
+                      <span style={{ position: 'absolute', bottom: 4, left: 4, padding: '2px 7px', borderRadius: 6, background: 'var(--color-primary,#6366f1)', color: '#fff', fontSize: 10, fontWeight: 600 }}>Cover</span>
+                    ) : (
+                      <button
+                        onClick={() => coverMutation.mutate(img.image_url)}
+                        disabled={coverMutation.isPending}
+                        style={{ position: 'absolute', bottom: 4, left: 4, padding: '2px 7px', borderRadius: 6, border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10, cursor: 'pointer' }}
+                      >Set as cover</button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: 16 }}>No photos yet for this item.</p>
