@@ -667,9 +667,11 @@ class NotifItem {
   // icon and tint are derived client-side from notification_type.
   final String icon;
   final String tint;
-  // who maps to notification title.
-  final String who;
-  // text maps to notification body.
+  // Primary heading shown in the activity card.
+  final String title;
+  // Optional secondary label, usually the notification category.
+  final String? subtitle;
+  // Body copy shown under the title.
   final String text;
   // time is the raw created_at string; format in the UI layer.
   final String time;
@@ -677,30 +679,38 @@ class NotifItem {
   final bool unread;
   final String? actionUrl;
   final String? imageUrl;
+  final String? referenceType;
+  final String? referenceId;
 
   const NotifItem({
     required this.id,
     required this.icon,
     required this.tint,
-    required this.who,
+    required this.title,
     required this.text,
     required this.time,
     required this.unread,
+    this.subtitle,
     this.actionUrl,
     this.imageUrl,
+    this.referenceType,
+    this.referenceId,
   });
 
   // Legacy positional constructor kept for existing hardcoded UI callsites.
   const NotifItem.positional(
-    this.icon,
-    this.tint,
-    this.who,
-    this.text,
-    this.time,
-    this.unread,
+  this.icon,
+  this.tint,
+  this.title,
+  this.text,
+  this.time,
+  this.unread,
   )   : id = '',
+        subtitle = null,
         actionUrl = null,
-        imageUrl = null;
+        imageUrl = null,
+        referenceType = null,
+        referenceId = null;
 
   factory NotifItem.fromJson(Map<String, dynamic> json) {
     final type = json['notification_type'] as String? ?? '';
@@ -708,12 +718,45 @@ class NotifItem {
       id: json['id'] as String? ?? '',
       icon: _typeIcon(type),
       tint: _typeTint(type),
-      who: json['title'] as String? ?? '',
+      title: json['title'] as String? ?? '',
       text: json['body'] as String? ?? '',
       time: json['created_at'] as String? ?? '',
       unread: !(json['is_read'] as bool? ?? false),
+      subtitle: null,
       actionUrl: json['action_url'] as String?,
       imageUrl: json['image_url'] as String?,
+      referenceType: json['reference_type'] as String?,
+      referenceId: json['reference_id']?.toString(),
+    );
+  }
+
+  NotifItem copyWith({
+    String? id,
+    String? icon,
+    String? tint,
+    String? title,
+    String? subtitle,
+    String? text,
+    String? time,
+    bool? unread,
+    String? actionUrl,
+    String? imageUrl,
+    String? referenceType,
+    String? referenceId,
+  }) {
+    return NotifItem(
+      id: id ?? this.id,
+      icon: icon ?? this.icon,
+      tint: tint ?? this.tint,
+      title: title ?? this.title,
+      subtitle: subtitle ?? this.subtitle,
+      text: text ?? this.text,
+      time: time ?? this.time,
+      unread: unread ?? this.unread,
+      actionUrl: actionUrl ?? this.actionUrl,
+      imageUrl: imageUrl ?? this.imageUrl,
+      referenceType: referenceType ?? this.referenceType,
+      referenceId: referenceId ?? this.referenceId,
     );
   }
 

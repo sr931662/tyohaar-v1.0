@@ -198,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: widget.scrollController,
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         children: [
-        _buildHeroCard(context, pct, totalGuests, pendingTasks.length),
+        _buildHeroCard(context, pct, totalGuests, pendingTasks.length, _checklist.length),
 
         Padding(
           padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), resp.h(20)),
@@ -253,7 +253,13 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 }
 
-  Widget _buildHeroCard(BuildContext context, int pct, int totalGuests, int pendingTaskCount) {
+  Widget _buildHeroCard(
+    BuildContext context,
+    int pct,
+    int totalGuests,
+    int pendingTaskCount,
+    int checklistCount,
+  ) {
     final ty = context.ty;
     final resp = context.resp;
     final double radius = resp.w(42.0);
@@ -412,7 +418,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _stackedAvatars(context, _guests, totalGuests),
                       const Spacer(),
-                      Flexible(child: _progressChip(context, pct, pendingTaskCount)),
+                      Flexible(child: _progressChip(context, pct, pendingTaskCount, checklistCount)),
                     ],
                   ),
                 ],
@@ -599,8 +605,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _progressChip(BuildContext context, int pct, int left) {
+  Widget _progressChip(BuildContext context, int pct, int left, int checklistCount) {
     final resp = context.resp;
+    final hasChecklist = checklistCount > 0;
+    final summaryLabel = hasChecklist ? 'Checklist progress' : 'Planning progress';
+    final statusLabel = !hasChecklist
+        ? (pct >= 100 ? 'All set' : 'Start planning')
+        : left <= 0
+            ? 'All tasks done'
+            : left == 1
+                ? '1 task pending'
+                : '$left tasks pending';
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: resp.w(10), vertical: resp.h(7)),
       decoration: BoxDecoration(
@@ -622,9 +638,9 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('on track',
+              Text(summaryLabel,
                   style: TextStyle(color: Colors.white, fontSize: resp.sp(11))),
-              Text('$left tasks left',
+              Text(statusLabel,
                   style: TextStyle(
                       color: Colors.white, fontSize: resp.sp(11), fontWeight: FontWeight.w700)),
             ],

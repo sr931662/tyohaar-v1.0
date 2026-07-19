@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -95,22 +96,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final ty = context.ty;
     final c = ty.tint(n.tint);
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: n.unread ? ty.surface : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: n.unread ? ty.line : Colors.transparent),
+        color: ty.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: n.unread ? ty.line : ty.line.withOpacity(0.45)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: Color.alphaBlend(c.withOpacity(0.15), ty.surface2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(tyIcon(n.icon), color: c, size: 20),
           ),
@@ -119,31 +120,74 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                RichText(
-                  text: TextSpan(
-                    style: TyType.sans(14, color: ty.ink2),
-                    children: [
-                      TextSpan(
-                          text: '${n.who} ',
-                          style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
-                      TextSpan(text: n.text),
-                    ],
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        n.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700),
+                      ),
+                    ),
+                    if (n.unread)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4, left: 8),
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 3),
-                Text('${n.time} ago', style: TyType.sans(11.5, color: ty.ink3)),
+                if (n.subtitle != null && n.subtitle!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    n.subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TyType.sans(11.5, color: c, weight: FontWeight.w700),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Text(
+                  n.text,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TyType.sans(13, color: ty.ink2, height: 1.35),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _formatNotificationTime(n.time),
+                  style: TyType.sans(11.5, color: ty.ink3),
+                ),
               ],
             ),
           ),
-          if (n.unread)
-            Container(
-              margin: const EdgeInsets.only(top: 6, left: 6),
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle),
-            ),
         ],
       ),
     );
+  }
+
+  String _formatNotificationTime(String raw) {
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return raw;
+
+    final local = parsed.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(local.year, local.month, local.day);
+    final dayDiff = today.difference(date).inDays;
+
+    if (dayDiff == 0) {
+      return 'Today · ${DateFormat('h:mm a').format(local)}';
+    }
+    if (dayDiff == 1) {
+      return 'Yesterday · ${DateFormat('h:mm a').format(local)}';
+    }
+    if (local.year == now.year) {
+      return DateFormat('d MMM · h:mm a').format(local);
+    }
+    return DateFormat('d MMM y · h:mm a').format(local);
   }
 }
