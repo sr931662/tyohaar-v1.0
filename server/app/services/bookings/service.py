@@ -1310,6 +1310,15 @@ class BookingService(BaseService):
         package = await uow.packages.packages.get_by_id(booking.package_id)
         return package is not None and package.vendor_id == vendor_id
 
+    # Once a booking is confirmed, the vendor's engagement is locked in —
+    # media (e.g. pre-event decor shots, or the event itself once underway)
+    # may be uploaded from that point on, not only after final completion.
+    _MEDIA_UPLOAD_ELIGIBLE_STATUSES = {
+        BookingStatus.CONFIRMED,
+        BookingStatus.IN_PROGRESS,
+        BookingStatus.COMPLETED,
+    }
+
     async def assert_vendor_media_upload_allowed(
         self,
         booking_id: UUID,
@@ -1318,8 +1327,7 @@ class BookingService(BaseService):
         """
         Gate for the vendor multimedia-upload endpoint: the calling vendor
         must be eligible for this booking (assigned or package owner), and
-        the event must have already been completed (media is delivered
-        after the event).
+        the booking must be at least confirmed.
         """
         async with self._uow() as uow:
             booking = await validate_booking_exists(booking_id, uow)
@@ -1329,9 +1337,9 @@ class BookingService(BaseService):
                     f"Vendor {vendor_id} is not assigned to booking {booking_id}."
                 )
 
-            if booking.booking_status != BookingStatus.COMPLETED:
+            if booking.booking_status not in self._MEDIA_UPLOAD_ELIGIBLE_STATUSES:
                 raise BusinessRuleError(
-                    "Media can only be uploaded once the event is marked completed."
+                    "Media can only be uploaded once the booking is confirmed."
                 )
 
             return booking
@@ -1455,7 +1463,7 @@ class BookingService(BaseService):
                     booking_status=booking.booking_status,
                     customer_name=getattr(user, "full_name", None),
                     customer_email=getattr(user, "email", None),
-                    can_upload=booking.booking_status == BookingStatus.COMPLETED,
+                    can_upload=booking.booking_status in self._MEDIA_UPLOAD_ELIGIBLE_STATUSES,
                     image_count=media_counts[booking.id][0],
                     video_count=media_counts[booking.id][1],
                     thumbnail_url=media_counts[booking.id][2],

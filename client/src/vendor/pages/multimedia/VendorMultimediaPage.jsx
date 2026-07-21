@@ -95,7 +95,7 @@ function BookingMediaCard({ booking }) {
           </>
         ) : (
           <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
-            Media upload unlocks once this event is marked completed.
+            Media upload unlocks once this booking is confirmed.
           </p>
         )}
       </div>

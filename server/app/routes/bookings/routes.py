@@ -183,7 +183,7 @@ router.add_api_route(
     response_model=SuccessResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Upload Event Photo (Vendor)",
-    description="Upload an event photo for a completed booking. Requires an accepted assignment on the booking.",
+    description="Upload an event photo for a confirmed, in-progress, or completed booking. Requires the vendor to be assigned to (or the package owner of) the booking.",
     operation_id="bookings_upload_booking_image",
 )
 
@@ -194,7 +194,7 @@ router.add_api_route(
     response_model=SuccessResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Upload Event Video (Vendor)",
-    description="Upload an event video for a completed booking. Requires an accepted assignment on the booking.",
+    description="Upload an event video for a confirmed, in-progress, or completed booking. Requires the vendor to be assigned to (or the package owner of) the booking.",
     operation_id="bookings_upload_booking_video",
 )
 
