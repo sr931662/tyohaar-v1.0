@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/colors.dart';
+import '../../../theme/responsive.dart';
 import '../../../theme/typography.dart';
 import '../../../data/models.dart';
 import '../../../data/services/booking_service.dart';
@@ -60,17 +61,15 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
     final resp = context.resp;
 
     return Scaffold(
-      backgroundColor: ty.paper,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(16), resp.w(18), resp.h(10)),
+              padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(4), resp.w(18), resp.h(10)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('My Bookings', style: TyType.display(24, color: ty.ink)),
-                  SizedBox(height: resp.h(12)),
                   TextField(
                     controller: _searchCtrl,
                     decoration: InputDecoration(

@@ -123,8 +123,7 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
     final ty = context.ty;
 
     return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: AppBar(title: const Text('Bank Accounts')),
+      backgroundColor: Colors.transparent,
       floatingActionButton: _accounts.length >= 3 ? null : FloatingActionButton(onPressed: _showAddSheet, child: const Icon(Icons.add)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

@@ -151,8 +151,8 @@ class Vendor(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, AuditMixin, N
 
     # ── Operations ────────────────────────────────────────────────────────────
 
-    service_radius_km: Mapped[int | None] = mapped_column(
-        Integer,
+    service_radius_km: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2),
         nullable=True,
         comment="Maximum distance in km the vendor is willing to travel for an event",
     )

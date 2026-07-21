@@ -32,7 +32,7 @@ export default function VendorBookingsPage() {
       page,
       per_page: perPage,
       search: debouncedSearch || undefined,
-      status: status || undefined,
+      booking_status: status || undefined,
     }),
   });
 

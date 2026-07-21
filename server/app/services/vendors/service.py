@@ -175,6 +175,7 @@ class VendorService(BaseService):
             vendor = await uow.vendors.vendors.update(
                 vendor, data.model_dump(exclude_unset=True)
             )
+            await uow.commit()
             return VendorSelfResponse.model_validate(vendor)
 
     async def update_vendor_profile(
@@ -193,6 +194,7 @@ class VendorService(BaseService):
             profile = await uow.vendors.profiles.update(
                 profile, data.model_dump(exclude_unset=True)
             )
+            await uow.commit()
             return VendorProfileResponse.model_validate(profile)
 
     async def list_vendors(

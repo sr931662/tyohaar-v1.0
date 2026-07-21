@@ -38,8 +38,7 @@ class _VendorEarningsScreenState extends State<VendorEarningsScreen> {
     final ty = context.ty;
 
     return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: AppBar(title: const Text('Earnings')),
+      backgroundColor: Colors.transparent,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _earnings == null

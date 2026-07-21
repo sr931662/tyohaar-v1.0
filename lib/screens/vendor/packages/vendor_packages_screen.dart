@@ -7,6 +7,7 @@ import '../../../data/services/vendor_service.dart';
 import 'vendor_package_form_screen.dart';
 import 'vendor_package_items_screen.dart';
 import 'vendor_common_items_screen.dart';
+import 'vendor_package_gallery_screen.dart';
 
 /// Mirrors the web VendorPackagesPage: table/list of the vendor's own
 /// packages with status, + create/edit/items/common-items/delete/publish.
@@ -85,17 +86,7 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
     final ty = context.ty;
 
     return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: AppBar(
-        title: const Text('My Packages'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.dashboard_customize_outlined),
-            tooltip: 'Common Items',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VendorCommonItemsScreen())),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const VendorPackageFormScreen()))
@@ -168,6 +159,10 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
                     ? null
                     : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VendorPackageItemsScreen(package: p))),
                 child: const Text('Items'),
+              ),
+              OutlinedButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VendorPackageGalleryScreen(package: p))),
+                child: const Text('Photos'),
               ),
               if (p.status == 'draft')
                 ElevatedButton(onPressed: () => _submitForReview(p), child: const Text('Submit')),

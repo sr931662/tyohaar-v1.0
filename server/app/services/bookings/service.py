@@ -436,8 +436,7 @@ class BookingService(BaseService):
             # A vendor's bookings come from two sources, unioned:
             #  1. Explicit per-item assignments (multi-vendor bookings).
             #  2. Bookings whose package this vendor owns (the common
-            #     single-vendor case) — these never get an assignment row at
-            #     creation, so without this they'd never surface here.
+            #     single-vendor case).
             from app.models.packages.package import Package
 
             assignments = await uow.bookings.assignments.find_by_vendor(vendor_id, limit=1000)
@@ -448,21 +447,36 @@ class BookingService(BaseService):
             )
             owned_package_ids = [p.id for p in owned_packages]
 
-            conditions = []
+            # Base identity conditions (Assigned OR Owned)
+            identity_conditions = []
             if booking_ids:
-                conditions.append(uow.bookings.bookings._model.id.in_(booking_ids))
+                identity_conditions.append(uow.bookings.bookings._model.id.in_(booking_ids))
             if owned_package_ids:
-                conditions.append(
+                identity_conditions.append(
                     uow.bookings.bookings._model.package_id.in_(owned_package_ids)
                 )
 
-            if not conditions:
+            if not identity_conditions:
                 return CursorPage(items=[], next_cursor=None, has_more=False)
 
             from sqlalchemy import or_
 
+            # Combine identity conditions with OR
+            final_conditions = [or_(*identity_conditions)]
+
+            # Apply functional filters (Status, Search)
+            if filters.booking_status is not None:
+                final_conditions.append(
+                    uow.bookings.bookings._model.booking_status == filters.booking_status
+                )
+            if filters.search is not None and filters.search.strip():
+                search_term = f"{filters.search.strip().lower()}%"
+                final_conditions.append(
+                    uow.bookings.bookings._model.booking_number.ilike(search_term)
+                )
+
             page = await uow.bookings.bookings.cursor_paginate(
-                or_(*conditions) if len(conditions) > 1 else conditions[0],
+                *final_conditions,
                 cursor=cursor,
                 limit=limit,
             )

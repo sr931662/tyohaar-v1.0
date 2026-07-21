@@ -116,34 +116,52 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
     final ty = context.ty;
 
     if (_isLoading) {
-      return Scaffold(backgroundColor: ty.paper, appBar: AppBar(title: const Text('Availability')), body: const Center(child: CircularProgressIndicator()));
+      return const Scaffold(backgroundColor: Colors.transparent, body: Center(child: CircularProgressIndicator()));
     }
     if (_vendorId == null) {
       return Scaffold(
-        backgroundColor: ty.paper,
-        appBar: AppBar(title: const Text('Availability')),
+        backgroundColor: Colors.transparent,
         body: Center(child: Text('Set up your vendor profile first.', style: TyType.sans(14, color: ty.ink2))),
       );
     }
 
     return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: AppBar(
-        title: const Text('Availability'),
-        actions: [TextButton(onPressed: _copyMondayToWeekdays, child: const Text('Copy Mon → Fri'))],
-      ),
+      backgroundColor: Colors.transparent,
       body: ListView.separated(
         padding: const EdgeInsets.all(18),
-        itemCount: _days.length + 1,
+        itemCount: _days.length + 2,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, i) {
-          if (i == _days.length) {
+          if (i == 0) {
             return Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: ElevatedButton(onPressed: _isSaving ? null : _save, child: Text(_isSaving ? 'Saving…' : 'Save Changes')),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: OutlinedButton.icon(
+                onPressed: _copyMondayToWeekdays, 
+                icon: const Icon(Icons.copy_rounded, size: 18),
+                label: const Text('Copy Monday to Weekdays'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
             );
           }
-          final day = _days[i];
+          if (i == _days.length + 1) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _save, 
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ty.saffron,
+                  foregroundColor: ty.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(_isSaving ? 'Saving…' : 'Save Changes'),
+              ),
+            );
+          }
+          final day = _days[i - 1];
           return Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: ty.line)),

@@ -188,12 +188,11 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     final ty = context.ty;
 
     if (_isLoading) {
-      return Scaffold(backgroundColor: ty.paper, appBar: AppBar(title: const Text('My Profile')), body: const Center(child: CircularProgressIndicator()));
+      return const Scaffold(backgroundColor: Colors.transparent, body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: AppBar(title: Text(_isNew ? 'Create Profile' : 'My Profile')),
+      backgroundColor: Colors.transparent,
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [

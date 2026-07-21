@@ -93,44 +93,77 @@ class _VendorSupportScreenState extends State<VendorSupportScreen> {
     final ty = context.ty;
 
     return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: AppBar(title: const Text('Support')),
-      floatingActionButton: FloatingActionButton.extended(onPressed: _showNewTicketSheet, icon: const Icon(Icons.add), label: const Text('New Ticket')),
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showNewTicketSheet, 
+        icon: const Icon(Icons.add), 
+        label: const Text('New Ticket'),
+        backgroundColor: ty.saffron,
+        foregroundColor: ty.onPrimary,
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _tickets.isEmpty
-              ? Center(child: Text('No support tickets yet', style: TyType.sans(14, color: ty.ink2)))
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.support_agent_rounded, size: 48, color: ty.ink3.withOpacity(0.5)),
+                      const SizedBox(height: 16),
+                      Text('No support tickets yet', style: TyType.sans(14, color: ty.ink2)),
+                    ],
+                  ),
+                )
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.separated(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     itemCount: _tickets.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, i) {
                       final t = _tickets[i];
+                      final statusColor = t.status.toLowerCase() == 'closed' ? ty.ink3 : ty.saffron;
                       return GestureDetector(
                         onTap: () => Navigator.of(context)
                             .push(MaterialPageRoute(builder: (_) => VendorTicketDetailScreen(ticketId: t.id)))
                             .then((_) => _load()),
                         child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: ty.line)),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: ty.surface, 
+                            borderRadius: BorderRadius.circular(16), 
+                            border: Border.all(color: ty.line),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2)),
+                            ],
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Expanded(child: Text(t.subject, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700))),
+                                  Expanded(child: Text(t.subject, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700))),
+                                  const SizedBox(width: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(color: ty.saffron.withOpacity(0.12), borderRadius: BorderRadius.circular(99)),
-                                    child: Text(t.status, style: TyType.sans(10.5, color: ty.saffronDeep, weight: FontWeight.w700)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(99)),
+                                    child: Text(t.status.toUpperCase(), style: TyType.sans(10, color: statusColor, weight: FontWeight.w800, spacing: 0.5)),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 4),
-                              Text('#${t.ticketNumber} · ${t.category}', style: TyType.sans(12, color: ty.ink3)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(Icons.tag, size: 14, color: ty.ink3),
+                                  const SizedBox(width: 4),
+                                  Text(t.ticketNumber, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+                                  const SizedBox(width: 12),
+                                  Icon(Icons.category_outlined, size: 14, color: ty.ink3),
+                                  const SizedBox(width: 4),
+                                  Text(t.category, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+                                ],
+                              ),
                             ],
                           ),
                         ),

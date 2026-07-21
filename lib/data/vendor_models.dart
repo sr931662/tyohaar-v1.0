@@ -122,7 +122,7 @@ class VendorGalleryItem {
   factory VendorGalleryItem.fromJson(Map<String, dynamic> json) {
     return VendorGalleryItem(
       id: json['id'] as String,
-      mediaUrl: json['media_url'] as String? ?? '',
+      mediaUrl: json['media_url'] as String? ?? json['file_url'] as String? ?? '',
       caption: json['caption'] as String?,
       isFeatured: json['is_featured'] as bool? ?? false,
     );

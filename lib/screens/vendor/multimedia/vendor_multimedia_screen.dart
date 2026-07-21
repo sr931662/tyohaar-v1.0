@@ -70,8 +70,7 @@ class _VendorMultimediaScreenState extends State<VendorMultimediaScreen> {
     final ty = context.ty;
 
     return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: AppBar(title: const Text('Multimedia')),
+      backgroundColor: Colors.transparent,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _bookings.isEmpty

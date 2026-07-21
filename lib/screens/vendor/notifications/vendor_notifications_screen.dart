@@ -59,21 +59,26 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
     final ty = context.ty;
 
     return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        actions: [TextButton(onPressed: _markAllRead, child: const Text('Mark all read'))],
-      ),
+      backgroundColor: Colors.transparent,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-              ? Center(child: Text('No notifications', style: TyType.sans(14, color: ty.ink2)))
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.notifications_none_rounded, size: 48, color: ty.ink3.withOpacity(0.5)),
+                      const SizedBox(height: 16),
+                      Text('No notifications', style: TyType.sans(14, color: ty.ink2)),
+                    ],
+                  ),
+                )
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.separated(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     itemCount: _items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, i) {
                       final item = _items[i];
                       return Dismissible(
@@ -82,18 +87,19 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
                         background: Container(
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 20),
-                          decoration: BoxDecoration(color: Colors.red.withOpacity(0.15), borderRadius: BorderRadius.circular(14)),
-                          child: const Icon(Icons.delete_outline, color: Colors.red),
+                          decoration: BoxDecoration(color: ty.rose.withOpacity(0.15), borderRadius: BorderRadius.circular(16)),
+                          child: Icon(Icons.delete_outline, color: ty.rose),
                         ),
                         onDismissed: (_) => _delete(item),
                         child: GestureDetector(
                           onTap: () { if (item.unread) _markRead(item); },
                           child: Container(
-                            padding: const EdgeInsets.all(14),
+                            padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: item.unread ? ty.saffron.withOpacity(0.06) : ty.surface,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: ty.line),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: item.unread ? ty.saffron.withOpacity(0.2) : ty.line),
+                              boxShadow: item.unread ? [BoxShadow(color: ty.saffron.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 2))] : null,
                             ),
                             child: Row(
                               children: [
@@ -101,13 +107,16 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(item.title, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
-                                      const SizedBox(height: 2),
-                                      Text(item.text, style: TyType.sans(12.5, color: ty.ink2)),
+                                      Text(item.title, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
+                                      const SizedBox(height: 4),
+                                      Text(item.text, style: TyType.sans(13, color: ty.ink2)),
                                     ],
                                   ),
                                 ),
-                                if (item.unread) Container(width: 8, height: 8, decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle)),
+                                if (item.unread) ...[
+                                  const SizedBox(width: 12),
+                                  Container(width: 10, height: 10, decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle, border: Border.all(color: ty.surface, width: 2))),
+                                ],
                               ],
                             ),
                           ),

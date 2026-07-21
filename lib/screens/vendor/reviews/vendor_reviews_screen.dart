@@ -44,8 +44,7 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
     final ty = context.ty;
 
     return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: AppBar(title: const Text('Reviews')),
+      backgroundColor: Colors.transparent,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _vendor == null
@@ -53,54 +52,77 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: ty.line)),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: ty.surface, 
+                          borderRadius: BorderRadius.circular(16), 
+                          border: Border.all(color: ty.line),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2)),
+                          ],
+                        ),
                         child: Row(
                           children: [
-                            Text(_vendor!.averageRating.toStringAsFixed(1), style: TyType.display(32, color: ty.ink)),
-                            const SizedBox(width: 12),
+                            Text(_vendor!.averageRating.toStringAsFixed(1), style: TyType.display(36, color: ty.ink)),
+                            const SizedBox(width: 16),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(children: List.generate(5, (i) => Icon(
                                       i < _vendor!.averageRating.round() ? Icons.star_rounded : Icons.star_border_rounded,
-                                      color: Colors.amber, size: 18,
+                                      color: ty.gold, size: 20,
                                     ))),
-                                Text('${_vendor!.reviewCount} reviews', style: TyType.sans(12.5, color: ty.ink2)),
+                                const SizedBox(height: 2),
+                                Text('${_vendor!.reviewCount} verified reviews', style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       if (_reviews.isEmpty)
-                        Text('No reviews yet', style: TyType.sans(14, color: ty.ink2))
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 40),
+                            child: Column(
+                              children: [
+                                Icon(Icons.rate_review_outlined, size: 48, color: ty.ink3.withOpacity(0.5)),
+                                const SizedBox(height: 16),
+                                Text('No reviews yet', style: TyType.sans(14, color: ty.ink2)),
+                              ],
+                            ),
+                          ),
+                        )
                       else
                         ..._reviews.map((r) => Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: ty.line)),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: ty.surface, 
+                                borderRadius: BorderRadius.circular(16), 
+                                border: Border.all(color: ty.line),
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(children: [
                                     Row(children: List.generate(5, (i) => Icon(
                                           i < r.rating ? Icons.star_rounded : Icons.star_border_rounded,
-                                          color: Colors.amber, size: 14,
+                                          color: ty.gold, size: 14,
                                         ))),
                                     const Spacer(),
-                                    Text('${r.createdAt.day}/${r.createdAt.month}/${r.createdAt.year}', style: TyType.sans(11, color: ty.ink3)),
+                                    Text('${r.createdAt.day}/${r.createdAt.month}/${r.createdAt.year}', style: TyType.sans(11, color: ty.ink3, weight: FontWeight.w600)),
                                   ]),
                                   if (r.title != null && r.title!.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
-                                    Text(r.title!, style: TyType.sans(13.5, color: ty.ink, weight: FontWeight.w700)),
+                                    const SizedBox(height: 8),
+                                    Text(r.title!, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
                                   ],
                                   if (r.body != null && r.body!.isNotEmpty) ...[
                                     const SizedBox(height: 4),
-                                    Text(r.body!, style: TyType.sans(13, color: ty.ink2)),
+                                    Text(r.body!, style: TyType.sans(13.5, color: ty.ink2)),
                                   ],
                                 ],
                               ),
