@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/common.dart';
+import '../widgets/simple_html_text.dart';
 import '../data/services/common_service.dart';
 
 class TermsConditionsScreen extends StatefulWidget {
@@ -81,9 +82,10 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
                         style: TyType.sans(12, color: ty.ink3),
                       ),
                       const SizedBox(height: 24),
-                      Text(
+                      SimpleHtmlText(
                         _terms!.content,
-                        style: TyType.sans(14, color: ty.ink2, height: 1.7),
+                        bodyStyle: TyType.sans(14, color: ty.ink2, height: 1.7),
+                        linkColor: ty.saffron,
                       ),
                     ],
                   ],
