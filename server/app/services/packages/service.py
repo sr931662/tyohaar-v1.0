@@ -269,6 +269,7 @@ class PackageService(BaseService):
             # Batch-load item counts — one query for the whole page, avoids N+1
             package_ids = [p.id for p in page.items]
             counts: dict = {}
+            themes_by_package: dict = {}
             if package_ids:
                 item_rows = await uow.packages.items.find_many(
                     uow.packages.items._model.package_id.in_(package_ids)
@@ -276,9 +277,25 @@ class PackageService(BaseService):
                 for row in item_rows:
                     pid = row.package_id
                     counts[pid] = counts.get(pid, 0) + 1
+
+                # theme_ids must be populated here (not just on the vendor/detail
+                # endpoints) — the customer app's "Choose your package" step reads
+                # this straight off the public list response to decide which
+                # themes are selectable for the package the customer just picked.
+                from app.models.packages.package import package_themes
+                theme_link_rows = await uow.session.execute(
+                    select(
+                        package_themes.c.package_id, package_themes.c.theme_id
+                    ).where(package_themes.c.package_id.in_(package_ids))
+                )
+                for pid, tid in theme_link_rows.all():
+                    themes_by_package.setdefault(pid, []).append(tid)
             responses = [
                 PackageResponse.model_validate(p).model_copy(
-                    update={"inclusions_count": counts.get(p.id, 0)}
+                    update={
+                        "inclusions_count": counts.get(p.id, 0),
+                        "theme_ids": themes_by_package.get(p.id, []),
+                    }
                 )
                 for p in page.items
             ]
