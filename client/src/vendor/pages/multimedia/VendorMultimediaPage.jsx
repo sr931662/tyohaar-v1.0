@@ -1,14 +1,53 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { vendorBookingsApi } from '../../api';
+import { vendorBookingsApi, vendorMediaApi } from '../../api';
+import Modal from '../../../admin/components/ui/Modal';
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function BookingMediaCard({ booking }) {
+function BookingMediaGallery({ booking }) {
+  const { data: images = [], isLoading: loadingImages } = useQuery({
+    queryKey: ['vendor', 'booking-media-gallery', 'images', booking.booking_id],
+    queryFn: () => vendorMediaApi.listImagesForEntity(booking.booking_id, 'booking'),
+  });
+  const { data: videos = [], isLoading: loadingVideos } = useQuery({
+    queryKey: ['vendor', 'booking-media-gallery', 'videos', booking.booking_id],
+    queryFn: () => vendorMediaApi.listVideosForEntity(booking.booking_id, 'booking'),
+  });
+
+  if (loadingImages || loadingVideos) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+        {[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 10 }} />)}
+      </div>
+    );
+  }
+
+  if (!images.length && !videos.length) {
+    return <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No media uploaded yet.</p>;
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+      {images.map((img) => (
+        <div key={img.id} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '4/3', background: 'var(--bg-base)' }}>
+          <img src={img.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+        </div>
+      ))}
+      {videos.map((vid) => (
+        <div key={vid.id} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '4/3', background: '#000' }}>
+          <video src={vid.url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BookingMediaCard({ booking, onOpenGallery }) {
   const qc = useQueryClient();
   const photoInputRef = useRef(null);
   const videoInputRef = useRef(null);
@@ -20,6 +59,7 @@ function BookingMediaCard({ booking }) {
     onSuccess: () => {
       toast.success('Event photo uploaded.');
       qc.invalidateQueries({ queryKey: ['vendor', 'booking-media'] });
+      qc.invalidateQueries({ queryKey: ['vendor', 'booking-media-gallery', 'images', booking.booking_id] });
     },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to upload photo.'),
     onSettled: () => setUploadingPhoto(false),
@@ -30,6 +70,7 @@ function BookingMediaCard({ booking }) {
     onSuccess: () => {
       toast.success('Event video uploaded.');
       qc.invalidateQueries({ queryKey: ['vendor', 'booking-media'] });
+      qc.invalidateQueries({ queryKey: ['vendor', 'booking-media-gallery', 'videos', booking.booking_id] });
     },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to upload video.'),
     onSettled: () => setUploadingVideo(false),
@@ -52,7 +93,11 @@ function BookingMediaCard({ booking }) {
   };
 
   return (
-    <div className="admin-card" style={{ padding: '16px 18px' }}>
+    <div
+      className="admin-card"
+      style={{ padding: '16px 18px', cursor: 'pointer' }}
+      onClick={() => onOpenGallery(booking)}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>{booking.event_title}</div>
@@ -70,7 +115,7 @@ function BookingMediaCard({ booking }) {
         <span>📷 {booking.image_count} · 🎞️ {booking.video_count}</span>
       </div>
 
-      <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
         {booking.can_upload ? (
           <>
             <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={handlePhotoChange} />
@@ -104,6 +149,8 @@ function BookingMediaCard({ booking }) {
 }
 
 export default function VendorMultimediaPage() {
+  const [selected, setSelected] = useState(null);
+
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ['vendor', 'booking-media'],
     queryFn: () => vendorBookingsApi.listMedia(),
@@ -130,10 +177,22 @@ export default function VendorMultimediaPage() {
       ) : (
         <div style={{ display: 'grid', gap: 14 }}>
           {bookings.map((b) => (
-            <BookingMediaCard key={b.booking_id} booking={b} />
+            <BookingMediaCard key={b.booking_id} booking={b} onOpenGallery={setSelected} />
           ))}
         </div>
       )}
+
+      <Modal open={!!selected} onClose={() => setSelected(null)} title={selected?.event_title ?? ''}>
+        {selected && (
+          <div style={{ padding: '0 4px' }}>
+            <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)' }}>
+              <div><strong>{selected.customer_name ?? '—'}</strong> · {selected.customer_email ?? '—'}</div>
+              <div style={{ color: 'var(--text-tertiary)' }}>{formatDate(selected.scheduled_date)} · Booking #{selected.booking_number}</div>
+            </div>
+            <BookingMediaGallery booking={selected} />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

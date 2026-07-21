@@ -34,6 +34,12 @@ export const vendorMediaApi = {
     if (entityId) formData.append('entity_id', entityId);
     return vendorClient.post('/media/upload', formData).then(extractData);
   },
+
+  listImagesForEntity: (entityId, entityType) =>
+    vendorClient.get(`/media/images/entity/${entityId}`, { params: { entity_type: entityType } }).then(extractData),
+
+  listVideosForEntity: (entityId, entityType) =>
+    vendorClient.get(`/media/videos/entity/${entityId}`, { params: { entity_type: entityType } }).then(extractData),
 };
 
 // ── Vendor Profile ────────────────────────────────────────────────────────────
