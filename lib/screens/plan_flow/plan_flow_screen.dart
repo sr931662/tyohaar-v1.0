@@ -48,12 +48,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   bool _couponLoading = false;
   String? _couponError;
 
-  // 0 Occasion · 1 Details · 2 Guests · 3 Package · 4 Package Items · 5 Summary
+  // 0 Occasion · 1 Package · 2 Details · 3 Package Items · 4 Guests · 5 Summary
   static const _stepCount = 6;
   late int _step = widget.startStep.clamp(0, _stepCount - 1);
 
   List<Occasion> _occasions = [];
   List<Package> _packages = [];
+  bool _loadingPackages = false;
   List<Address> _addresses = [];
   List<CelebrationTheme> _themes = [];
   bool _isLoading = true;
@@ -85,15 +86,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     try {
       final results = await Future.wait([
         _packageService.listOccasions(),
-        _packageService.listPackages(),
         _userService.getAddresses(),
         _packageService.listThemes().catchError((_) => <CelebrationTheme>[]),
       ]);
       setState(() {
         _occasions = results[0] as List<Occasion>;
-        _packages = results[1] as List<Package>;
-        _addresses = results[2] as List<Address>;
-        _themes = results[3] as List<CelebrationTheme>;
+        _addresses = results[1] as List<Address>;
+        _themes = results[2] as List<CelebrationTheme>;
         if (_occasions.isNotEmpty) _occasion = _occasions.first;
         if (_addresses.isNotEmpty) _address = _addresses.first;
         _isLoading = false;
@@ -102,9 +101,24 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       // image so the grid renders instantly (no per-card network fetch)
       // even on a fresh install where nothing has been cached yet.
       _precacheOccasionImages(_occasions);
+      if (_occasion != null) _loadPackagesForOccasion(_occasion!.id);
     } catch (e) {
       debugPrint('Error loading plan flow data: $e');
       setState(() => _isLoading = false);
+    }
+  }
+
+  // Packages are re-fetched (not client-side filtered) whenever the selected
+  // occasion changes, so "Choose your package" only ever shows packages that
+  // actually apply to what the customer is celebrating.
+  Future<void> _loadPackagesForOccasion(String occasionId) async {
+    setState(() => _loadingPackages = true);
+    try {
+      final packages = await _packageService.listPackages(occasionId: occasionId);
+      if (mounted) setState(() { _packages = packages; _loadingPackages = false; });
+    } catch (e) {
+      debugPrint('Error loading packages for occasion: $e');
+      if (mounted) setState(() => _loadingPackages = false);
     }
   }
 
@@ -177,7 +191,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   void _next() {
-    if (_step == 3 && _pkg != null && _packageItems.isEmpty && !_loadingItems) {
+    if (_step == 1 && _pkg != null && _packageItems.isEmpty && !_loadingItems) {
       _loadPackageItems();
     }
     if (_step < _stepCount - 1) {
@@ -266,10 +280,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
     final titles = [
       ['What shall we celebrate?', 'Every milestone deserves to be held with care.'],
-      ['Tell us the details', 'The little things help us shape your plan.'],
-      ['Who’s coming together?', 'Group by household — the way families really gather.'],
       ['Choose your package', 'Hand-picked experiences, curated for families like yours.'],
+      ['Tell us the details', 'The little things help us shape your plan.'],
       ['Package items', 'Everything included, plus a few extras if you\'d like them.'],
+      ['Who’s coming together?', 'Group by household — the way families really gather.'],
       ['Order Summary', 'Review your celebration plan before we get started.'],
     ];
 
@@ -351,7 +365,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     }
     return TyButton('Continue',
         full: true,
-        enabled: _step == 3 ? _pkg != null : true,
+        enabled: _step == 1 ? _pkg != null : true,
         icon: Icons.chevron_right_rounded,
         onTap: _next);
   }
@@ -361,13 +375,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       case 0:
         return _occasionStep(context);
       case 1:
-        return _detailsStep(context);
-      case 2:
-        return _guestsStep(context);
-      case 3:
         return _packageStep(context);
-      case 4:
+      case 2:
+        return _detailsStep(context);
+      case 3:
         return _packageItemsStep(context);
+      case 4:
+        return _guestsStep(context);
       default:
         return _summaryStep(context);
     }
@@ -445,7 +459,20 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             final bool hasImage = networkImage != null || localImage != null;
 
             return GestureDetector(
-              onTap: () => setState(() => _occasion = o),
+              onTap: () {
+                if (_occasion?.id == o.id) return;
+                setState(() {
+                  _occasion = o;
+                  // A package chosen for the previous occasion may not even
+                  // apply to this one — clear it so the customer re-picks
+                  // from the freshly filtered list rather than carrying
+                  // forward a stale, possibly-mismatched selection.
+                  _pkg = null;
+                  _packageItems = [];
+                  _itemQuantities.clear();
+                });
+                _loadPackagesForOccasion(o.id);
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
@@ -826,6 +853,28 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // ── Step 3: Package ─────────────────────────────────────────────────────
 
   Widget _packageStep(BuildContext context) {
+    final ty = context.ty;
+
+    if (_loadingPackages) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 60),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_packages.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: Text(
+            'No packages available for ${_occasion?.name ?? 'this occasion'} yet.',
+            textAlign: TextAlign.center,
+            style: TyType.sans(14, color: ty.ink2),
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1196,16 +1245,16 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _summaryCard(context, 'Celebration', '${_occasion?.name} - ${_nameCtrl.text}', onEdit: () => _jumpTo(0)),
-        _summaryCard(context, 'Package', _pkg?.name ?? '', onEdit: () => _jumpTo(3)),
+        _summaryCard(context, 'Package', _pkg?.name ?? '', onEdit: () => _jumpTo(1)),
         if ((_pkg?.isCustomizable ?? false) && _theme != null)
-          _summaryCard(context, 'Theme', _theme!.name, onEdit: () => _jumpTo(3)),
+          _summaryCard(context, 'Theme', _theme!.name, onEdit: () => _jumpTo(1)),
         if (selectedOptional.isNotEmpty)
           _summaryCard(context, 'Add-ons', selectedOptional.map((i) {
             final qty = _itemQuantities[i.id] ?? i.quantity;
             return qty > 1 ? '${i.name} ×$qty' : i.name;
-          }).join(', '), onEdit: () => _jumpTo(4)),
-        _summaryCard(context, 'Date & Time', '${DateFormat('d MMMM yyyy').format(_eventDate)} · 6:30 PM', onEdit: () => _jumpTo(1)),
-        _summaryCard(context, 'Guest Count', '$_totalGuests Guests', onEdit: () => _jumpTo(2)),
+          }).join(', '), onEdit: () => _jumpTo(3)),
+        _summaryCard(context, 'Date & Time', '${DateFormat('d MMMM yyyy').format(_eventDate)} · 6:30 PM', onEdit: () => _jumpTo(2)),
+        _summaryCard(context, 'Guest Count', '$_totalGuests Guests', onEdit: () => _jumpTo(4)),
         const SizedBox(height: 16),
         _sectionHeader('Address'),
         Container(
