@@ -79,6 +79,14 @@ class _AppStartup extends StatefulWidget {
 }
 
 class _AppStartupState extends State<_AppStartup> {
+  // True once we've resolved (or given up resolving) the signed-in user's
+  // role. Restoring stored tokens flips isAuthenticated to true well before
+  // the role fetch below completes — without this gate, build() would show
+  // RootNav (customer) for that whole window even for a persisted vendor
+  // session, then swap to VendorRootNav once the role arrives. Keeping the
+  // splash up until this resolves closes that flash entirely.
+  bool _roleResolved = false;
+
   @override
   void initState() {
     super.initState();
@@ -100,6 +108,7 @@ class _AppStartupState extends State<_AppStartup> {
         // _ensureUserLoaded() retry will pick it up, and role stays default.
       }
     }
+    if (mounted) setState(() => _roleResolved = true);
   }
 
   @override
@@ -109,6 +118,11 @@ class _AppStartupState extends State<_AppStartup> {
       builder: (context, _) {
         if (AuthManager.instance.isInitializing) {
           // Splash screen while restoring session
+          return const _SplashScreen();
+        }
+        if (AuthManager.instance.isAuthenticated && !_roleResolved) {
+          // Tokens are restored but we don't know the role yet — stay on
+          // the splash rather than guessing which shell to show.
           return const _SplashScreen();
         }
         if (AuthManager.instance.isAuthenticated) {

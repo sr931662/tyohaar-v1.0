@@ -1,13 +1,14 @@
 """
 Seed script — creates the super admin role and a superadmin account.
 
-Run from the server/ directory:
+Run from anywhere (server/ or server/scripts/):
     python scripts/seed_admin.py
+    python seed_admin.py   (from within scripts/)
 
-Environment variables (or .env file):
-    ADMIN_PHONE    — E.164 phone number  e.g. +919876543210
-    ADMIN_EMAIL    — work email          e.g. admin@tyohaar.com
-    ADMIN_NAME     — full name           e.g. "Superadmin"
+Prompts interactively for the admin's phone/email/name/password — nothing
+is read from environment variables. Press Enter on phone/email/name to
+accept the shown default; the password prompt is hidden (getpass) and has
+no default (leave blank to create the account without password login).
 
 If the role or user already exists the script is idempotent (skips creation).
 """
@@ -15,12 +16,12 @@ If the role or user already exists the script is idempotent (skips creation).
 from __future__ import annotations
 
 import asyncio
-import os
+import getpass
 import sys
 from pathlib import Path
 
-# Make sure `app` is importable when running from server/
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Make sure `app` is importable regardless of which directory this is run from.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import select
 
@@ -40,12 +41,29 @@ from app.models.enums import (
 )
 from app.models.users.user import User
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Config (filled in interactively by prompt_for_credentials()) ─────────────
 
-PHONE    = os.getenv("ADMIN_PHONE", "+919999999999")
-EMAIL    = os.getenv("ADMIN_EMAIL", "admin@tyohaar.com")
-NAME     = os.getenv("ADMIN_NAME", "Superadmin")
-PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+PHONE = ""
+EMAIL = ""
+NAME = ""
+PASSWORD = ""
+
+
+def prompt_for_credentials() -> None:
+    """Collects admin details from the terminal. Called once at startup."""
+    global PHONE, EMAIL, NAME, PASSWORD
+
+    def ask(label: str, default: str) -> str:
+        raw = input(f"{label} [{default}]: ").strip()
+        return raw or default
+
+    print("\n=== Enter Superadmin Details ===")
+    PHONE = ask("Phone (E.164, e.g. +919876543210)", "+919999999999")
+    EMAIL = ask("Email", "admin@tyohaar.com")
+    NAME = ask("Full name", "Superadmin")
+    PASSWORD = getpass.getpass(
+        "Password (leave blank to skip password login, input hidden): "
+    ).strip()
 
 SUPERADMIN_ROLE = {
     "name": "Super Admin",
@@ -112,6 +130,28 @@ async def get_or_create_user(session) -> User:
     return user
 
 
+async def next_employee_id(session) -> str:
+    """
+    TYH-001, TYH-002, ... — scans existing employee_ids (including soft-
+    deleted admins, since uq_admins_employee_id doesn't exempt them) and
+    returns the next free one, so seeding a second/third admin doesn't
+    collide with an earlier run's TYH-001.
+    """
+    result = await session.execute(
+        select(Admin.employee_id).where(Admin.employee_id.like("TYH-%"))
+    )
+    used_numbers = set()
+    for (employee_id,) in result.all():
+        suffix = employee_id.rsplit("-", 1)[-1]
+        if suffix.isdigit():
+            used_numbers.add(int(suffix))
+
+    next_number = 1
+    while next_number in used_numbers:
+        next_number += 1
+    return f"TYH-{next_number:03d}"
+
+
 async def get_or_create_admin(session, user: User, role: AdminRole) -> Admin:
     result = await session.execute(
         select(Admin).where(Admin.user_id == user.id)
@@ -121,10 +161,11 @@ async def get_or_create_admin(session, user: User, role: AdminRole) -> Admin:
         print(f"  [skip] Admin record already exists  (id={admin.id})")
         return admin
 
+    employee_id = await next_employee_id(session)
     admin = Admin(
         user_id=user.id,
         role_id=role.id,
-        employee_id="TYH-001",
+        employee_id=employee_id,
         department=AdminDepartment.MANAGEMENT,
         designation="Superadmin",
         work_email=EMAIL,
@@ -136,13 +177,15 @@ async def get_or_create_admin(session, user: User, role: AdminRole) -> Admin:
     )
     session.add(admin)
     await session.flush()
-    print(f"  [+] Admin record created  (id={admin.id})")
+    print(f"  [+] Admin record created  (id={admin.id}  employee_id={employee_id})")
     return admin
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 async def main() -> None:
+    prompt_for_credentials()
+
     print("\n=== Tyohaar -- Superadmin Seed ===")
     print(f"  Phone : {PHONE}")
     print(f"  Email : {EMAIL}")
@@ -160,7 +203,7 @@ async def main() -> None:
         print("Done. Admin password set. Login via:")
         print('POST /api/v1/admin/auth/login  { "email": "' + EMAIL + '", "password": "****" }')
     else:
-        print("Done. No password set — set ADMIN_PASSWORD env var to enable password login.")
+        print("Done. No password set — re-run and enter a password to enable password login.")
     print()
 
 

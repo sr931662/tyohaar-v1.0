@@ -60,8 +60,13 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _onSuccess(AuthCredentials creds) async {
-    await AuthManager.instance.login(creds.accessToken, creds.refreshToken, creds.user);
+    // Resolve the POV (customer vs vendor) BEFORE flipping isAuthenticated —
+    // AuthManager.login() triggers an immediate rebuild of whatever's
+    // listening to it (the customer _AppStartup shell), so if pov were still
+    // 'customer' at that instant, the customer home would flash for a frame
+    // before AppState's own rebuild swaps in the vendor shell.
     AppState.instance.applyRole(creds.user.role);
+    await AuthManager.instance.login(creds.accessToken, creds.refreshToken, creds.user);
     if (!mounted) return;
     if (widget.onAuthenticated != null) {
       // Auth-gate flows (e.g. "start a celebration") only ever apply to the

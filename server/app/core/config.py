@@ -2,9 +2,18 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Anchored to this file's location (server/app/core/config.py -> server/.env)
+# rather than left as a bare ".env", which pydantic-settings resolves relative
+# to the process's current working directory — that broke scripts run from
+# a subdirectory (e.g. `cd scripts && python seed_admin.py`), since no .env
+# exists there. This keeps working identically for every context that
+# already ran from server/ (uvicorn, Docker, Procfile).
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 class Environment(str, Enum):
@@ -24,7 +33,7 @@ def _parse_list_env(v: str) -> list[str]:
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",

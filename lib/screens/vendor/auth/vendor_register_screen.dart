@@ -87,8 +87,10 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         vendorType: _vendorType,
         password: _passwordCtrl.text,
       );
-      await AuthManager.instance.login(creds.accessToken, creds.refreshToken, creds.user);
+      // Set POV before flipping isAuthenticated so the customer shell never
+      // gets a chance to render — see auth_screen.dart's _onSuccess for why.
       AppState.instance.applyRole(creds.user.role);
+      await AuthManager.instance.login(creds.accessToken, creds.refreshToken, creds.user);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const VendorRootNav()),
