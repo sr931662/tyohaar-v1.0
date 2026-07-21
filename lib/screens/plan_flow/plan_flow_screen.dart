@@ -98,9 +98,28 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         if (_addresses.isNotEmpty) _address = _addresses.first;
         _isLoading = false;
       });
+      // Fire-and-forget: warm the on-device cache for every occasion card
+      // image so the grid renders instantly (no per-card network fetch)
+      // even on a fresh install where nothing has been cached yet.
+      _precacheOccasionImages(_occasions);
     } catch (e) {
       debugPrint('Error loading plan flow data: $e');
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _precacheOccasionImages(List<Occasion> occasions) async {
+    final urls = occasions
+        .map((o) => o.heroImageUrl ?? o.thumbnailUrl)
+        .whereType<String>()
+        .toSet();
+    for (final url in urls) {
+      if (!mounted) return;
+      try {
+        await precacheImage(CachedNetworkImageProvider(url), context);
+      } catch (_) {
+        // Non-fatal — the card falls back to its bundled local asset image.
+      }
     }
   }
 

@@ -12,6 +12,17 @@ double asDouble(dynamic value) {
   return double.tryParse(value.toString()) ?? 0.0;
 }
 
+/// Some admin-managed image URL fields (banner_url, thumbnail_url, etc.)
+/// are stored as an empty string rather than NULL when unset. Treating ''
+/// as "present" breaks `a ?? b` fallback chains (an empty string is not
+/// null), which silently renders a broken image instead of falling back —
+/// this normalizes both null and blank/whitespace-only values to null.
+String? asUrl(dynamic value) {
+  if (value == null) return null;
+  final s = value.toString().trim();
+  return s.isEmpty ? null : s;
+}
+
 // ---------------------------------------------------------------------------
 // USER  →  UserResponse
 // ---------------------------------------------------------------------------
@@ -50,8 +61,8 @@ class User {
       firstName: json['first_name'],
       lastName: json['last_name'],
       profilePhotoUrl:
-          json['profile_photo_url'] as String? ??
-          (json['profile'] as Map?)?['profile_photo_url'] as String?,
+          asUrl(json['profile_photo_url']) ??
+          asUrl((json['profile'] as Map?)?['profile_photo_url']),
       role: json['role'] as String? ?? 'customer',
       status: json['account_status'] as String? ?? 'active',
     );
@@ -128,12 +139,12 @@ class Occasion {
       // Backend sends icon_url (URL), not icon_name. _parseIcon falls back to
       // auto_awesome when icon_name is absent, which is the correct default.
       icon: _parseIcon(json['icon_name'] as String?),
-      iconUrl: json['icon_url'] as String?,
+      iconUrl: asUrl(json['icon_url']),
       tint: _getCategoryTint(category, name),
       description: json['description'] as String?,
       category: category,
-      heroImageUrl: json['banner_url'] as String?,
-      thumbnailUrl: json['thumbnail_url'] as String?,
+      heroImageUrl: asUrl(json['banner_url']),
+      thumbnailUrl: asUrl(json['thumbnail_url']),
       themeColorHex: json['theme_color_hex'] as String?,
     );
   }
@@ -222,8 +233,8 @@ class CelebrationTheme {
       id: json['id'],
       name: json['name'] ?? '',
       description: json['description'] as String?,
-      coverImageUrl: json['cover_image_url'] as String?,
-      thumbnailUrl: json['thumbnail_url'] as String?,
+      coverImageUrl: asUrl(json['cover_image_url']),
+      thumbnailUrl: asUrl(json['thumbnail_url']),
       colors: rawColors?.map((k, v) => MapEntry(k, v.toString())) ?? const {},
       isFeatured: json['is_featured'] as bool? ?? false,
     );
@@ -256,8 +267,8 @@ class PackageCategory {
       id: json['id'] as String,
       name: json['name'] as String,
       slug: json['slug'] as String,
-      iconUrl: json['icon_url'] as String?,
-      coverImageUrl: json['cover_image_url'] as String?,
+      iconUrl: asUrl(json['icon_url']),
+      coverImageUrl: asUrl(json['cover_image_url']),
       displayOrder: json['display_order'] as int? ?? 0,
     );
   }
@@ -348,7 +359,7 @@ class Package {
       slug: json['slug'] as String?,
       description: json['description'] as String?,
       shortDescription: json['short_description'] as String?,
-      coverImageUrl: json['cover_image_url'] as String?,
+      coverImageUrl: asUrl(json['cover_image_url']),
       galleryImageUrls: (json['gallery'] as List?)
               ?.map((g) => g['file_url'] as String? ?? '')
               .where((u) => u.isNotEmpty)
@@ -451,8 +462,8 @@ class PackageItem {
       // Was: json['is_optional'] — backend sends is_mandatory (inverted).
       isOptional: !isMandatory,
       isCustomizable: json['is_customizable'] as bool? ?? false,
-      iconUrl: json['icon_url'] as String?,
-      coverImageUrl: json['cover_image_url'] as String?,
+      iconUrl: asUrl(json['icon_url']),
+      coverImageUrl: asUrl(json['cover_image_url']),
       imageUrls: (json['images'] as List?)
               ?.map((img) => img['image_url'] as String? ?? '')
               .where((u) => u.isNotEmpty)
@@ -524,7 +535,7 @@ class Booking {
       scheduledDate: DateTime.parse(json['scheduled_date']),
       packageId: json['package_id'] as String?,
       packageName: json['package_name'] as String?,
-      packageCoverUrl: json['package_cover_url'] as String?,
+      packageCoverUrl: asUrl(json['package_cover_url']),
       currency: json['currency'] as String? ?? 'INR',
       specialInstructions: json['special_instructions'] as String?,
       cancellationReason: json['cancellation_reason'] as String?,
@@ -638,7 +649,7 @@ class BudgetExpense {
       expenseType: json['expense_type'] as String? ?? 'estimated',
       isPaid: json['is_paid'] as bool? ?? false,
       vendorName: json['vendor_name'] as String?,
-      receiptUrl: json['receipt_url'] as String?,
+      receiptUrl: asUrl(json['receipt_url']),
       // tint is derived — backend has no tint field.
       tint: _categoryTint(category),
     );
@@ -723,8 +734,8 @@ class NotifItem {
       time: json['created_at'] as String? ?? '',
       unread: !(json['is_read'] as bool? ?? false),
       subtitle: null,
-      actionUrl: json['action_url'] as String?,
-      imageUrl: json['image_url'] as String?,
+      actionUrl: asUrl(json['action_url']),
+      imageUrl: asUrl(json['image_url']),
       referenceType: json['reference_type'] as String?,
       referenceId: json['reference_id']?.toString(),
     );
@@ -1012,8 +1023,8 @@ class Celebration {
       category: null,
       themeColors: rawThemeColors
           ?.map((k, v) => MapEntry(k.toString(), v.toString())),
-      themeCoverImageUrl: json['theme_cover_image_url'] as String?,
-      heroImageUrl: json['occasion_hero_image_url'] as String?,
+      themeCoverImageUrl: asUrl(json['theme_cover_image_url']),
+      heroImageUrl: asUrl(json['occasion_hero_image_url']),
       status: json['status'] as String?,
       celebrationDate: json['celebration_date'] != null
           ? DateTime.tryParse(json['celebration_date'] as String)
