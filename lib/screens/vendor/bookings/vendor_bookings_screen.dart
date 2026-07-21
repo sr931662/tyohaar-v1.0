@@ -42,14 +42,22 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({String? status, String? search}) async {
+    final targetStatus = status ?? _status;
+    final targetSearch = search ?? _searchCtrl.text.trim();
+
     setState(() => _isLoading = true);
     try {
       final result = await _bookingService.listVendorBookings(
-        search: _searchCtrl.text.trim(),
-        status: _status,
+        search: targetSearch,
+        status: targetStatus,
       );
-      if (mounted) setState(() { _bookings = result['items'] as List<Booking>; _isLoading = false; });
+      if (mounted) {
+        setState(() { 
+          _bookings = result['items'] as List<Booking>; 
+          _isLoading = false; 
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -80,20 +88,34 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ty.line)),
                       isDense: true,
                     ),
-                    onSubmitted: (_) => _load(),
+                    onSubmitted: (val) => _load(search: val.trim()),
                   ),
                   SizedBox(height: resp.h(10)),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: _statusOptions.map((s) {
-                        final selected = _status == s.$1;
+                        final isSelected = _status == s.$1;
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: ChoiceChip(
                             label: Text(s.$2),
-                            selected: selected,
-                            onSelected: (_) { setState(() => _status = s.$1); _load(); },
+                            labelStyle: TyType.sans(12.5, 
+                              color: isSelected ? ty.onPrimary : ty.ink2,
+                              weight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                            ),
+                            selected: isSelected,
+                            selectedColor: ty.saffron,
+                            backgroundColor: ty.surface,
+                            checkmarkColor: ty.onPrimary,
+                            side: BorderSide(color: isSelected ? ty.saffron : ty.line),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            onSelected: (val) { 
+                              if (val) {
+                                setState(() => _status = s.$1); 
+                                _load(status: s.$1);
+                              }
+                            },
                           ),
                         );
                       }).toList(),

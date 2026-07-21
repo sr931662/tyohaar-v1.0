@@ -433,64 +433,67 @@ class BookingService(BaseService):
         limit: int,
     ) -> CursorPage[BookingResponse]:
         async with self._uow() as uow:
-            # A vendor's bookings come from two sources, unioned:
-            #  1. Explicit per-item assignments (multi-vendor bookings).
-            #  2. Bookings whose package this vendor owns (the common
-            #     single-vendor case).
+            from sqlalchemy import or_, and_
             from app.models.packages.package import Package
+            from app.models.bookings.booking import Booking
 
+            # 1. Ownership logic: assigned or owned package
             assignments = await uow.bookings.assignments.find_by_vendor(vendor_id, limit=1000)
-            booking_ids = {a.booking_id for a in assignments}
+            assigned_booking_ids = {a.booking_id for a in assignments}
 
-            owned_packages = await uow.packages.packages.find_many(
-                Package.vendor_id == vendor_id
-            )
+            owned_packages = await uow.packages.packages.find_many(Package.vendor_id == vendor_id)
             owned_package_ids = [p.id for p in owned_packages]
 
-            # Base identity conditions (Assigned OR Owned)
-            identity_conditions = []
-            if booking_ids:
-                identity_conditions.append(uow.bookings.bookings._model.id.in_(booking_ids))
-            if owned_package_ids:
-                identity_conditions.append(
-                    uow.bookings.bookings._model.package_id.in_(owned_package_ids)
-                )
-
-            if not identity_conditions:
+            if not assigned_booking_ids and not owned_package_ids:
                 return CursorPage(items=[], next_cursor=None, has_more=False)
 
-            from sqlalchemy import or_
+            # 2. Build Query Conditions
+            # Start with identity: must be in assigned list OR match an owned package
+            identity_clause = []
+            if assigned_booking_ids:
+                identity_clause.append(Booking.id.in_(list(assigned_booking_ids)))
+            if owned_package_ids:
+                identity_clause.append(Booking.package_id.in_(owned_package_ids))
 
-            # Combine identity conditions with OR
-            final_conditions = [or_(*identity_conditions)]
+            # Combine identity with OR
+            base_condition = or_(*identity_clause)
 
-            # Apply functional filters (Status, Search)
-            if filters.booking_status is not None:
-                final_conditions.append(
-                    uow.bookings.bookings._model.booking_status == filters.booking_status
-                )
-            if filters.search is not None and filters.search.strip():
-                search_term = f"{filters.search.strip().lower()}%"
-                final_conditions.append(
-                    uow.bookings.bookings._model.booking_number.ilike(search_term)
-                )
+            # Functional Filters
+            status_filter = None
+            if filters.booking_status:
+                logger.info(f"Filtering vendor bookings by status: {filters.booking_status}")
+                # Use the value explicitly to be safe with string enums
+                status_val = str(filters.booking_status.value) if hasattr(filters.booking_status, 'value') else str(filters.booking_status)
+                status_filter = (Booking.booking_status == status_val)
 
+            search_filter = None
+            if filters.search and filters.search.strip():
+                logger.info(f"Filtering vendor bookings by search: {filters.search}")
+                search_filter = Booking.booking_number.ilike(f"{filters.search.strip().lower()}%")
+
+            # Final list of filters to AND
+            final_filters = [base_condition]
+            if status_filter is not None:
+                final_filters.append(status_filter)
+            if search_filter is not None:
+                final_filters.append(search_filter)
+
+            # 3. Fetch
             page = await uow.bookings.bookings.cursor_paginate(
-                *final_conditions,
+                and_(*final_filters),
                 cursor=cursor,
                 limit=limit,
             )
+
+            # 4. Hydrate
             info = await self._attach_package_info(uow, page.items)
             items = []
             for b in page.items:
                 item = BookingResponse.model_validate(b)
                 item.package_name, item.package_cover_url = info.get(b.package_id, (None, None))
                 items.append(item)
-            return CursorPage(
-                items=items,
-                next_cursor=page.next_cursor,
-                has_more=page.has_next,
-            )
+
+            return CursorPage(items=items, next_cursor=page.next_cursor, has_more=page.has_next)
 
     # ── Status transitions ────────────────────────────────────────────────────
 

@@ -88,7 +88,25 @@ async def list_vendor_bookings(
     filters: Annotated[BookingFilters, Depends()],
     pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
     service: BookingServiceDep,
+    booking_status: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    search: str | None = Query(default=None),
 ) -> CursorPaginatedResponse[BookingResponse]:
+    # Prioritize explicit query params over Pydantic-parsed ones if they exist
+    from app.models.enums import BookingStatus
+
+    # 1. Resolve status
+    target_status = booking_status or status or filters.booking_status
+    if target_status and isinstance(target_status, str):
+        try:
+            filters.booking_status = BookingStatus(target_status.lower())
+        except ValueError:
+            pass
+
+    # 2. Resolve search
+    if search:
+        filters.search = search
+
     page = await service.list_vendor_bookings(
         vendor_id=vendor_id,
         filters=filters,
