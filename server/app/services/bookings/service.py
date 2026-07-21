@@ -1289,6 +1289,27 @@ class BookingService(BaseService):
 
     # ── Multimedia (vendor-uploaded event media) ────────────────────────────
 
+    async def _vendor_owns_booking(self, uow, booking: Booking, vendor_id: UUID) -> bool:
+        """
+        A vendor is eligible for a booking through either of the two sources
+        `list_vendor_bookings` already recognizes: an explicit BookingAssignment
+        row (multi-vendor bookings), or direct ownership of the booking's
+        package (the common single-vendor case, which never gets an
+        assignment row at creation). Keeping these in sync matters — a vendor
+        who sees a booking in "My Bookings" must see it in Multimedia too.
+        """
+        from app.models.packages.package import Package
+
+        assignments = await uow.bookings.assignments.find_many(
+            uow.bookings.assignments._model.booking_id == booking.id,
+            uow.bookings.assignments._model.vendor_id == vendor_id,
+        )
+        if assignments:
+            return True
+
+        package = await uow.packages.packages.get_by_id(booking.package_id)
+        return package is not None and package.vendor_id == vendor_id
+
     async def assert_vendor_media_upload_allowed(
         self,
         booking_id: UUID,
@@ -1296,20 +1317,16 @@ class BookingService(BaseService):
     ) -> Booking:
         """
         Gate for the vendor multimedia-upload endpoint: the calling vendor
-        must have an accepted assignment on this booking, and the event must
-        have already been completed (media is delivered after the event).
+        must be eligible for this booking (assigned or package owner), and
+        the event must have already been completed (media is delivered
+        after the event).
         """
         async with self._uow() as uow:
             booking = await validate_booking_exists(booking_id, uow)
 
-            assignments = await uow.bookings.assignments.find_many(
-                uow.bookings.assignments._model.booking_id == booking_id,
-                uow.bookings.assignments._model.vendor_id == vendor_id,
-                uow.bookings.assignments._model.assignment_status == AssignmentStatus.ACCEPTED,
-            )
-            if not assignments:
+            if not await self._vendor_owns_booking(uow, booking, vendor_id):
                 raise VendorNotAvailableError(
-                    f"Vendor {vendor_id} has no accepted assignment on booking {booking_id}."
+                    f"Vendor {vendor_id} is not assigned to booking {booking_id}."
                 )
 
             if booking.booking_status != BookingStatus.COMPLETED:
@@ -1382,10 +1399,12 @@ class BookingService(BaseService):
 
     async def list_vendor_booking_media(self, vendor_id: UUID) -> list["BookingMediaSummary"]:
         """
-        Bookings assigned to this vendor, with media counts, for the vendor
-        portal's Multimedia section. Upload is only allowed once completed.
+        Bookings this vendor is eligible for (assigned, or the direct
+        package owner — same two-source definition as list_vendor_bookings),
+        with media counts, for the vendor portal's Multimedia section.
+        Upload is only allowed once completed.
         """
-        from sqlalchemy import select as sa_select
+        from sqlalchemy import or_, select as sa_select
         from app.models.packages.package import Package
         from app.models.users.user import User
         from app.schemas.bookings import BookingMediaSummary
@@ -1394,15 +1413,30 @@ class BookingService(BaseService):
             session = uow.session
             assert session is not None
 
+            assignments = await uow.bookings.assignments.find_by_vendor(vendor_id, limit=1000)
+            booking_ids = {a.booking_id for a in assignments}
+
+            owned_packages = await uow.packages.packages.find_many(
+                Package.vendor_id == vendor_id
+            )
+            owned_package_ids = [p.id for p in owned_packages]
+
+            conditions = []
+            if booking_ids:
+                conditions.append(Booking.id.in_(booking_ids))
+            if owned_package_ids:
+                conditions.append(Booking.package_id.in_(owned_package_ids))
+
+            if not conditions:
+                return []
+
             rows = (
                 await session.execute(
                     sa_select(Booking, User, Package)
-                    .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
                     .join(User, User.id == Booking.customer_id)
                     .join(Package, Package.id == Booking.package_id)
                     .where(
-                        BookingAssignment.vendor_id == vendor_id,
-                        BookingAssignment.assignment_status == AssignmentStatus.ACCEPTED,
+                        or_(*conditions) if len(conditions) > 1 else conditions[0],
                         Booking.deleted_at.is_(None),
                     )
                     .order_by(Booking.scheduled_date.desc())

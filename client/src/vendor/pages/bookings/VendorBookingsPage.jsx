@@ -123,7 +123,7 @@ export default function VendorBookingsPage() {
                       {formatCurrency(b.total_amount ?? b.amount ?? 0)}
                     </td>
                     <td>
-                      <StatusBadge status={b.status} />
+                      <StatusBadge status={b.booking_status} />
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <button
