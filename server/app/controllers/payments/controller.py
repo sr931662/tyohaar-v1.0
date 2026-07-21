@@ -30,6 +30,7 @@ from app.schemas.payments.response import (
 )
 from app.services.payments.service import (
     InvoiceResponse,
+    PaymentGatewayConfig,
     PaymentInitResponse,
     PaymentSplitCreate,
     PaymentSplitResponse,
@@ -43,6 +44,12 @@ def _cursor_resp(page: CursorPage, page_size: int) -> CursorPaginatedResponse:
         data=page.items,
         meta=CursorMeta(cursor=page.next_cursor, has_next=page.has_more, page_size=page_size),
     )
+
+
+async def get_gateway_config(
+    service: PaymentServiceDep,
+) -> SuccessResponse[PaymentGatewayConfig]:
+    return SuccessResponse(data=service.get_gateway_config())
 
 
 async def initiate_payment(

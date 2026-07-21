@@ -68,6 +68,20 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class PaymentGatewayConfig:
+    """
+    Public, non-secret gateway config the client needs before it can even
+    open checkout. RAZORPAY_KEY_ID is a public identifier by Razorpay's own
+    design (it ships inside every Checkout integration's client-side code) —
+    safe to expose unauthenticated, unlike RAZORPAY_KEY_SECRET/WEBHOOK_SECRET.
+    """
+
+    gateway: str
+    key_id: str
+    is_configured: bool
+
+
+@dataclass
 class PaymentInitResponse:
     """Minimal data returned to the client to proceed through gateway checkout."""
 
@@ -76,6 +90,7 @@ class PaymentInitResponse:
     gateway_order_id: str
     checkout_url: str | None
     amount: Decimal
+    amount_paise: int = 0
     currency: str = "INR"
     gateway: str = "razorpay"
     expires_at: datetime = field(
@@ -220,6 +235,23 @@ class PaymentService(BaseService):
     def __init__(self, session_factory: Callable[[], AsyncSession] = AsyncSessionLocal) -> None:
         super().__init__(session_factory)
 
+    # ── Public gateway config ─────────────────────────────────────────────────
+
+    def get_gateway_config(self) -> PaymentGatewayConfig:
+        """
+        Lets the client fetch the Razorpay key_id at runtime instead of
+        baking it into the app build — one place (this server's env vars)
+        to manage credentials instead of two (server .env + mobile
+        --dart-define at every build).
+        """
+        from app.core.config import settings
+
+        return PaymentGatewayConfig(
+            gateway="razorpay",
+            key_id=settings.RAZORPAY_KEY_ID,
+            is_configured=bool(settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET),
+        )
+
     # ── Payment Initiation ────────────────────────────────────────────────────
 
     async def initiate_payment(
@@ -349,6 +381,10 @@ class PaymentService(BaseService):
             gateway_order_id=gateway_order_id,
             checkout_url=None,  # Razorpay Checkout is opened client-side with the order_id
             amount=payment_obj.final_amount,
+            # Same computation used for the actual Razorpay order.create() call
+            # above — returning it here means the client never has to
+            # re-derive paise from the decimal amount (a rounding-drift risk).
+            amount_paise=_rupees_to_paise(payment_obj.final_amount),
             gateway=gateway_value,
         )
 

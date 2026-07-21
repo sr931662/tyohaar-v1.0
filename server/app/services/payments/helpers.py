@@ -137,7 +137,11 @@ def verify_webhook_signature(
     Verify the HMAC-SHA256 webhook signature from a payment gateway.
 
     Razorpay: HMAC-SHA256(payload, secret) == signature (hex digest).
-    Other gateways: stub — always returns True until implemented.
+    Any other gateway value fails closed (returns False) — no other gateway
+    integration exists yet, so there is no verification scheme to check
+    against; silently trusting an unverified payload would let anyone hit
+    the webhook/verify endpoints with an arbitrary {gateway} path value to
+    bypass signature checking entirely.
     """
     if gateway.lower() == "razorpay":
         expected = hmac.new(
@@ -146,8 +150,7 @@ def verify_webhook_signature(
             hashlib.sha256,
         ).hexdigest()
         return hmac.compare_digest(expected, signature)
-    # Stubs for other gateways — implement per gateway SDK spec
-    return True
+    return False
 
 
 def generate_payment_reference() -> str:

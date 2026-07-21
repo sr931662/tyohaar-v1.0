@@ -56,6 +56,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _startPayment() async {
     setState(() { _isProcessing = true; _error = null; });
     try {
+      final config = await _paymentService.getGatewayConfig();
       final order = await _paymentService.initiatePayment(
         bookingId: widget.bookingId,
         subtotal: widget.amount,
@@ -65,7 +66,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final user = AuthManager.instance.currentUser;
 
       final options = {
-        'key': kRazorpayKeyId,
+        'key': config.keyId.isNotEmpty ? config.keyId : kRazorpayKeyId,
         'amount': order.amountPaise,
         'currency': order.currency,
         'order_id': order.orderId,

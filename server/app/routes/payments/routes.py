@@ -18,6 +18,7 @@ from app.schemas.payments.response import (
 )
 from app.services.payments.service import (
     InvoiceResponse,
+    PaymentGatewayConfig,
     PaymentInitResponse,
     PaymentSplitResponse,
     PaymentTransactionResponse,
@@ -25,6 +26,19 @@ from app.services.payments.service import (
 )
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
+
+# ── Gateway config (public, static — must precede /{payment_id}) ────────────
+
+router.add_api_route(
+    "/config",
+    ctrl.get_gateway_config,
+    methods=["GET"],
+    response_model=SuccessResponse[PaymentGatewayConfig],
+    status_code=status.HTTP_200_OK,
+    summary="Get Payment Gateway Config",
+    description="Public, non-secret gateway config (key_id only) the client needs to open checkout.",
+    operation_id="payments_get_gateway_config",
+)
 
 # ── Coupons (static — must precede /{payment_id}) ────────────────────────────
 

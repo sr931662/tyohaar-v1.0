@@ -21,11 +21,36 @@ class PaymentOrder {
 
   factory PaymentOrder.fromJson(Map<String, dynamic> json) {
     final amount = (json['amount'] as num?)?.toDouble() ?? 0;
+    final serverAmountPaise = json['amount_paise'] as num?;
     return PaymentOrder(
       paymentId: json['payment_id'] as String,
       orderId: json['gateway_order_id'] as String,
       currency: json['currency'] as String? ?? 'INR',
-      amountPaise: (amount * 100).round(),
+      // Prefer the backend's authoritative paise amount (same figure used to
+      // create the actual Razorpay order); fall back to client-side rounding
+      // only if an older backend build doesn't send it yet.
+      amountPaise: serverAmountPaise?.round() ?? (amount * 100).round(),
+    );
+  }
+}
+
+/// Public, non-secret gateway config the client needs to open checkout.
+class PaymentGatewayConfig {
+  final String gateway;
+  final String keyId;
+  final bool isConfigured;
+
+  PaymentGatewayConfig({
+    required this.gateway,
+    required this.keyId,
+    required this.isConfigured,
+  });
+
+  factory PaymentGatewayConfig.fromJson(Map<String, dynamic> json) {
+    return PaymentGatewayConfig(
+      gateway: json['gateway'] as String? ?? 'razorpay',
+      keyId: json['key_id'] as String? ?? '',
+      isConfigured: json['is_configured'] as bool? ?? false,
     );
   }
 }
@@ -90,6 +115,14 @@ class DiscountPreview {
 
 class PaymentService {
   final ApiClient _api = ApiClient();
+
+  /// Fetches the public gateway config (key_id) at runtime, so the Razorpay
+  /// key lives in one place — the backend's .env — instead of a separate
+  /// build-time --dart-define flag.
+  Future<PaymentGatewayConfig> getGatewayConfig() async {
+    final response = await _api.dio.get('payments/config');
+    return PaymentGatewayConfig.fromJson(response.data['data'] as Map<String, dynamic>);
+  }
 
   /// Server-side discount evaluation preview — combines any automatic
   /// discounts with an optional coupon code, per the DiscountEngine's

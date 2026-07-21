@@ -198,7 +198,9 @@ class Payment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=True,
         comment=(
             "HMAC-SHA256 signature from the gateway verifying payment authenticity. "
-            "Verified against our webhook secret before marking COMPLETED."
+            "Checkout-flow signatures (order_id|payment_id) are verified against "
+            "our key_secret; inbound webhook payloads are verified separately "
+            "against our webhook_secret. Either scheme marks the payment COMPLETED."
         ),
     )
 
