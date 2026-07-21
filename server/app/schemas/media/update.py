@@ -23,6 +23,8 @@ __all__ = [
     "ImageUpdate",
     "VideoUpdate",
     "MemoryUpdate",
+    "ImageMetadataUpdate",
+    "VideoMetadataUpdate",
 ]
 
 
@@ -94,8 +96,9 @@ class VideoUpdate(BaseSchema):
     is_primary: bool | None = None
 
 
-# Alias consumed by the media controller
+# Aliases consumed by the media controller
 ImageMetadataUpdate = ImageUpdate
+VideoMetadataUpdate = VideoUpdate
 
 
 class MemoryUpdate(BaseSchema):

@@ -451,6 +451,19 @@ class MediaService(BaseService):
             await uow.media.videos.soft_delete(video)
             await uow.commit()
 
+    async def update_video_metadata(
+        self,
+        video_id: UUID,
+        owner_id: UUID,
+        data: object,  # VideoUpdate schema
+    ) -> VideoResponse:
+        async with self._uow() as uow:
+            video = await validate_video_ownership(video_id, owner_id, uow)
+            update_dict = data.model_dump(exclude_unset=True)  # type: ignore[union-attr]
+            video = await uow.media.videos.update(video, update_dict)
+            await uow.commit()
+        return VideoResponse.model_validate(video)
+
     # =========================================================================
     # Memories
     # =========================================================================

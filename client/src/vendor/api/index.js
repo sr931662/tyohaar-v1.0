@@ -40,6 +40,16 @@ export const vendorMediaApi = {
 
   listVideosForEntity: (entityId, entityType) =>
     vendorClient.get(`/media/videos/entity/${entityId}`, { params: { entity_type: entityType } }).then(extractData),
+
+  updateImage: (imageId, body) =>
+    vendorClient.patch(`/media/images/${imageId}`, body).then(extractData),
+  deleteImage: (imageId) =>
+    vendorClient.delete(`/media/images/${imageId}`).then(extractData),
+
+  updateVideo: (videoId, body) =>
+    vendorClient.patch(`/media/videos/${videoId}`, body).then(extractData),
+  deleteVideo: (videoId) =>
+    vendorClient.delete(`/media/videos/${videoId}`).then(extractData),
 };
 
 // ── Vendor Profile ────────────────────────────────────────────────────────────

@@ -9,7 +9,98 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function MediaTile({ item, isVideo, bookingId, qc }) {
+  const [editing, setEditing] = useState(false);
+  const [caption, setCaption] = useState(isVideo ? (item.title ?? '') : (item.alt_text ?? ''));
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['vendor', 'booking-media-gallery', isVideo ? 'videos' : 'images', bookingId] });
+    qc.invalidateQueries({ queryKey: ['vendor', 'booking-media'] });
+  };
+
+  const updateMutation = useMutation({
+    mutationFn: (body) => (isVideo ? vendorMediaApi.updateVideo(item.id, body) : vendorMediaApi.updateImage(item.id, body)),
+    onSuccess: () => {
+      toast.success('Caption updated.');
+      setEditing(false);
+      invalidate();
+    },
+    onError: () => toast.error('Failed to update caption.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => (isVideo ? vendorMediaApi.deleteVideo(item.id) : vendorMediaApi.deleteImage(item.id)),
+    onSuccess: () => {
+      toast.success(isVideo ? 'Video removed.' : 'Photo removed.');
+      invalidate();
+    },
+    onError: () => toast.error('Failed to remove media.'),
+  });
+
+  const handleSaveCaption = () => {
+    const body = isVideo ? { title: caption.trim() || undefined } : { alt_text: caption.trim() || undefined };
+    updateMutation.mutate(body);
+  };
+
+  return (
+    <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', background: isVideo ? '#000' : 'var(--bg-base)' }}>
+      <div style={{ position: 'relative', aspectRatio: '4/3' }}>
+        {isVideo ? (
+          <video src={item.url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <img src={item.url} alt={item.alt_text ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+        )}
+        <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            title="Edit caption"
+            style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff', cursor: 'pointer', fontSize: 12 }}
+          >✏️</button>
+          {confirmDelete ? (
+            <button
+              type="button"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              title="Confirm delete"
+              style={{ height: 24, borderRadius: 12, border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer', fontSize: 11, padding: '0 8px' }}
+            >{deleteMutation.isPending ? '…' : 'Confirm'}</button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              onBlur={() => setConfirmDelete(false)}
+              title="Delete"
+              style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff', cursor: 'pointer', fontSize: 12 }}
+            >🗑</button>
+          )}
+        </div>
+      </div>
+      {editing ? (
+        <div style={{ display: 'flex', gap: 4, padding: 6, background: 'var(--bg-subtle)' }}>
+          <input
+            className="admin-input"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="Caption"
+            style={{ flex: 1, fontSize: 12, padding: '4px 6px' }}
+          />
+          <button className="btn btn-primary btn-sm" disabled={updateMutation.isPending} onClick={handleSaveCaption}>
+            {updateMutation.isPending ? '…' : 'Save'}
+          </button>
+        </div>
+      ) : (caption && (
+        <div style={{ padding: '4px 8px', fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {caption}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function BookingMediaGallery({ booking }) {
+  const qc = useQueryClient();
   const { data: images = [], isLoading: loadingImages } = useQuery({
     queryKey: ['vendor', 'booking-media-gallery', 'images', booking.booking_id],
     queryFn: () => vendorMediaApi.listImagesForEntity(booking.booking_id, 'booking'),
@@ -34,14 +125,10 @@ function BookingMediaGallery({ booking }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
       {images.map((img) => (
-        <div key={img.id} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '4/3', background: 'var(--bg-base)' }}>
-          <img src={img.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-        </div>
+        <MediaTile key={img.id} item={img} isVideo={false} bookingId={booking.booking_id} qc={qc} />
       ))}
       {videos.map((vid) => (
-        <div key={vid.id} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '4/3', background: '#000' }}>
-          <video src={vid.url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
+        <MediaTile key={vid.id} item={vid} isVideo bookingId={booking.booking_id} qc={qc} />
       ))}
     </div>
   );

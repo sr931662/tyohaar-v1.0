@@ -186,6 +186,17 @@ router.add_api_route(
     operation_id="media_delete_video",
 )
 
+router.add_api_route(
+    "/videos/{video_id}",
+    ctrl.update_video_metadata,
+    methods=["PATCH"],
+    response_model=SuccessResponse[VideoResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Video Metadata",
+    description="Update title, description, or other metadata on a video. User ownership required.",
+    operation_id="media_update_video_metadata",
+)
+
 # ── Memories ──────────────────────────────────────────────────────────────────
 
 router.add_api_route(

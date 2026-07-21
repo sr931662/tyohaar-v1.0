@@ -15,6 +15,7 @@ import '../theme/responsive.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../utils/currency.dart';
+import '../utils/gallery_album.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
@@ -105,9 +106,9 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
 
     setState(() => _isDownloading = true);
     try {
-      final hasAccess = await Gal.hasAccess();
+      final hasAccess = await Gal.hasAccess(toAlbum: true);
       if (!hasAccess) {
-        final granted = await Gal.requestAccess();
+        final granted = await Gal.requestAccess(toAlbum: true);
         if (!granted) {
           if (await Permission.photos.request().isDenied && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -128,6 +129,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
       await Gal.putImageBytes(
         Uint8List.fromList(bytes),
         name: '${_fullPackage.name}_tyohaar_${_currentImageIndex + 1}',
+        album: kTyohaarGalleryAlbum,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

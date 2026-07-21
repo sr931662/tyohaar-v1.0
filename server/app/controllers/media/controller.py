@@ -28,7 +28,7 @@ from app.schemas.media.response import (
     MemoryResponse,
     VideoResponse,
 )
-from app.schemas.media.update import ImageMetadataUpdate, MemoryUpdate
+from app.schemas.media.update import ImageMetadataUpdate, MemoryUpdate, VideoMetadataUpdate
 from app.services.media.service import ImageUploadResponse, VideoUploadResponse
 
 
@@ -233,6 +233,18 @@ async def delete_video(
 ) -> SuccessResponse[None]:
     await service.delete_video(video_id=video_id, owner_id=current_user.id)
     return SuccessResponse(data=None, message="Video deleted.")
+
+
+async def update_video_metadata(
+    video_id: uuid.UUID,
+    body: VideoMetadataUpdate,
+    current_user: CurrentUserDep,
+    service: MediaServiceDep,
+) -> SuccessResponse[VideoResponse]:
+    result = await service.update_video_metadata(
+        video_id=video_id, owner_id=current_user.id, data=body
+    )
+    return SuccessResponse(data=result, message="Video metadata updated.")
 
 
 # ── Memories ──────────────────────────────────────────────────────────────────

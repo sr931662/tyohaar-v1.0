@@ -18,6 +18,7 @@ import '../data/services/celebration_service.dart';
 import '../data/services/booking_service.dart';
 import '../data/services/package_service.dart';
 import '../data/services/media_service.dart';
+import '../utils/gallery_album.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
@@ -667,9 +668,9 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
   }
 
   Future<bool> _ensureGalleryAccess() async {
-    final hasAccess = await Gal.hasAccess();
+    final hasAccess = await Gal.hasAccess(toAlbum: true);
     if (hasAccess) return true;
-    final granted = await Gal.requestAccess();
+    final granted = await Gal.requestAccess(toAlbum: true);
     if (granted) return true;
     await Permission.photos.request();
     if (mounted) {
@@ -685,7 +686,7 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/tyohaar_event_${item.id}.mp4';
       await Dio().download(item.url, path);
-      await Gal.putVideo(path);
+      await Gal.putVideo(path, album: kTyohaarGalleryAlbum);
       try {
         await File(path).delete();
       } catch (_) {}
@@ -699,6 +700,7 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
       await Gal.putImageBytes(
         Uint8List.fromList(bytes),
         name: 'tyohaar_event_${item.id}',
+        album: kTyohaarGalleryAlbum,
       );
     }
   }
@@ -883,9 +885,9 @@ class _EventMediaViewerScreenState extends State<_EventMediaViewerScreen> {
     final item = widget.images[_index];
     setState(() => _isDownloading = true);
     try {
-      final hasAccess = await Gal.hasAccess();
+      final hasAccess = await Gal.hasAccess(toAlbum: true);
       if (!hasAccess) {
-        final granted = await Gal.requestAccess();
+        final granted = await Gal.requestAccess(toAlbum: true);
         if (!granted) {
           await Permission.photos.request();
           if (mounted) {
@@ -905,6 +907,7 @@ class _EventMediaViewerScreenState extends State<_EventMediaViewerScreen> {
       await Gal.putImageBytes(
         Uint8List.fromList(bytes),
         name: 'tyohaar_event_${item.id}',
+        album: kTyohaarGalleryAlbum,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
