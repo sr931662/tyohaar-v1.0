@@ -8,6 +8,7 @@ and experiences; Tyohaar maps their requests to vendors behind the scenes.
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
