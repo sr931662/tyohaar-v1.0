@@ -554,6 +554,44 @@ class Booking {
 }
 
 // ---------------------------------------------------------------------------
+// EVENT MEDIA  →  ImageResponse / VideoResponse (vendor-uploaded event media,
+// entity_type='booking'). Both share the same shape closely enough to model
+// as one class distinguished by [isVideo].
+// ---------------------------------------------------------------------------
+
+class EventMediaItem {
+  final String id;
+  final String url;
+  final String? thumbnailUrl;
+  final bool isVideo;
+  final DateTime? uploadedAt;
+
+  const EventMediaItem({
+    required this.id,
+    required this.url,
+    this.thumbnailUrl,
+    required this.isVideo,
+    this.uploadedAt,
+  });
+
+  /// Best thumbnail to render in a grid — falls back to the full media URL
+  /// when no dedicated thumbnail was generated (e.g. most photos).
+  String get gridThumbnailUrl => thumbnailUrl ?? url;
+
+  factory EventMediaItem.fromJson(Map<String, dynamic> json, {required bool isVideo}) {
+    return EventMediaItem(
+      id: json['id'] as String,
+      url: json['url'] as String,
+      thumbnailUrl: asUrl(json['thumbnail_url']),
+      isVideo: isVideo,
+      uploadedAt: json['uploaded_at'] != null
+          ? DateTime.tryParse(json['uploaded_at'] as String)
+          : null,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // GUEST  →  CelebrationGuestResponse
 // ---------------------------------------------------------------------------
 

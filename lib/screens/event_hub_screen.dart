@@ -1,5 +1,13 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
+import 'package:gal/gal.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
@@ -9,6 +17,7 @@ import '../data/models.dart';
 import '../data/services/celebration_service.dart';
 import '../data/services/booking_service.dart';
 import '../data/services/package_service.dart';
+import '../data/services/media_service.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/progress_ring.dart';
@@ -29,11 +38,15 @@ class _EventHubScreenState extends State<EventHubScreen> {
   final CelebrationService _celebrationService = CelebrationService();
   final BookingService _bookingService = BookingService();
   final PackageService _packageService = PackageService();
+  final MediaService _mediaService = MediaService();
   Celebration? _celebration;
+  Booking? _booking;
   List<Guest> _guests = [];
   List<CelebrationChecklistItem> _checklist = [];
   Package? _package;
   List<PackageItem> _packageItems = [];
+  List<EventMediaItem> _eventMedia = [];
+  bool _loadingMedia = false;
   String _daysLeft = '--';
   String _hoursLeft = '--';
   bool _isLoading = true;
@@ -98,6 +111,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
       if (mounted) {
         setState(() {
           _celebration = details;
+          _booking = booking;
           _guests = guests;
           _checklist = checklist;
           _package = package;
@@ -106,6 +120,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
           _hoursLeft = hoursLeft;
           _isLoading = false;
         });
+        _loadEventMedia();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           TutorialOverlay.show(context, screenKey: 'event_hub', steps: [
@@ -121,6 +136,20 @@ class _EventHubScreenState extends State<EventHubScreen> {
     } catch (e) {
       debugPrint('Error loading event hub: $e');
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadEventMedia() async {
+    final booking = _booking;
+    if (booking == null) return;
+    setState(() => _loadingMedia = true);
+    try {
+      final media = await _mediaService.listBookingMedia(booking.id);
+      if (mounted) setState(() => _eventMedia = media);
+    } catch (e) {
+      debugPrint('Error loading event media: $e');
+    } finally {
+      if (mounted) setState(() => _loadingMedia = false);
     }
   }
 
@@ -353,6 +382,12 @@ class _EventHubScreenState extends State<EventHubScreen> {
                               ],
                             ),
                           ),
+                          SizedBox(height: resp.h(18)),
+                          const SectionHeader('Multimedia'),
+                          _EventMediaSection(
+                            media: _eventMedia,
+                            isLoading: _loadingMedia,
+                          ),
                         ],
                       ),
                     ),
@@ -575,4 +610,377 @@ class _EventHubScreenState extends State<EventHubScreen> {
         borderRadius: BorderRadius.circular(resp.w(20)),
         border: Border.all(color: ty.line),
       );
+}
+
+// ---------------------------------------------------------------------------
+// MULTIMEDIA — vendor-uploaded event photos/videos, with a grid, a
+// full-screen image viewer, and single/bulk save-to-gallery downloads.
+// ---------------------------------------------------------------------------
+
+class _EventMediaSection extends StatefulWidget {
+  final List<EventMediaItem> media;
+  final bool isLoading;
+  const _EventMediaSection({required this.media, required this.isLoading});
+
+  @override
+  State<_EventMediaSection> createState() => _EventMediaSectionState();
+}
+
+class _EventMediaSectionState extends State<_EventMediaSection> {
+  bool _selecting = false;
+  bool _isDownloading = false;
+  final Set<String> _selectedIds = {};
+
+  void _toggleSelect(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  void _openImageViewer(int index) {
+    final images = widget.media.where((m) => !m.isVideo).toList();
+    final tappedIndex = images.indexWhere((m) => m.id == widget.media[index].id);
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _EventMediaViewerScreen(
+        images: images,
+        initialIndex: tappedIndex < 0 ? 0 : tappedIndex,
+      ),
+    ));
+  }
+
+  Future<void> _openVideoExternally(EventMediaItem item) async {
+    final uri = Uri.tryParse(item.url);
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open the video.')),
+        );
+      }
+    }
+  }
+
+  Future<bool> _ensureGalleryAccess() async {
+    final hasAccess = await Gal.hasAccess();
+    if (hasAccess) return true;
+    final granted = await Gal.requestAccess();
+    if (granted) return true;
+    await Permission.photos.request();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Photo library access is needed to save media.')),
+      );
+    }
+    return false;
+  }
+
+  Future<void> _downloadOne(EventMediaItem item) async {
+    if (item.isVideo) {
+      final dir = await getTemporaryDirectory();
+      final path = '${dir.path}/tyohaar_event_${item.id}.mp4';
+      await Dio().download(item.url, path);
+      await Gal.putVideo(path);
+      try {
+        await File(path).delete();
+      } catch (_) {}
+    } else {
+      final response = await Dio().get<List<int>>(
+        item.url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = response.data;
+      if (bytes == null) throw Exception('Empty media response');
+      await Gal.putImageBytes(
+        Uint8List.fromList(bytes),
+        name: 'tyohaar_event_${item.id}',
+      );
+    }
+  }
+
+  Future<void> _downloadSelected() async {
+    if (_selectedIds.isEmpty) return;
+    if (!await _ensureGalleryAccess()) return;
+
+    setState(() => _isDownloading = true);
+    var saved = 0;
+    var failed = 0;
+    for (final item in widget.media.where((m) => _selectedIds.contains(m.id))) {
+      try {
+        await _downloadOne(item);
+        saved++;
+      } catch (_) {
+        failed++;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _isDownloading = false;
+        _selecting = false;
+        _selectedIds.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(failed == 0
+            ? 'Saved $saved item${saved == 1 ? '' : 's'} to your gallery.'
+            : 'Saved $saved item${saved == 1 ? '' : 's'} — $failed failed.'),
+      ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ty = context.ty;
+    final resp = context.resp;
+    final decoration = BoxDecoration(
+      color: ty.surface,
+      borderRadius: BorderRadius.circular(resp.w(20)),
+      border: Border.all(color: ty.line),
+    );
+
+    if (widget.isLoading) {
+      return Container(
+        padding: EdgeInsets.all(resp.w(24)),
+        decoration: decoration,
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(),
+      );
+    }
+
+    if (widget.media.isEmpty) {
+      return Container(
+        padding: EdgeInsets.all(resp.w(16)),
+        decoration: decoration,
+        child: Text(
+          'Your vendor will share event photos and videos here once the celebration is complete.',
+          style: TyType.sans(resp.sp(13), color: ty.ink2),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (_selecting) ...[
+              Text('${_selectedIds.length} selected',
+                  style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+              const Spacer(),
+              TextButton(
+                onPressed: _isDownloading || _selectedIds.isEmpty ? null : _downloadSelected,
+                child: _isDownloading
+                    ? SizedBox(
+                        width: resp.w(16),
+                        height: resp.w(16),
+                        child: const CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Download'),
+              ),
+              TextButton(
+                onPressed: () => setState(() {
+                  _selecting = false;
+                  _selectedIds.clear();
+                }),
+                child: const Text('Cancel'),
+              ),
+            ] else
+              TextButton(
+                onPressed: () => setState(() => _selecting = true),
+                child: const Text('Select'),
+              ),
+          ],
+        ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+          ),
+          itemCount: widget.media.length,
+          itemBuilder: (context, i) {
+            final item = widget.media[i];
+            final selected = _selectedIds.contains(item.id);
+            return GestureDetector(
+              onTap: () {
+                if (_selecting) {
+                  _toggleSelect(item.id);
+                } else if (item.isVideo) {
+                  _openVideoExternally(item);
+                } else {
+                  _openImageViewer(i);
+                }
+              },
+              onLongPress: () {
+                setState(() => _selecting = true);
+                _toggleSelect(item.id);
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(resp.w(10)),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CachedNetworkImage(
+                      imageUrl: item.gridThumbnailUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) =>
+                          PhotoPlaceholder(tint: 'saffron', arch: false),
+                      errorWidget: (context, url, error) =>
+                          PhotoPlaceholder(tint: 'saffron', arch: false),
+                    ),
+                    if (item.isVideo)
+                      const ColoredBox(
+                        color: Colors.black26,
+                        child: Center(
+                          child: Icon(Icons.play_circle_fill_rounded,
+                              color: Colors.white, size: 30),
+                        ),
+                      ),
+                    if (_selecting)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Icon(
+                          selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                          color: selected ? ty.saffron : Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _EventMediaViewerScreen extends StatefulWidget {
+  final List<EventMediaItem> images;
+  final int initialIndex;
+  const _EventMediaViewerScreen({required this.images, required this.initialIndex});
+
+  @override
+  State<_EventMediaViewerScreen> createState() => _EventMediaViewerScreenState();
+}
+
+class _EventMediaViewerScreenState extends State<_EventMediaViewerScreen> {
+  late final PageController _controller =
+      PageController(initialPage: widget.initialIndex);
+  late int _index = widget.initialIndex;
+  bool _isDownloading = false;
+
+  Future<void> _download() async {
+    final item = widget.images[_index];
+    setState(() => _isDownloading = true);
+    try {
+      final hasAccess = await Gal.hasAccess();
+      if (!hasAccess) {
+        final granted = await Gal.requestAccess();
+        if (!granted) {
+          await Permission.photos.request();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Photo library access is needed to save images.')),
+            );
+          }
+          return;
+        }
+      }
+      final response = await Dio().get<List<int>>(
+        item.url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = response.data;
+      if (bytes == null) throw Exception('Empty image response');
+      await Gal.putImageBytes(
+        Uint8List.fromList(bytes),
+        name: 'tyohaar_event_${item.id}',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image saved to your gallery.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save the image. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _controller,
+            itemCount: widget.images.length,
+            onPageChanged: (i) => setState(() => _index = i),
+            itemBuilder: (context, i) => InteractiveViewer(
+              child: Center(
+                child: CachedNetworkImage(
+                  imageUrl: widget.images[i].url,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                    Text('${_index + 1} / ${widget.images.length}',
+                        style: const TextStyle(color: Colors.white)),
+                    IconButton(
+                      icon: _isDownloading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.download_rounded, color: Colors.white),
+                      onPressed: _isDownloading ? null : _download,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
