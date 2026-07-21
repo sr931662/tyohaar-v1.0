@@ -1,153 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { settingsApi, budgetsApi } from '../../api';
+import { settingsApi } from '../../api';
 import { formatDate } from '../../utils/format';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
 import { SkeletonTable } from '../../components/ui/Skeleton';
-import ImageUploadField from '../../components/ui/ImageUploadField';
-
-function AppSettingsTab() {
-  const qc = useQueryClient();
-  const [saving, setSaving] = useState(false);
-
-  const { data: settings, isLoading } = useQuery({
-    queryKey: ['settings', 'app'],
-    queryFn: () => settingsApi.getAppSettings(),
-  });
-
-  const [form, setForm] = useState({});
-  const hasForm = Object.keys(form).length > 0;
-  const merged = { ...(settings ?? {}), ...form };
-
-  const saveMutation = useMutation({
-    mutationFn: () => settingsApi.updateAppSettings(form),
-    onSuccess: () => { toast.success('Settings saved'); qc.invalidateQueries(['settings', 'app']); setForm({}); },
-    onError: () => toast.error('Save failed'),
-  });
-
-  if (isLoading) return <div style={{ padding: 24, color: 'var(--text-tertiary)' }}>Loading…</div>;
-
-  const S = settings ?? {};
-
-  return (
-    <div style={{ maxWidth: 600 }}>
-      <div className="admin-card">
-        <div className="admin-card-header"><div className="admin-card-title">Platform Settings</div></div>
-        <div className="admin-card-body">
-          {[
-            { key: 'platform_name', label: 'Platform Name', type: 'text' },
-            { key: 'support_email', label: 'Support Email', type: 'email' },
-            { key: 'support_phone', label: 'Support Phone', type: 'text' },
-            { key: 'currency', label: 'Currency', type: 'text' },
-            { key: 'commission_rate', label: 'Commission Rate (%)', type: 'number' },
-          ].map(({ key, label, type }) => (
-            <div className="form-group" key={key}>
-              <label className="form-label">{label}</label>
-              <input className="form-control" type={type} value={form[key] ?? S[key] ?? ''} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
-            </div>
-          ))}
-          <div className="form-check">
-            <input type="checkbox" id="maintenance_mode" checked={form.maintenance_mode ?? S.maintenance_mode ?? false}
-              onChange={e => setForm(f => ({ ...f, maintenance_mode: e.target.checked }))} />
-            <label htmlFor="maintenance_mode">Maintenance Mode</label>
-          </div>
-          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-            <button className="btn btn-primary" onClick={() => saveMutation.mutate()} disabled={!hasForm || saveMutation.isPending}>
-              {saveMutation.isPending ? 'Saving…' : 'Save Changes'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BannersTab() {
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
-  const [form, setForm] = useState({ title: '', image_url: '', link_url: '', is_active: true, position: 0 });
-
-  const { data: banners = [], isLoading } = useQuery({
-    queryKey: ['settings', 'banners'],
-    queryFn: () => settingsApi.listBanners(),
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: (body) => editItem ? settingsApi.updateBanner(editItem.id, body) : settingsApi.createBanner(body),
-    onSuccess: () => { toast.success(editItem ? 'Banner updated' : 'Banner created'); qc.invalidateQueries(['settings', 'banners']); setOpen(false); setEditItem(null); },
-    onError: () => toast.error('Failed'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id) => settingsApi.deleteBanner(id),
-    onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries(['settings', 'banners']); setDeleteId(null); },
-    onError: () => toast.error('Failed'),
-  });
-
-  const openEdit = (b) => {
-    setEditItem(b);
-    setForm({ title: b.title, image_url: b.image_url ?? '', link_url: b.link_url ?? '', is_active: b.is_active ?? true, position: b.position ?? 0 });
-    setOpen(true);
-  };
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button className="btn btn-primary" onClick={() => { setEditItem(null); setForm({ title:'', image_url:'', link_url:'', is_active:true, position:0 }); setOpen(true); }}>+ New Banner</button>
-      </div>
-      {isLoading ? <SkeletonTable rows={4} cols={4} /> : (
-        <div className="admin-table-wrapper">
-          <table className="admin-table">
-            <thead><tr><th>Title</th><th>Position</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              {banners.map((b) => (
-                <tr key={b.id}>
-                  <td>{b.title}</td>
-                  <td>{b.position}</td>
-                  <td><span className={`badge ${b.is_active ? 'badge-green' : 'badge-gray'}`}>{b.is_active ? 'Active' : 'Inactive'}</span></td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => openEdit(b)}>Edit</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => setDeleteId(b.id)}>Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!banners.length && <tr><td colSpan={4} className="admin-table-empty">No banners</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <Modal open={open} onClose={() => setOpen(false)} title={editItem ? 'Edit Banner' : 'New Banner'}
-        footer={
-          <>
-            <button className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={() => saveMutation.mutate(form)} disabled={!form.title || saveMutation.isPending}>
-              {saveMutation.isPending ? 'Saving…' : 'Save'}
-            </button>
-          </>
-        }
-      >
-        <div className="form-group"><label className="form-label required">Title</label><input className="form-control" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
-        <div className="form-group">
-          <label className="form-label">Image</label>
-          <ImageUploadField value={form.image_url} onChange={(url) => setForm(f => ({ ...f, image_url: url }))} usage="banner" />
-        </div>
-        <div className="form-group"><label className="form-label">Link URL</label><input className="form-control" value={form.link_url} onChange={e => setForm(f => ({ ...f, link_url: e.target.value }))} /></div>
-        <div className="form-group"><label className="form-label">Position</label><input className="form-control" type="number" value={form.position} onChange={e => setForm(f => ({ ...f, position: parseInt(e.target.value) || 0 }))} /></div>
-        <div className="form-check">
-          <input type="checkbox" id="banner_active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
-          <label htmlFor="banner_active">Active</label>
-        </div>
-      </Modal>
-      <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteMutation.mutate(deleteId)}
-        title="Delete Banner" message="This banner will be permanently deleted." danger loading={deleteMutation.isPending} />
-    </div>
-  );
-}
+import RichTextEditor from '../../components/ui/RichTextEditor';
 
 function FAQsTab() {
   const qc = useQueryClient();
@@ -415,9 +273,10 @@ function LegalTab() {
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>
                 Current: v{currentTerms.version} — {formatDate(currentTerms.effective_date ?? currentTerms.created_at)}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', maxHeight: 160, overflowY: 'auto', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                {currentTerms.content?.slice(0, 400)}{currentTerms.content?.length > 400 ? '…' : ''}
-              </div>
+              <div
+                style={{ fontSize: 13, color: 'var(--text-secondary)', maxHeight: 160, overflowY: 'auto', lineHeight: 1.6 }}
+                dangerouslySetInnerHTML={{ __html: currentTerms.content ?? '' }}
+              />
             </>
           ) : (
             <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No Terms published yet.</div>
@@ -448,9 +307,10 @@ function LegalTab() {
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>
                 Current: v{currentPrivacy.version} — {formatDate(currentPrivacy.effective_date ?? currentPrivacy.created_at)}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', maxHeight: 160, overflowY: 'auto', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                {currentPrivacy.content?.slice(0, 400)}{currentPrivacy.content?.length > 400 ? '…' : ''}
-              </div>
+              <div
+                style={{ fontSize: 13, color: 'var(--text-secondary)', maxHeight: 160, overflowY: 'auto', lineHeight: 1.6 }}
+                dangerouslySetInnerHTML={{ __html: currentPrivacy.content ?? '' }}
+              />
             </>
           ) : (
             <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No Privacy Policy published yet.</div>
@@ -470,9 +330,10 @@ function LegalTab() {
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>
                 Current: v{currentCancellation.version} — {formatDate(currentCancellation.effective_date ?? currentCancellation.created_at)}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', maxHeight: 160, overflowY: 'auto', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                {currentCancellation.content?.slice(0, 400)}{currentCancellation.content?.length > 400 ? '…' : ''}
-              </div>
+              <div
+                style={{ fontSize: 13, color: 'var(--text-secondary)', maxHeight: 160, overflowY: 'auto', lineHeight: 1.6 }}
+                dangerouslySetInnerHTML={{ __html: currentCancellation.content ?? '' }}
+              />
             </>
           ) : (
             <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No Cancellation & Refund Policy published yet.</div>
@@ -500,7 +361,10 @@ function LegalTab() {
           <div className="form-group"><label className="form-label">Effective Date *</label><input type="date" className="form-control" value={termsForm.effective_date} onChange={e => setTermsForm(f => ({ ...f, effective_date: e.target.value }))} /></div>
         </div>
         <div className="form-group"><label className="form-label">Title *</label><input className="form-control" value={termsForm.title} onChange={e => setTermsForm(f => ({ ...f, title: e.target.value }))} /></div>
-        <div className="form-group"><label className="form-label">Content *</label><textarea className="form-control" rows={8} value={termsForm.content} onChange={e => setTermsForm(f => ({ ...f, content: e.target.value }))} /></div>
+        <div className="form-group">
+          <label className="form-label">Content *</label>
+          <RichTextEditor value={termsForm.content} onChange={(html) => setTermsForm(f => ({ ...f, content: html }))} placeholder="Write the Terms & Conditions content…" />
+        </div>
         <div className="form-group"><label className="form-label">Summary</label><input className="form-control" value={termsForm.summary} onChange={e => setTermsForm(f => ({ ...f, summary: e.target.value }))} placeholder="Short summary of changes for users" /></div>
       </Modal>
 
@@ -513,7 +377,10 @@ function LegalTab() {
           <div className="form-group"><label className="form-label">Effective Date *</label><input type="date" className="form-control" value={privacyForm.effective_date} onChange={e => setPrivacyForm(f => ({ ...f, effective_date: e.target.value }))} /></div>
         </div>
         <div className="form-group"><label className="form-label">Title *</label><input className="form-control" value={privacyForm.title} onChange={e => setPrivacyForm(f => ({ ...f, title: e.target.value }))} /></div>
-        <div className="form-group"><label className="form-label">Content *</label><textarea className="form-control" rows={8} value={privacyForm.content} onChange={e => setPrivacyForm(f => ({ ...f, content: e.target.value }))} /></div>
+        <div className="form-group">
+          <label className="form-label">Content *</label>
+          <RichTextEditor value={privacyForm.content} onChange={(html) => setPrivacyForm(f => ({ ...f, content: html }))} placeholder="Write the Privacy Policy content…" />
+        </div>
         <div className="form-group"><label className="form-label">Summary</label><input className="form-control" value={privacyForm.summary} onChange={e => setPrivacyForm(f => ({ ...f, summary: e.target.value }))} /></div>
       </Modal>
 
@@ -526,111 +393,38 @@ function LegalTab() {
           <div className="form-group"><label className="form-label">Effective Date *</label><input type="date" className="form-control" value={cancellationForm.effective_date} onChange={e => setCancellationForm(f => ({ ...f, effective_date: e.target.value }))} /></div>
         </div>
         <div className="form-group"><label className="form-label">Title *</label><input className="form-control" value={cancellationForm.title} onChange={e => setCancellationForm(f => ({ ...f, title: e.target.value }))} /></div>
-        <div className="form-group"><label className="form-label">Content *</label><textarea className="form-control" rows={8} value={cancellationForm.content} onChange={e => setCancellationForm(f => ({ ...f, content: e.target.value }))} /></div>
+        <div className="form-group">
+          <label className="form-label">Content *</label>
+          <RichTextEditor value={cancellationForm.content} onChange={(html) => setCancellationForm(f => ({ ...f, content: html }))} placeholder="Write the Cancellation & Refund Policy content…" />
+        </div>
         <div className="form-group"><label className="form-label">Summary</label><input className="form-control" value={cancellationForm.summary} onChange={e => setCancellationForm(f => ({ ...f, summary: e.target.value }))} placeholder="Short summary shown to customers" /></div>
       </Modal>
     </div>
   );
 }
 
-function BudgetCategoriesTab() {
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
-  const [form, setForm] = useState({ name: '', description: '', icon: '', is_active: true });
-
-  const { data: categories = [], isLoading } = useQuery({
-    queryKey: ['budget-categories'],
-    queryFn: () => budgetsApi.listCategories(),
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: (body) => editItem ? budgetsApi.updateCategory(editItem.id, body) : budgetsApi.createCategory(body),
-    onSuccess: () => { toast.success(editItem ? 'Updated' : 'Created'); qc.invalidateQueries(['budget-categories']); setOpen(false); setEditItem(null); },
-    onError: () => toast.error('Failed'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id) => budgetsApi.deleteCategory(id),
-    onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries(['budget-categories']); setDeleteId(null); },
-    onError: () => toast.error('Failed'),
-  });
-
-  const openEdit = (c) => {
-    setEditItem(c);
-    setForm({ name: c.name, description: c.description ?? '', icon: c.icon ?? '', is_active: c.is_active ?? true });
-    setOpen(true);
-  };
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button className="btn btn-primary" onClick={() => { setEditItem(null); setForm({ name: '', description: '', icon: '', is_active: true }); setOpen(true); }}>+ New Category</button>
-      </div>
-      {isLoading ? <SkeletonTable rows={5} cols={4} /> : (
-        <div className="admin-table-wrapper">
-          <table className="admin-table">
-            <thead><tr><th>Icon</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead>
-            <tbody>
-              {categories.map((c) => (
-                <tr key={c.id}>
-                  <td style={{ fontSize: 20 }}>{c.icon ?? '📦'}</td>
-                  <td style={{ fontWeight: 500 }}>{c.name}</td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{c.description ?? '—'}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => openEdit(c)}>Edit</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => setDeleteId(c.id)}>Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!categories.length && <tr><td colSpan={4} className="admin-table-empty">No budget categories</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <Modal open={open} onClose={() => setOpen(false)} title={editItem ? 'Edit Category' : 'New Budget Category'}
-        footer={<><button className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => saveMutation.mutate(form)} disabled={!form.name || saveMutation.isPending}>{saveMutation.isPending ? 'Saving…' : 'Save'}</button></>}
-      >
-        <div className="form-row-2">
-          <div className="form-group"><label className="form-label">Icon (emoji)</label><input className="form-control" value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} placeholder="e.g. 🍽️" /></div>
-          <div className="form-group"><label className="form-label required">Name</label><input className="form-control" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-        </div>
-        <div className="form-group"><label className="form-label">Description</label><input className="form-control" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
-      </Modal>
-      <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteMutation.mutate(deleteId)}
-        title="Delete Category" message="This budget category will be permanently deleted." danger loading={deleteMutation.isPending} />
-    </div>
-  );
-}
-
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('app');
+  const [activeTab, setActiveTab] = useState('faqs');
 
   return (
     <div>
       <div className="admin-page-header">
         <div className="admin-page-header-left">
           <h1>Platform Settings</h1>
-          <p>Configure app settings, banners, content, and legal documents</p>
+          <p>Configure FAQs, locations, and legal documents</p>
         </div>
       </div>
 
       <div className="admin-tabs">
-        {[['app', 'App Settings'], ['banners', 'Banners'], ['faqs', 'FAQs'], ['locations', 'States & Cities'], ['budget-cats', 'Budget Categories'], ['legal', 'Terms & Privacy']].map(([key, label]) => (
+        {[['faqs', 'FAQs'], ['locations', 'States & Cities'], ['legal', 'Terms & Privacy']].map(([key, label]) => (
           <button key={key} className={`admin-tab${activeTab === key ? ' active' : ''}`} onClick={() => setActiveTab(key)}>
             {label}
           </button>
         ))}
       </div>
 
-      {activeTab === 'app' && <AppSettingsTab />}
-      {activeTab === 'banners' && <BannersTab />}
       {activeTab === 'faqs' && <FAQsTab />}
       {activeTab === 'locations' && <StatesTab />}
-      {activeTab === 'budget-cats' && <BudgetCategoriesTab />}
       {activeTab === 'legal' && <LegalTab />}
     </div>
   );

@@ -2037,3 +2037,13 @@ select.ty-login-input option {
 }
 
 .admin-data-list-item:last-child { border-bottom: none; }
+
+.rich-text-editor-content:empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-tertiary);
+}
+.rich-text-editor-content h1 { font-size: 1.4em; font-weight: 700; margin: 0.4em 0; }
+.rich-text-editor-content h2 { font-size: 1.2em; font-weight: 700; margin: 0.4em 0; }
+.rich-text-editor-content p { margin: 0.4em 0; }
+.rich-text-editor-content ul, .rich-text-editor-content ol { margin: 0.4em 0; padding-left: 1.4em; }
+.rich-text-editor-content a { color: var(--brand-600); }
