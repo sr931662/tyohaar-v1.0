@@ -6,10 +6,14 @@ import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import '../data/app_state.dart';
 import '../data/auth_manager.dart';
 import '../data/services/auth_service.dart';
 // AuthCredentials is defined in auth_service.dart
 import 'root_nav.dart';
+import 'vendor/vendor_root_nav.dart';
+import 'vendor/auth/vendor_register_screen.dart';
+import 'vendor/auth/vendor_forgot_password_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   final VoidCallback? onAuthenticated;
@@ -57,14 +61,24 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
   Future<void> _onSuccess(AuthCredentials creds) async {
     await AuthManager.instance.login(creds.accessToken, creds.refreshToken, creds.user);
+    AppState.instance.applyRole(creds.user.role);
     if (!mounted) return;
     if (widget.onAuthenticated != null) {
+      // Auth-gate flows (e.g. "start a celebration") only ever apply to the
+      // customer shell — a vendor account hitting one of those gates is an
+      // edge case we don't special-case here.
       Navigator.pop(context);
       widget.onAuthenticated!();
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const RootNav()),
+      // Clear the whole stack (not just replace) so a vendor login doesn't
+      // leave the customer _AppStartup underneath — pushAndRemoveUntil
+      // lands cleanly on the correct root shell for the resolved role.
+      final isVendor = creds.user.role == 'vendor';
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => isVendor ? const VendorRootNav() : const RootNav(),
+        ),
+        (route) => false,
       );
     }
   }
@@ -231,6 +245,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               icon: Icons.lock_outline_rounded,
               obscure: _loginObscure,
               onToggleObscure: () => setState(() => _loginObscure = !_loginObscure)),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VendorForgotPasswordScreen()),
+              ),
+              child: Text('Forgot password?', style: TyType.sans(resp.sp(13), color: ty.ink3, weight: FontWeight.w600)),
+            ),
+          ),
           if (_error.isNotEmpty) ...[
             SizedBox(height: resp.h(16)),
             Text(_error, style: TyType.sans(resp.sp(13), color: ty.rose, weight: FontWeight.w600)),
@@ -293,7 +317,18 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             onTap: _handleRegister,
             enabled: !_isLoading,
           ),
-          SizedBox(height: resp.h(32)),
+          SizedBox(height: resp.h(20)),
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VendorRegisterScreen()),
+              ),
+              child: Text('Are you a business? Register as a Partner',
+                  style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600)),
+            ),
+          ),
+          SizedBox(height: resp.h(12)),
         ],
       ),
     );

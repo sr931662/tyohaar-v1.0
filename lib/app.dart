@@ -87,6 +87,19 @@ class _AppStartupState extends State<_AppStartup> {
 
   Future<void> _init() async {
     await AuthManager.instance.loadStoredAuth();
+    // loadStoredAuth only restores tokens, not the User (and thus not the
+    // role) — fetch it now so a vendor with a persisted session lands
+    // straight in the Vendor POV instead of flashing the customer shell.
+    if (AuthManager.instance.isAuthenticated) {
+      try {
+        final user = await UserService().getMe();
+        AuthManager.instance.setUser(user);
+        AppState.instance.applyRole(user.role);
+      } catch (_) {
+        // Best-effort — if this fails, the customer shell's own
+        // _ensureUserLoaded() retry will pick it up, and role stays default.
+      }
+    }
   }
 
   @override

@@ -499,6 +499,9 @@ class Booking {
   // Vendor-provided preparation start date + time (PST), null until set.
   final DateTime? preparationStartAt;
   final DateTime createdAt;
+  // Only populated on the detail endpoint (BookingDetailResponse.items) —
+  // empty for list-endpoint results.
+  final List<BookingItemLine> items;
 
   Booking({
     required this.id,
@@ -520,6 +523,7 @@ class Booking {
     this.completedAt,
     this.preparationStartAt,
     required this.createdAt,
+    this.items = const [],
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -549,6 +553,35 @@ class Booking {
           ? DateTime.tryParse(json['preparation_start_at'] as String)
           : null,
       createdAt: DateTime.parse(json['created_at']),
+      items: (json['items'] as List? ?? [])
+          .map((e) => BookingItemLine.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class BookingItemLine {
+  final String id;
+  final String name;
+  final int quantity;
+  final double unitPrice;
+  final double finalPrice;
+
+  BookingItemLine({
+    required this.id,
+    required this.name,
+    required this.quantity,
+    required this.unitPrice,
+    required this.finalPrice,
+  });
+
+  factory BookingItemLine.fromJson(Map<String, dynamic> json) {
+    return BookingItemLine(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      quantity: json['quantity'] as int? ?? 1,
+      unitPrice: asDouble(json['unit_price']),
+      finalPrice: asDouble(json['final_price']),
     );
   }
 }

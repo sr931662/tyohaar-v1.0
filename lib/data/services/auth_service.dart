@@ -53,6 +53,46 @@ class AuthService {
     );
   }
 
+  /// Vendor self-registration — distinct schema from customer `register`
+  /// (business name, vendor type, phone, etc.). Mirrors the web vendor
+  /// portal's `vendorAuthApi.register` (`POST /auth/vendor/register`).
+  Future<AuthCredentials> vendorRegister({
+    required String fullName,
+    required String email,
+    required String phone,
+    required String businessName,
+    required String vendorType,
+    required String password,
+  }) async {
+    final response = await _api.dio.post('auth/vendor/register', data: {
+      'full_name': fullName,
+      'email': email,
+      'phone': phone,
+      'business_name': businessName,
+      'vendor_type': vendorType,
+      'password': password,
+    });
+    return _credentialsFromResponse(response.data as Map<String, dynamic>);
+  }
+
+  /// Requests a password-reset OTP by email (used by both customer and
+  /// vendor forgot-password flows).
+  Future<void> requestPasswordResetOtp(String email) async {
+    await _api.dio.post('auth/otp/request', data: {
+      'identifier': email,
+      'channel': 'email',
+      'purpose': 'password_reset',
+    });
+  }
+
+  Future<void> resetPasswordWithOtp(String email, String otpCode, String newPassword) async {
+    await _api.dio.post('auth/password/reset', data: {
+      'email': email,
+      'otp_code': otpCode,
+      'new_password': newPassword,
+    });
+  }
+
   Future<void> logout() async {
     try {
       await _api.dio.post('auth/logout');

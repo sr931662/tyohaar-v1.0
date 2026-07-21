@@ -15,7 +15,6 @@ import '../utils/currency.dart';
 import '../widgets/avatar.dart';
 import '../widgets/emblem.dart';
 import '../widgets/photo_placeholder.dart';
-import '../widgets/progress_ring.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
 import 'event_hub_screen.dart';
@@ -40,12 +39,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final UserService _userService = UserService();
 
   List<Package> _featured = [];
+  bool _featuredIsFallback = false;
   String? _cityName;
   List<Occasion> _occasions = [];
   Celebration? _activeCelebration;
   Booking? _activeBooking;
   List<Guest> _guests = [];
-  List<CelebrationChecklistItem> _checklist = [];
   bool _isLoading = true;
   // Tracks the separate (post-Future.wait) booking fetch so the hero card
   // can keep showing a placeholder instead of jumping straight to the
@@ -77,15 +76,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Featured packages, preferring the customer's city. Falls back to
   /// unfiltered featured packages when the city yields nothing (e.g. the
-  /// free-text address city doesn't match any serviceable city slug).
+  /// free-text address city doesn't match any serviceable city slug), and —
+  /// so this section is never blank — finally falls back to any packages at
+  /// all when none are flagged featured yet. `_featuredIsFallback` tracks
+  /// which tier won so the header copy stays honest ("Popular" vs "Featured").
   Future<List<Package>> _loadFeatured(String? city) async {
     try {
       if (city != null) {
         final slug = city.toLowerCase().replaceAll(RegExp(r'\s+'), '-');
         final inCity = await _packageService.listPackages(featured: true, city: slug);
-        if (inCity.isNotEmpty) return inCity;
+        if (inCity.isNotEmpty) {
+          _featuredIsFallback = false;
+          return inCity;
+        }
       }
-      return await _packageService.listPackages(featured: true);
+      final featured = await _packageService.listPackages(featured: true);
+      if (featured.isNotEmpty) {
+        _featuredIsFallback = false;
+        return featured;
+      }
+      final anyPackages = await _packageService.listPackages(city: city != null
+          ? city.toLowerCase().replaceAll(RegExp(r'\s+'), '-')
+          : null);
+      _featuredIsFallback = true;
+      return anyPackages.take(8).toList();
     } catch (e) {
       debugPrint('Error loading packages: $e');
       return <Package>[];
@@ -116,7 +130,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _activeCelebration = celebrations.first;
           _isBookingLoading = true;
           _loadGuests(_activeCelebration!.id);
-          _loadChecklist(_activeCelebration!.id);
           _loadActiveBooking(_activeCelebration!.id);
         }
         _isLoading = false;
@@ -133,15 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _guests = guests);
     } catch (e) {
       debugPrint('Error loading guests: $e');
-    }
-  }
-
-  Future<void> _loadChecklist(String celebrationId) async {
-    try {
-      final checklist = await _celebrationService.listChecklist(celebrationId);
-      setState(() => _checklist = checklist);
-    } catch (e) {
-      debugPrint('Error loading checklist: $e');
     }
   }
 
@@ -188,8 +192,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final totalGuests = _guests.length;
     final rsvpdGuests = _guests.where((g) => g.rsvpStatus == 'confirmed').length;
-    final pct = _activeCelebration?.completionPercentage ?? 0;
-    final pendingTasks = _checklist.where((t) => !t.isCompleted).toList();
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -198,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: widget.scrollController,
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         children: [
-        _buildHeroCard(context, pct, totalGuests, pendingTasks.length, _checklist.length),
+        _buildHeroCard(context, totalGuests),
 
         Padding(
           padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), resp.h(20)),
@@ -255,10 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeroCard(
     BuildContext context,
-    int pct,
     int totalGuests,
-    int pendingTaskCount,
-    int checklistCount,
   ) {
     final ty = context.ty;
     final resp = context.resp;
@@ -455,8 +454,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         _stackedAvatars(context, _guests, totalGuests),
-                        const Spacer(),
-                        Flexible(child: _progressChip(context, pct, pendingTaskCount, checklistCount)),
                       ],
                     ),
                   ],
@@ -644,60 +641,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _progressChip(BuildContext context, int pct, int left, int checklistCount) {
-    final resp = context.resp;
-    final hasChecklist = checklistCount > 0;
-    final summaryLabel = hasChecklist ? 'Checklist progress' : 'Planning progress';
-    final statusLabel = !hasChecklist
-        ? (pct >= 100 ? 'All set' : 'Start planning')
-        : left <= 0
-            ? 'All tasks done'
-            : left == 1
-                ? '1 task pending'
-                : '$left tasks pending';
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: resp.w(10), vertical: resp.h(7)),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.16),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          ProgressRing(
-            percent: pct.toDouble(),
-            size: resp.w(36),
-            stroke: 4,
-            color: Colors.white,
-            center: Text('$pct%',
-                style: TextStyle(color: Colors.white, fontSize: resp.sp(10), fontWeight: FontWeight.w700)),
-          ),
-          SizedBox(width: resp.w(9)),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(summaryLabel,
-                  style: TextStyle(color: Colors.white, fontSize: resp.sp(11))),
-              Text(statusLabel,
-                  style: TextStyle(
-                      color: Colors.white, fontSize: resp.sp(11), fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   /// "Featured Packages in `<city>`" when the customer's address city is
   /// known; otherwise "near you" with a "Set city" action that opens the
   /// address flow (home reloads on return via [_push]).
   Widget _featuredHeader(BuildContext context) {
     final canSetCity = _cityName == null && AuthManager.instance.isAuthenticated;
+    final label = _featuredIsFallback ? 'Popular Packages' : 'Featured Packages';
     return SectionHeader(
-      _cityName != null
-          ? 'Featured Packages in $_cityName'
-          : 'Featured Packages near you',
+      _cityName != null ? '$label in $_cityName' : '$label near you',
       action: canSetCity ? 'Set city' : null,
       onAction: canSetCity
           ? () => _push(context, const ManageAddressScreen(), authAction: 'manage your address')

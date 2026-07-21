@@ -19,4 +19,11 @@ class AppState extends ChangeNotifier {
     _pov = _pov == UserPOV.customer ? UserPOV.vendor : UserPOV.customer;
     notifyListeners();
   }
+
+  /// Routes the app into the correct shell based on the logged-in user's
+  /// backend role — vendors land in the Vendor POV, everyone else (customer,
+  /// or unset/unknown) stays in the customer shell.
+  void applyRole(String? role) {
+    setPOV(role == 'vendor' ? UserPOV.vendor : UserPOV.customer);
+  }
 }

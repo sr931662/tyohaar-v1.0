@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/services/vendor_service.dart';
+import '../data/vendor_models.dart';
 import '../utils/currency.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
@@ -25,7 +26,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
 
   VendorPublicDetail? _vendor;
   List<Map<String, dynamic>> _packages = [];
-  List<VendorReview> _reviews = [];
+  List<PublicVendorReview> _reviews = [];
   int _selectedPkg = 0;
   bool _isLoading = true;
   String? _error;
@@ -41,7 +42,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
     try {
       final vendorFuture = _vendorService.getVendorById(widget.vendorId);
       final packagesFuture = _vendorService.getVendorPackages(widget.vendorId);
-      final reviewsFuture = _vendorService.getVendorReviews(widget.vendorId);
+      final reviewsFuture = _vendorService.getPublicVendorReviews(widget.vendorId);
 
       final vendor = await vendorFuture;
       final packages = await packagesFuture;
@@ -373,7 +374,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
     );
   }
 
-  Widget _reviewCard(BuildContext context, VendorReview r) {
+  Widget _reviewCard(BuildContext context, PublicVendorReview r) {
     final ty = context.ty;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

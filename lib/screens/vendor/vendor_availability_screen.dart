@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
+import '../../data/vendor_models.dart';
 import '../../data/services/vendor_service.dart';
-import '../../widgets/ty_button.dart';
-import '../../widgets/ty_chip.dart';
-import '../../widgets/common.dart';
 
+const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/// Weekly schedule editor — mirrors the web VendorAvailabilityPage as
+/// per-day expandable rows instead of a desktop 7-column grid.
 class VendorAvailabilityScreen extends StatefulWidget {
   const VendorAvailabilityScreen({super.key});
 
@@ -16,94 +17,98 @@ class VendorAvailabilityScreen extends StatefulWidget {
 }
 
 class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
-  final VendorService _vendorService = VendorService();
+  final _vendorService = VendorService();
+  String? _vendorId;
+  List<VendorAvailabilityDay> _days = List.generate(7, (i) => VendorAvailabilityDay(dayOfWeek: i));
   bool _isLoading = true;
   bool _isSaving = false;
-  VendorProfile? _profile;
-
-  TimeOfDay _openTime = const TimeOfDay(hour: 9, minute: 0);
-  TimeOfDay _closeTime = const TimeOfDay(hour: 21, minute: 0);
-  final Set<String> _offDays = {};
-
-  final List<String> _days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _load();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _load() async {
+    setState(() => _isLoading = true);
     try {
-      final profile = await _vendorService.getMyVendorProfile();
+      final vendor = await _vendorService.getMe();
+      if (vendor == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      final existing = await _vendorService.listAvailability(vendor.id);
+      final byDay = {for (final d in existing) d.dayOfWeek: d};
       if (mounted) {
         setState(() {
-          _profile = profile;
-          // Parse existing hours if any
-          final hours = profile.workingHours?['mon'];
-          if (hours != null) {
-            _openTime = _parseTime(hours['open']);
-            _closeTime = _parseTime(hours['close']);
-          }
-          // Parse off days
-          for (final day in _days) {
-            final dayKey = day.toLowerCase();
-            if (profile.workingHours?[dayKey]?['is_open'] == false) {
-              _offDays.add(day);
-            }
-          }
+          _vendorId = vendor.id;
+          _days = List.generate(7, (i) => byDay[i] ?? VendorAvailabilityDay(dayOfWeek: i));
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  TimeOfDay _parseTime(String? timeStr) {
-    if (timeStr == null) return const TimeOfDay(hour: 9, minute: 0);
-    final parts = timeStr.split(':');
-    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+  void _updateDay(int index, VendorAvailabilityDay updated) {
+    setState(() {
+      final list = [..._days];
+      list[index] = updated;
+      _days = list;
+    });
   }
 
-  String _formatTime(TimeOfDay time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  void _copyMondayToWeekdays() {
+    final monday = _days[0];
+    setState(() {
+      _days = List.generate(7, (i) {
+        if (i >= 1 && i <= 4) {
+          return VendorAvailabilityDay(
+            id: _days[i].id,
+            dayOfWeek: i,
+            isWorking: monday.isWorking,
+            openTime: monday.openTime,
+            closeTime: monday.closeTime,
+            breakStart: monday.breakStart,
+            breakEnd: monday.breakEnd,
+            maxBookingsPerDay: monday.maxBookingsPerDay,
+          );
+        }
+        return _days[i];
+      });
+    });
   }
 
   Future<void> _save() async {
-    if (_isSaving) return;
+    if (_vendorId == null) return;
     setState(() => _isSaving = true);
-
     try {
-      final Map<String, dynamic> workingHours = {};
-      for (final day in _days) {
-        final dayKey = day.toLowerCase();
-        final isOff = _offDays.contains(day);
-        workingHours[dayKey] = {
-          'is_open': !isOff,
-          'open': isOff ? null : _formatTime(_openTime),
-          'close': isOff ? null : _formatTime(_closeTime),
-        };
-      }
-
-      await _vendorService.updateVendorProfile(_profile!.id, {
-        'working_hours': workingHours,
-      });
-
+      await Future.wait(_days.map((day) {
+        if (day.id != null) {
+          return _vendorService.updateAvailability(_vendorId!, day.id!, day);
+        }
+        return _vendorService.createAvailability(_vendorId!, day);
+      }));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Availability updated!')),
-        );
-        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Availability saved.')));
+        _load();
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update. Please try again.')),
-        );
-      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save availability.')));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  Future<String?> _pickTime(String? current) async {
+    final parts = current?.split(':');
+    final initial = parts != null && parts.length >= 2
+        ? TimeOfDay(hour: int.tryParse(parts[0]) ?? 9, minute: int.tryParse(parts[1]) ?? 0)
+        : const TimeOfDay(hour: 9, minute: 0);
+    final picked = await showTimePicker(context: context, initialTime: initial);
+    if (picked == null) return current;
+    return '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
   }
 
   @override
@@ -111,89 +116,97 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
     final ty = context.ty;
 
     if (_isLoading) {
-      return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+      return Scaffold(backgroundColor: ty.paper, appBar: AppBar(title: const Text('Availability')), body: const Center(child: CircularProgressIndicator()));
+    }
+    if (_vendorId == null) {
+      return Scaffold(
+        backgroundColor: ty.paper,
+        appBar: AppBar(title: const Text('Availability')),
+        body: Center(child: Text('Set up your vendor profile first.', style: TyType.sans(14, color: ty.ink2))),
+      );
     }
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Business Hours'),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text('Operating Times', style: TyType.display(22, color: ty.ink)),
-          const SizedBox(height: 8),
-          Text('Set your standard opening and closing hours.', style: TyType.sans(14, color: ty.ink2)),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(child: _timePicker(context, 'OPENING', _openTime, (t) => setState(() => _openTime = t))),
-              const SizedBox(width: 16),
-              Expanded(child: _timePicker(context, 'CLOSING', _closeTime, (t) => setState(() => _closeTime = t))),
-            ],
-          ),
-          const SizedBox(height: 40),
-          Text('Weekly Off-Days', style: TyType.display(22, color: ty.ink)),
-          const SizedBox(height: 8),
-          Text('Select the days your business is closed.', style: TyType.sans(14, color: ty.ink2)),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 10,
-            runSpacing: 12,
-            children: _days.map((day) {
-              final isOff = _offDays.contains(day);
-              return TyChip(
-                label: day,
-                active: isOff,
-                onTap: () {
-                  setState(() {
-                    if (isOff) _offDays.remove(day);
-                    else _offDays.add(day);
-                  });
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 60),
-          TyButton(
-            _isSaving ? 'Saving...' : 'Save Availability',
-            full: true,
-            enabled: !_isSaving,
-            onTap: _save,
-          ),
-        ],
+      appBar: AppBar(
+        title: const Text('Availability'),
+        actions: [TextButton(onPressed: _copyMondayToWeekdays, child: const Text('Copy Mon → Fri'))],
+      ),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(18),
+        itemCount: _days.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (context, i) {
+          if (i == _days.length) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: ElevatedButton(onPressed: _isSaving ? null : _save, child: Text(_isSaving ? 'Saving…' : 'Save Changes')),
+            );
+          }
+          final day = _days[i];
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: ty.line)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_dayLabels[i], style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+                    Switch(
+                      value: day.isWorking,
+                      onChanged: (v) => _updateDay(i, VendorAvailabilityDay(
+                        id: day.id, dayOfWeek: i, isWorking: v, openTime: day.openTime, closeTime: day.closeTime,
+                        breakStart: day.breakStart, breakEnd: day.breakEnd, maxBookingsPerDay: day.maxBookingsPerDay,
+                      )),
+                    ),
+                  ],
+                ),
+                if (day.isWorking) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Expanded(child: _timeButton(ty, 'Open', day.openTime, () async {
+                      final t = await _pickTime(day.openTime);
+                      _updateDay(i, VendorAvailabilityDay(id: day.id, dayOfWeek: i, isWorking: true, openTime: t, closeTime: day.closeTime, breakStart: day.breakStart, breakEnd: day.breakEnd, maxBookingsPerDay: day.maxBookingsPerDay));
+                    })),
+                    const SizedBox(width: 8),
+                    Expanded(child: _timeButton(ty, 'Close', day.closeTime, () async {
+                      final t = await _pickTime(day.closeTime);
+                      _updateDay(i, VendorAvailabilityDay(id: day.id, dayOfWeek: i, isWorking: true, openTime: day.openTime, closeTime: t, breakStart: day.breakStart, breakEnd: day.breakEnd, maxBookingsPerDay: day.maxBookingsPerDay));
+                    })),
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Expanded(child: _timeButton(ty, 'Break Start', day.breakStart, () async {
+                      final t = await _pickTime(day.breakStart);
+                      _updateDay(i, VendorAvailabilityDay(id: day.id, dayOfWeek: i, isWorking: true, openTime: day.openTime, closeTime: day.closeTime, breakStart: t, breakEnd: day.breakEnd, maxBookingsPerDay: day.maxBookingsPerDay));
+                    })),
+                    const SizedBox(width: 8),
+                    Expanded(child: _timeButton(ty, 'Break End', day.breakEnd, () async {
+                      final t = await _pickTime(day.breakEnd);
+                      _updateDay(i, VendorAvailabilityDay(id: day.id, dayOfWeek: i, isWorking: true, openTime: day.openTime, closeTime: day.closeTime, breakStart: day.breakStart, breakEnd: t, maxBookingsPerDay: day.maxBookingsPerDay));
+                    })),
+                  ]),
+                ],
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _timePicker(BuildContext context, String label, TimeOfDay current, Function(TimeOfDay) onSelected) {
-    final ty = context.ty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TyType.eyebrow(10, color: ty.ink3)),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: () async {
-            final t = await showTimePicker(context: context, initialTime: current);
-            if (t != null) onSelected(t);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: ty.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: ty.line, width: 1.5),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(current.format(context), style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
-                Icon(Icons.access_time_rounded, size: 18, color: ty.saffron),
-              ],
-            ),
-          ),
-        ),
-      ],
+  Widget _timeButton(TyColors ty, String label, String? value, VoidCallback onTap) {
+    return OutlinedButton(
+      onPressed: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: TyType.sans(10.5, color: ty.ink3)),
+          Text(value?.substring(0, value.length >= 5 ? 5 : value.length) ?? '--:--', style: TyType.sans(13, color: ty.ink)),
+        ],
+      ),
     );
   }
 }

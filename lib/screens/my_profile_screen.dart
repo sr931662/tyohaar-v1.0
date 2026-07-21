@@ -9,6 +9,7 @@ import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/user_service.dart';
 import '../data/services/vendor_service.dart';
+import '../data/vendor_models.dart';
 import '../data/services/media_service.dart';
 import '../data/auth_manager.dart';
 import '../widgets/ty_button.dart';
@@ -28,7 +29,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   final VendorService _vendorService = VendorService();
   final MediaService _mediaService = MediaService();
   User? _user;
-  VendorProfile? _vendorProfile;
+  VendorBusinessProfile? _vendorProfile;
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isUploading = false;
@@ -57,9 +58,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     try {
       final user = await _userService.getMe();
       
-      VendorProfile? vp;
+      VendorBusinessProfile? vp;
       if (user.role == 'vendor') {
-        vp = await _vendorService.getMyVendorProfile();
+        vp = await _vendorService.getMe();
       }
 
       if (mounted) {
@@ -353,9 +354,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
   Widget _availabilityCard(BuildContext context) {
     final ty = context.ty;
-    // Simplified logic: Assume same hours for all working days for now
-    final hours = _vendorProfile?.workingHours?['mon'] ?? {'open': '09:00', 'close': '21:00', 'is_open': true};
-    final isOpen = hours['is_open'] == true;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -375,8 +373,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Working Hours', style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
-                    Text(isOpen ? '${hours['open']} AM - ${hours['close']} PM' : 'Closed Today', 
-                        style: TyType.sans(12.5, color: ty.ink2)),
+                    Text('Manage your weekly availability', style: TyType.sans(12.5, color: ty.ink2)),
                   ],
                 ),
               ),

@@ -3,11 +3,69 @@ import 'package:flutter/foundation.dart';
 
 import 'auth_manager.dart';
 
+class _CacheEntry {
+  final dynamic data;
+  final DateTime expiresAt;
+  _CacheEntry(this.data, this.expiresAt);
+  bool get isExpired => DateTime.now().isAfter(expiresAt);
+}
+
+/// Opt-in, in-memory GET response cache — screens/services mark a request
+/// cacheable via `options.extra['cache'] = true` (optionally with a
+/// `cacheTtl` Duration override). Nothing is cached by default, so
+/// pull-to-refresh and user/booking-specific data are unaffected; this only
+/// speeds up repeat navigations to largely-static catalog data (occasions,
+/// packages, themes, etc.) within the same app session.
+class _MemoryCacheInterceptor extends Interceptor {
+  final Map<String, _CacheEntry> _cache = {};
+
+  String _keyFor(RequestOptions options) => '${options.method}:${options.uri}';
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final shouldCache = options.extra['cache'] == true;
+    if (!shouldCache || options.method.toUpperCase() != 'GET') {
+      return handler.next(options);
+    }
+    final entry = _cache[_keyFor(options)];
+    if (entry != null && !entry.isExpired) {
+      handler.resolve(Response(
+        requestOptions: options,
+        data: entry.data,
+        statusCode: 200,
+      ));
+      return;
+    }
+    return handler.next(options);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    final options = response.requestOptions;
+    if (options.extra['cache'] == true &&
+        options.method.toUpperCase() == 'GET' &&
+        response.statusCode == 200) {
+      final ttl = options.extra['cacheTtl'] as Duration? ?? const Duration(minutes: 10);
+      _cache[_keyFor(options)] = _CacheEntry(response.data, DateTime.now().add(ttl));
+    }
+    return handler.next(response);
+  }
+
+  void clear() => _cache.clear();
+}
+
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
 
   late final Dio dio;
+  final _MemoryCacheInterceptor _cacheInterceptor = _MemoryCacheInterceptor();
+
+  /// Clears every cached GET response. Only public catalog endpoints
+  /// (occasions, packages, themes, categories) opt into this cache, so it's
+  /// not user-specific — exposed mainly for pull-to-refresh flows that want
+  /// to force a genuinely fresh fetch.
+  void clearCache() => _cacheInterceptor.clear();
 
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
@@ -26,6 +84,8 @@ class ApiClient {
         },
       ),
     );
+
+    dio.interceptors.add(_cacheInterceptor);
 
     if (kDebugMode) {
       dio.interceptors.add(LogInterceptor(

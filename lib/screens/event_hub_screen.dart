@@ -21,7 +21,6 @@ import '../data/services/media_service.dart';
 import '../utils/gallery_album.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
-import '../widgets/progress_ring.dart';
 import '../widgets/common.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
 import 'guests_screen.dart';
@@ -43,7 +42,6 @@ class _EventHubScreenState extends State<EventHubScreen> {
   Celebration? _celebration;
   Booking? _booking;
   List<Guest> _guests = [];
-  List<CelebrationChecklistItem> _checklist = [];
   Package? _package;
   List<PackageItem> _packageItems = [];
   List<EventMediaItem> _eventMedia = [];
@@ -73,12 +71,10 @@ class _EventHubScreenState extends State<EventHubScreen> {
       }
       final detailsFuture = _celebrationService.getCelebrationDetails(id);
       final guestsFuture = _celebrationService.listGuests(id);
-      final checklistFuture = _celebrationService.listChecklist(id);
       final bookingsFuture = _bookingService.listByCelebration(id);
 
       final details = await detailsFuture;
       final guests = await guestsFuture;
-      final checklist = await checklistFuture;
       final bookings = await bookingsFuture;
 
       Booking? booking = bookings.isNotEmpty ? bookings.first : null;
@@ -114,7 +110,6 @@ class _EventHubScreenState extends State<EventHubScreen> {
           _celebration = details;
           _booking = booking;
           _guests = guests;
-          _checklist = checklist;
           _package = package;
           _packageItems = packageItems;
           _daysLeft = daysLeft;
@@ -129,7 +124,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
               targetKey: _heroKey,
               title: 'Your celebration, at a glance',
               description:
-                  'Track the countdown, guest RSVPs, and checklist progress for this event right here.',
+                  'Track the countdown and guest RSVPs for this event right here.',
             ),
           ]);
         });
@@ -176,12 +171,6 @@ class _EventHubScreenState extends State<EventHubScreen> {
     }
 
     final totalGuests = _guests.length;
-    final pct = _celebration?.completionPercentage ?? 0;
-    final nextTask = _checklist
-            .where((t) => !t.isCompleted)
-            .map((t) => t.title)
-            .firstOrNull ??
-        'All tasks complete!';
 
     final dt = _celebration?.celebrationDate;
     final date = dt != null ? '${dt.day}/${dt.month}/${dt.year}' : '';
@@ -279,43 +268,6 @@ class _EventHubScreenState extends State<EventHubScreen> {
                             ],
                           ),
                           SizedBox(height: resp.h(22)),
-                          const SectionHeader('The plan'),
-                          Container(
-                            padding: EdgeInsets.all(resp.w(16)),
-                            decoration: _card(ty, resp),
-                            child: Row(
-                              children: [
-                                ProgressRing(
-                                  percent: pct.toDouble(),
-                                  size: resp.w(56),
-                                  center: Text('$pct%',
-                                      style: TyType.sans(resp.sp(14),
-                                          color: ty.ink,
-                                          weight: FontWeight.w800)),
-                                ),
-                                SizedBox(width: resp.w(16)),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('On track',
-                                          style: TyType.sans(resp.sp(15),
-                                              color: ty.ink,
-                                              weight: FontWeight.w700)),
-                                      SizedBox(height: resp.h(2)),
-                                      Text('Next: $nextTask',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TyType.sans(resp.sp(12.5),
-                                              color: ty.ink2)),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: resp.h(24)),
                           SectionHeader('Package details'),
                           _buildPackageSection(context),
                           SizedBox(height: resp.h(18)),

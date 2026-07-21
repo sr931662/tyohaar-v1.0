@@ -19,6 +19,14 @@ class NotificationService {
     await _api.dio.post('notifications/mark-read');
   }
 
+  Future<void> markAsRead(String notificationId) async {
+    await _api.dio.patch('notifications/$notificationId/read');
+  }
+
+  Future<void> deleteNotification(String notificationId) async {
+    await _api.dio.delete('notifications/$notificationId');
+  }
+
   Future<int> getUnreadCount() async {
     final response = await _api.dio.get('notifications/unread-count');
     return (response.data['data'] as num).toInt();
