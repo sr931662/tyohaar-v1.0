@@ -325,6 +325,34 @@ class BookingService(BaseService):
         packages = await uow.packages.packages.get_by_ids(package_ids)
         return {p.id: (p.name, p.cover_image_url) for p in packages}
 
+    async def _attach_celebration_info(
+        self, uow, bookings: list[Booking]
+    ) -> dict[UUID, tuple[str | None, UUID | None, str | None]]:
+        """
+        Batch-fetch the celebration title and selected customization theme
+        (id + name) for a list of bookings, keyed by celebration_id. Both
+        live on Celebration, not Booking, since a booking can be one of
+        several against the same celebration (reschedules, multi-vendor
+        line items) — the celebration is the durable "event", the booking
+        is one service engagement within it.
+        """
+        from sqlalchemy import select
+        from app.models.occasions.celebration import Celebration
+        from app.models.occasions.occasion_theme import OccasionTheme
+
+        celebration_ids = list({b.celebration_id for b in bookings if b.celebration_id})
+        if not celebration_ids:
+            return {}
+        rows = await uow.session.execute(
+            select(Celebration.id, Celebration.title, Celebration.theme_id, OccasionTheme.name)
+            .outerjoin(OccasionTheme, OccasionTheme.id == Celebration.theme_id)
+            .where(Celebration.id.in_(celebration_ids))
+        )
+        return {
+            cid: (title, theme_id, theme_name)
+            for cid, title, theme_id, theme_name in rows.all()
+        }
+
     async def _attach_customer_info(self, uow, customer_id: UUID) -> BookingCustomerSummary | None:
         """Fetch a lightweight customer contact snapshot for admin/support-only display."""
         user = await uow.users.users.get_by_id(customer_id)
@@ -380,9 +408,14 @@ class BookingService(BaseService):
 
             info = await self._attach_package_info(uow, [booking])
             name, cover_url = info.get(booking.package_id, (None, None))
+            celeb_info = await self._attach_celebration_info(uow, [booking])
+            title, theme_id, theme_name = celeb_info.get(booking.celebration_id, (None, None, None))
             response = BookingDetailResponse.model_validate(booking)
             response.package_name = name
             response.package_cover_url = cover_url
+            response.celebration_title = title
+            response.theme_id = theme_id
+            response.theme_name = theme_name
 
             # Customer contact + vendor identity are only ever attached for
             # admin/support requesters — never for the customer's own view or
@@ -414,10 +447,14 @@ class BookingService(BaseService):
                 limit=limit,
             )
             info = await self._attach_package_info(uow, page.items)
+            celeb_info = await self._attach_celebration_info(uow, page.items)
             items = []
             for b in page.items:
                 item = BookingResponse.model_validate(b)
                 item.package_name, item.package_cover_url = info.get(b.package_id, (None, None))
+                item.celebration_title, item.theme_id, item.theme_name = celeb_info.get(
+                    b.celebration_id, (None, None, None)
+                )
                 items.append(item)
             return CursorPage(
                 items=items,
@@ -487,10 +524,14 @@ class BookingService(BaseService):
 
             # 4. Hydrate
             info = await self._attach_package_info(uow, page.items)
+            celeb_info = await self._attach_celebration_info(uow, page.items)
             items = []
             for b in page.items:
                 item = BookingResponse.model_validate(b)
                 item.package_name, item.package_cover_url = info.get(b.package_id, (None, None))
+                item.celebration_title, item.theme_id, item.theme_name = celeb_info.get(
+                    b.celebration_id, (None, None, None)
+                )
                 items.append(item)
 
             return CursorPage(items=items, next_cursor=page.next_cursor, has_more=page.has_next)

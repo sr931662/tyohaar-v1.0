@@ -458,6 +458,17 @@ class _EventHubScreenState extends State<EventHubScreen> {
                     color: ty.ink3, size: resp.sp(22)),
               ],
             ),
+            if ((_booking?.themeName ?? '').isNotEmpty) ...[
+              SizedBox(height: resp.h(10)),
+              Row(
+                children: [
+                  Icon(Icons.palette_outlined, size: resp.sp(15), color: ty.ink3),
+                  SizedBox(width: resp.w(6)),
+                  Text('Theme: ${_booking!.themeName}',
+                      style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                ],
+              ),
+            ],
             if (_packageItems.isNotEmpty) ...[
               SizedBox(height: resp.h(12)),
               Divider(color: ty.line, height: 1),

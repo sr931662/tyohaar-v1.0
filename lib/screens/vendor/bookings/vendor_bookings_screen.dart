@@ -170,7 +170,12 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
                 children: [
                   Text(b.bookingNumber, style: TyType.sans(13, color: ty.ink3, weight: FontWeight.w600)),
                   const SizedBox(height: 2),
-                  Text(b.packageName ?? 'Package', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+                  Text(
+                    (b.celebrationTitle?.isNotEmpty ?? false) ? b.celebrationTitle! : (b.packageName ?? 'Package'),
+                    style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700),
+                  ),
+                  if (b.celebrationTitle?.isNotEmpty ?? false)
+                    Text(b.packageName ?? 'Package', style: TyType.sans(12.5, color: ty.ink2)),
                   const SizedBox(height: 4),
                   Text('${b.scheduledDate.day}/${b.scheduledDate.month}/${b.scheduledDate.year} · ₹${b.totalAmount.toStringAsFixed(0)}',
                       style: TyType.sans(12.5, color: ty.ink2)),

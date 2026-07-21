@@ -500,6 +500,12 @@ class Booking {
   final String? packageId;
   final String? packageName;
   final String? packageCoverUrl;
+  // Customer-given event name (Celebration.title) — lives on the celebration,
+  // not the booking itself, but the backend snapshots it onto every booking
+  // response so callers never need a second round-trip to fetch it.
+  final String? celebrationTitle;
+  final String? themeId;
+  final String? themeName;
   final String currency;
   final String? specialInstructions;
   final String? cancellationReason;
@@ -525,6 +531,9 @@ class Booking {
     this.packageId,
     this.packageName,
     this.packageCoverUrl,
+    this.celebrationTitle,
+    this.themeId,
+    this.themeName,
     required this.currency,
     this.specialInstructions,
     this.cancellationReason,
@@ -549,6 +558,9 @@ class Booking {
       packageId: json['package_id'] as String?,
       packageName: json['package_name'] as String?,
       packageCoverUrl: asUrl(json['package_cover_url']),
+      celebrationTitle: json['celebration_title'] as String?,
+      themeId: json['theme_id'] as String?,
+      themeName: json['theme_name'] as String?,
       currency: json['currency'] as String? ?? 'INR',
       specialInstructions: json['special_instructions'] as String?,
       cancellationReason: json['cancellation_reason'] as String?,

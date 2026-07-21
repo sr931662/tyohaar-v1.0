@@ -173,12 +173,14 @@ export default function VendorBookingDetailPage() {
           <div className="admin-card">
             <Section title="Booking Details">
               <Row label="Booking Number" value={b.booking_number ?? b.id?.slice(0, 8)} />
+              <Row label="Celebration" value={b.celebration_title} />
               <Row label="Status" value={<StatusBadge status={b.booking_status} />} />
               <Row label="Payment Status" value={<StatusBadge status={b.payment_status} />} />
               <Row label="Scheduled Date" value={b.scheduled_date ? formatDate(b.scheduled_date) : null} />
               <Row label="Start Time" value={b.scheduled_start_time} />
               <Row label="End Time" value={b.scheduled_end_time} />
               <Row label="Preparation Start" value={b.preparation_start_at ? formatDateTime(b.preparation_start_at) : null} />
+              {b.theme_name && <Row label="Customization Theme" value={b.theme_name} />}
               <Row label="Special Instructions" value={b.special_instructions} />
             </Section>
           </div>
@@ -194,8 +196,7 @@ export default function VendorBookingDetailPage() {
 
           <div className="admin-card">
             <Section title="Package">
-              {/* BookingResponse sends package_id (UUID) only — no nested package object */}
-              <Row label="Package ID" value={b.package_id ? <code style={{ fontSize: 12 }}>{b.package_id.slice(0, 8)}</code> : null} />
+              <Row label="Package" value={b.package_name ?? (b.package_id ? <code style={{ fontSize: 12 }}>{b.package_id.slice(0, 8)}</code> : null)} />
             </Section>
           </div>
 

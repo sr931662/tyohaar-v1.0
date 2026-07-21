@@ -145,14 +145,16 @@ export default function BookingDetailPage() {
           <div className="admin-card">
             <div className="admin-card-header"><div className="admin-card-title">Booking Details</div></div>
             <div className="admin-card-body">
-              {/* BookingResponse sends celebration_id only — occasion name requires a join */}
-              <div className="admin-detail-row"><div className="admin-detail-label">Celebration ID</div><div className="admin-detail-value"><code style={{ fontSize: 12 }}>{b.celebration_id?.slice(0, 8) ?? '—'}</code></div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Celebration</div><div className="admin-detail-value">{b.celebration_title ?? <code style={{ fontSize: 12 }}>{b.celebration_id?.slice(0, 8) ?? '—'}</code>}</div></div>
               {/* was: b.event_date — backend sends scheduled_date */}
               <div className="admin-detail-row"><div className="admin-detail-label">Event Date</div><div className="admin-detail-value">{formatDateTime(b.scheduled_date)}</div></div>
               {/* Vendor-provided PST [Preparation Starting Time] — set via PATCH /bookings/{id}/pst, auto-synced here */}
               <div className="admin-detail-row"><div className="admin-detail-label">Preparation Start Time (PST)</div><div className="admin-detail-value">{b.preparation_start_time ?? '—'}</div></div>
               {/* guest_count is on CelebrationResponse, not BookingResponse */}
               <div className="admin-detail-row"><div className="admin-detail-label">Package ID</div><div className="admin-detail-value"><code style={{ fontSize: 12 }}>{b.package_id?.slice(0, 8) ?? '—'}</code></div></div>
+              {b.theme_name && (
+                <div className="admin-detail-row"><div className="admin-detail-label">Customization Theme</div><div className="admin-detail-value">{b.theme_name}</div></div>
+              )}
               {/* was: b.special_notes — backend sends special_instructions */}
               <div className="admin-detail-row"><div className="admin-detail-label">Special Notes</div><div className="admin-detail-value">{b.special_instructions ?? '—'}</div></div>
             </div>

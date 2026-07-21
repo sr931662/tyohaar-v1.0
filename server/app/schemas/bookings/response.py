@@ -92,6 +92,9 @@ class BookingResponse(BaseSchema):
     package_id: uuid.UUID
     package_name: str | None = Field(default=None, description="Snapshot of the package's current name")
     package_cover_url: str | None = Field(default=None, description="Snapshot of the package's current cover image")
+    celebration_title: str | None = Field(default=None, description="Customer-given name for the celebration, e.g. 'Bunty's Mehndi'")
+    theme_id: uuid.UUID | None = Field(default=None, description="Selected customization theme (only set for customizable packages)")
+    theme_name: str | None = Field(default=None, description="Snapshot of the selected theme's name")
     address_id: uuid.UUID | None
     scheduled_date: date
     scheduled_start_time: time | None

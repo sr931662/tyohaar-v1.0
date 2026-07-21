@@ -1046,11 +1046,20 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               itemBuilder: (context, i) {
                 final t = allowedThemes[i];
                 final on = _theme?.id == t.id;
-                Color hexToColor(String hex) {
+                Color hexToColor(String? hex) {
+                  if (hex == null || hex.isEmpty) return Colors.transparent;
                   final h = hex.replaceAll('#', '');
                   return Color(int.parse('FF$h', radix: 16));
                 }
-                final swatch = hexToColor(t.primaryColorHex);
+                // Show all 4 layers of the theme's palette (not just the
+                // primary color) — quartered into the same circular swatch,
+                // matching how the theme is previewed in the admin portal.
+                final quadrantColors = [
+                  hexToColor(t.colors['primary']),
+                  hexToColor(t.colors['secondary']),
+                  hexToColor(t.colors['accent']),
+                  hexToColor(t.colors['background']),
+                ];
                 return GestureDetector(
                   onTap: () => setState(() => _theme = on ? null : t),
                   child: Column(
@@ -1059,7 +1068,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: swatch,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: on ? ty.saffron : Colors.transparent,
@@ -1067,15 +1075,48 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: swatch.withOpacity(0.35),
+                              color: quadrantColors.first.withOpacity(0.35),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
                           ],
                         ),
-                        child: on
-                            ? const Icon(Icons.check_rounded, color: Colors.white)
-                            : null,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            ClipOval(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: Container(color: quadrantColors[0])),
+                                        Expanded(child: Container(color: quadrantColors[1])),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: Container(color: quadrantColors[2])),
+                                        Expanded(child: Container(color: quadrantColors[3])),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (on)
+                              Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.black38,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.check_rounded, color: Colors.white),
+                              ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 6),
                       SizedBox(

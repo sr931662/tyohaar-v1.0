@@ -143,7 +143,11 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
+        if (b.celebrationTitle != null && b.celebrationTitle!.isNotEmpty)
+          _row(ty, 'Celebration', b.celebrationTitle!),
         _row(ty, 'Package', b.packageName ?? '—'),
+        if (b.themeName != null && b.themeName!.isNotEmpty)
+          _row(ty, 'Customization Theme', b.themeName!),
         _row(ty, 'Status', b.status.replaceAll('_', ' ')),
         _row(ty, 'Payment', b.paymentStatus.replaceAll('_', ' ')),
         _row(ty, 'Scheduled', '${b.scheduledDate.day}/${b.scheduledDate.month}/${b.scheduledDate.year}'),
