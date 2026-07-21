@@ -896,7 +896,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     final ty = context.ty;
     final on = _pkg?.id == p.id;
     return GestureDetector(
-      onTap: () => setState(() { _pkg = p; _packageItems = []; }),
+      onTap: () => setState(() {
+        _pkg = p;
+        _packageItems = [];
+        // See the other package-selection handler for why: a previously
+        // chosen theme may not be offered on this package.
+        _theme = null;
+      }),
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -993,7 +999,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 full: true,
                 enabled: _pkg?.id != p.id,
                 onTap: () {
-                  setState(() { _pkg = p; _packageItems = []; });
+                  setState(() {
+                    _pkg = p;
+                    _packageItems = [];
+                    // A theme chosen for a previously-selected package may
+                    // not even be offered on this one — clear it so an
+                    // invalid theme_id can never be submitted with the booking.
+                    _theme = null;
+                  });
                   Navigator.pop(ctx);
                 },
               ),
@@ -1006,7 +1019,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _themeStep(BuildContext context) {
     final ty = context.ty;
-    if (_themes.isEmpty) return const SizedBox();
+    // Not every theme suits every package — the vendor curates which of the
+    // platform's themes are actually offered on this specific package
+    // (Package.themeIds), so only those are selectable here rather than the
+    // entire theme catalog.
+    final allowedThemes = (_pkg?.themeIds.isNotEmpty ?? false)
+        ? _themes.where((t) => _pkg!.themeIds.contains(t.id)).toList()
+        : const <CelebrationTheme>[];
+    if (allowedThemes.isEmpty) return const SizedBox();
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 16),
       child: Column(
@@ -1021,10 +1041,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             height: 96,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: _themes.length,
+              itemCount: allowedThemes.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, i) {
-                final t = _themes[i];
+                final t = allowedThemes[i];
                 final on = _theme?.id == t.id;
                 Color hexToColor(String hex) {
                   final h = hex.replaceAll('#', '');

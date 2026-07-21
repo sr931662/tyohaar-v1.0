@@ -176,6 +176,11 @@ export const vendorOccasionsApi = {
     vendorClient.get('/occasions', { params: { per_page: 100, ...params } }).then(extractPaginated),
 };
 
+export const vendorThemesApi = {
+  list: () =>
+    vendorClient.get('/occasions/themes').then(extractData),
+};
+
 // ── Bookings ──────────────────────────────────────────────────────────────────
 
 export const vendorBookingsApi = {

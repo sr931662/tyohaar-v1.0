@@ -62,9 +62,10 @@ class PackageService(BaseService):
         async with self._uow() as uow:
             payload = data.model_dump(exclude_unset=True)
 
-            # occasion_ids has no backing column on Package — it's written
-            # separately into the package_occasions association table below.
+            # occasion_ids/theme_ids have no backing column on Package —
+            # they're written separately into their association tables below.
             occasion_ids = payload.pop("occasion_ids", None) or []
+            theme_ids = payload.pop("theme_ids", None) or []
 
             # Remap schema field names → model column names
             if "min_guests" in payload:
@@ -85,10 +86,14 @@ class PackageService(BaseService):
 
             if occasion_ids:
                 await self._replace_package_occasions(uow, package.id, occasion_ids)
+            if theme_ids:
+                await self._replace_package_themes(uow, package.id, theme_ids)
 
             await uow.commit()
             response = PackageResponse.model_validate(package)
-            return response.model_copy(update={"occasion_ids": occasion_ids})
+            return response.model_copy(
+                update={"occasion_ids": occasion_ids, "theme_ids": theme_ids}
+            )
 
     @staticmethod
     async def _replace_package_occasions(
@@ -114,6 +119,34 @@ class PackageService(BaseService):
         result = await uow.session.execute(
             select(package_occasions.c.occasion_id).where(
                 package_occasions.c.package_id == package_id
+            )
+        )
+        return [row[0] for row in result.all()]
+
+    @staticmethod
+    async def _replace_package_themes(
+        uow, package_id: UUID, theme_ids: list[UUID]
+    ) -> None:
+        from sqlalchemy import delete, insert
+        from app.models.packages.package import package_themes
+
+        await uow.session.execute(
+            delete(package_themes).where(package_themes.c.package_id == package_id)
+        )
+        if theme_ids:
+            await uow.session.execute(
+                insert(package_themes),
+                [{"package_id": package_id, "theme_id": tid} for tid in theme_ids],
+            )
+
+    @staticmethod
+    async def _get_package_theme_ids(uow, package_id: UUID) -> list[UUID]:
+        from sqlalchemy import select
+        from app.models.packages.package import package_themes
+
+        result = await uow.session.execute(
+            select(package_themes.c.theme_id).where(
+                package_themes.c.package_id == package_id
             )
         )
         return [row[0] for row in result.all()]
@@ -159,8 +192,9 @@ class PackageService(BaseService):
             # list-valued `package.pricing` attribute is never auto-read against
             # the singular `pricing` field on PackageDetailResponse.
             occasion_ids = await self._get_package_occasion_ids(uow, package_id)
+            theme_ids = await self._get_package_theme_ids(uow, package_id)
             base = PackageResponse.model_validate(package).model_copy(
-                update={"occasion_ids": occasion_ids}
+                update={"occasion_ids": occasion_ids, "theme_ids": theme_ids}
             )
             response = PackageDetailResponse(
                 **base.model_dump(), pricing=pricing_response, vendor=vendor_info
@@ -290,6 +324,7 @@ class PackageService(BaseService):
             package_ids = [p.id for p in page.items]
             counts: dict = {}
             occasions_by_package: dict = {}
+            themes_by_package: dict = {}
             if package_ids:
                 item_rows = await uow.packages.items.find_many(
                     uow.packages.items._model.package_id.in_(package_ids)
@@ -299,7 +334,7 @@ class PackageService(BaseService):
                     counts[pid] = counts.get(pid, 0) + 1
 
                 from sqlalchemy import select
-                from app.models.packages.package import package_occasions
+                from app.models.packages.package import package_occasions, package_themes
                 link_rows = await uow.session.execute(
                     select(
                         package_occasions.c.package_id, package_occasions.c.occasion_id
@@ -307,11 +342,20 @@ class PackageService(BaseService):
                 )
                 for pid, oid in link_rows.all():
                     occasions_by_package.setdefault(pid, []).append(oid)
+
+                theme_link_rows = await uow.session.execute(
+                    select(
+                        package_themes.c.package_id, package_themes.c.theme_id
+                    ).where(package_themes.c.package_id.in_(package_ids))
+                )
+                for pid, tid in theme_link_rows.all():
+                    themes_by_package.setdefault(pid, []).append(tid)
             responses = [
                 PackageResponse.model_validate(p).model_copy(
                     update={
                         "inclusions_count": counts.get(p.id, 0),
                         "occasion_ids": occasions_by_package.get(p.id, []),
+                        "theme_ids": themes_by_package.get(p.id, []),
                     }
                 )
                 for p in page.items
@@ -332,6 +376,7 @@ class PackageService(BaseService):
             package = await validate_package_ownership(package_id, vendor_id, uow)
             changes = data.model_dump(exclude_unset=True)
             occasion_ids = changes.pop("occasion_ids", None)
+            theme_ids = changes.pop("theme_ids", None)
             if "min_guests" in changes:
                 changes["min_guest_count"] = changes.pop("min_guests")
             if "max_guests" in changes:
@@ -342,9 +387,16 @@ class PackageService(BaseService):
                 final_occasion_ids = occasion_ids
             else:
                 final_occasion_ids = await self._get_package_occasion_ids(uow, package_id)
+            if theme_ids is not None:
+                await self._replace_package_themes(uow, package_id, theme_ids)
+                final_theme_ids = theme_ids
+            else:
+                final_theme_ids = await self._get_package_theme_ids(uow, package_id)
             await uow.commit()
             response = PackageResponse.model_validate(updated)
-            return response.model_copy(update={"occasion_ids": final_occasion_ids})
+            return response.model_copy(
+                update={"occasion_ids": final_occasion_ids, "theme_ids": final_theme_ids}
+            )
 
     async def delete_package(
         self,

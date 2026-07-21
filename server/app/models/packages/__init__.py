@@ -1,5 +1,5 @@
 from app.models.packages.package_category import PackageCategory
-from app.models.packages.package import Package, package_occasions
+from app.models.packages.package import Package, package_occasions, package_themes
 from app.models.packages.package_item import PackageItem
 from app.models.packages.package_item_image import PackageItemImage
 from app.models.packages.package_item_vendor import PackageItemVendor
@@ -16,6 +16,7 @@ __all__ = [
     "PackageCategory",
     "Package",
     "package_occasions",
+    "package_themes",
     "PackageItem",
     "PackageItemImage",
     "PackageItemVendor",

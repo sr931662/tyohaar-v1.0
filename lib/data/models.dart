@@ -314,6 +314,10 @@ class Package {
   final int displayOrder;
   // City slug where this package is offered (e.g. 'noida', 'mumbai').
   final String? citySlug;
+  // OccasionTheme ids the vendor has enabled as customization options for
+  // this specific package — not every theme suits every package, so this is
+  // a vendor-curated subset, not the full platform theme catalog.
+  final List<String> themeIds;
 
   const Package({
     required this.id,
@@ -341,6 +345,7 @@ class Package {
     this.currency = 'INR',
     this.displayOrder = 0,
     this.citySlug,
+    this.themeIds = const [],
   });
 
   factory Package.fromJson(Map<String, dynamic> json) {
@@ -385,6 +390,10 @@ class Package {
       currency: json['currency'] as String? ?? 'INR',
       displayOrder: json['display_order'] as int? ?? 0,
       citySlug: json['city_slug'] as String?,
+      themeIds: (json['theme_ids'] as List?)
+              ?.map((id) => id.toString())
+              .toList() ??
+          const [],
     );
   }
 

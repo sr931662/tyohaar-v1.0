@@ -26,6 +26,7 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.occasions.occasion import Occasion
+    from app.models.packages.package import Package
 
 
 class OccasionTheme(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -102,6 +103,13 @@ class OccasionTheme(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     occasions: Mapped[list[Occasion]] = relationship(
         "Occasion",
         secondary="occasion_theme_links",
+        back_populates="themes",
+        lazy="noload",
+    )
+
+    packages: Mapped[list[Package]] = relationship(
+        "Package",
+        secondary="package_themes",
         back_populates="themes",
         lazy="noload",
     )

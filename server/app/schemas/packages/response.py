@@ -99,6 +99,10 @@ class PackageResponse(BaseSchema):
     city_slug: str | None = None
     inclusions_count: int = 0
     occasion_ids: list[uuid.UUID] = Field(default_factory=list)
+    theme_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description="Celebration themes the vendor offers as a customization option on this package.",
+    )
     created_at: datetime
     updated_at: datetime
 

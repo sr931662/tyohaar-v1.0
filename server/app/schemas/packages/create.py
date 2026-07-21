@@ -67,6 +67,13 @@ class PackageCreate(BaseSchema):
         default_factory=list,
         description="Occasions this package applies to (e.g. Birthday, Baby Shower).",
     )
+    theme_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description=(
+            "Celebration themes the vendor is offering as a customization option "
+            "on this package. Only meaningful when is_customizable=True."
+        ),
+    )
     description: str | None = Field(default=None, description="Long-form description (Markdown)")
     short_description: str | None = Field(
         default=None, max_length=500, description="One-liner shown in listing cards"

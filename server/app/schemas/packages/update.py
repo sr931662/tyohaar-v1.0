@@ -67,6 +67,10 @@ class PackageUpdate(BaseSchema):
         default=None,
         description="Replaces the full set of linked occasions when provided.",
     )
+    theme_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="Replaces the full set of offered customization themes when provided.",
+    )
     description: str | None = None
     short_description: str | None = Field(default=None, max_length=500)
     cover_image_url: str | None = Field(default=None, max_length=2048)
