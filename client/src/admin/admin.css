@@ -1159,9 +1159,9 @@ select.admin-input {
 .flex-wrap { flex-wrap: wrap; }
 
 .grid { display: grid; }
-.grid-2 { grid-template-columns: 1fr 1fr; gap: 24px; }
-.grid-3 { grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
-.grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 24px; }
+.grid-2 { grid-template-columns: 1fr 1fr; gap: 28px; }
+.grid-3 { grid-template-columns: 1fr 1fr 1fr; gap: 28px; }
+.grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 28px; }
 
 .text-sm { font-size: 12px; }
 .text-base { font-size: 13.5px; }

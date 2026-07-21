@@ -16,7 +16,7 @@ import uuid
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import AliasChoices, ConfigDict, Field, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
@@ -191,17 +191,31 @@ class BookingRescheduleResponse(BaseSchema):
 
 
 class BookingStatusHistoryResponse(BaseSchema):
-    """Public response shape for a BookingStatusHistory entry."""
+    """
+    Public response shape for a BookingStatusHistory entry.
+
+    The model uses old_status/new_status/transitioned_at internally; the
+    public API keeps the from_status/to_status/changed_at names the admin
+    and vendor portals already consume, mapped in via validation_alias so
+    model_validate(row) (from_attributes) can still find them on the ORM
+    object under their real column names.
+    """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
     booking_id: uuid.UUID
-    from_status: BookingStatus | None
-    to_status: BookingStatus
+    from_status: BookingStatus | None = Field(
+        validation_alias=AliasChoices("from_status", "old_status")
+    )
+    to_status: BookingStatus = Field(
+        validation_alias=AliasChoices("to_status", "new_status")
+    )
     changed_by_id: uuid.UUID | None
     reason: str | None
-    changed_at: datetime
+    changed_at: datetime = Field(
+        validation_alias=AliasChoices("changed_at", "transitioned_at")
+    )
     created_at: datetime
     updated_at: datetime
 
