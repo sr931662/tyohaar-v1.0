@@ -305,6 +305,58 @@ class MediaService(BaseService):
     # Videos
     # =========================================================================
 
+    async def upload_video(
+        self,
+        owner_id: UUID,
+        owner_type: ImageOwnerType,
+        usage,
+        file_bytes: bytes,
+        filename: str,
+        content_type: str,
+        entity_type: str | None = None,
+        entity_id: UUID | None = None,
+    ) -> VideoResponse:
+        """
+        Upload a raw video file straight to Cloudinary and record it as an
+        immediately-usable Video row — the direct-proxy counterpart to
+        upload_image, for the same reasons (simpler than register/confirm,
+        appropriate for vendor-uploaded event video sizes).
+        """
+        from app.services.media.cloudinary_client import upload_image_bytes
+
+        result = await upload_image_bytes(
+            file_bytes,
+            folder=f"tyohaar/{usage.value}",
+            resource_type="video",
+            apply_watermark=False,
+        )
+
+        async with self._uow() as uow:
+            video = Video(
+                owner_id=owner_id,
+                owner_type=owner_type,
+                url=result["secure_url"],
+                storage_path=result["public_id"],
+                original_filename=filename,
+                file_size_bytes=result.get("bytes") or len(file_bytes),
+                mime_type=content_type,
+                video_format=result.get("format"),
+                duration_seconds=result.get("duration") or 0,
+                width=result.get("width"),
+                height=result.get("height"),
+                usage=usage,
+                media_status=MediaStatus.ACTIVE,
+                moderation_status=ModerationStatus.APPROVED,
+                transcoding_status=VideoTranscodingStatus.COMPLETED,
+                cdn_provider="cloudinary",
+                entity_type=entity_type,
+                entity_id=entity_id,
+                uploaded_at=datetime.now(tz=timezone.utc),
+            )
+            video = await uow.media.videos.create(video)
+            await uow.commit()
+        return VideoResponse.model_validate(video)
+
     async def register_video_upload(
         self,
         owner_id: UUID,

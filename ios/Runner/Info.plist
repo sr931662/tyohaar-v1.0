@@ -32,6 +32,8 @@
 	<string>Tyohaar saves package images you download to your photo library.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Tyohaar uses your contacts to help you invite guests to your celebration.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Tyohaar uses your location to show your current city.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.session import AsyncSessionLocal
 from app.models.enums import BookingStatus
@@ -45,15 +46,20 @@ class CRMService(BaseService):
 
             from app.models.bookings.booking import Booking
             from app.models.bookings.booking_assignment import BookingAssignment
+            from app.models.common.city import City
             from app.models.payments.payment import Payment
             from app.models.vendors.vendor import Vendor
             from app.models.vendors.vendor_document import VendorDocument
             from app.models.vendors.vendor_review import VendorReview
 
-            # Core vendor record
+            # Core vendor record — eager-load owner (for phone/email) and
+            # profile (for operating_cities) since both live outside Vendor
+            # itself and are declared lazy="noload".
             vendor_row = (
                 await session.execute(
-                    select(Vendor).where(Vendor.id == vendor_id, Vendor.deleted_at.is_(None))
+                    select(Vendor)
+                    .options(selectinload(Vendor.owner), selectinload(Vendor.profile))
+                    .where(Vendor.id == vendor_id, Vendor.deleted_at.is_(None))
                 )
             ).scalar_one_or_none()
 
@@ -61,13 +67,30 @@ class CRMService(BaseService):
                 from fastapi import HTTPException, status
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vendor not found")
 
+            primary_city = (
+                vendor_row.profile.operating_cities[0]
+                if vendor_row.profile and vendor_row.profile.operating_cities
+                else None
+            )
+            state_name = None
+            if primary_city:
+                city_row = (
+                    await session.execute(
+                        select(City)
+                        .options(selectinload(City.state))
+                        .where(City.name.ilike(primary_city))
+                    )
+                ).scalars().first()
+                if city_row and city_row.state:
+                    state_name = city_row.state.name
+
             summary = VendorCRMSummary(
                 vendor_id=vendor_row.id,
                 business_name=vendor_row.business_name,
-                phone=getattr(vendor_row, "phone", None),
-                email=getattr(vendor_row, "email", None),
-                city=getattr(vendor_row, "city", None),
-                state=getattr(vendor_row, "state", None),
+                phone=vendor_row.owner.phone if vendor_row.owner else None,
+                email=vendor_row.owner.email if vendor_row.owner else None,
+                city=primary_city,
+                state=state_name,
                 verification_status=vendor_row.verification_status.value,
                 account_status=vendor_row.status.value,
                 onboarded_at=vendor_row.created_at,
@@ -373,13 +396,12 @@ class CRMService(BaseService):
     ) -> tuple[list[dict[str, Any]], int]:
         from sqlalchemy import or_
         from app.models.vendors.vendor import Vendor
+        from app.models.vendors.vendor_profile import VendorProfile
 
         async with self._uow() as uow:
             conditions = [Vendor.deleted_at.is_(None)]
             if verification_status:
                 conditions.append(Vendor.verification_status == verification_status)
-            if city:
-                conditions.append(Vendor.city.ilike(f"%{city}%"))
             if search:
                 conditions.append(
                     or_(
@@ -388,18 +410,26 @@ class CRMService(BaseService):
                     )
                 )
 
-            count_stmt = select(func.count()).select_from(Vendor).where(*conditions)
-            data_stmt = (
-                select(Vendor).where(*conditions).order_by(Vendor.created_at.desc()).offset(skip).limit(limit)
-            )
-            total = (await uow.session.execute(count_stmt)).scalar_one()
+            base_query = select(Vendor).options(selectinload(Vendor.profile)).where(*conditions)
+            count_query = select(func.count()).select_from(Vendor).where(*conditions)
+            if city:
+                # VendorProfile.operating_cities is a text[] array — no scalar
+                # Vendor.city column exists, so match against the array instead.
+                city_filter = Vendor.profile.has(
+                    VendorProfile.operating_cities.any(city)
+                )
+                base_query = base_query.where(city_filter)
+                count_query = count_query.where(city_filter)
+
+            data_stmt = base_query.order_by(Vendor.created_at.desc()).offset(skip).limit(limit)
+            total = (await uow.session.execute(count_query)).scalar_one()
             rows = (await uow.session.execute(data_stmt)).scalars().all()
 
             result = [
                 {
                     "id": str(v.id),
                     "business_name": v.business_name,
-                    "city": getattr(v, "city", None),
+                    "city": (v.profile.operating_cities[0] if v.profile and v.profile.operating_cities else None),
                     "status": v.status.value,
                     "verification_status": v.verification_status.value,
                     "avg_rating": float(getattr(v, "average_rating", 0) or 0),

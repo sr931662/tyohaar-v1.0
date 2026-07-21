@@ -40,6 +40,7 @@ __all__ = [
     "BookingCustomerSummary",
     "BookingVendorSummary",
     "BookingDetailResponse",
+    "BookingMediaSummary",
 ]
 
 
@@ -252,3 +253,28 @@ class BookingDetailResponse(BookingResponse):
     vendor: BookingVendorSummary | None = Field(
         default=None, description="Package-owner vendor summary — admin/support requesters only"
     )
+
+
+class BookingMediaSummary(BaseSchema):
+    """
+    Card-level summary for the Multimedia feature — one row per booking,
+    surfaced to vendors (their own assigned bookings) and admins
+    (all bookings that have vendor-uploaded event media).
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    booking_id: uuid.UUID
+    booking_number: str
+    event_title: str = Field(description="Package name for the booking")
+    scheduled_date: date
+    booking_status: BookingStatus
+    customer_name: str | None = None
+    customer_email: str | None = None
+    can_upload: bool = Field(
+        default=False,
+        description="Whether the requesting vendor may upload media for this booking right now",
+    )
+    image_count: int = 0
+    video_count: int = 0
+    thumbnail_url: str | None = None

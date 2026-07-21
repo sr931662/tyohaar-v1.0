@@ -44,10 +44,25 @@ class VendorCreate(BaseSchema):
         description="Public-facing trading name of the vendor business",
     )
     vendor_type: VendorType = Field(description="Primary service category")
+    legal_name: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Registered legal entity name as per government documents",
+    )
     registration_number: str | None = Field(
         default=None,
         max_length=100,
         description="Company / LLP / shop-act registration number (optional)",
+    )
+    gst_number: str | None = Field(
+        default=None,
+        max_length=20,
+        description="15-character GST Identification Number (GSTIN)",
+    )
+    pan_number: str | None = Field(
+        default=None,
+        max_length=10,
+        description="10-character Permanent Account Number",
     )
     years_of_experience: int | None = Field(
         default=None,

@@ -22,6 +22,7 @@ const NAV = [
       { to: '/admin/bookings', label: 'Bookings', icon: '📅' },
       { to: '/admin/packages', label: 'Packages', icon: '📦' },
       { to: '/admin/occasions', label: 'Occasions', icon: '🎉' },
+      { to: '/admin/multimedia', label: 'Multimedia', icon: '🎬' },
     ],
   },
   {

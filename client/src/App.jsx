@@ -38,6 +38,7 @@ const VendorBankPage            = lazy(() => import('./vendor/pages/bank/VendorB
 const VendorBookingsPage        = lazy(() => import('./vendor/pages/bookings/VendorBookingsPage.jsx'));
 const VendorBookingDetailPage   = lazy(() => import('./vendor/pages/bookings/VendorBookingDetailPage.jsx'));
 const VendorAvailabilityPage    = lazy(() => import('./vendor/pages/availability/VendorAvailabilityPage.jsx'));
+const VendorMultimediaPage      = lazy(() => import('./vendor/pages/multimedia/VendorMultimediaPage.jsx'));
 const VendorEarningsPage        = lazy(() => import('./vendor/pages/earnings/VendorEarningsPage.jsx'));
 const VendorReviewsPage         = lazy(() => import('./vendor/pages/reviews/VendorReviewsPage.jsx'));
 const VendorNotificationsPage   = lazy(() => import('./vendor/pages/notifications/VendorNotificationsPage.jsx'));
@@ -62,6 +63,7 @@ const SupportPage           = lazy(() => import('./admin/pages/support/SupportPa
 const SupportDetailPage     = lazy(() => import('./admin/pages/support/SupportDetailPage.jsx'));
 const FeedbackPage          = lazy(() => import('./admin/pages/feedback/FeedbackPage.jsx'));
 const MediaPage             = lazy(() => import('./admin/pages/media/MediaPage.jsx'));
+const MultimediaPage        = lazy(() => import('./admin/pages/multimedia/MultimediaPage.jsx'));
 const AdminManagementPage   = lazy(() => import('./admin/pages/admin-mgmt/AdminManagementPage.jsx'));
 const SettingsPage          = lazy(() => import('./admin/pages/settings/SettingsPage.jsx'));
 const ImportExportPage      = lazy(() => import('./admin/pages/io/ImportExportPage.jsx'));
@@ -152,6 +154,7 @@ export default function App() {
                 <Route path="bookings" element={<VendorBookingsPage />} />
                 <Route path="bookings/:bookingId" element={<VendorBookingDetailPage />} />
                 <Route path="availability" element={<VendorAvailabilityPage />} />
+                <Route path="multimedia" element={<VendorMultimediaPage />} />
                 <Route path="earnings" element={<VendorEarningsPage />} />
                 <Route path="reviews" element={<VendorReviewsPage />} />
                 <Route path="notifications" element={<VendorNotificationsPage />} />
@@ -190,6 +193,7 @@ export default function App() {
                 <Route path="support/:id" element={<SupportDetailPage />} />
                 <Route path="feedback" element={<FeedbackPage />} />
                 <Route path="media" element={<MediaPage />} />
+                <Route path="multimedia" element={<MultimediaPage />} />
                 <Route path="admin-management" element={<AdminManagementPage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="io" element={<ImportExportPage />} />

@@ -30,6 +30,8 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   device_info_plus: ^11.2.0
   flutter_contacts: ^1.1.9+2
+  geolocator: ^13.0.2
+  geocoding: ^3.0.0
 
 dev_dependencies:
   flutter_test:

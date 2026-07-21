@@ -45,4 +45,7 @@ export const bookingsApi = {
 
   generateInvoice: (bookingId) =>
     apiClient.post(`/bookings/${bookingId}/invoice`).then(extractData),
+
+  listMedia: (params) =>
+    apiClient.get('/bookings/admin/media', { params }).then(extractPaginated),
 };

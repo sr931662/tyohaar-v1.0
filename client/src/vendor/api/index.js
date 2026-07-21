@@ -177,6 +177,20 @@ export const vendorBookingsApi = {
     vendorClient.get(`/bookings/${bookingId}/history`).then(extractList),
   statusHistory: (bookingId) =>
     vendorClient.get(`/bookings/${bookingId}/status-history`).then(extractList),
+
+  // Multimedia
+  listMedia: () =>
+    vendorClient.get('/bookings/vendor/media').then(extractList),
+  uploadEventPhoto: (bookingId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return vendorClient.post(`/bookings/${bookingId}/media/images`, formData).then(extractData);
+  },
+  uploadEventVideo: (bookingId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return vendorClient.post(`/bookings/${bookingId}/media/videos`, formData).then(extractData);
+  },
 };
 
 // ── Earnings ──────────────────────────────────────────────────────────────────

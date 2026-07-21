@@ -33,6 +33,7 @@ from app.schemas.bookings import (
     BookingVendorSummary,
 )
 from app.services.base import BaseService
+from app.services.exceptions import BusinessRuleError
 from app.services.bookings.constants import (
     CANCELLATION_FEE_PERCENTAGE,
     CANCELLATION_WINDOW_HOURS,
@@ -1285,3 +1286,218 @@ class BookingService(BaseService):
 
             await uow.commit()
             return BookingInvoiceResponse.model_validate(invoice)
+
+    # ── Multimedia (vendor-uploaded event media) ────────────────────────────
+
+    async def assert_vendor_media_upload_allowed(
+        self,
+        booking_id: UUID,
+        vendor_id: UUID,
+    ) -> Booking:
+        """
+        Gate for the vendor multimedia-upload endpoint: the calling vendor
+        must have an accepted assignment on this booking, and the event must
+        have already been completed (media is delivered after the event).
+        """
+        async with self._uow() as uow:
+            booking = await validate_booking_exists(booking_id, uow)
+
+            assignments = await uow.bookings.assignments.find_many(
+                uow.bookings.assignments._model.booking_id == booking_id,
+                uow.bookings.assignments._model.vendor_id == vendor_id,
+                uow.bookings.assignments._model.assignment_status == AssignmentStatus.ACCEPTED,
+            )
+            if not assignments:
+                raise VendorNotAvailableError(
+                    f"Vendor {vendor_id} has no accepted assignment on booking {booking_id}."
+                )
+
+            if booking.booking_status != BookingStatus.COMPLETED:
+                raise BusinessRuleError(
+                    "Media can only be uploaded once the event is marked completed."
+                )
+
+            return booking
+
+    async def _media_counts_by_booking(
+        self, session, booking_ids: list[UUID]
+    ) -> dict[UUID, tuple[int, int, str | None]]:
+        """Returns {booking_id: (image_count, video_count, first_thumbnail_url)}."""
+        from sqlalchemy import func, select as sa_select
+        from app.models.media.image import Image
+        from app.models.media.video import Video
+
+        counts: dict[UUID, tuple[int, int, str | None]] = {bid: (0, 0, None) for bid in booking_ids}
+        if not booking_ids:
+            return counts
+
+        image_rows = (
+            await session.execute(
+                sa_select(Image.entity_id, func.count())
+                .where(
+                    Image.entity_type == "booking",
+                    Image.entity_id.in_(booking_ids),
+                    Image.deleted_at.is_(None),
+                )
+                .group_by(Image.entity_id)
+            )
+        ).all()
+        thumb_rows = (
+            await session.execute(
+                sa_select(Image.entity_id, Image.thumbnail_url, Image.url)
+                .where(
+                    Image.entity_type == "booking",
+                    Image.entity_id.in_(booking_ids),
+                    Image.deleted_at.is_(None),
+                )
+                .order_by(Image.created_at.asc())
+            )
+        ).all()
+        video_rows = (
+            await session.execute(
+                sa_select(Video.entity_id, func.count())
+                .where(
+                    Video.entity_type == "booking",
+                    Video.entity_id.in_(booking_ids),
+                    Video.deleted_at.is_(None),
+                )
+                .group_by(Video.entity_id)
+            )
+        ).all()
+
+        thumbs: dict[UUID, str | None] = {}
+        for entity_id, thumbnail_url, url in thumb_rows:
+            thumbs.setdefault(entity_id, thumbnail_url or url)
+
+        image_count_map = {entity_id: cnt for entity_id, cnt in image_rows}
+        video_count_map = {entity_id: cnt for entity_id, cnt in video_rows}
+
+        for bid in booking_ids:
+            counts[bid] = (
+                int(image_count_map.get(bid, 0)),
+                int(video_count_map.get(bid, 0)),
+                thumbs.get(bid),
+            )
+        return counts
+
+    async def list_vendor_booking_media(self, vendor_id: UUID) -> list["BookingMediaSummary"]:
+        """
+        Bookings assigned to this vendor, with media counts, for the vendor
+        portal's Multimedia section. Upload is only allowed once completed.
+        """
+        from sqlalchemy import select as sa_select
+        from app.models.packages.package import Package
+        from app.models.users.user import User
+        from app.schemas.bookings import BookingMediaSummary
+
+        async with self._uow() as uow:
+            session = uow.session
+            assert session is not None
+
+            rows = (
+                await session.execute(
+                    sa_select(Booking, User, Package)
+                    .join(BookingAssignment, BookingAssignment.booking_id == Booking.id)
+                    .join(User, User.id == Booking.customer_id)
+                    .join(Package, Package.id == Booking.package_id)
+                    .where(
+                        BookingAssignment.vendor_id == vendor_id,
+                        BookingAssignment.assignment_status == AssignmentStatus.ACCEPTED,
+                        Booking.deleted_at.is_(None),
+                    )
+                    .order_by(Booking.scheduled_date.desc())
+                )
+            ).all()
+
+            booking_ids = [b.id for b, _, _ in rows]
+            media_counts = await self._media_counts_by_booking(session, booking_ids)
+
+            return [
+                BookingMediaSummary(
+                    booking_id=booking.id,
+                    booking_number=booking.booking_number,
+                    event_title=package.name,
+                    scheduled_date=booking.scheduled_date,
+                    booking_status=booking.booking_status,
+                    customer_name=getattr(user, "full_name", None),
+                    customer_email=getattr(user, "email", None),
+                    can_upload=booking.booking_status == BookingStatus.COMPLETED,
+                    image_count=media_counts[booking.id][0],
+                    video_count=media_counts[booking.id][1],
+                    thumbnail_url=media_counts[booking.id][2],
+                )
+                for booking, user, package in rows
+            ]
+
+    async def list_admin_booking_media(
+        self, *, skip: int = 0, limit: int = 20
+    ) -> tuple[list["BookingMediaSummary"], int]:
+        """
+        Paginated list of bookings that have at least one vendor-uploaded
+        image or video attached, for the admin Operations > Multimedia page.
+        """
+        from sqlalchemy import exists, func, select as sa_select, or_
+        from app.models.media.image import Image
+        from app.models.media.video import Video
+        from app.models.packages.package import Package
+        from app.models.users.user import User
+        from app.schemas.bookings import BookingMediaSummary
+
+        async with self._uow() as uow:
+            session = uow.session
+            assert session is not None
+
+            has_image = exists(
+                sa_select(Image.id).where(
+                    Image.entity_type == "booking",
+                    Image.entity_id == Booking.id,
+                    Image.deleted_at.is_(None),
+                )
+            )
+            has_video = exists(
+                sa_select(Video.id).where(
+                    Video.entity_type == "booking",
+                    Video.entity_id == Booking.id,
+                    Video.deleted_at.is_(None),
+                )
+            )
+            base_conditions = [Booking.deleted_at.is_(None), or_(has_image, has_video)]
+
+            total = (
+                await session.execute(
+                    sa_select(func.count()).select_from(Booking).where(*base_conditions)
+                )
+            ).scalar_one()
+
+            rows = (
+                await session.execute(
+                    sa_select(Booking, User, Package)
+                    .join(User, User.id == Booking.customer_id)
+                    .join(Package, Package.id == Booking.package_id)
+                    .where(*base_conditions)
+                    .order_by(Booking.scheduled_date.desc())
+                    .offset(skip)
+                    .limit(limit)
+                )
+            ).all()
+
+            booking_ids = [b.id for b, _, _ in rows]
+            media_counts = await self._media_counts_by_booking(session, booking_ids)
+
+            summaries = [
+                BookingMediaSummary(
+                    booking_id=booking.id,
+                    booking_number=booking.booking_number,
+                    event_title=package.name,
+                    scheduled_date=booking.scheduled_date,
+                    booking_status=booking.booking_status,
+                    customer_name=getattr(user, "full_name", None),
+                    customer_email=getattr(user, "email", None),
+                    can_upload=False,
+                    image_count=media_counts[booking.id][0],
+                    video_count=media_counts[booking.id][1],
+                    thumbnail_url=media_counts[booking.id][2],
+                )
+                for booking, user, package in rows
+            ]
+            return summaries, int(total)

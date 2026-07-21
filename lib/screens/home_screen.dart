@@ -345,18 +345,36 @@ class _HomeScreenState extends State<HomeScreen> {
               top: 0,
               left: 0,
               right: 0,
-              height: resp.h(200),
+               height: resp.h(230),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(ty.isDark ? 0.6 : 0.4),
-                      Colors.black.withOpacity(ty.isDark ? 0.3 : 0.1),
+                      Colors.black.withOpacity(ty.isDark ? 0.78 : 0.62),
+                      Colors.black.withOpacity(ty.isDark ? 0.46 : 0.34),
                       Colors.transparent,
                     ],
-                    stops: const [0, 0.45, 1.0],
+                    stops: const [0, 0.52, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
+                    gradient: RadialGradient(
+                      center: const Alignment(0.05, 0.1),
+                      radius: 0.92,
+                      colors: [
+                        Colors.black.withOpacity(0.24),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 1.0],
+                    ),
                   ),
                 ),
               ),
@@ -369,11 +387,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withOpacity(0.85),
-                      Colors.black.withOpacity(0.20),
+                      Colors.black.withOpacity(0.9),
+                      Colors.black.withOpacity(0.34),
                       Colors.transparent,
                     ],
-                    stops: const [0, 0.5, 0.8],
+                    stops: const [0, 0.58, 0.84],
                   ),
                 ),
               ),
@@ -382,46 +400,67 @@ class _HomeScreenState extends State<HomeScreen> {
               left: resp.w(18),
               right: resp.w(18),
               bottom: resp.h(32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('YOUR NEXT CELEBRATION',
-                      style: TyType.eyebrow(resp.sp(11.5), color: Colors.white.withOpacity(0.7))),
-                  SizedBox(height: resp.h(12)),
-                  Row(children: [
-                    Flexible(child: TyPill(displayLabel)),
-                    SizedBox(width: resp.w(8)),
-                    if (statusLabel != null)
-                      Flexible(
-                          child: TyPill(statusLabel,
-                              background: statusColor,
-                              foreground: Colors.white)),
-                  ]),
-                  SizedBox(height: resp.h(14)),
-                  Text(title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TyType.display(resp.sp(34), color: Colors.white)),
-                  SizedBox(height: resp.h(6)),
-                  Row(children: [
-                    Icon(Icons.event, size: resp.sp(15), color: Colors.white70),
-                    SizedBox(width: resp.w(6)),
-                    Expanded(
-                      child: Text('$date · $location',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TyType.sans(resp.sp(14), color: Colors.white70)),
-                    ),
-                  ]),
-                  SizedBox(height: resp.h(20)),
-                  Row(
-                    children: [
-                      _stackedAvatars(context, _guests, totalGuests),
-                      const Spacer(),
-                      Flexible(child: _progressChip(context, pct, pendingTaskCount, checklistCount)),
+              child: Container(
+                padding: EdgeInsets.fromLTRB(resp.w(14), resp.h(14), resp.w(14), resp.h(12)),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(resp.w(24)),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.34),
+                      Colors.black.withOpacity(0.18),
                     ],
                   ),
-                ],
+                  border: Border.all(color: Colors.white.withOpacity(0.10)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('YOUR NEXT CELEBRATION',
+                        style: TyType.eyebrow(resp.sp(11.5), color: Colors.white.withOpacity(0.88))),
+                    SizedBox(height: resp.h(12)),
+                    Row(children: [
+                      Flexible(
+                        child: TyPill(
+                          displayLabel,
+                          background: Colors.white.withOpacity(0.96),
+                          foreground: const Color(0xFF241914),
+                        ),
+                      ),
+                      SizedBox(width: resp.w(8)),
+                      if (statusLabel != null)
+                        Flexible(
+                            child: TyPill(statusLabel,
+                                background: statusColor,
+                                foreground: Colors.white)),
+                    ]),
+                    SizedBox(height: resp.h(14)),
+                    Text(title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TyType.display(resp.sp(34), color: Colors.white)),
+                    SizedBox(height: resp.h(8)),
+                    Row(children: [
+                      Icon(Icons.event, size: resp.sp(15), color: Colors.white.withOpacity(0.86)),
+                      SizedBox(width: resp.w(6)),
+                      Expanded(
+                        child: Text('$date · $location',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TyType.sans(resp.sp(14), color: Colors.white.withOpacity(0.9))),
+                      ),
+                    ]),
+                    SizedBox(height: resp.h(20)),
+                    Row(
+                      children: [
+                        _stackedAvatars(context, _guests, totalGuests),
+                        const Spacer(),
+                        Flexible(child: _progressChip(context, pct, pendingTaskCount, checklistCount)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

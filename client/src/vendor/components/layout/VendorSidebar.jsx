@@ -43,6 +43,15 @@ const NAV = [
           </svg>
         ),
       },
+      {
+        to: '/vendor/multimedia',
+        label: 'Multimedia',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="15" height="16" rx="2" ry="2"/><polygon points="22 8 17 12 22 16 22 8"/>
+          </svg>
+        ),
+      },
     ],
   },
   {

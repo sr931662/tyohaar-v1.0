@@ -14,6 +14,7 @@ from app.schemas.bookings import (
     BookingDetailResponse,
     BookingInvoiceResponse,
     BookingItemResponse,
+    BookingMediaSummary,
     BookingRescheduleResponse,
     BookingResponse,
     BookingStatusHistoryResponse,
@@ -54,6 +55,28 @@ router.add_api_route(
     summary="List Vendor Bookings",
     description="Return a cursor-paginated list of bookings assigned to the authenticated vendor.",
     operation_id="bookings_list_vendor_bookings",
+)
+
+router.add_api_route(
+    "/vendor/media",
+    ctrl.list_vendor_booking_media,
+    methods=["GET"],
+    response_model=SuccessResponse[list[BookingMediaSummary]],
+    status_code=status.HTTP_200_OK,
+    summary="List My Bookings for Multimedia (Vendor)",
+    description="Return bookings assigned to the authenticated vendor with event-media counts, for the vendor portal's Multimedia section.",
+    operation_id="bookings_list_vendor_booking_media",
+)
+
+router.add_api_route(
+    "/admin/media",
+    ctrl.list_admin_booking_media,
+    methods=["GET"],
+    response_model=SuccessResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List Bookings with Event Media (Admin)",
+    description="Paginated list of bookings that have vendor-uploaded event media, for Operations > Multimedia. Admin access required.",
+    operation_id="bookings_list_admin_booking_media",
 )
 
 router.add_api_route(
@@ -149,6 +172,30 @@ router.add_api_route(
                 "will arrive/start preparation at the customer's event location. "
                 "Requires the calling vendor to be assigned to the booking.",
     operation_id="bookings_update_pst",
+)
+
+# ── Multimedia ────────────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/{booking_id}/media/images",
+    ctrl.upload_booking_image,
+    methods=["POST"],
+    response_model=SuccessResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload Event Photo (Vendor)",
+    description="Upload an event photo for a completed booking. Requires an accepted assignment on the booking.",
+    operation_id="bookings_upload_booking_image",
+)
+
+router.add_api_route(
+    "/{booking_id}/media/videos",
+    ctrl.upload_booking_video,
+    methods=["POST"],
+    response_model=SuccessResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload Event Video (Vendor)",
+    description="Upload an event video for a completed booking. Requires an accepted assignment on the booking.",
+    operation_id="bookings_upload_booking_video",
 )
 
 # ── Cancellations ─────────────────────────────────────────────────────────────

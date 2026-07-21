@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../theme/colors.dart';
@@ -12,6 +13,7 @@ import '../data/models.dart';
 import '../data/services/user_service.dart';
 import '../data/services/notification_service.dart';
 import '../data/services/push_service.dart';
+import '../data/services/location_service.dart';
 import 'home_screen.dart';
 import 'plans_screen.dart';
 import 'explore_screen.dart';
@@ -37,8 +39,11 @@ class _RootNavState extends State<RootNav> {
   int _index = 0;
   bool _isScrolled = false;
   int _unreadNotifs = 0;
+  String? _currentCity;
+  bool _locationDeniedForever = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final ScrollController _homeScrollController = ScrollController();
+  final LocationService _locationService = LocationService();
 
   late final _pages = [
     HomeScreen(scrollController: _homeScrollController),
@@ -52,6 +57,7 @@ class _RootNavState extends State<RootNav> {
     super.initState();
     _ensureUserLoaded();
     _loadUnreadCount();
+    _loadCurrentCity();
     PushService.instance.initialize();
   }
 
@@ -92,6 +98,41 @@ class _RootNavState extends State<RootNav> {
       final user = await context.read<UserService>().getMe();
       AuthManager.instance.setUser(user);
     } catch (_) {}
+  }
+
+  Future<void> _loadCurrentCity() async {
+    // Show the last resolved city immediately so the header doesn't flash
+    // the "CURRENT LOCATION" placeholder on every cold start while GPS
+    // re-resolves in the background.
+    try {
+      final cached = await _locationService.getCachedCity();
+      if (mounted && cached != null && cached.isNotEmpty && _currentCity == null) {
+        setState(() => _currentCity = cached);
+      }
+    } catch (_) {}
+
+    await _resolveLocation();
+  }
+
+  Future<void> _resolveLocation() async {
+    try {
+      final result = await _locationService.resolveCurrentCity();
+      if (!mounted) return;
+      setState(() {
+        _locationDeniedForever = result.status == LocationResultStatus.deniedForever;
+        if (result.status == LocationResultStatus.success && result.city != null) {
+          _currentCity = result.city;
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _onTapLocation() async {
+    if (_locationDeniedForever) {
+      await openAppSettings();
+      return;
+    }
+    await _resolveLocation();
   }
 
   void _openCreate() {
@@ -164,6 +205,8 @@ class _RootNavState extends State<RootNav> {
                 onOpenProfile: () => _setIndex(3),
                 user: AuthManager.instance.currentUser,
                 unreadCount: _unreadNotifs,
+                currentCity: _currentCity,
+                onTapLocation: _onTapLocation,
               ),
             ),
           ),
@@ -200,6 +243,8 @@ class _StickyHeader extends StatelessWidget {
   final VoidCallback onOpenProfile;
   final User? user;
   final int unreadCount;
+  final String? currentCity;
+  final VoidCallback? onTapLocation;
 
   const _StickyHeader({
     required this.isTransparent,
@@ -209,6 +254,8 @@ class _StickyHeader extends StatelessWidget {
     required this.onOpenProfile,
     this.user,
     this.unreadCount = 0,
+    this.currentCity,
+    this.onTapLocation,
   });
 
   @override
@@ -223,26 +270,30 @@ class _StickyHeader extends StatelessWidget {
     // But if it's light mode and we are at the top, 
     // we should use darker text for better contrast on light imagery.
     final Color foregroundColor = isTransparent 
-        ? (isDark ? Colors.white : ty.ink.withOpacity(0.9)) 
+        ? Colors.white
         : ty.ink;
-        
+
+    final Color subTextColor = isTransparent
+        ? Colors.white.withOpacity(0.92)
+        : ty.saffronDeep;
+
     final Color buttonBgColor = isTransparent 
-        ? (isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.05)) 
+        ? Colors.black.withOpacity(isScrolled ? 0.34 : 0.28) 
         : ty.surface;
-        
+
     final Color borderColor = isTransparent 
-        ? (isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.1)) 
+        ? Colors.white.withOpacity(isScrolled ? 0.22 : 0.16)
         : ty.line;
 
     Widget header = Container(
       padding: EdgeInsets.fromLTRB(resp.w(18), MediaQuery.of(context).padding.top + resp.h(8), resp.w(18), resp.h(12)),
       decoration: BoxDecoration(
-        color: useBlur 
-            ? ty.paper.withOpacity(0.75) 
+        color: useBlur
+            ? Colors.black.withOpacity(0.26)
             : (isTransparent ? Colors.transparent : ty.paper),
         border: (isTransparent && !isScrolled)
             ? null 
-            : Border(bottom: BorderSide(color: ty.line2.withOpacity(isScrolled ? 0.1 : 0.05))),
+            : Border(bottom: BorderSide(color: isTransparent ? Colors.white.withOpacity(0.08) : ty.line2.withOpacity(isScrolled ? 0.1 : 0.05))),
       ),
       child: Row(
         children: [
@@ -256,33 +307,62 @@ class _StickyHeader extends StatelessWidget {
           ),
           SizedBox(width: resp.w(12)),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.location_on_rounded, 
-                      size: resp.sp(10), 
-                      color: isTransparent 
-                          ? (isDark ? Colors.white.withOpacity(0.8) : ty.saffronDeep) 
-                          : ty.saffronDeep),
-                    SizedBox(width: resp.w(4)),
-                    Text('INDIA',
-                        style: TyType.eyebrow(resp.sp(10), color: isTransparent
-                            ? (isDark ? Colors.white.withOpacity(0.8) : ty.saffronDeep)
-                            : ty.saffronDeep)),
-                  ],
-                ),
-                SizedBox(height: resp.h(1)),
-                Text(
-                  'Namaste, ${user?.firstName ?? user?.displayName.split(' ').first ?? 'there'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TyType.display(resp.sp(22), color: foregroundColor),
-                ),
-              ],
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: resp.w(12),
+                vertical: resp.h(8),
+              ),
+              decoration: BoxDecoration(
+                color: isTransparent
+                    ? Colors.black.withOpacity(isScrolled ? 0.28 : 0.22)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(resp.w(16)),
+                border: isTransparent
+                    ? Border.all(color: Colors.white.withOpacity(0.08))
+                    : null,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onTapLocation,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_rounded,
+                          size: resp.sp(11),
+                          color: subTextColor,
+                        ),
+                        SizedBox(width: resp.w(4)),
+                        Flexible(
+                          child: Text(
+                            (currentCity?.trim().isNotEmpty ?? false)
+                                ? currentCity!.toUpperCase()
+                                : 'CURRENT LOCATION',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TyType.eyebrow(resp.sp(10), color: subTextColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: resp.h(2)),
+                  Text(
+                    'Namaste, ${user?.firstName ?? user?.displayName.split(' ').first ?? 'there'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TyType.display(
+                      resp.sp(22),
+                      color: foregroundColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+          SizedBox(width: resp.w(10)),
           _circleButton(
             context,
             themeController.isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
@@ -312,7 +392,10 @@ class _StickyHeader extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: ty.rose,
                       shape: BoxShape.circle,
-                      border: Border.all(color: isTransparent ? Colors.transparent : ty.paper, width: 2),
+                      border: Border.all(
+                        color: isTransparent ? Colors.black.withOpacity(0.35) : ty.paper,
+                        width: 2,
+                      ),
                     ),
                   ),
                 ),

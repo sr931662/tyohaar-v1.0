@@ -21,4 +21,10 @@ export const mediaApi = {
 
   deleteImage: (imageId) =>
     apiClient.delete(`/media/images/${imageId}`).then(extractData),
+
+  listVideosForEntity: (entityId, entityType) =>
+    apiClient.get(`/media/videos/entity/${entityId}`, { params: { entity_type: entityType } }).then(extractData),
+
+  deleteVideo: (videoId) =>
+    apiClient.delete(`/media/videos/${videoId}`).then(extractData),
 };
