@@ -65,12 +65,13 @@ function PackageFormModal({ initial, occasions, themes, onClose, onSave, saving 
     }));
   };
 
-  const toggleTheme = (id) => {
+  // Single-select: a package is delivered in exactly one theme, not a
+  // customer-facing shortlist — tapping the active theme deselects it,
+  // tapping a different one replaces the selection entirely.
+  const selectTheme = (id) => {
     setForm((f) => ({
       ...f,
-      theme_ids: f.theme_ids.includes(id)
-        ? f.theme_ids.filter((tid) => tid !== id)
-        : [...f.theme_ids, id],
+      theme_ids: f.theme_ids.includes(id) ? [] : [id],
     }));
   };
 
@@ -207,7 +208,7 @@ function PackageFormModal({ initial, occasions, themes, onClose, onSave, saving 
           </label>
           {form.is_customizable && (
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Available Themes</label>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Theme</label>
               {!themes.length ? (
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No themes available yet.</p>
               ) : (
@@ -219,7 +220,7 @@ function PackageFormModal({ initial, occasions, themes, onClose, onSave, saving 
                       <button
                         type="button"
                         key={t.id}
-                        onClick={() => toggleTheme(t.id)}
+                        onClick={() => selectTheme(t.id)}
                         className="btn btn-sm"
                         style={{
                           display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
@@ -243,7 +244,7 @@ function PackageFormModal({ initial, occasions, themes, onClose, onSave, saving 
                 </div>
               )}
               <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                Not every theme suits every package — select only the ones you can actually deliver for this package. Customers will choose from these when booking.
+                Pick the one theme you'll actually deliver for this package — customers will see this exact theme when booking.
               </p>
             </div>
           )}

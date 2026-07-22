@@ -34,9 +34,12 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
   String? _coverImageUrl;
   bool _uploadingCover = false;
   final Set<String> _selectedOccasionIds = {};
+  final Set<String> _selectedThemeIds = {};
   List<Occasion> _occasions = [];
+  List<CelebrationTheme> _themes = [];
   bool _isSaving = false;
   bool _isLoadingOccasions = true;
+  bool _isLoadingThemes = true;
 
   @override
   void initState() {
@@ -54,8 +57,14 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
       _isCustomizable = p.isCustomizable;
       _coverImageUrl = p.coverImageUrl;
       _selectedOccasionIds.addAll(p.occasionIds);
+      _selectedThemeIds.addAll(p.themeIds);
     }
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
     _loadOccasions();
+    _loadThemes();
   }
 
   Future<void> _loadOccasions() async {
@@ -64,6 +73,15 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
       if (mounted) setState(() { _occasions = occasions; _isLoadingOccasions = false; });
     } catch (_) {
       if (mounted) setState(() => _isLoadingOccasions = false);
+    }
+  }
+
+  Future<void> _loadThemes() async {
+    try {
+      final themes = await _packageService.listThemes();
+      if (mounted) setState(() { _themes = themes; _isLoadingThemes = false; });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingThemes = false);
     }
   }
 
@@ -114,6 +132,7 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
       if (_coverImageUrl != null) 'cover_image_url': _coverImageUrl,
       if (_cityCtrl.text.trim().isNotEmpty) 'city_slug': _cityCtrl.text.trim(),
       'is_customizable': _isCustomizable,
+      'theme_ids': _isCustomizable ? _selectedThemeIds.toList() : [],
     };
     try {
       if (widget.existing == null) {
@@ -139,7 +158,7 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
       backgroundColor: ty.paper,
       appBar: AppBar(title: Text(isEdit ? 'Edit Package' : 'New Package')),
       body: ListView(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.fromLTRB(18, 18, 18, 18 + MediaQuery.of(context).padding.bottom),
         children: [
           _labeled(ty, 'Cover Image', GestureDetector(
             onTap: _uploadingCover ? null : _pickCoverImage,
@@ -198,7 +217,41 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
                     );
                   }).toList(),
                 ),
-          const SizedBox(height: 28),
+          if (_isCustomizable) ...[
+            const SizedBox(height: 24),
+            Text('Theme', style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Text('Pick the one theme you\'ll actually deliver for this package — customers will see this exact theme when booking.', style: TyType.sans(12, color: ty.ink3)),
+            const SizedBox(height: 12),
+            _isLoadingThemes
+                ? const Center(child: CircularProgressIndicator())
+                : GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      mainAxisExtent: 86,
+                    ),
+                    itemCount: _themes.length,
+                    itemBuilder: (context, i) {
+                      final t = _themes[i];
+                      final selected = _selectedThemeIds.contains(t.id);
+                      return _ThemeCard(
+                        theme: t,
+                        selected: selected,
+                        // Single-select: a package is delivered in exactly one
+                        // theme — picking a new one replaces any prior pick.
+                        onTap: () => setState(() {
+                          _selectedThemeIds.clear();
+                          if (!selected) _selectedThemeIds.add(t.id);
+                        }),
+                      );
+                    },
+                  ),
+          ],
+          const SizedBox(height: 32),
           ElevatedButton(
             onPressed: _isSaving ? null : _save,
             child: Text(_isSaving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Create Package')),
@@ -233,6 +286,69 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
           fillColor: ty.surface,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ty.line)),
           isDense: true,
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeCard extends StatelessWidget {
+  final CelebrationTheme theme;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ThemeCard({required this.theme, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final ty = context.ty;
+
+    Color hexToColor(String? hex) {
+      if (hex == null || hex.isEmpty) return Colors.transparent;
+      final h = hex.replaceAll('#', '');
+      return Color(int.parse('FF$h', radix: 16));
+    }
+
+    // Themes may define 1, 2, or 4 colors — only render the ones present.
+    final swatches = [
+      theme.colors['primary'],
+      theme.colors['secondary'],
+      theme.colors['accent'],
+      theme.colors['background'],
+    ].where((h) => h != null && h.isNotEmpty).map(hexToColor).toList();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: selected ? ty.saffron.withOpacity(0.08) : ty.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? ty.saffron : ty.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: swatches.map((c) => Container(
+                width: 14,
+                height: 14,
+                margin: const EdgeInsets.only(right: 4),
+                decoration: BoxDecoration(
+                  color: c,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.black12, width: 0.5),
+                ),
+              )).toList(),
+            ),
+            const Spacer(),
+            Text(
+              theme.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TyType.sans(12.5, color: selected ? ty.saffron : ty.ink, weight: FontWeight.w600),
+            ),
+          ],
         ),
       ),
     );

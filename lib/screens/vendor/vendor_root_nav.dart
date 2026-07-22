@@ -128,7 +128,7 @@ class _VendorBottomBar extends StatelessWidget {
         color: ty.paper,
         border: Border(top: BorderSide(color: ty.line2)),
       ),
-      padding: EdgeInsets.only(top: 10, bottom: MediaQuery.of(context).padding.bottom + 10),
+      padding: EdgeInsets.only(top: 10, bottom: MediaQuery.of(context).padding.bottom + 18),
       child: Row(
         children: [
           for (var i = 0; i < 5; i++)

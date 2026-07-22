@@ -17,7 +17,6 @@ import 'package:tyohaar/screens/payment_screen.dart';
 import 'package:tyohaar/screens/send_invitations_screen.dart';
 import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
 import '../../widgets/avatar.dart';
-import '../../widgets/emblem.dart';
 import '../../widgets/photo_placeholder.dart';
 import '../../widgets/ty_button.dart';
 import '../../widgets/ty_chip.dart';
@@ -48,7 +47,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   bool _couponLoading = false;
   String? _couponError;
 
-  // 0 Occasion · 1 Package · 2 Details · 3 Package Items · 4 Guests · 5 Summary
+  // 0 Occasion · 1 Package · 2 Package Items · 3 Details (Create an Invite) · 4 Guests · 5 Summary
   static const _stepCount = 6;
   late int _step = widget.startStep.clamp(0, _stepCount - 1);
 
@@ -123,9 +122,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   Future<void> _precacheOccasionImages(List<Occasion> occasions) async {
+    // Occasion cards on this screen render only the 3D icon (o.iconUrl), no
+    // photography — precache that, not the hero/thumbnail banners.
     final urls = occasions
-        .map((o) => o.heroImageUrl ?? o.thumbnailUrl)
+        .map((o) => o.iconUrl)
         .whereType<String>()
+        .where((u) => u.isNotEmpty)
         .toSet();
     for (final url in urls) {
       if (!mounted) return;
@@ -281,8 +283,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     final titles = [
       ['What shall we celebrate?', 'Every milestone deserves to be held with care.'],
       ['Choose your package', 'Hand-picked experiences, curated for families like yours.'],
-      ['Tell us the details', 'The little things help us shape your plan.'],
       ['Package items', 'Everything included, plus a few extras if you\'d like them.'],
+      ['Create an Invite', 'The little things help us shape your plan.'],
       ['Who’s coming together?', 'Group by household — the way families really gather.'],
       ['Order Summary', 'Review your celebration plan before we get started.'],
     ];
@@ -377,9 +379,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       case 1:
         return _packageStep(context);
       case 2:
-        return _detailsStep(context);
-      case 3:
         return _packageItemsStep(context);
+      case 3:
+        return _detailsStep(context);
       case 4:
         return _guestsStep(context);
       default:
@@ -447,16 +449,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           children: list.map((o) {
             final on = _occasion?.id == o.id;
             final c = o.themeColor ?? ty.tint(o.tint);
-
-            // Prefer the admin-uploaded Cover Image (banner_url); fall back
-            // to the Thumbnail (thumbnail_url) for occasions only carrying
-            // the older field, then to the bundled local asset, then to a
-            // flat tinted card — kept fully backward compatible so occasions
-            // that haven't been re-uploaded through the new admin form still
-            // render sensibly instead of a broken/blank card.
-            final String? networkImage = o.heroImageUrl ?? o.thumbnailUrl;
-            final String? localImage = OccasionAssets.getRelatedBackground(o.name);
-            final bool hasImage = networkImage != null || localImage != null;
+            final String? iconUrl = o.iconUrl;
+            final bool hasIcon = iconUrl != null && iconUrl.isNotEmpty;
 
             return GestureDetector(
               onTap: () {
@@ -476,7 +470,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: on ? Color.alphaBlend(c.withOpacity(0.1), ty.surface) : ty.surface,
+                  // No photography here by design — occasion cards are a
+                  // flat tint plus the vendor/admin-supplied 3D icon, never
+                  // an AI-generated background image.
+                  color: Color.alphaBlend(c.withOpacity(on ? 0.16 : 0.08), ty.surface),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: on ? Colors.transparent : ty.line, width: 1),
                 ),
@@ -485,58 +482,33 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   border: on ? Border.all(color: c, width: 2.5) : null,
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  children: [
-                    if (hasImage)
-                      Positioned.fill(
-                        child: networkImage != null
-                            ? CachedNetworkImage(
-                                imageUrl: networkImage,
-                                fit: BoxFit.cover,
-                                errorWidget: (context, url, error) => localImage != null
-                                    ? Image.asset(localImage, fit: BoxFit.cover)
-                                    : const SizedBox(),
-                              )
-                            : Image.asset(localImage!, fit: BoxFit.cover),
-                      ),
-                    if (hasImage)
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.15),
-                                Colors.black.withOpacity(0.6),
-                              ],
-                            ),
-                          ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: hasIcon
+                              ? CachedNetworkImage(
+                                  imageUrl: iconUrl,
+                                  fit: BoxFit.contain,
+                                  errorWidget: (_, __, ___) => Icon(o.icon, size: 44, color: c),
+                                  placeholder: (_, __) => Icon(o.icon, size: 44, color: c.withOpacity(0.4)),
+                                )
+                              : Icon(o.icon, size: 44, color: c),
                         ),
                       ),
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Emblem(
-                            icon: o.icon,
-                            imageUrl: o.iconUrl,
-                            tint: hasImage ? 'white' : o.tint,
-                            tintColor: hasImage ? Colors.white : o.themeColor,
-                            size: 28,
-                          ),
-                          const Spacer(),
-                          Text(
-                            o.name,
-                            style: TyType.sans(14,
-                                color: hasImage ? Colors.white : ty.ink,
-                                weight: FontWeight.w700),
-                          ),
-                        ],
+                      const SizedBox(height: 6),
+                      Text(
+                        o.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TyType.sans(13.5, color: ty.ink, weight: FontWeight.w700),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -546,7 +518,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  // ── Step 1: Details ─────────────────────────────────────────────────────
+  // ── Step 3: Details (Create an Invite) ──────────────────────────────────
 
   Widget _detailsStep(BuildContext context) {
     final minDate = DateTime.now().add(const Duration(days: 15));
@@ -694,7 +666,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  // ── Step 2: Guests ──────────────────────────────────────────────────────
+  // ── Step 4: Guests ──────────────────────────────────────────────────────
 
   Widget _guestsStep(BuildContext context) {
     final ty = context.ty;
@@ -850,7 +822,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  // ── Step 3: Package ─────────────────────────────────────────────────────
+  // ── Step 1: Package ─────────────────────────────────────────────────────
 
   Widget _packageStep(BuildContext context) {
     final ty = context.ty;
@@ -1051,15 +1023,16 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   final h = hex.replaceAll('#', '');
                   return Color(int.parse('FF$h', radix: 16));
                 }
-                // Show all 4 layers of the theme's palette (not just the
-                // primary color) — quartered into the same circular swatch,
-                // matching how the theme is previewed in the admin portal.
-                final quadrantColors = [
-                  hexToColor(t.colors['primary']),
-                  hexToColor(t.colors['secondary']),
-                  hexToColor(t.colors['accent']),
-                  hexToColor(t.colors['background']),
-                ];
+                // Themes may define 1, 2, or 4 colors — render exactly the
+                // ones present instead of assuming a fixed 4-color palette
+                // (single/dual-color themes are as valid as full ones).
+                final paletteColors = [
+                  t.colors['primary'],
+                  t.colors['secondary'],
+                  t.colors['accent'],
+                  t.colors['background'],
+                ].whereType<String>().where((h) => h.isNotEmpty).map(hexToColor).toList();
+                if (paletteColors.isEmpty) paletteColors.add(ty.saffron);
                 return GestureDetector(
                   onTap: () => setState(() => _theme = on ? null : t),
                   child: Column(
@@ -1075,7 +1048,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: quadrantColors.first.withOpacity(0.35),
+                              color: paletteColors.first.withOpacity(0.35),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
@@ -1085,27 +1058,36 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                           alignment: Alignment.center,
                           children: [
                             ClipOval(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Expanded(
-                                    child: Row(
-                                      children: [
-                                        Expanded(child: Container(color: quadrantColors[0])),
-                                        Expanded(child: Container(color: quadrantColors[1])),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Row(
-                                      children: [
-                                        Expanded(child: Container(color: quadrantColors[2])),
-                                        Expanded(child: Container(color: quadrantColors[3])),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              child: paletteColors.length == 1
+                                  ? Container(color: paletteColors[0])
+                                  : paletteColors.length == 2
+                                      ? Row(
+                                          children: [
+                                            Expanded(child: Container(color: paletteColors[0])),
+                                            Expanded(child: Container(color: paletteColors[1])),
+                                          ],
+                                        )
+                                      : Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Expanded(
+                                              child: Row(
+                                                children: [
+                                                  Expanded(child: Container(color: paletteColors[0])),
+                                                  Expanded(child: Container(color: paletteColors[1])),
+                                                ],
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Row(
+                                                children: [
+                                                  Expanded(child: Container(color: paletteColors[2])),
+                                                  Expanded(child: Container(color: paletteColors.length > 3 ? paletteColors[3] : paletteColors[2])),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                             ),
                             if (on)
                               Container(
@@ -1140,7 +1122,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  // ── Step 4: Package Items ───────────────────────────────────────────────
+  // ── Step 2: Package Items ───────────────────────────────────────────────
 
   Widget _packageItemsStep(BuildContext context) {
     final ty = context.ty;
@@ -1313,8 +1295,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           _summaryCard(context, 'Add-ons', selectedOptional.map((i) {
             final qty = _itemQuantities[i.id] ?? i.quantity;
             return qty > 1 ? '${i.name} ×$qty' : i.name;
-          }).join(', '), onEdit: () => _jumpTo(3)),
-        _summaryCard(context, 'Date & Time', '${DateFormat('d MMMM yyyy').format(_eventDate)} · 6:30 PM', onEdit: () => _jumpTo(2)),
+          }).join(', '), onEdit: () => _jumpTo(2)),
+        _summaryCard(context, 'Date & Time', '${DateFormat('d MMMM yyyy').format(_eventDate)} · 6:30 PM', onEdit: () => _jumpTo(3)),
         _summaryCard(context, 'Guest Count', '$_totalGuests Guests', onEdit: () => _jumpTo(4)),
         const SizedBox(height: 16),
         _sectionHeader('Address'),

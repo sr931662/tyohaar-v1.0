@@ -584,7 +584,7 @@ class _BottomBar extends StatelessWidget {
         resp.w(14),
         0,
         resp.w(14),
-        MediaQuery.of(context).padding.bottom + resp.h(10),
+        MediaQuery.of(context).padding.bottom + resp.h(16),
       ),
       child: Container(
             height: resp.h(72),

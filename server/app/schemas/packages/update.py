@@ -69,7 +69,8 @@ class PackageUpdate(BaseSchema):
     )
     theme_ids: list[uuid.UUID] | None = Field(
         default=None,
-        description="Replaces the full set of offered customization themes when provided.",
+        max_length=1,
+        description="Replaces the package's single customization theme (at most one) when provided.",
     )
     description: str | None = None
     short_description: str | None = Field(default=None, max_length=500)

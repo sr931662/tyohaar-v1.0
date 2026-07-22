@@ -364,6 +364,7 @@ class VendorPackage {
   final String? coverImageUrl;
   final String? citySlug;
   final bool isCustomizable;
+  final List<String> themeIds;
   final String status; // draft/pending_review/active/inactive/archived
 
   VendorPackage({
@@ -379,6 +380,7 @@ class VendorPackage {
     this.coverImageUrl,
     this.citySlug,
     this.isCustomizable = false,
+    this.themeIds = const [],
     required this.status,
   });
 
@@ -396,6 +398,7 @@ class VendorPackage {
       coverImageUrl: asUrl(json['cover_image_url']),
       citySlug: json['city_slug'] as String?,
       isCustomizable: json['is_customizable'] as bool? ?? false,
+      themeIds: (json['theme_ids'] as List? ?? []).map((e) => e.toString()).toList(),
       status: json['status'] as String? ?? 'draft',
     );
   }

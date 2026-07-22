@@ -331,7 +331,10 @@ class OccasionService(BaseService):
         for field, colors_key in color_keys.items():
             if field in raw:
                 value = raw.pop(field)
-                if value is not None:
+                # An empty string (the admin form's default for unset optional
+                # color fields) means "not provided" here, same as None —
+                # themes may legitimately have just 1 or 2 colors defined.
+                if value:
                     colors[colors_key] = value
         if colors:
             raw["colors"] = colors
