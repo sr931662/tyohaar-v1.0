@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../utils/currency.dart';
 import '../widgets/common.dart';
+import '../widgets/emblem.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
 import 'plan_flow/plan_flow_screen.dart';
@@ -62,35 +62,16 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
                 onTap: () => Navigator.pop(context),
               ),
             ),
+            backgroundColor: ty.paper,
             flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CachedNetworkImage(
-                    imageUrl: occasion.heroImageUrl ?? '',
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => PhotoPlaceholder(tint: occasion.tint, arch: false),
-                    errorWidget: (context, url, error) {
-                      final local = OccasionAssets.getRelatedBackground(occasion.name);
-                      if (local != null) return Image.asset(local, fit: BoxFit.cover);
-                      return PhotoPlaceholder(tint: occasion.tint, arch: false);
-                    },
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          ty.paper,
-                          ty.paper.withOpacity(0.0),
-                          Colors.black.withOpacity(0.4),
-                        ],
-                        stops: const [0.0, 0.5, 1.0],
-                      ),
-                    ),
-                  ),
-                ],
+              background: Center(
+                child: Emblem(
+                  icon: occasion.icon,
+                  imageUrl: occasion.iconUrl,
+                  tint: occasion.tint,
+                  tintColor: occasion.themeColor,
+                  size: 120,
+                ),
               ),
             ),
           ),

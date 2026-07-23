@@ -24,7 +24,7 @@ function UnderDevelopment({ label }) {
 
 const EMPTY_OCCASION_FORM = {
   name: '', description: '', is_active: true,
-  thumbnail_url: '', icon_url: '', banner_url: '',
+  icon_url: '',
   theme_color_hex: '', display_order: '0', is_featured: false,
 };
 
@@ -244,9 +244,7 @@ export default function OccasionsPage() {
       name: item.name,
       description: item.description ?? '',
       is_active: item.is_active ?? true,
-      thumbnail_url: item.thumbnail_url ?? '',
       icon_url: item.icon_url ?? '',
-      banner_url: item.banner_url ?? '',
       theme_color_hex: item.theme_color_hex ?? '',
       display_order: String(item.display_order ?? 0),
       is_featured: item.is_featured ?? false,
@@ -295,8 +293,8 @@ export default function OccasionsPage() {
                 {items.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      {item.thumbnail_url ? (
-                        <img src={item.thumbnail_url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                      {item.icon_url ? (
+                        <img src={item.icon_url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'contain' }} />
                       ) : (
                         <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--border-color, #e5e7eb)' }} />
                       )}
@@ -359,27 +357,7 @@ export default function OccasionsPage() {
             usage="occasion_icon"
             label="Upload"
           />
-          <div className="form-hint">Small icon shown floating on the occasion card.</div>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Cover / Background Image</label>
-          <ImageUploadField
-            value={form.banner_url}
-            onChange={(url) => setForm(f => ({ ...f, banner_url: url }))}
-            usage="occasion_banner"
-            label="Upload"
-          />
-          <div className="form-hint">Full-bleed background image for the occasion card in the customer app.</div>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Thumbnail / List Image</label>
-          <ImageUploadField
-            value={form.thumbnail_url}
-            onChange={(url) => setForm(f => ({ ...f, thumbnail_url: url }))}
-            usage="occasion_cover"
-            label="Upload"
-          />
-          <div className="form-hint">Square image used in admin list views and compact grids.</div>
+          <div className="form-hint">Icon shown for this occasion throughout the customer app.</div>
         </div>
         <div className="form-group">
           <label className="form-label">Theme Color</label>

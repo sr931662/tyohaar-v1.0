@@ -17,28 +17,23 @@ class Emblem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = tintColor ?? (tint == 'white' ? Colors.white : context.ty.tint(tint));
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: c.withOpacity(0.12),
-        shape: BoxShape.circle,
-      ),
-      clipBehavior: Clip.antiAlias,
       child: Center(
         child: (imageUrl != null && imageUrl!.isNotEmpty)
             ? CachedNetworkImage(
                 imageUrl: imageUrl!,
                 width: size,
                 height: size,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => Icon(icon, color: c, size: size * 0.6),
-                placeholder: (_, __) => Icon(icon, color: c, size: size * 0.6),
+                fit: BoxFit.contain,
+                errorWidget: (_, __, ___) => Icon(icon, color: c, size: size),
+                placeholder: (_, __) => Icon(icon, color: c, size: size),
               )
             : Icon(
                 icon,
                 color: c,
-                size: size * 0.6,
+                size: size,
               ),
       ),
     );
