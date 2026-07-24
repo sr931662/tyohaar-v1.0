@@ -8,11 +8,13 @@ import 'package:tyohaar/theme/assets.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../data/models.dart';
+import '../../data/auth_manager.dart';
 import '../../data/services/package_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/booking_service.dart';
 import '../../data/services/payment_service.dart';
 import '../../utils/currency.dart';
+import 'package:tyohaar/screens/email_verification_screen.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
 import 'package:tyohaar/screens/send_invitations_screen.dart';
 import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
@@ -250,6 +252,21 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Future<void> _finish() async {
     if (_isSubmitting) return;
+
+    // Email verification is only required at the point of actually booking
+    // an event — gate the actual booking creation call, not the planning
+    // steps leading up to it.
+    final user = AuthManager.instance.currentUser;
+    if (user != null && user.role == 'customer' && !user.emailVerified) {
+      final verified = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmailVerificationScreen(email: user.email ?? '', popOnVerify: true),
+        ),
+      );
+      if (verified != true || !mounted) return;
+    }
+
     setState(() => _isSubmitting = true);
     try {
       final optionalSelected = _packageItems

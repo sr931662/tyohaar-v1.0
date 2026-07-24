@@ -16,22 +16,31 @@ import 'root_nav.dart';
 
 const _kResendCooldownSeconds = 30;
 
-/// Shown right after customer registration (and, on every app start, to any
-/// authenticated customer whose email isn't verified yet — see
-/// AuthManager-driven gating in auth_screen.dart/_onSuccess and
-/// app.dart/_AppStartup). Only ever informs the user a code was sent; no
-/// OTP-system implementation details are surfaced.
+/// Two independent uses:
+///  1. Right after registration (auth_screen.dart/_handleRegister) — a
+///     skippable nudge; the customer can verify now or tap "Skip for now"
+///     and use the app normally. Account creation itself is never blocked.
+///  2. As a gate immediately before creating a booking (the only place
+///     verification is actually required) — pushed for a result; on
+///     success it pops back so the caller can resume the booking.
+/// Only ever informs the user a code was sent; no OTP-system implementation
+/// details are surfaced.
 class EmailVerificationScreen extends StatefulWidget {
   final String email;
   /// True when the very first (registration-time) send attempt failed —
   /// shows an upfront "couldn't send" message with Resend immediately
   /// available instead of the initial cooldown.
   final bool initialSendFailed;
+  /// True when opened as a booking gate: successful verification pops back
+  /// to the caller with `true` instead of navigating into RootNav, and the
+  /// "Skip for now" escape hatch is hidden (verification isn't optional here).
+  final bool popOnVerify;
 
   const EmailVerificationScreen({
     super.key,
     required this.email,
     this.initialSendFailed = false,
+    this.popOnVerify = false,
   });
 
   @override
@@ -111,10 +120,14 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       final updatedUser = await UserService().getMe();
       AuthManager.instance.setUser(updatedUser);
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const RootNav()),
-        (route) => false,
-      );
+      if (widget.popOnVerify) {
+        Navigator.of(context).pop(true);
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const RootNav()),
+          (route) => false,
+        );
+      }
     } on DioException catch (e) {
       final detail = e.response?.data;
       String msg = 'Verification failed. Please try again.';
@@ -123,6 +136,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     } catch (_) {
       if (mounted) setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
     }
+  }
+
+  void _skip() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const RootNav()),
+      (route) => false,
+    );
   }
 
   Future<void> _logout() async {
@@ -213,7 +233,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 onTap: _verify,
                 enabled: !_isLoading,
               ),
-              SizedBox(height: resp.h(20)),
+              if (!widget.popOnVerify) ...[
+                SizedBox(height: resp.h(16)),
+                Center(
+                  child: TextButton(
+                    onPressed: _skip,
+                    child: Text('Skip for now', style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+              SizedBox(height: resp.h(8)),
               Center(
                 child: TextButton(
                   onPressed: _logout,

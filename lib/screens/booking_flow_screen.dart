@@ -4,11 +4,13 @@ import 'package:intl/intl.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
+import '../data/auth_manager.dart';
 import '../data/services/package_service.dart';
 import '../data/services/user_service.dart';
 import '../data/services/booking_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import 'email_verification_screen.dart';
 import 'payment_screen.dart';
 
 class BookingFlowScreen extends StatefulWidget {
@@ -105,6 +107,21 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
   Future<void> _createBooking() async {
     if (_isSubmitting) return;
+
+    // Email verification is only required at the point of actually booking
+    // an event — everything up to here (browsing, filling this form) is
+    // unrestricted. Gate the actual booking creation call.
+    final user = AuthManager.instance.currentUser;
+    if (user != null && user.role == 'customer' && !user.emailVerified) {
+      final verified = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmailVerificationScreen(email: user.email ?? '', popOnVerify: true),
+        ),
+      );
+      if (verified != true || !mounted) return;
+    }
+
     setState(() => _isSubmitting = true);
 
     try {

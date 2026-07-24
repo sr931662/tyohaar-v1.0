@@ -23,6 +23,10 @@ class TutorialManager {
   /// currently signed-in account. Always false when there is no signed-in
   /// user — tutorials are a per-account feature, not shown to guests.
   Future<bool> shouldShow(String screenKey) async {
+    // Temporarily disabled app-wide. To re-enable, delete the line below
+    // and uncomment the original implementation.
+    return false;
+    /*
     final key = _keyFor(screenKey);
     if (key == null) return false;
     try {
@@ -31,6 +35,7 @@ class TutorialManager {
     } catch (_) {
       return false;
     }
+    */
   }
 
   Future<void> markSeen(String screenKey) async {
