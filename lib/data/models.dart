@@ -39,6 +39,7 @@ class User {
   final String? profilePhotoUrl;
   final String role;
   final String status;
+  final bool emailVerified;
 
   User({
     required this.id,
@@ -50,6 +51,7 @@ class User {
     this.profilePhotoUrl,
     required this.role,
     required this.status,
+    this.emailVerified = false,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class User {
           asUrl((json['profile'] as Map?)?['profile_photo_url']),
       role: json['role'] as String? ?? 'customer',
       status: json['account_status'] as String? ?? 'active',
+      emailVerified: json['email_verified'] as bool? ?? false,
     );
   }
 

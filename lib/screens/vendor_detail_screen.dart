@@ -42,7 +42,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
     try {
       final vendorFuture = _vendorService.getVendorById(widget.vendorId);
       final packagesFuture = _vendorService.getVendorPackages(widget.vendorId);
-      final reviewsFuture = _vendorService.getPublicVendorReviews(widget.vendorId);
+      final reviewsFuture = _vendorService.getVendorReviews(widget.vendorId);
 
       final vendor = await vendorFuture;
       final packages = await packagesFuture;
@@ -125,7 +125,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                         gradient: LinearGradient(
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
-                          colors: [ty.paper, Colors.black.withOpacity(0.12)],
+                          colors: [ty.paper, Colors.black.withValues(alpha: 0.12)],
                           stops: const [0.02, 1],
                         ),
                       ),
@@ -169,7 +169,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                               height: 46,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.22),
+                                color: Colors.white.withValues(alpha: 0.22),
                                 borderRadius: BorderRadius.circular(11),
                               ),
                               child: Text('+${v.galleryUrls.length - 4}',
@@ -259,7 +259,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
             child: Container(
               padding: EdgeInsets.fromLTRB(18, 12, 18, MediaQuery.of(context).padding.bottom + 14),
               decoration: BoxDecoration(
-                color: ty.paper.withOpacity(0.96),
+                color: ty.paper.withValues(alpha: 0.96),
                 border: Border(top: BorderSide(color: ty.line2)),
               ),
               child: Row(
@@ -300,7 +300,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(icon, color: Colors.white, size: 20),

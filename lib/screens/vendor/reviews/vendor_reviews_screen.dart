@@ -63,7 +63,7 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
                             padding: const EdgeInsets.only(top: 40),
                             child: Column(
                               children: [
-                                Icon(Icons.rate_review_outlined, size: 48, color: ty.ink3.withOpacity(0.5)),
+                                Icon(Icons.rate_review_outlined, size: 48, color: ty.ink3.withValues(alpha: 0.5)),
                                 const SizedBox(height: 16),
                                 Text('No reviews yet', style: TyType.sans(14, color: ty.ink2)),
                               ],
@@ -87,7 +87,7 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: ty.line),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       child: Row(

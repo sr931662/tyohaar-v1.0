@@ -171,7 +171,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                     child: Text('Items are locked while this package is under review.', style: TyType.sans(12.5, color: Colors.orange.shade800)),
                   ),
                 Text('Items', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),

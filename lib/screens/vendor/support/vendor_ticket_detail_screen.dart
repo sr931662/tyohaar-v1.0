@@ -101,7 +101,7 @@ class _VendorTicketDetailScreenState extends State<VendorTicketDetailScreen> {
                         padding: const EdgeInsets.all(12),
                         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                         decoration: BoxDecoration(
-                          color: m.isMine ? ty.saffron.withOpacity(0.14) : ty.surface,
+                          color: m.isMine ? ty.saffron.withValues(alpha: 0.14) : ty.surface,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: ty.line),
                         ),

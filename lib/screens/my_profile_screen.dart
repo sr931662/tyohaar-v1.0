@@ -9,7 +9,6 @@ import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/user_service.dart';
 import '../data/services/vendor_service.dart';
-import '../data/vendor_models.dart';
 import '../data/services/media_service.dart';
 import '../data/auth_manager.dart';
 import '../widgets/ty_button.dart';
@@ -29,7 +28,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   final VendorService _vendorService = VendorService();
   final MediaService _mediaService = MediaService();
   User? _user;
-  VendorBusinessProfile? _vendorProfile;
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isUploading = false;
@@ -57,16 +55,14 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     setState(() { _isLoading = true; _error = null; });
     try {
       final user = await _userService.getMe();
-      
-      VendorBusinessProfile? vp;
+
       if (user.role == 'vendor') {
-        vp = await _vendorService.getMe();
+        await _vendorService.getMe();
       }
 
       if (mounted) {
         setState(() {
           _user = user;
-          _vendorProfile = vp;
           _nameController.text = user.fullName ?? user.firstName ?? '';
           _emailController.text = user.email ?? '';
           _phoneController.text = user.phone ?? '';

@@ -95,9 +95,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _featuredIsFallback = false;
         return featured;
       }
-      final anyPackages = await _packageService.listPackages(city: city != null
-          ? city.toLowerCase().replaceAll(RegExp(r'\s+'), '-')
-          : null);
+      final anyPackages = await _packageService.listPackages(
+          city: city?.toLowerCase().replaceAll(RegExp(r'\s+'), '-'));
       _featuredIsFallback = true;
       return anyPackages.take(8).toList();
     } catch (e) {
@@ -354,8 +353,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(ty.isDark ? 0.78 : 0.62),
-                      Colors.black.withOpacity(ty.isDark ? 0.46 : 0.34),
+                      Colors.black.withValues(alpha: ty.isDark ? 0.78 : 0.62),
+                      Colors.black.withValues(alpha: ty.isDark ? 0.46 : 0.34),
                       Colors.transparent,
                     ],
                     stops: const [0, 0.52, 1.0],
@@ -372,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       center: const Alignment(0.05, 0.1),
                       radius: 0.92,
                       colors: [
-                        Colors.black.withOpacity(0.24),
+                        Colors.black.withValues(alpha: 0.24),
                         Colors.transparent,
                       ],
                       stops: const [0.0, 1.0],
@@ -389,8 +388,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withOpacity(0.9),
-                      Colors.black.withOpacity(0.34),
+                      Colors.black.withValues(alpha: 0.9),
+                      Colors.black.withValues(alpha: 0.34),
                       Colors.transparent,
                     ],
                     stops: const [0, 0.58, 0.84],
@@ -410,23 +409,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(0.34),
-                      Colors.black.withOpacity(0.18),
+                      Colors.black.withValues(alpha: 0.34),
+                      Colors.black.withValues(alpha: 0.18),
                     ],
                   ),
-                  border: Border.all(color: Colors.white.withOpacity(0.10)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('YOUR NEXT CELEBRATION',
-                        style: TyType.eyebrow(resp.sp(11.5), color: Colors.white.withOpacity(0.88))),
+                        style: TyType.eyebrow(resp.sp(11.5), color: Colors.white.withValues(alpha: 0.88))),
                     SizedBox(height: resp.h(12)),
                     Row(children: [
                       Flexible(
                         child: TyPill(
                           displayLabel,
-                          background: Colors.white.withOpacity(0.96),
+                          background: Colors.white.withValues(alpha: 0.96),
                           foreground: const Color(0xFF241914),
                         ),
                       ),
@@ -444,13 +443,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TyType.display(resp.sp(34), color: Colors.white)),
                     SizedBox(height: resp.h(8)),
                     Row(children: [
-                      Icon(Icons.event, size: resp.sp(15), color: Colors.white.withOpacity(0.86)),
+                      Icon(Icons.event, size: resp.sp(15), color: Colors.white.withValues(alpha: 0.86)),
                       SizedBox(width: resp.w(6)),
                       Expanded(
                         child: Text('$date · $location',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TyType.sans(resp.sp(14), color: Colors.white.withOpacity(0.9))),
+                            style: TyType.sans(resp.sp(14), color: Colors.white.withValues(alpha: 0.9))),
                       ),
                     ]),
                     SizedBox(height: resp.h(20)),
@@ -485,7 +484,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(resp.w(24)),
         boxShadow: [
           BoxShadow(
-            color: ty.saffron.withOpacity(0.3),
+            color: ty.saffron.withValues(alpha: 0.3),
             blurRadius: resp.w(15),
             offset: Offset(0, resp.h(8)),
           ),
@@ -501,7 +500,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TyType.display(resp.sp(20), color: Colors.white)),
                 SizedBox(height: resp.h(4)),
                 Text('Get exclusive access to premium themes and early bird discounts.',
-                    style: TyType.sans(resp.sp(12), color: Colors.white.withOpacity(0.9))),
+                    style: TyType.sans(resp.sp(12), color: Colors.white.withValues(alpha: 0.9))),
               ],
             ),
           ),
@@ -630,9 +629,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: resp.w(30),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.22),
+                  color: Colors.white.withValues(alpha: 0.22),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
                 ),
                 child: Text('+${total - 4}',
                     style: TextStyle(

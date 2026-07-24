@@ -54,13 +54,12 @@ class _TyButtonState extends State<TyButton> {
         border = Border.all(color: ty.line);
         break;
       case TyButtonKind.primary:
-      default:
         bg = widget.enabled ? ty.saffron : ty.surface2;
         fg = widget.enabled ? ty.onPrimary : ty.ink3;
         if (widget.enabled) {
           shadow = [
             BoxShadow(
-              color: ty.saffron.withOpacity(0.38),
+              color: ty.saffron.withValues(alpha: 0.38),
               blurRadius: resp.w(18),
               offset: Offset(0, resp.h(6)),
             )

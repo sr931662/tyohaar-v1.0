@@ -524,7 +524,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   // No photography here by design — occasion cards are a
                   // flat tint plus the vendor/admin-supplied 3D icon, never
                   // an AI-generated background image.
-                  color: Color.alphaBlend(c.withOpacity(on ? 0.16 : 0.08), ty.surface),
+                  color: Color.alphaBlend(c.withValues(alpha: on ? 0.16 : 0.08), ty.surface),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: on ? Colors.transparent : ty.line, width: 1),
                 ),
@@ -545,7 +545,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                                   imageUrl: iconUrl,
                                   fit: BoxFit.contain,
                                   errorWidget: (_, __, ___) => Icon(o.icon, size: 44, color: c),
-                                  placeholder: (_, __) => Icon(o.icon, size: 44, color: c.withOpacity(0.4)),
+                                  placeholder: (_, __) => Icon(o.icon, size: 44, color: c.withValues(alpha: 0.4)),
                                 )
                               : Icon(o.icon, size: 44, color: c),
                         ),
@@ -833,7 +833,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           for (final c in selected) {
             final phone = c.phones.first.number;
             if (_plannedGuests.any((g) => g.phone == phone)) continue;
-            _plannedGuests.add(PlannedGuest(name: c.displayName ?? 'Guest', phone: phone));
+            _plannedGuests.add(PlannedGuest(name: c.displayName, phone: phone));
           }
         });
       }
@@ -965,7 +965,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           color: ty.surface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 2 : 1),
-          boxShadow: on ? [BoxShadow(color: ty.saffron.withOpacity(0.12), blurRadius: 8, offset: const Offset(0, 3))] : null,
+          boxShadow: on ? [BoxShadow(color: ty.saffron.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 3))] : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -998,7 +998,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.35),
+                        color: Colors.black.withValues(alpha: 0.35),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -1161,7 +1161,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: paletteColors.first.withOpacity(0.35),
+                              color: paletteColors.first.withValues(alpha: 0.35),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
@@ -1298,7 +1298,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                           shape: BoxShape.circle,
                           border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 3 : 1),
                           boxShadow: on
-                              ? [BoxShadow(color: ty.saffron.withOpacity(0.35), blurRadius: 6, offset: const Offset(0, 2))]
+                              ? [BoxShadow(color: ty.saffron.withValues(alpha: 0.35), blurRadius: 6, offset: const Offset(0, 2))]
                               : null,
                         ),
                         child: on
@@ -1751,7 +1751,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final filtered = widget.contacts
-        .where((c) => (c.displayName ?? '').toLowerCase().contains(_query.toLowerCase()))
+        .where((c) => c.displayName.toLowerCase().contains(_query.toLowerCase()))
         .toList();
 
     return DraggableScrollableSheet(
@@ -1795,10 +1795,14 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
                   return CheckboxListTile(
                     value: on,
                     activeColor: ty.saffron,
-                    title: Text(c.displayName ?? 'Unknown', style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                    title: Text(c.displayName, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
                     subtitle: Text(c.phones.first.number, style: TyType.sans(12, color: ty.ink2)),
                     onChanged: (v) => setState(() {
-                      if (v == true) _selected.add(c); else _selected.remove(c);
+                      if (v == true) {
+                        _selected.add(c);
+                      } else {
+                        _selected.remove(c);
+                      }
                     }),
                   );
                 },
@@ -1874,7 +1878,7 @@ class _ItemImageGalleryScreenState extends State<_ItemImageGalleryScreen> {
                     width: active ? 18 : 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: active ? Colors.white : Colors.white.withOpacity(0.5),
+                      color: active ? Colors.white : Colors.white.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   );

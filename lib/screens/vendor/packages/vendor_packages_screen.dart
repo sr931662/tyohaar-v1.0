@@ -6,7 +6,6 @@ import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
 import 'vendor_package_form_screen.dart';
 import 'vendor_package_items_screen.dart';
-import 'vendor_common_items_screen.dart';
 import 'vendor_package_gallery_screen.dart';
 
 /// Mirrors the web VendorPackagesPage: table/list of the vendor's own
@@ -138,7 +137,7 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(99)),
+                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(99)),
                 child: Text(p.status.replaceAll('_', ' '), style: TyType.sans(11, color: statusColor, weight: FontWeight.w700)),
               ),
             ],

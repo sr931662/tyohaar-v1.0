@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
 import '../theme/colors.dart';
@@ -10,7 +9,6 @@ import '../data/services/user_service.dart';
 import '../data/services/booking_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
-import '../widgets/photo_placeholder.dart';
 import 'payment_screen.dart';
 
 class BookingFlowScreen extends StatefulWidget {
@@ -252,15 +250,18 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          if (isSelected) _selectedOptionalItemIds.remove(item.id);
-          else _selectedOptionalItemIds.add(item.id);
+          if (isSelected) {
+            _selectedOptionalItemIds.remove(item.id);
+          } else {
+            _selectedOptionalItemIds.add(item.id);
+          }
         });
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isSelected ? ty.saffronSoft.withOpacity(0.3) : ty.surface,
+          color: isSelected ? ty.saffronSoft.withValues(alpha: 0.3) : ty.surface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: isSelected ? ty.saffron : ty.line, width: isSelected ? 1.5 : 1),
         ),

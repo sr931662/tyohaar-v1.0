@@ -157,7 +157,7 @@ class _AuthGateSheet extends StatelessWidget {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: ty.saffron.withOpacity(0.1),
+              color: ty.saffron.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.lock_outline_rounded, size: 40, color: ty.saffron),

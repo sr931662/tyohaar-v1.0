@@ -1,5 +1,14 @@
+import 'package:dio/dio.dart';
+
 import '../api_client.dart';
 import '../models.dart' show asDouble;
+
+/// listPlans() is a largely-static pricing/tier catalog — opt it into
+/// ApiClient's in-memory cache like package_service.dart/common_service.dart
+/// already do. getActiveMembership() reflects live subscription state and
+/// deliberately stays uncached.
+Options _cacheable({Duration ttl = const Duration(minutes: 10)}) =>
+    Options(extra: {'cache': true, 'cacheTtl': ttl});
 
 class MembershipPlan {
   final String id;
@@ -143,7 +152,7 @@ class MembershipService {
   final ApiClient _api = ApiClient();
 
   Future<List<MembershipPlan>> listPlans() async {
-    final response = await _api.dio.get('memberships/plans');
+    final response = await _api.dio.get('memberships/plans', options: _cacheable());
     final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => MembershipPlan.fromJson(item as Map<String, dynamic>)).toList();
   }

@@ -50,7 +50,7 @@ class TyColors extends ThemeExtension<TyColors> {
 
   /// A soft, surface-blended version of a tint — for chips, emblems, fills.
   Color tintSoft(String name) =>
-      Color.alphaBlend(tint(name).withOpacity(0.14), surface2);
+      Color.alphaBlend(tint(name).withValues(alpha: 0.14), surface2);
 
   static const TyColors light = TyColors(
     paper: Color(0xFFF6F1E8),

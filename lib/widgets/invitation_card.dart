@@ -73,14 +73,14 @@ class InvitationCard extends StatelessWidget {
             colors: [primary, secondary],
           ),
           boxShadow: [
-            BoxShadow(color: secondary.withOpacity(0.35), blurRadius: 24, offset: const Offset(0, 12)),
+            BoxShadow(color: secondary.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 12)),
           ],
         ),
         // A thin frame in the theme's own tone gives the card a "printed
         // invitation" edge instead of a flat gradient block.
         foregroundDecoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: Colors.white.withOpacity(0.28), width: 1.5),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.28), width: 1.5),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -106,7 +106,7 @@ class InvitationCard extends StatelessWidget {
                   top: -6,
                   child: Transform.rotate(
                     angle: 0.35,
-                    child: Icon(moodStyle.icon, size: 120, color: Colors.white.withOpacity(0.06)),
+                    child: Icon(moodStyle.icon, size: 120, color: Colors.white.withValues(alpha: 0.06)),
                   ),
                 ),
                 Padding(
@@ -116,25 +116,25 @@ class InvitationCard extends StatelessWidget {
                     children: [
                       Text(
                         (celebration.occasionName ?? 'CELEBRATION').toUpperCase(),
-                        style: TyType.eyebrow(12, color: Colors.white.withOpacity(0.85)),
+                        style: TyType.eyebrow(12, color: Colors.white.withValues(alpha: 0.85)),
                       ),
                       if (celebration.mood != null) ...[
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
+                            color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(moodStyle.icon, size: 13, color: Colors.white.withOpacity(0.9)),
+                              Icon(moodStyle.icon, size: 13, color: Colors.white.withValues(alpha: 0.9)),
                               const SizedBox(width: 5),
                               Text(
                                 celebration.mood!.name,
-                                style: TyType.sans(11, color: Colors.white.withOpacity(0.9), weight: FontWeight.w600),
+                                style: TyType.sans(11, color: Colors.white.withValues(alpha: 0.9), weight: FontWeight.w600),
                               ),
                             ],
                           ),
@@ -144,7 +144,7 @@ class InvitationCard extends StatelessWidget {
                       Text(
                         "You're Invited to",
                         textAlign: TextAlign.center,
-                        style: TyType.sans(14, color: Colors.white.withOpacity(0.9), spacing: 0.3),
+                        style: TyType.sans(14, color: Colors.white.withValues(alpha: 0.9), spacing: 0.3),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -176,16 +176,16 @@ class InvitationCard extends StatelessWidget {
                           ],
                         ),
                       const SizedBox(height: 22),
-                      Container(height: 1, width: 40, color: Colors.white.withOpacity(0.25)),
+                      Container(height: 1, width: 40, color: Colors.white.withValues(alpha: 0.25)),
                       const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                         ),
-                        child: Text('Presented by Tyohaar', style: TyType.sans(11, color: Colors.white.withOpacity(0.85), weight: FontWeight.w700)),
+                        child: Text('Presented by Tyohaar', style: TyType.sans(11, color: Colors.white.withValues(alpha: 0.85), weight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -204,12 +204,12 @@ class InvitationCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 28, height: 1, color: Colors.white.withOpacity(0.35)),
+        Container(width: 28, height: 1, color: Colors.white.withValues(alpha: 0.35)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Icon(Icons.diamond_outlined, size: 10, color: Colors.white.withOpacity(0.55)),
+          child: Icon(Icons.diamond_outlined, size: 10, color: Colors.white.withValues(alpha: 0.55)),
         ),
-        Container(width: 28, height: 1, color: Colors.white.withOpacity(0.35)),
+        Container(width: 28, height: 1, color: Colors.white.withValues(alpha: 0.35)),
       ],
     );
   }
@@ -218,7 +218,7 @@ class InvitationCard extends StatelessWidget {
     return Container(
       height: 200,
       width: double.infinity,
-      color: Colors.white.withOpacity(0.15),
+      color: Colors.white.withValues(alpha: 0.15),
       alignment: Alignment.center,
       child: Image.asset(
         'assets/images/tyohaar-mark.png',

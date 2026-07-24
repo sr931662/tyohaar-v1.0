@@ -391,7 +391,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: resp.w(10), vertical: resp.h(3)),
                     decoration: BoxDecoration(
-                      color: c.withOpacity(0.16),
+                      color: c.withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(lbl,
@@ -426,7 +426,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
             Container(
               padding: EdgeInsets.all(resp.w(20)),
               decoration: BoxDecoration(
-                color: ty.saffron.withOpacity(0.1),
+                color: ty.saffron.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(resp.w(24)),
               ),
               child: Icon(Icons.qr_code_2_rounded, size: resp.w(200), color: ty.ink),

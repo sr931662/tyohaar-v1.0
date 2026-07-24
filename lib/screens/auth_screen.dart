@@ -14,6 +14,7 @@ import 'root_nav.dart';
 import 'vendor/vendor_root_nav.dart';
 import 'vendor/auth/vendor_register_screen.dart';
 import 'vendor/auth/vendor_forgot_password_screen.dart';
+import 'email_verification_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   final VoidCallback? onAuthenticated;
@@ -59,7 +60,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  Future<void> _onSuccess(AuthCredentials creds) async {
+  Future<void> _onSuccess(AuthCredentials creds, {bool emailSendFailed = false}) async {
     // Resolve the POV (customer vs vendor) BEFORE flipping isAuthenticated —
     // AuthManager.login() triggers an immediate rebuild of whatever's
     // listening to it (the customer _AppStartup shell), so if pov were still
@@ -68,21 +69,30 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     AppState.instance.applyRole(creds.user.role);
     await AuthManager.instance.login(creds.accessToken, creds.refreshToken, creds.user);
     if (!mounted) return;
+    // Customers must verify their email before reaching the normal app —
+    // vendors have no such requirement (register_vendor never even issues
+    // a session, so 'vendor' here only ever comes from an already-approved
+    // account logging in).
+    final needsVerification = creds.user.role == 'customer' && !creds.user.emailVerified;
+    final Widget destination = needsVerification
+        ? EmailVerificationScreen(email: creds.user.email ?? '', initialSendFailed: emailSendFailed)
+        : (creds.user.role == 'vendor' ? const VendorRootNav() : const RootNav());
     if (widget.onAuthenticated != null) {
       // Auth-gate flows (e.g. "start a celebration") only ever apply to the
       // customer shell — a vendor account hitting one of those gates is an
       // edge case we don't special-case here.
       Navigator.pop(context);
-      widget.onAuthenticated!();
+      if (needsVerification) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => destination));
+      } else {
+        widget.onAuthenticated!();
+      }
     } else {
       // Clear the whole stack (not just replace) so a vendor login doesn't
       // leave the customer _AppStartup underneath — pushAndRemoveUntil
       // lands cleanly on the correct root shell for the resolved role.
-      final isVendor = creds.user.role == 'vendor';
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => isVendor ? const VendorRootNav() : const RootNav(),
-        ),
+        MaterialPageRoute(builder: (_) => destination),
         (route) => false,
       );
     }
@@ -140,7 +150,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     try {
       final creds = await context.read<AuthService>().register(email, password, name: name);
       if (!mounted) return;
-      await _onSuccess(creds);
+      await _onSuccess(creds, emailSendFailed: !creds.emailVerificationSent);
     } on DioException catch (e) {
       final detail = e.response?.data;
       String msg = 'Registration failed. Please try again.';

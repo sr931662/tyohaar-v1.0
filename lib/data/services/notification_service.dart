@@ -96,7 +96,7 @@ class NotificationService {
       );
 
       return item.copyWith(
-        title: hasEventTitle ? eventTitle! : item.title,
+        title: hasEventTitle ? eventTitle : item.title,
         subtitle: hasEventTitle ? item.title : item.subtitle,
         text: body,
       );

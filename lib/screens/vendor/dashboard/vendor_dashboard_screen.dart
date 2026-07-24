@@ -5,7 +5,6 @@ import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
 import '../profile/vendor_profile_screen.dart';
-import '../packages/vendor_packages_screen.dart';
 import '../packages/vendor_package_form_screen.dart';
 
 /// Mirrors the web vendor portal's Overview page: status/verification
@@ -162,7 +161,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 borderRadius: BorderRadius.circular(20), 
                 border: Border.all(color: ty.line),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
                 ],
               ),
               child: Column(
@@ -190,9 +189,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
         label.replaceAll('_', ' ').toUpperCase(),
@@ -208,7 +207,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           borderRadius: BorderRadius.circular(16), 
           border: Border.all(color: ty.line),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2)),
           ],
         ),
         child: Column(

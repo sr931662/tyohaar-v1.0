@@ -113,9 +113,9 @@ class _HelpScreenState extends State<HelpScreen> {
                 padding: const EdgeInsets.all(16),
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.06),
+                  color: Colors.red.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.red.withOpacity(0.2)),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   children: [
@@ -184,9 +184,9 @@ class _HelpScreenState extends State<HelpScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: ty.saffronSoft.withOpacity(0.4),
+              color: ty.saffronSoft.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: ty.saffron.withOpacity(0.1)),
+              border: Border.all(color: ty.saffron.withValues(alpha: 0.1)),
             ),
             child: Column(
               children: [
@@ -225,7 +225,7 @@ class _HelpScreenState extends State<HelpScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: ty.saffron.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: ty.saffron.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, color: ty.saffron, size: 20),
           ),
           const SizedBox(width: 16),

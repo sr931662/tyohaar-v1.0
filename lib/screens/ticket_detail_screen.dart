@@ -102,7 +102,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: ty.saffronSoft.withOpacity(0.3),
+                      color: ty.saffronSoft.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text('Resolution: ${_ticket.resolutionSummary}', style: TyType.sans(12.5, color: ty.ink2)),

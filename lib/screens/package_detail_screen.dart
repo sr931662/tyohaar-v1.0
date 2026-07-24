@@ -199,7 +199,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                               TyPill(_fullPackage.slug ?? _fullPackage.name,
                                   background: ty
                                       .tint(_fullPackage.tint)
-                                      .withOpacity(0.15),
+                                      .withValues(alpha: 0.15),
                                   foreground: ty.tint(_fullPackage.tint)),
                               const Spacer(),
                               Text('Base: ${formatPrice(_fullPackage.price)}',
@@ -260,7 +260,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                 border: Border(top: BorderSide(color: ty.line2)),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: resp.w(10),
                       offset: Offset(0, resp.h(-5)))
                 ],
@@ -363,7 +363,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                 borderRadius: BorderRadius.circular(resp.w(20)),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
+                      color: Colors.black.withValues(alpha: 0.25),
                       blurRadius: 8,
                       offset: const Offset(0, 2))
                 ],
@@ -405,7 +405,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                   height: resp.w(6),
                   decoration: BoxDecoration(
                     color:
-                        active ? Colors.white : Colors.white.withOpacity(0.5),
+                        active ? Colors.white : Colors.white.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(resp.w(3)),
                   ),
                 );
@@ -425,7 +425,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
         height: resp.w(40),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.2), shape: BoxShape.circle),
+            color: Colors.black.withValues(alpha: 0.2), shape: BoxShape.circle),
         child: Icon(icon, color: Colors.white, size: resp.sp(20)),
       ),
     );
@@ -441,7 +441,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
           Container(
             padding: EdgeInsets.all(resp.w(6)),
             decoration: BoxDecoration(
-                color: ty.leaf.withOpacity(0.1), shape: BoxShape.circle),
+                color: ty.leaf.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(Icons.check_rounded, color: ty.leaf, size: resp.sp(16)),
           ),
           SizedBox(width: resp.w(12)),
@@ -469,7 +469,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
             Container(
               padding: EdgeInsets.all(resp.w(6)),
               decoration: BoxDecoration(
-                  color: ty.leaf.withOpacity(0.1), shape: BoxShape.circle),
+                  color: ty.leaf.withValues(alpha: 0.1), shape: BoxShape.circle),
               child:
                   Icon(Icons.check_rounded, color: ty.leaf, size: resp.sp(16)),
             ),
@@ -656,17 +656,18 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          if (isSelected)
+          if (isSelected) {
             _selectedOptionalItemIds.remove(item.id);
-          else
+          } else {
             _selectedOptionalItemIds.add(item.id);
+          }
         });
       },
       child: Container(
         margin: EdgeInsets.only(bottom: resp.h(12)),
         padding: EdgeInsets.all(resp.w(12)),
         decoration: BoxDecoration(
-          color: isSelected ? ty.saffron.withOpacity(0.05) : ty.surface,
+          color: isSelected ? ty.saffron.withValues(alpha: 0.05) : ty.surface,
           borderRadius: BorderRadius.circular(resp.w(16)),
           border: Border.all(
               color: isSelected ? ty.saffron : ty.line,
@@ -706,7 +707,6 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   }
 
   Widget _verifiedBadge(BuildContext context) {
-    final ty = context.ty;
     final resp = context.resp;
     return GestureDetector(
       onTap: () => _showVerifiedInfo(context),
@@ -714,9 +714,9 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
         padding:
             EdgeInsets.symmetric(horizontal: resp.w(10), vertical: resp.h(6)),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(resp.w(20)),
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

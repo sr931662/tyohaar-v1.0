@@ -308,13 +308,13 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: inGrace ? [ty.rose, ty.rose.withOpacity(0.75)] : [ty.saffron, ty.saffronDeep],
+          colors: inGrace ? [ty.rose, ty.rose.withValues(alpha: 0.75)] : [ty.saffron, ty.saffronDeep],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: ty.saffron.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+          BoxShadow(color: ty.saffron.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8)),
         ],
       ),
       child: Column(
@@ -330,13 +330,13 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
           const SizedBox(height: 8),
           Text(
             a.expiresAt != null ? 'Valid till ${_formatDate(a.expiresAt!)}' : 'No expiry',
-            style: TyType.sans(14, color: Colors.white.withOpacity(0.9)),
+            style: TyType.sans(14, color: Colors.white.withValues(alpha: 0.9)),
           ),
           if (inGrace && a.gracePeriodUntil != null) ...[
             const SizedBox(height: 6),
             Text(
               'Your membership has lapsed. Renew by ${_formatDate(a.gracePeriodUntil!)} to keep your benefits.',
-              style: TyType.sans(12.5, color: Colors.white.withOpacity(0.95), height: 1.4),
+              style: TyType.sans(12.5, color: Colors.white.withValues(alpha: 0.95), height: 1.4),
             ),
           ],
           const SizedBox(height: 20),
@@ -347,7 +347,7 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -358,22 +358,22 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
               if (inGrace)
                 TextButton(
                   onPressed: _isBusy ? null : _renew,
-                  style: TextButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.15)),
+                  style: TextButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.15)),
                   child: Text('Renew Now', style: TyType.sans(13, color: Colors.white, weight: FontWeight.w700)),
                 ),
               if (plan?.canUpgradeToTier != null)
                 TextButton(
                   onPressed: _isBusy ? null : () => _changeTier(isUpgrade: true),
-                  child: Text('Upgrade', style: TyType.sans(13, color: Colors.white.withOpacity(0.9))),
+                  child: Text('Upgrade', style: TyType.sans(13, color: Colors.white.withValues(alpha: 0.9))),
                 ),
               if (plan?.canDowngradeToTier != null)
                 TextButton(
                   onPressed: _isBusy ? null : () => _changeTier(isUpgrade: false),
-                  child: Text('Downgrade', style: TyType.sans(13, color: Colors.white.withOpacity(0.9))),
+                  child: Text('Downgrade', style: TyType.sans(13, color: Colors.white.withValues(alpha: 0.9))),
                 ),
               TextButton(
                 onPressed: _isBusy ? null : _cancel,
-                child: Text('Cancel', style: TyType.sans(13, color: Colors.white.withOpacity(0.8))),
+                child: Text('Cancel', style: TyType.sans(13, color: Colors.white.withValues(alpha: 0.8))),
               ),
             ],
           ),

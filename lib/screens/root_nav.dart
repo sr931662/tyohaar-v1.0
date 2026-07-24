@@ -263,8 +263,7 @@ class _StickyHeader extends StatelessWidget {
     final ty = context.ty;
     final resp = context.resp;
     final bool useBlur = isTransparent && isScrolled;
-    final bool isDark = themeController.isDark;
-    
+
     // In transparent mode at the top, we want white text if the theme is dark 
     // OR if we have a strong enough dark gradient. 
     // But if it's light mode and we are at the top, 
@@ -274,26 +273,26 @@ class _StickyHeader extends StatelessWidget {
         : ty.ink;
 
     final Color subTextColor = isTransparent
-        ? Colors.white.withOpacity(0.92)
+        ? Colors.white.withValues(alpha: 0.92)
         : ty.saffronDeep;
 
     final Color buttonBgColor = isTransparent 
-        ? Colors.black.withOpacity(isScrolled ? 0.34 : 0.28) 
+        ? Colors.black.withValues(alpha: isScrolled ? 0.34 : 0.28) 
         : ty.surface;
 
     final Color borderColor = isTransparent 
-        ? Colors.white.withOpacity(isScrolled ? 0.22 : 0.16)
+        ? Colors.white.withValues(alpha: isScrolled ? 0.22 : 0.16)
         : ty.line;
 
     Widget header = Container(
       padding: EdgeInsets.fromLTRB(resp.w(18), MediaQuery.of(context).padding.top + resp.h(8), resp.w(18), resp.h(12)),
       decoration: BoxDecoration(
         color: useBlur
-            ? Colors.black.withOpacity(0.26)
+            ? Colors.black.withValues(alpha: 0.26)
             : (isTransparent ? Colors.transparent : ty.paper),
         border: (isTransparent && !isScrolled)
             ? null 
-            : Border(bottom: BorderSide(color: isTransparent ? Colors.white.withOpacity(0.08) : ty.line2.withOpacity(isScrolled ? 0.1 : 0.05))),
+            : Border(bottom: BorderSide(color: isTransparent ? Colors.white.withValues(alpha: 0.08) : ty.line2.withValues(alpha: isScrolled ? 0.1 : 0.05))),
       ),
       child: Row(
         children: [
@@ -314,11 +313,11 @@ class _StickyHeader extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: isTransparent
-                    ? Colors.black.withOpacity(isScrolled ? 0.28 : 0.22)
+                    ? Colors.black.withValues(alpha: isScrolled ? 0.28 : 0.22)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(resp.w(16)),
                 border: isTransparent
-                    ? Border.all(color: Colors.white.withOpacity(0.08))
+                    ? Border.all(color: Colors.white.withValues(alpha: 0.08))
                     : null,
               ),
               child: Column(
@@ -393,7 +392,7 @@ class _StickyHeader extends StatelessWidget {
                       color: ty.rose,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isTransparent ? Colors.black.withOpacity(0.35) : ty.paper,
+                        color: isTransparent ? Colors.black.withValues(alpha: 0.35) : ty.paper,
                         width: 2,
                       ),
                     ),
@@ -594,7 +593,7 @@ class _BottomBar extends StatelessWidget {
               border: Border.all(color: ty.line2),
               boxShadow: [
                 BoxShadow(
-                  color: ty.isDark ? Colors.black.withOpacity(0.35) : ty.ink.withOpacity(0.08),
+                  color: ty.isDark ? Colors.black.withValues(alpha: 0.35) : ty.ink.withValues(alpha: 0.08),
                   blurRadius: resp.w(20),
                   offset: Offset(0, resp.h(8)),
                 ),
@@ -697,8 +696,8 @@ class _DockItem extends StatelessWidget {
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
                             colors: [
-                              ty.saffron.withOpacity(0.28),
-                              ty.saffron.withOpacity(0.0),
+                              ty.saffron.withValues(alpha: 0.28),
+                              ty.saffron.withValues(alpha: 0.0),
                             ],
                           ),
                         ),
@@ -786,7 +785,7 @@ class _CenterButtonState extends State<_CenterButton> with SingleTickerProviderS
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: ty.saffron.withOpacity(glow),
+                  color: ty.saffron.withValues(alpha: glow),
                   blurRadius: resp.w(24 + _pulse.value * 8),
                   spreadRadius: resp.w(1 + _pulse.value * 2),
                 ),

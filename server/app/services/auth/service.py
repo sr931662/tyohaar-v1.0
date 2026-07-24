@@ -74,6 +74,26 @@ class TokenPairResponse:
     user_id: uuid.UUID | None = None
 
 
+@dataclass
+class RegisterResponse(TokenPairResponse):
+    """
+    Returned by POST /auth/register — same token pair as TokenPairResponse,
+    plus a flag telling the client whether the verification email actually
+    went out, so it can show an immediate "couldn't send, tap Resend"
+    state instead of silently pretending the email arrived.
+    """
+
+    email_verification_sent: bool = True
+
+
+# Email-verification OTPs get the 10-minute validity window the OTP email
+# text already promises (settings.OTP_EXPIRE_MINUTES); every other purpose
+# keeps the existing OTP_EXPIRY_SECONDS (5 min) unchanged.
+_OTP_EXPIRY_OVERRIDES: dict[OTPPurpose, int] = {
+    OTPPurpose.EMAIL_VERIFICATION: settings.OTP_EXPIRE_MINUTES * 60,
+}
+
+
 class AuthService(BaseService):
     def __init__(self, session_factory: Callable[[], AsyncSession] = AsyncSessionLocal) -> None:
         super().__init__(session_factory)
@@ -281,6 +301,27 @@ class AuthService(BaseService):
         # Revoke all existing sessions now that the password has changed.
         await self.logout_all_devices(user_id=user_id)
 
+    # ── Email Verification (OTP-verified) ─────────────────────────────────────
+
+    async def verify_email_otp(self, email: str, otp_code: str) -> None:
+        """Verify an emailed OTP (purpose=EMAIL_VERIFICATION) and mark the account's email as verified."""
+        from app.services.auth.exceptions import InvalidCredentialsError
+
+        async with self._uow() as uow:
+            await validate_otp_for_verification(
+                email,
+                otp_code,
+                OTPPurpose.EMAIL_VERIFICATION,
+                uow,
+                settings.SECRET_KEY,
+            )
+
+            user = await uow.users.users.find_by_email(email)
+            if user is None:
+                raise InvalidCredentialsError("No account found for this email address.")
+
+            user.email_verified = True
+
     # ── Google Sign-In (Vendor) ───────────────────────────────────────────────
 
     async def authenticate_vendor_google(
@@ -457,7 +498,9 @@ class AuthService(BaseService):
             raw_otp = generate_otp()
             otp_hash_value = hash_otp(phone, raw_otp, settings.SECRET_KEY)
             now = datetime.now(tz=timezone.utc)
-            expires_at = now + timedelta(seconds=OTP_EXPIRY_SECONDS)
+            expires_at = now + timedelta(
+                seconds=_OTP_EXPIRY_OVERRIDES.get(purpose, OTP_EXPIRY_SECONDS)
+            )
 
             record = OTPRecord(
                 identifier=phone,

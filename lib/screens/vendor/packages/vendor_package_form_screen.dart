@@ -331,7 +331,7 @@ class _ThemeCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: selected ? ty.saffron.withOpacity(0.08) : ty.surface,
+          color: selected ? ty.saffron.withValues(alpha: 0.08) : ty.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: selected ? ty.saffron : ty.line),
         ),

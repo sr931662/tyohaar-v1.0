@@ -100,7 +100,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: ty.saffron.withOpacity(0.1),
+                      color: ty.saffron.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -184,7 +184,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         decoration: BoxDecoration(
           color: ty.paper,
           border: Border(top: BorderSide(color: ty.line2)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
         ),
         child: TyButton(
           'Add to Plan',
@@ -201,7 +201,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Container(
         width: 40, height: 40,
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: Colors.black.withOpacity(0.2), shape: BoxShape.circle),
+        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.2), shape: BoxShape.circle),
         child: Icon(icon, color: color, size: 24),
       ),
     );

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
-import '../widgets/common.dart';
 import 'root_nav.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
@@ -53,7 +52,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: ty.leaf.withOpacity(0.1),
+                  color: ty.leaf.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.check_circle_rounded, color: ty.leaf, size: 64),

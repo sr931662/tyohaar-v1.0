@@ -151,7 +151,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+                    colors: [Colors.black.withValues(alpha: 0.6), Colors.transparent],
                     stops: const [0, 0.6],
                   ),
                 ),
@@ -176,7 +176,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                   const SizedBox(height: 2),
                   Text(m.date,
                       style: TextStyle(
-                          fontSize: 11.5, color: Colors.white.withOpacity(0.85))),
+                          fontSize: 11.5, color: Colors.white.withValues(alpha: 0.85))),
                 ],
               ),
             ),

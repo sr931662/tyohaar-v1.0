@@ -17,8 +17,8 @@ ThemeData buildTyTheme(Brightness brightness) {
     canvasColor: ty.paper,
     extensions: <ThemeExtension<dynamic>>[ty],
     textTheme: textTheme,
-    splashColor: ty.saffron.withOpacity(0.10),
-    highlightColor: ty.saffron.withOpacity(0.06),
+    splashColor: ty.saffron.withValues(alpha: 0.10),
+    highlightColor: ty.saffron.withValues(alpha: 0.06),
     colorScheme: base.colorScheme.copyWith(
       brightness: brightness,
       primary: ty.saffron,

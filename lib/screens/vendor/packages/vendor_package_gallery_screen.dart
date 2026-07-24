@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
-import '../../../theme/responsive.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
 
@@ -87,7 +86,6 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final resp = context.resp;
 
     return Scaffold(
       backgroundColor: ty.paper,
@@ -114,7 +112,7 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.photo_library_outlined, size: 64, color: ty.ink3.withOpacity(0.5)),
+                      Icon(Icons.photo_library_outlined, size: 64, color: ty.ink3.withValues(alpha: 0.5)),
                       const SizedBox(height: 16),
                       Text('No gallery photos yet', style: TyType.sans(15, color: ty.ink2)),
                       const SizedBox(height: 8),
@@ -140,7 +138,7 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: ty.line),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2)),
                           ],
                         ),
                         child: ClipRRect(
@@ -164,7 +162,7 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.5),
+                                      color: Colors.black.withValues(alpha: 0.5),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(Icons.delete_outline, size: 18, color: Colors.white),

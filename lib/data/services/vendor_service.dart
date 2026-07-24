@@ -4,6 +4,13 @@ import 'package:dio/dio.dart';
 import '../api_client.dart';
 import '../vendor_models.dart';
 
+/// Options for the customer-facing vendor profile/package-list reads below —
+/// opts them into ApiClient's in-memory cache so revisiting a vendor's page
+/// within the same app session doesn't re-fetch data that rarely changes
+/// (mirrors the same pattern in package_service.dart/common_service.dart).
+Options _cacheable({Duration ttl = const Duration(minutes: 10)}) =>
+    Options(extra: {'cache': true, 'cacheTtl': ttl});
+
 /// All vendor-portal operations, mapped 1:1 to the same endpoints the web
 /// vendor portal calls (client/src/vendor/api/index.js is the contract).
 class VendorService {
@@ -115,12 +122,12 @@ class VendorService {
   // ── Public vendor listing (customer-facing vendor_detail_screen.dart) ───
 
   Future<VendorPublicDetail> getVendorById(String vendorId) async {
-    final response = await _api.dio.get('vendors/$vendorId');
+    final response = await _api.dio.get('vendors/$vendorId', options: _cacheable());
     return VendorPublicDetail.fromJson(response.data['data'] as Map<String, dynamic>);
   }
 
   Future<List<Map<String, dynamic>>> getVendorPackages(String vendorId) async {
-    final response = await _api.dio.get('vendors/$vendorId/packages');
+    final response = await _api.dio.get('vendors/$vendorId/packages', options: _cacheable());
     final List list = (response.data['data'] ?? []) as List;
     return List<Map<String, dynamic>>.from(list);
   }

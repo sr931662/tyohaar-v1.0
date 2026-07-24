@@ -20,7 +20,7 @@ class TyAvatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Color.alphaBlend(c.withOpacity(0.20), ty.surface),
+        color: Color.alphaBlend(c.withValues(alpha: 0.20), ty.surface),
         border: Border.all(color: ty.surface, width: 2),
       ),
       child: Text(

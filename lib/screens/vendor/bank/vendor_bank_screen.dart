@@ -177,7 +177,7 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
                                     const SizedBox(width: 6),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(color: Colors.green.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                                      decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
                                       child: Text('Primary', style: TyType.sans(10, color: Colors.green.shade700, weight: FontWeight.w700)),
                                     ),
                                   ],

@@ -275,10 +275,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: resp.w(10), vertical: resp.h(6)),
                         decoration: BoxDecoration(
-                          color: _selectedCitySlug.isEmpty ? ty.surface2 : ty.saffron.withOpacity(0.1),
+                          color: _selectedCitySlug.isEmpty ? ty.surface2 : ty.saffron.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(resp.w(10)),
                           border: Border.all(
-                            color: _selectedCitySlug.isEmpty ? ty.line : ty.saffron.withOpacity(0.4),
+                            color: _selectedCitySlug.isEmpty ? ty.line : ty.saffron.withValues(alpha: 0.4),
                           ),
                         ),
                         child: Row(

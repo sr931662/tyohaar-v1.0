@@ -6,11 +6,16 @@ class AuthCredentials {
   final String accessToken;
   final String refreshToken;
   final User user;
+  // Only meaningful right after registration — true for every other flow
+  // (login, vendor register, OTP login) since those responses simply don't
+  // include the field and it defaults to true.
+  final bool emailVerificationSent;
 
   AuthCredentials({
     required this.accessToken,
     required this.refreshToken,
     required this.user,
+    this.emailVerificationSent = true,
   });
 }
 
@@ -41,6 +46,7 @@ class AuthService {
     final data = (json['data'] ?? json) as Map<String, dynamic>;
     final accessToken = data['access_token'] as String;
     final refreshToken = data['refresh_token'] as String;
+    final emailVerificationSent = data['email_verification_sent'] as bool? ?? true;
     final userResp = await _api.dio.get(
       'users/me',
       options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
@@ -50,6 +56,7 @@ class AuthService {
       accessToken: accessToken,
       refreshToken: refreshToken,
       user: User.fromJson(userData),
+      emailVerificationSent: emailVerificationSent,
     );
   }
 
@@ -82,6 +89,23 @@ class AuthService {
       'identifier': email,
       'channel': 'email',
       'purpose': 'password_reset',
+    });
+  }
+
+  /// Requests an email-verification OTP (used for the initial send failing
+  /// or for the "Resend code" action on the verification screen).
+  Future<void> requestEmailVerificationOtp(String email) async {
+    await _api.dio.post('auth/otp/request', data: {
+      'identifier': email,
+      'channel': 'email',
+      'purpose': 'email_verification',
+    });
+  }
+
+  Future<void> verifyEmailOtp(String email, String otpCode) async {
+    await _api.dio.post('auth/email/verify', data: {
+      'email': email,
+      'otp_code': otpCode,
     });
   }
 

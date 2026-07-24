@@ -4,7 +4,6 @@ import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../widgets/ty_button.dart';
 import '../data/auth_manager.dart';
-import 'root_nav.dart';
 import 'auth_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -66,7 +65,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  ty.tint(_screens[_currentPage].tint).withOpacity(0.15),
+                  ty.tint(_screens[_currentPage].tint).withValues(alpha: 0.15),
                   ty.paper,
                 ],
                 stops: const [0.0, 0.4],
@@ -193,7 +192,7 @@ class _OnboardingPage extends StatelessWidget {
                     width: resp.w(220),
                     height: resp.w(220),
                     decoration: BoxDecoration(
-                      color: ty.tint(data.tint).withOpacity(0.1),
+                      color: ty.tint(data.tint).withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Padding(

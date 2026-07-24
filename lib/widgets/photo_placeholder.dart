@@ -44,8 +44,8 @@ class PhotoPlaceholder extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color.alphaBlend(c.withOpacity(0.26), ty.surface),
-                    Color.alphaBlend(c.withOpacity(0.09), ty.surface),
+                    Color.alphaBlend(c.withValues(alpha: 0.26), ty.surface),
+                    Color.alphaBlend(c.withValues(alpha: 0.09), ty.surface),
                   ],
                 ),
               ),
@@ -58,7 +58,7 @@ class PhotoPlaceholder extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: c.withOpacity(0.30),
+                      color: c.withValues(alpha: 0.30),
                     ),
                   ),
                 ),
@@ -71,7 +71,7 @@ class PhotoPlaceholder extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
-                    color: ty.surface.withOpacity(0.72),
+                    color: ty.surface.withValues(alpha: 0.72),
                     borderRadius: BorderRadius.circular(7),
                   ),
                   child: Text(

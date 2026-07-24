@@ -89,7 +89,7 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
                 children: [
                   TyPill(
                     occasion.category.replaceAll('_', ' ').toUpperCase(),
-                    background: color.withOpacity(0.12),
+                    background: color.withValues(alpha: 0.12),
                     foreground: color,
                   ),
                   const SizedBox(height: 12),

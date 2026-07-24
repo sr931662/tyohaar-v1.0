@@ -1,6 +1,8 @@
 /// Vendor-domain models — mirrors server/app/schemas/vendors/*, packages/*,
 /// bookings/* response shapes exactly as consumed by the web vendor portal
 /// (client/src/vendor/api/index.js is the source-of-truth contract).
+library;
+
 import 'models.dart' show asDouble, asUrl;
 
 class VendorBusinessProfile {

@@ -35,13 +35,6 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
     }
   }
 
-  Future<void> _markAllRead() async {
-    try {
-      await _notificationService.markAllAsRead();
-      _load();
-    } catch (_) {}
-  }
-
   Future<void> _markRead(NotifItem item) async {
     try {
       await _notificationService.markAsRead(item.id);
@@ -71,7 +64,7 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.notifications_none_rounded, size: 48, color: ty.ink3.withOpacity(0.5)),
+                      Icon(Icons.notifications_none_rounded, size: 48, color: ty.ink3.withValues(alpha: 0.5)),
                       const SizedBox(height: 16),
                       Text('No notifications', style: TyType.sans(14, color: ty.ink2)),
                     ],
@@ -91,7 +84,7 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
                         background: Container(
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 20),
-                          decoration: BoxDecoration(color: ty.rose.withOpacity(0.15), borderRadius: BorderRadius.circular(16)),
+                          decoration: BoxDecoration(color: ty.rose.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(16)),
                           child: Icon(Icons.delete_outline, color: ty.rose),
                         ),
                         onDismissed: (_) => _delete(item),
@@ -100,10 +93,10 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: item.unread ? ty.saffron.withOpacity(0.06) : ty.surface,
+                              color: item.unread ? ty.saffron.withValues(alpha: 0.06) : ty.surface,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: item.unread ? ty.saffron.withOpacity(0.2) : ty.line),
-                              boxShadow: item.unread ? [BoxShadow(color: ty.saffron.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 2))] : null,
+                              border: Border.all(color: item.unread ? ty.saffron.withValues(alpha: 0.2) : ty.line),
+                              boxShadow: item.unread ? [BoxShadow(color: ty.saffron.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))] : null,
                             ),
                             child: Row(
                               children: [

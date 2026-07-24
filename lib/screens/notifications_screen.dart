@@ -98,7 +98,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       decoration: BoxDecoration(
         color: ty.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: n.unread ? ty.line : ty.line.withOpacity(0.45)),
+        border: Border.all(color: n.unread ? ty.line : ty.line.withValues(alpha: 0.45)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,7 +107,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Color.alphaBlend(c.withOpacity(0.15), ty.surface2),
+              color: Color.alphaBlend(c.withValues(alpha: 0.15), ty.surface2),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(tyIcon(n.icon), color: c, size: 20),

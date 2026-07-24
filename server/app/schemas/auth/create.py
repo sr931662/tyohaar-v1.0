@@ -40,6 +40,7 @@ __all__ = [
     "UserLoginCreate",
     "VendorRegisterCreate",
     "PasswordResetConfirmCreate",
+    "EmailVerifyOTPCreate",
     "GoogleAuthCreate",
 ]
 
@@ -96,6 +97,24 @@ class PasswordResetConfirmCreate(BaseSchema):
     email: str = Field(..., description="Email address the OTP was sent to.")
     otp_code: OTPCode = Field(description="OTP code received via email.")
     new_password: str = Field(..., min_length=8, description="New password (min 8 chars).")
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalise_email(cls, v: str) -> str:
+        return v.strip().lower()
+
+
+class EmailVerifyOTPCreate(BaseSchema):
+    """
+    Request body for `POST /auth/email/verify`.
+
+    Submitted after the user has received an OTP via registration (or
+    `POST /auth/otp/request` with purpose=EMAIL_VERIFICATION for a resend).
+    Verifies the OTP and marks the account's email_verified=True.
+    """
+
+    email: str = Field(..., description="Email address the OTP was sent to.")
+    otp_code: OTPCode = Field(description="OTP code received via email.")
 
     @field_validator("email", mode="before")
     @classmethod

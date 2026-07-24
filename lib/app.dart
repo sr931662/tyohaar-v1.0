@@ -22,6 +22,7 @@ import 'screens/vendor/vendor_root_nav.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/root_nav.dart';
 import 'screens/auth_screen.dart';
+import 'screens/email_verification_screen.dart';
 
 class TyohaarApp extends StatelessWidget {
   const TyohaarApp({super.key});
@@ -126,6 +127,14 @@ class _AppStartupState extends State<_AppStartup> {
           return const _SplashScreen();
         }
         if (AuthManager.instance.isAuthenticated) {
+          // A persisted session for a customer who never finished email
+          // verification (e.g. closed the app before entering the code)
+          // must not reach the normal app shell — send them back to the
+          // verification screen every time until it succeeds.
+          final user = AuthManager.instance.currentUser;
+          if (user != null && user.role == 'customer' && !user.emailVerified) {
+            return EmailVerificationScreen(email: user.email ?? '');
+          }
           return const RootNav();
         }
         if (AuthManager.instance.seenOnboarding) {

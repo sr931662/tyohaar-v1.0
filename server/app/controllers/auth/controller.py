@@ -4,6 +4,7 @@ Auth Controller — OTP authentication, token rotation, session management.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Annotated
 
@@ -16,7 +17,9 @@ from app.core.current_user import CurrentUserDep
 from app.core.dependencies import AuthServiceDep
 from app.core.responses import SuccessResponse
 from app.core.security import create_access_token, get_token_from_header
+from app.models.enums import OTPDeliveryChannel, OTPPurpose
 from app.schemas.auth.create import (
+    EmailVerifyOTPCreate,
     GoogleAuthCreate,
     OTPRequestCreate,
     OTPVerifyCreate,
@@ -26,8 +29,10 @@ from app.schemas.auth.create import (
     VendorRegisterCreate,
 )
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
-from app.services.auth.service import TokenPairResponse
+from app.services.auth.service import RegisterResponse, TokenPairResponse
 from app.services.admin.helpers import verify_admin_password
+
+logger = logging.getLogger(__name__)
 
 
 class _RefreshRequest(BaseModel):
@@ -128,13 +133,53 @@ async def register(
     body: UserRegisterCreate,
     service: AuthServiceDep,
     request: Request,
-) -> SuccessResponse[TokenPairResponse]:
+) -> SuccessResponse[RegisterResponse]:
     result = await service.register_user(
         data=body,
         ip_address=_client_ip(request),
         user_agent=request.headers.get("User-Agent"),
     )
-    return SuccessResponse(data=result, message="Registration successful.")
+
+    # Best-effort: the account is already created, so a transient email
+    # failure must not fail registration itself — the client surfaces
+    # email_verification_sent=False and lets the user retry from the
+    # verification screen's Resend action.
+    email_sent = True
+    try:
+        await service.send_otp(
+            phone=body.email,
+            channel=OTPDeliveryChannel.EMAIL,
+            purpose=OTPPurpose.EMAIL_VERIFICATION,
+            ip_address=_client_ip(request),
+            user_agent=request.headers.get("User-Agent"),
+        )
+    except Exception:
+        logger.exception("Failed to send verification email during registration for %s", body.email)
+        email_sent = False
+
+    response_data = RegisterResponse(
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+        token_type=result.token_type,
+        expires_in=result.expires_in,
+        session_id=result.session_id,
+        user_id=result.user_id,
+        email_verification_sent=email_sent,
+    )
+    message = (
+        "Registration successful."
+        if email_sent
+        else "Registration successful, but we couldn't send the verification email."
+    )
+    return SuccessResponse(data=response_data, message=message)
+
+
+async def verify_email_otp(
+    body: EmailVerifyOTPCreate,
+    service: AuthServiceDep,
+) -> SuccessResponse[None]:
+    await service.verify_email_otp(email=body.email, otp_code=body.otp_code)
+    return SuccessResponse(data=None, message="Email verified successfully.")
 
 
 async def login(

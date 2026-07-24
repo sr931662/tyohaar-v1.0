@@ -209,7 +209,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: isDone ? ty.leaf.withOpacity(0.1) : ty.saffron.withOpacity(0.1),
+                    color: isDone ? ty.leaf.withValues(alpha: 0.1) : ty.saffron.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(

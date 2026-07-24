@@ -228,8 +228,8 @@ class _EventHubScreenState extends State<EventHubScreen> {
                               end: Alignment.topCenter,
                               colors: [
                                 ty.paper,
-                                Colors.black.withOpacity(0.3),
-                                Colors.black.withOpacity(0.35)
+                                Colors.black.withValues(alpha: 0.3),
+                                Colors.black.withValues(alpha: 0.35)
                               ],
                               stops: const [0.02, 0.55, 1],
                             ),
@@ -255,7 +255,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                               Icon(Icons.event,
                                   size: resp.sp(16), color: Colors.white70),
                               SizedBox(width: resp.w(8)),
-                              Text('$date',
+                              Text(date,
                                   style: TyType.sans(resp.sp(14),
                                       color: Colors.white70)),
                             ]),
@@ -380,7 +380,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.black.withOpacity(0.45), Colors.transparent],
+                  colors: [Colors.black.withValues(alpha: 0.45), Colors.transparent],
                 ),
               ),
               child: Row(
@@ -555,7 +555,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
         width: resp.w(42),
         height: resp.w(42),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.18),
+          color: Colors.white.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(resp.w(14)),
         ),
         child: Icon(icon, color: iconColor ?? Colors.white, size: resp.sp(20)),

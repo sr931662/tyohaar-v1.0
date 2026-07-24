@@ -101,7 +101,7 @@ class _TutorialOverlayWidgetState extends State<_TutorialOverlayWidget> {
               child: TextButton(
                 onPressed: widget.onFinished,
                 style: TextButton.styleFrom(
-                  backgroundColor: Colors.black.withOpacity(0.35),
+                  backgroundColor: Colors.black.withValues(alpha: 0.35),
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('Skip'),
@@ -169,7 +169,7 @@ class _SpotlightPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scrimPaint = Paint()..color = Colors.black.withOpacity(0.65);
+    final scrimPaint = Paint()..color = Colors.black.withValues(alpha: 0.65);
     final fullPath = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     if (rect == null) {

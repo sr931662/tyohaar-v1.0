@@ -174,7 +174,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
       height: 180,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [ty.saffron.withOpacity(0.1), ty.saffron.withOpacity(0.02)],
+          colors: [ty.saffron.withValues(alpha: 0.1), ty.saffron.withValues(alpha: 0.02)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -185,7 +185,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: ty.saffron.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: ty.saffron.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(Icons.card_giftcard_rounded, size: 56, color: ty.saffron),
           ),
           const SizedBox(height: 16),

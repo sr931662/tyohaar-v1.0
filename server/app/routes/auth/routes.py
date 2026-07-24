@@ -9,7 +9,7 @@ from fastapi import APIRouter, status
 from app.controllers.auth import controller as ctrl
 from app.core.responses import SuccessResponse
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
-from app.services.auth.service import TokenPairResponse
+from app.services.auth.service import RegisterResponse, TokenPairResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -17,7 +17,7 @@ router.add_api_route(
     "/register",
     ctrl.register,
     methods=["POST"],
-    response_model=SuccessResponse[TokenPairResponse],
+    response_model=SuccessResponse[RegisterResponse],
     status_code=status.HTTP_201_CREATED,
     summary="User Registration",
     description="Create a new customer account using email and password.",
@@ -83,6 +83,17 @@ router.add_api_route(
     summary="Reset Password",
     description="Verify an emailed OTP (purpose=password_reset) and set a new password.",
     operation_id="auth_reset_password",
+)
+
+router.add_api_route(
+    "/email/verify",
+    ctrl.verify_email_otp,
+    methods=["POST"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Verify Email OTP",
+    description="Verify an emailed OTP (purpose=email_verification) and mark the account's email as verified.",
+    operation_id="auth_verify_email_otp",
 )
 
 router.add_api_route(

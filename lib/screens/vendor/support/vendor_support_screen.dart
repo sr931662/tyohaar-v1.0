@@ -108,7 +108,7 @@ class _VendorSupportScreenState extends State<VendorSupportScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.support_agent_rounded, size: 48, color: ty.ink3.withOpacity(0.5)),
+                      Icon(Icons.support_agent_rounded, size: 48, color: ty.ink3.withValues(alpha: 0.5)),
                       const SizedBox(height: 16),
                       Text('No support tickets yet', style: TyType.sans(14, color: ty.ink2)),
                     ],
@@ -134,7 +134,7 @@ class _VendorSupportScreenState extends State<VendorSupportScreen> {
                             borderRadius: BorderRadius.circular(16), 
                             border: Border.all(color: ty.line),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2)),
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2)),
                             ],
                           ),
                           child: Column(
@@ -147,7 +147,7 @@ class _VendorSupportScreenState extends State<VendorSupportScreen> {
                                   const SizedBox(width: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(99)),
+                                    decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(99)),
                                     child: Text(t.status.toUpperCase(), style: TyType.sans(10, color: statusColor, weight: FontWeight.w800, spacing: 0.5)),
                                   ),
                                 ],

@@ -120,8 +120,6 @@ class _VendorBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    // Only show bottom bar for the first 5 items
-    final bool showBottomBar = index < 5;
 
     return Container(
       decoration: BoxDecoration(
@@ -268,7 +266,7 @@ class _VendorDrawer extends StatelessWidget {
           style: TyType.sans(15, color: isSelected ? ty.saffron : ty.ink, weight: isSelected ? FontWeight.w700 : FontWeight.w600)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
       selected: isSelected,
-      selectedTileColor: ty.saffron.withOpacity(0.08),
+      selectedTileColor: ty.saffron.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       onTap: () => onNavigate(index),
     );

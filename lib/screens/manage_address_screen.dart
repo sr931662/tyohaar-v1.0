@@ -190,7 +190,7 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: ty.saffron.withOpacity(0.1),
+              color: ty.saffron.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(isHome ? Icons.home_rounded : Icons.work_rounded, color: ty.saffron, size: 20),

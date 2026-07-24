@@ -57,7 +57,7 @@ class _DiyaState extends State<Diya> with SingleTickerProviderStateMixin {
           ),
           boxShadow: [
             BoxShadow(
-              color: glow.withOpacity(0.7),
+              color: glow.withValues(alpha: 0.7),
               blurRadius: widget.size * 1.6,
               spreadRadius: widget.size * 0.18,
             ),

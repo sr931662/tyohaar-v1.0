@@ -50,7 +50,7 @@ class TyPill extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: resp.w(11), vertical: resp.h(5)),
       decoration: BoxDecoration(
-        color: background ?? Colors.white.withOpacity(0.9),
+        color: background ?? Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
