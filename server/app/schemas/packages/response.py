@@ -18,7 +18,13 @@ from decimal import Decimal
 from pydantic import ConfigDict, Field
 
 from app.schemas.base import BaseSchema, MoneyAmount
-from app.models.enums import Currency, PackagePricingType, PackageStatus, VendorType
+from app.models.enums import (
+    Currency,
+    PackagePricingType,
+    PackageStatus,
+    ReviewModerationStatus,
+    VendorType,
+)
 from app.schemas.packages.common import PriceTierSchema
 
 
@@ -31,10 +37,12 @@ __all__ = [
     "PackagePricingResponse",
     "PackageDiscountResponse",
     "PackageReviewResponse",
+    "PackageItemReviewResponse",
     "PackageFAQResponse",
     "PackageAvailabilityResponse",
     "PackageVendorInfo",
     "PackageDetailResponse",
+    "LikeToggleResponse",
 ]
 
 
@@ -95,6 +103,8 @@ class PackageResponse(BaseSchema):
     average_rating: Decimal | None = None
     review_count: int = 0
     booking_count: int = 0
+    like_count: int = 0
+    is_liked: bool = False
     vendor_id: uuid.UUID | None = None
     city_slug: str | None = None
     inclusions_count: int = 0
@@ -140,6 +150,10 @@ class PackageItemResponse(BaseSchema):
     cover_image_url: str | None = None
     display_order: int
     prep_time_minutes: int | None = None
+    average_rating: Decimal | None = None
+    review_count: int = 0
+    like_count: int = 0
+    is_liked: bool = False
     images: list[PackageItemImageResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -215,6 +229,36 @@ class PackageReviewResponse(BaseSchema):
     is_published: bool
     created_at: datetime
     updated_at: datetime
+
+
+class PackageItemReviewResponse(BaseSchema):
+    """
+    Public response shape for a PackageItemReview.
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    package_item_id: uuid.UUID
+    customer_id: uuid.UUID
+    booking_id: uuid.UUID | None
+    rating: int
+    title: str | None
+    body: str | None
+    media_urls: list | None = None
+    is_verified_booking: bool
+    moderation_status: ReviewModerationStatus
+    is_published: bool
+    helpful_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+
+class LikeToggleResponse(BaseSchema):
+    """Response shape returned by like/unlike toggle endpoints."""
+
+    is_liked: bool
+    like_count: int
 
 
 class PackageFAQResponse(BaseSchema):

@@ -289,6 +289,18 @@ class PackagePricingType(str, enum.Enum):
     CUSTOM_QUOTE = "custom_quote"
 
 
+class ReviewModerationStatus(str, enum.Enum):
+    """
+    Content moderation lifecycle for a customer-submitted review
+    (PackageReview, PackageItemReview).
+    """
+    PENDING = "pending"    # Submitted; awaiting moderation
+    APPROVED = "approved"  # Passed moderation; included in rating aggregation
+    REJECTED = "rejected"  # Violated guidelines; excluded from stats
+    FLAGGED = "flagged"    # Auto-flagged or user-reported; needs human review
+    HIDDEN = "hidden"      # Was approved but later hidden by admin action
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Bookings
 # ──────────────────────────────────────────────────────────────────────────────
@@ -334,6 +346,12 @@ class CancellationReason(str, enum.Enum):
     CHANGE_OF_PLANS = "change_of_plans"
     FOUND_BETTER_OPTION = "found_better_option"
     OTHER = "other"
+
+
+class BalloonColorMode(str, enum.Enum):
+    """Whether the customer chose one accent balloon colour or a two-colour combo."""
+    SINGLE = "single"
+    DUAL = "dual"
 
 
 # ──────────────────────────────────────────────────────────────────────────────

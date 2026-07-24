@@ -63,11 +63,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ? TyStateScreen.error(onAction: _loadNotifications)
               : _notifications.isEmpty
                   ? _buildEmptyState(context)
-                  : ListView(
+                  : ListView.builder(
               padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
-              children: [
-                _group(context, 'Recent', _notifications),
-              ],
+              // Section label is item 0; notification rows are built lazily after it.
+              itemCount: 1 + _notifications.length,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  final ty = context.ty;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text('RECENT', style: TyType.eyebrow(11.5, color: ty.ink3)),
+                  );
+                }
+                return _row(context, _notifications[index - 1]);
+              },
             ),
     );
   }
@@ -77,18 +86,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       title: 'No activity yet',
       message: "We'll notify you here about your bookings, payments, and upcoming celebrations.",
       icon: Icons.notifications_none_rounded,
-    );
-  }
-
-  Widget _group(BuildContext context, String label, List<NotifItem> items) {
-    final ty = context.ty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label.toUpperCase(), style: TyType.eyebrow(11.5, color: ty.ink3)),
-        const SizedBox(height: 8),
-        ...items.map((n) => _row(context, n)),
-      ],
     );
   }
 
@@ -169,6 +166,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
+  static final _timeFmt = DateFormat('h:mm a');
+  static final _dayMonthFmt = DateFormat('d MMM · h:mm a');
+  static final _dayMonthYearFmt = DateFormat('d MMM y · h:mm a');
+
   String _formatNotificationTime(String raw) {
     final parsed = DateTime.tryParse(raw);
     if (parsed == null) return raw;
@@ -180,14 +181,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final dayDiff = today.difference(date).inDays;
 
     if (dayDiff == 0) {
-      return 'Today · ${DateFormat('h:mm a').format(local)}';
+      return 'Today · ${_timeFmt.format(local)}';
     }
     if (dayDiff == 1) {
-      return 'Yesterday · ${DateFormat('h:mm a').format(local)}';
+      return 'Yesterday · ${_timeFmt.format(local)}';
     }
     if (local.year == now.year) {
-      return DateFormat('d MMM · h:mm a').format(local);
+      return _dayMonthFmt.format(local);
     }
-    return DateFormat('d MMM y · h:mm a').format(local);
+    return _dayMonthYearFmt.format(local);
   }
 }

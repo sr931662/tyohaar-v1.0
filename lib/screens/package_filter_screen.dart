@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../data/models.dart';
+import '../data/services/package_service.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/common.dart';
@@ -6,18 +8,48 @@ import '../widgets/ty_button.dart';
 import '../widgets/ty_chip.dart';
 
 class PackageFilterScreen extends StatefulWidget {
-  const PackageFilterScreen({super.key});
+  const PackageFilterScreen({
+    super.key,
+    this.initialSort,
+    this.initialPriceRange,
+    this.initialThemes,
+  });
+
+  final String? initialSort;
+  final RangeValues? initialPriceRange;
+  final List<String>? initialThemes;
 
   @override
   State<PackageFilterScreen> createState() => _PackageFilterScreenState();
 }
 
 class _PackageFilterScreenState extends State<PackageFilterScreen> {
-  RangeValues _priceRange = const RangeValues(5000, 50000);
-  String _selectedSort = 'Popularity';
-  final List<String> _selectedThemes = [];
+  late RangeValues _priceRange = widget.initialPriceRange ?? const RangeValues(5000, 50000);
+  late String _selectedSort = widget.initialSort ?? 'Popularity';
+  late final List<String> _selectedThemes = List<String>.from(widget.initialThemes ?? []);
 
-  final List<String> _themes = ['Traditional', 'Modern', 'Minimal', 'Luxury', 'Themed', 'Royal'];
+  // Themes are fetched from the same backend entity (OccasionTheme, via
+  // PackageService.listThemes()) that Package.themeIds correlates to — the
+  // chip's underlying id is what's actually matched against packages.
+  final PackageService _packageService = PackageService();
+  List<CelebrationTheme> _themes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThemes();
+  }
+
+  Future<void> _loadThemes() async {
+    try {
+      final themes = await _packageService.listThemes();
+      if (mounted) setState(() => _themes = themes);
+    } catch (_) {
+      // Non-fatal — the Themes section simply renders no chips if the
+      // catalog fails to load, matching this screen's other filters still
+      // being usable.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +65,7 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
                 _sectionTitle('Sort By'),
                 Wrap(
                   spacing: 10,
-                  children: ['Popularity', 'Price: Low to High', 'Price: High to Low', 'Newest'].map((s) {
+                  children: ['Popularity', 'Price: Low to High', 'Price: High to Low'].map((s) {
                     return TyChip(
                       label: s,
                       active: _selectedSort == s,
@@ -64,27 +96,29 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                _sectionTitle('Themes'),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: _themes.map((t) {
-                    final selected = _selectedThemes.contains(t);
-                    return TyChip(
-                      label: t,
-                      active: selected,
-                      onTap: () {
-                        setState(() {
-                          if (selected) {
-                            _selectedThemes.remove(t);
-                          } else {
-                            _selectedThemes.add(t);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
+                if (_themes.isNotEmpty) ...[
+                  _sectionTitle('Themes'),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: _themes.map((t) {
+                      final selected = _selectedThemes.contains(t.id);
+                      return TyChip(
+                        label: t.name,
+                        active: selected,
+                        onTap: () {
+                          setState(() {
+                            if (selected) {
+                              _selectedThemes.remove(t.id);
+                            } else {
+                              _selectedThemes.add(t.id);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
               ],
             ),
           ),
@@ -103,7 +137,11 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: TyButton('Apply Filters', onTap: () => Navigator.pop(context)),
+                  child: TyButton('Apply Filters', onTap: () => Navigator.pop(context, {
+                    'sort': _selectedSort,
+                    'priceRange': _priceRange,
+                    'themes': List<String>.from(_selectedThemes),
+                  })),
                 ),
               ],
             ),

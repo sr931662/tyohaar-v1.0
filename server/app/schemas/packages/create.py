@@ -16,7 +16,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
-from app.models.enums import Currency, PackagePricingType, PackageStatus
+from app.models.enums import Currency, PackagePricingType, PackageStatus, ReviewModerationStatus
 from app.schemas.packages.common import PriceTierSchema
 
 
@@ -29,6 +29,8 @@ __all__ = [
     "PackagePricingCreate",
     "PackageDiscountCreate",
     "PackageReviewCreate",
+    "PackageItemReviewCreate",
+    "PackageReviewModerateRequest",
     "PackageFAQCreate",
     "PackageAvailabilityCreate",
 ]
@@ -288,6 +290,30 @@ class PackageReviewCreate(BaseSchema):
     rating: int = Field(ge=1, le=5, description="Star rating from 1 (worst) to 5 (best)")
     title: str | None = Field(default=None, max_length=200, description="Review headline")
     body: str | None = Field(default=None, description="Full review text")
+
+
+class PackageItemReviewCreate(BaseSchema):
+    """Payload required to submit a review for a package item."""
+
+    package_item_id: uuid.UUID = Field(description="Reviewed package item UUID")
+    booking_id: uuid.UUID | None = Field(
+        default=None,
+        description="Booking this review relates to, used only for the "
+                    "'Verified Purchase' badge",
+    )
+    reviewer_id: uuid.UUID = Field(description="UUID of the reviewing user")
+    rating: int = Field(ge=1, le=5, description="Star rating from 1 (worst) to 5 (best)")
+    title: str | None = Field(default=None, max_length=200, description="Review headline")
+    body: str | None = Field(default=None, description="Full review text")
+
+
+class PackageReviewModerateRequest(BaseSchema):
+    """Admin payload to transition a review's moderation status."""
+
+    moderation_status: ReviewModerationStatus = Field(description="New moderation status")
+    moderation_notes: str | None = Field(
+        default=None, description="Internal moderation notes, not visible to customer"
+    )
 
 
 class PackageFAQCreate(BaseSchema):

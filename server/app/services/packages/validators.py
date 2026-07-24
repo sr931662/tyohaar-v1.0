@@ -3,11 +3,14 @@ from __future__ import annotations
 from uuid import UUID
 
 from app.models.packages.package import Package
+from app.models.packages.package_item import PackageItem
 from app.repositories.unit_of_work import UnitOfWork
 from app.services.packages.constants import MAX_ITEMS_PER_PACKAGE
 from app.services.packages.exceptions import (
+    DuplicatePackageItemReviewError,
     DuplicatePackageReviewError,
     PackageItemLimitError,
+    PackageItemNotFoundError,
     PackageNotFoundError,
     PackageOwnershipError,
 )
@@ -49,6 +52,33 @@ async def validate_review_not_duplicate(
     if existing is not None:
         raise DuplicatePackageReviewError(
             f"User {reviewer_id} has already reviewed package {package_id}."
+        )
+
+
+async def validate_package_item_exists(
+    package_item_id: UUID,
+    uow: UnitOfWork,
+) -> PackageItem:
+    """Return the PackageItem or raise PackageItemNotFoundError."""
+    item = await uow.packages.items.get_by_id(package_item_id)
+    if item is None:
+        raise PackageItemNotFoundError(str(package_item_id))
+    return item
+
+
+async def validate_item_review_not_duplicate(
+    package_item_id: UUID,
+    reviewer_id: UUID,
+    uow: UnitOfWork,
+) -> None:
+    """Raise DuplicatePackageItemReviewError if the reviewer already reviewed this item."""
+    existing = await uow.packages.item_reviews.find_one(
+        uow.packages.item_reviews._model.package_item_id == package_item_id,
+        uow.packages.item_reviews._model.customer_id == reviewer_id,
+    )
+    if existing is not None:
+        raise DuplicatePackageItemReviewError(
+            f"User {reviewer_id} has already reviewed package item {package_item_id}."
         )
 
 

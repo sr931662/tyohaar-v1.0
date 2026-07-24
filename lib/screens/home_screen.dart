@@ -192,6 +192,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final totalGuests = _guests.length;
     final rsvpdGuests = _guests.where((g) => g.rsvpStatus == 'confirmed').length;
+    final majorFestivals = _occasions.where((o) => o.category == 'major_festival').toList();
+    final lifeEvents = _occasions.where((o) => o.category == 'life_event').toList();
+    final minorFestivals = _occasions.where((o) => o.category == 'minor_festival').toList();
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -231,21 +234,21 @@ class _HomeScreenState extends State<HomeScreen> {
               _membershipBanner(context),
               SizedBox(height: resp.h(12)),
 
-              if (_occasions.any((o) => o.category == 'major_festival')) ...[
+              if (majorFestivals.isNotEmpty) ...[
                 SectionHeader('Popular Festivals'),
-                _festivalRail(context, _occasions.where((o) => o.category == 'major_festival').toList()),
+                _festivalRail(context, majorFestivals),
                 SizedBox(height: resp.h(12)),
               ],
 
-              if (_occasions.any((o) => o.category == 'life_event')) ...[
+              if (lifeEvents.isNotEmpty) ...[
                 SectionHeader('Life Moments'),
-                _festivalRail(context, _occasions.where((o) => o.category == 'life_event').toList()),
+                _festivalRail(context, lifeEvents),
                 SizedBox(height: resp.h(12)),
               ],
 
-              if (_occasions.any((o) => o.category == 'minor_festival')) ...[
+              if (minorFestivals.isNotEmpty) ...[
                 SectionHeader('Upcoming Celebrations'),
-                _festivalRail(context, _occasions.where((o) => o.category == 'minor_festival').toList()),
+                _festivalRail(context, minorFestivals),
               ],
             ],
           ),

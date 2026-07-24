@@ -10,7 +10,7 @@ class NotificationService {
 
   Future<List<NotifItem>> listNotifications() async {
     final response = await _api.dio.get('notifications');
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     final items = list.map<NotifItem>((item) => NotifItem.fromJson(item)).toList();
     return _enrichNotifications(items);
   }

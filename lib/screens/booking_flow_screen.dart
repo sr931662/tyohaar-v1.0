@@ -74,6 +74,22 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   }
 
   void _next() {
+    if (_step == 1) {
+      final name = _recipientNameCtrl.text.trim();
+      final phone = _recipientPhoneCtrl.text.trim();
+      if (name.isEmpty || phone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter recipient name and phone number.')),
+        );
+        return;
+      }
+      if (!RegExp(r'^[0-9]{10}$').hasMatch(phone.replaceAll(RegExp(r'[^0-9]'), ''))) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid 10-digit phone number.')),
+        );
+        return;
+      }
+    }
     if (_step < 2) {
       setState(() => _step++);
     } else {

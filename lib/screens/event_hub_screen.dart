@@ -22,6 +22,7 @@ import '../utils/gallery_album.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
+import '../widgets/state_screens.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
 import 'guests_screen.dart';
 import 'package_detail_screen.dart';
@@ -49,6 +50,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
   String _daysLeft = '--';
   String _hoursLeft = '--';
   bool _isLoading = true;
+  bool _error = false;
   bool _isLiked = false;
   final GlobalKey _heroKey = GlobalKey();
 
@@ -59,6 +61,10 @@ class _EventHubScreenState extends State<EventHubScreen> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _error = false;
+    });
     try {
       String? id = widget.celebrationId;
       if (id == null) {
@@ -131,7 +137,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
       }
     } catch (e) {
       debugPrint('Error loading event hub: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _error = true; });
     }
   }
 
@@ -158,6 +164,14 @@ class _EventHubScreenState extends State<EventHubScreen> {
       return Scaffold(
           backgroundColor: ty.paper,
           body: const Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error) {
+      return Scaffold(
+        backgroundColor: ty.paper,
+        appBar: tyAppBar(context, title: 'Event Hub'),
+        body: TyStateScreen.error(onAction: _load),
+      );
     }
 
     if (_celebration == null) {

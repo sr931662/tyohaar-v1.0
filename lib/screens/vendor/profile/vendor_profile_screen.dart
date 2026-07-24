@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../theme/colors.dart';
@@ -151,12 +153,18 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
   Future<void> _addGalleryPhoto() async {
     if (_vendor == null) return;
-    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (image == null) return;
     try {
+      final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (image == null) return;
       final url = await _vendorService.uploadImage(File(image.path), 'vendor_gallery');
       await _vendorService.addGalleryItem(_vendor!.id, {'media_url': url, 'media_type': 'image'});
       _load();
+    } on PlatformException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+        );
+      }
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
     }
@@ -172,12 +180,18 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
   Future<void> _addDocument(String docType) async {
     if (_vendor == null) return;
-    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (image == null) return;
     try {
+      final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (image == null) return;
       final url = await _vendorService.uploadImage(File(image.path), 'vendor_document');
       await _vendorService.addDocument(_vendor!.id, documentType: docType, documentUrl: url);
       _load();
+    } on PlatformException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+        );
+      }
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
     }
@@ -246,7 +260,13 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                 crossAxisSpacing: 8,
                 children: _gallery.map((g) => Stack(
                       children: [
-                        Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.network(g.mediaUrl, fit: BoxFit.cover))),
+                        Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(10), child: CachedNetworkImage(
+                          imageUrl: g.mediaUrl,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 300,
+                          placeholder: (context, url) => Container(color: Colors.black12),
+                          errorWidget: (context, url, error) => Container(color: Colors.black12, child: const Icon(Icons.broken_image_outlined, size: 20)),
+                        ))),
                         Positioned(
                           top: 2, right: 2,
                           child: GestureDetector(

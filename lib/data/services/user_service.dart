@@ -11,7 +11,7 @@ class UserService {
 
   Future<List<Address>> getAddresses() async {
     final response = await _api.dio.get('users/me/addresses');
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => Address.fromJson(item)).toList();
   }
 

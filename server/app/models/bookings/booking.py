@@ -32,6 +32,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 from app.models.enums import (
+    BalloonColorMode,
     BookingStatus,
     BookingType,
     CancellationReason,
@@ -288,6 +289,29 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         Text,
         nullable=True,
         comment="Customer's special requests (visible to Tyohaar coordinators, not vendors)",
+    )
+
+    customization_note: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Customer's free-form custom requirements typed in the plan-flow "
+                "Details step, distinct from special_instructions. Visible to both "
+                "the vendor and Tyohaar admin.",
+    )
+
+    balloon_color_mode: Mapped[BalloonColorMode | None] = mapped_column(
+        SAEnum(BalloonColorMode, name="balloon_color_mode", native_enum=False),
+        nullable=True,
+        comment="Customer's chosen balloon décor style: a single accent colour or a two-colour combination.",
+    )
+
+    balloon_colors: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment=(
+            "Hex codes of the chosen balloon colour(s) — 1 item for SINGLE mode, "
+            "2 for DUAL. Values are drawn from app.core.constants.BALLOON_COLOR_PALETTE."
+        ),
     )
 
     cancellation_reason: Mapped[CancellationReason | None] = mapped_column(

@@ -54,7 +54,7 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
+      id: json['id'] as String? ?? '',
       phone: json['phone'],
       email: json['email'],
       fullName: json['full_name'],
@@ -133,7 +133,7 @@ class Occasion {
     final name = json['name']?.toString() ?? '';
     final category = json['category_id']?.toString() ?? 'other';
     return Occasion(
-      id: json['id'],
+      id: json['id'] as String? ?? '',
       name: name,
       nameLocalized: json['name_localized'] as String?,
       // Backend sends icon_url (URL), not icon_name. _parseIcon falls back to
@@ -230,7 +230,7 @@ class CelebrationTheme {
   factory CelebrationTheme.fromJson(Map<String, dynamic> json) {
     final rawColors = json['colors'] as Map<String, dynamic>?;
     return CelebrationTheme(
-      id: json['id'],
+      id: json['id'] as String? ?? '',
       name: json['name'] ?? '',
       description: json['description'] as String?,
       coverImageUrl: asUrl(json['cover_image_url']),
@@ -264,7 +264,7 @@ class PackageCategory {
 
   factory PackageCategory.fromJson(Map<String, dynamic> json) {
     return PackageCategory(
-      id: json['id'] as String,
+      id: json['id'] as String? ?? '',
       name: json['name'] as String,
       slug: json['slug'] as String,
       iconUrl: asUrl(json['icon_url']),
@@ -309,6 +309,8 @@ class Package {
   final double? averageRating;
   final int reviewCount;
   final int bookingCount;
+  final int likeCount;
+  final bool isLiked;
   final String? vendorId;
   final String currency;
   final int displayOrder;
@@ -341,6 +343,8 @@ class Package {
     this.averageRating,
     this.reviewCount = 0,
     this.bookingCount = 0,
+    this.likeCount = 0,
+    this.isLiked = false,
     this.vendorId,
     this.currency = 'INR',
     this.displayOrder = 0,
@@ -348,10 +352,41 @@ class Package {
     this.themeIds = const [],
   });
 
+  Package copyWith({int? likeCount, bool? isLiked}) => Package(
+        id: id,
+        name: name,
+        price: price,
+        inclusionsCount: inclusionsCount,
+        inclusions: inclusions,
+        slug: slug,
+        description: description,
+        shortDescription: shortDescription,
+        coverImageUrl: coverImageUrl,
+        galleryImageUrls: galleryImageUrls,
+        tint: tint,
+        categoryId: categoryId,
+        status: status,
+        isFeatured: isFeatured,
+        isCustomizable: isCustomizable,
+        minGuests: minGuests,
+        maxGuests: maxGuests,
+        durationHours: durationHours,
+        averageRating: averageRating,
+        reviewCount: reviewCount,
+        bookingCount: bookingCount,
+        likeCount: likeCount ?? this.likeCount,
+        isLiked: isLiked ?? this.isLiked,
+        vendorId: vendorId,
+        currency: currency,
+        displayOrder: displayOrder,
+        citySlug: citySlug,
+        themeIds: themeIds,
+      );
+
   factory Package.fromJson(Map<String, dynamic> json) {
     final categoryId = json['category_id'] as String?;
     return Package(
-      id: json['id'],
+      id: json['id'] as String? ?? '',
       name: json['name'],
       price: json['base_price'] != null
           ? double.tryParse(json['base_price'].toString()) ?? 0.0
@@ -386,6 +421,8 @@ class Package {
           : null,
       reviewCount: json['review_count'] as int? ?? 0,
       bookingCount: json['booking_count'] as int? ?? 0,
+      likeCount: json['like_count'] as int? ?? 0,
+      isLiked: json['is_liked'] as bool? ?? false,
       vendorId: json['vendor_id'] as String?,
       currency: json['currency'] as String? ?? 'INR',
       displayOrder: json['display_order'] as int? ?? 0,
@@ -426,6 +463,10 @@ class PackageItem {
   final String? coverImageUrl;
   final List<String> imageUrls;
   final int displayOrder;
+  final double? averageRating;
+  final int reviewCount;
+  final int likeCount;
+  final bool isLiked;
 
   const PackageItem({
     required this.id,
@@ -442,7 +483,32 @@ class PackageItem {
     this.coverImageUrl,
     this.imageUrls = const [],
     this.displayOrder = 0,
+    this.averageRating,
+    this.reviewCount = 0,
+    this.likeCount = 0,
+    this.isLiked = false,
   });
+
+  PackageItem copyWith({int? likeCount, bool? isLiked}) => PackageItem(
+        id: id,
+        name: name,
+        description: description,
+        unit: unit,
+        unitPrice: unitPrice,
+        quantity: quantity,
+        maxQuantity: maxQuantity,
+        isOptional: isOptional,
+        isMandatory: isMandatory,
+        isCustomizable: isCustomizable,
+        iconUrl: iconUrl,
+        coverImageUrl: coverImageUrl,
+        imageUrls: imageUrls,
+        displayOrder: displayOrder,
+        averageRating: averageRating,
+        reviewCount: reviewCount,
+        likeCount: likeCount ?? this.likeCount,
+        isLiked: isLiked ?? this.isLiked,
+      );
 
   /// Whether the customer can select more than the template default —
   /// true whenever maxQuantity is null (uncapped) or greater than quantity.
@@ -458,7 +524,7 @@ class PackageItem {
   factory PackageItem.fromJson(Map<String, dynamic> json) {
     final isMandatory = json['is_mandatory'] as bool? ?? true;
     return PackageItem(
-      id: json['id'] as String,
+      id: json['id'] as String? ?? '',
       name: json['name'] as String,
       description: json['description'] as String?,
       // Was: json['item_type'] — backend has no item_type field; unit is closest.
@@ -479,6 +545,12 @@ class PackageItem {
               .toList() ??
           const [],
       displayOrder: json['display_order'] as int? ?? 0,
+      averageRating: json['average_rating'] != null
+          ? double.tryParse(json['average_rating'].toString())
+          : null,
+      reviewCount: json['review_count'] as int? ?? 0,
+      likeCount: json['like_count'] as int? ?? 0,
+      isLiked: json['is_liked'] as bool? ?? false,
     );
   }
 }
@@ -546,7 +618,7 @@ class Booking {
 
   factory Booking.fromJson(Map<String, dynamic> json) {
     return Booking(
-      id: json['id'],
+      id: json['id'] as String? ?? '',
       bookingNumber: json['booking_number'],
       celebrationId: json['celebration_id'],
       status: json['booking_status'],
@@ -634,7 +706,7 @@ class EventMediaItem {
 
   factory EventMediaItem.fromJson(Map<String, dynamic> json, {required bool isVideo}) {
     return EventMediaItem(
-      id: json['id'] as String,
+      id: json['id'] as String? ?? '',
       url: json['url'] as String,
       thumbnailUrl: asUrl(json['thumbnail_url']),
       isVideo: isVideo,
@@ -683,7 +755,7 @@ class Guest {
 
   factory Guest.fromJson(Map<String, dynamic> json) {
     return Guest(
-      id: json['id'],
+      id: json['id'] as String? ?? '',
       name: json['name'],
       phone: json['phone'] as String?,
       email: json['email'] as String?,
@@ -997,7 +1069,7 @@ class Address {
 
   factory Address.fromJson(Map<String, dynamic> json) {
     return Address(
-      id: json['id'],
+      id: json['id'] as String? ?? '',
       label: json['label'] as String? ?? 'Home',
       addressType: json['address_type'] as String? ?? 'home',
       recipientName: json['recipient_name'] as String?,
@@ -1015,39 +1087,91 @@ class Address {
 }
 
 // ---------------------------------------------------------------------------
-// REVIEW  →  PackageReviewResponse / VendorReviewResponse
+// PACKAGE REVIEW  →  PackageReviewResponse
 // ---------------------------------------------------------------------------
 
-class Review {
+class PackageReviewModel {
   final String id;
-  // reviewer_id is a UUID; username requires a nested user object (not in backend response).
-  final String? reviewerId;
-  final String userName;
-  final String comment;
-  final double rating;
-  final String date;
-  final int likes;
+  final String packageId;
+  final String customerId;
+  final String? bookingId;
+  final int rating;
+  final String? title;
+  final String? body;
+  final bool isVerified;
+  final bool isPublished;
+  final String createdAt;
 
-  const Review({
-    this.id = '',
-    this.reviewerId,
-    required this.userName,
-    required this.comment,
+  const PackageReviewModel({
+    required this.id,
+    required this.packageId,
+    required this.customerId,
+    this.bookingId,
     required this.rating,
-    required this.date,
-    this.likes = 0,
+    this.title,
+    this.body,
+    this.isVerified = false,
+    this.isPublished = false,
+    required this.createdAt,
   });
 
-  factory Review.fromJson(Map<String, dynamic> json) {
-    return Review(
+  factory PackageReviewModel.fromJson(Map<String, dynamic> json) {
+    return PackageReviewModel(
       id: json['id'] as String? ?? '',
-      reviewerId: json['reviewer_id'] as String?,
-      // reviewer_id is a UUID; display name requires a nested user object.
-      userName: (json['reviewer'] as Map?)?['full_name'] as String? ?? 'User',
-      comment: json['body'] as String? ?? '',
-      rating: (json['rating'] as num? ?? 0).toDouble(),
-      date: json['created_at'] as String? ?? '',
-      likes: 0, // backend has no likes field
+      packageId: json['package_id'] as String,
+      customerId: json['reviewer_id'] as String? ?? json['customer_id'] as String? ?? '',
+      bookingId: json['booking_id'] as String?,
+      rating: (json['rating'] as num? ?? 0).toInt(),
+      title: json['title'] as String?,
+      body: json['body'] as String?,
+      isVerified: json['is_verified'] as bool? ?? false,
+      isPublished: json['is_published'] as bool? ?? false,
+      createdAt: json['created_at'] as String? ?? '',
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PACKAGE ITEM REVIEW  →  PackageItemReviewResponse
+// ---------------------------------------------------------------------------
+
+class PackageItemReviewModel {
+  final String id;
+  final String packageItemId;
+  final String customerId;
+  final String? bookingId;
+  final int rating;
+  final String? title;
+  final String? body;
+  final bool isVerifiedBooking;
+  final bool isPublished;
+  final String createdAt;
+
+  const PackageItemReviewModel({
+    required this.id,
+    required this.packageItemId,
+    required this.customerId,
+    this.bookingId,
+    required this.rating,
+    this.title,
+    this.body,
+    this.isVerifiedBooking = false,
+    this.isPublished = false,
+    required this.createdAt,
+  });
+
+  factory PackageItemReviewModel.fromJson(Map<String, dynamic> json) {
+    return PackageItemReviewModel(
+      id: json['id'] as String? ?? '',
+      packageItemId: json['package_item_id'] as String,
+      customerId: json['customer_id'] as String? ?? '',
+      bookingId: json['booking_id'] as String?,
+      rating: (json['rating'] as num? ?? 0).toInt(),
+      title: json['title'] as String?,
+      body: json['body'] as String?,
+      isVerifiedBooking: json['is_verified_booking'] as bool? ?? false,
+      isPublished: json['is_published'] as bool? ?? false,
+      createdAt: json['created_at'] as String? ?? '',
     );
   }
 }
@@ -1108,7 +1232,7 @@ class Celebration {
   factory Celebration.fromJson(Map<String, dynamic> json) {
     final rawThemeColors = json['theme_colors'] as Map?;
     return Celebration(
-      id: json['id'] as String,
+      id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? 'Untitled',
       occasionId: json['occasion_id'] as String?,
       occasionName: json['occasion_name'] as String?,
@@ -1179,7 +1303,7 @@ class CelebrationChecklistItem {
 
   factory CelebrationChecklistItem.fromJson(Map<String, dynamic> json) {
     return CelebrationChecklistItem(
-      id: json['id'],
+      id: json['id'] as String? ?? '',
       title: json['title'],
       description: json['description'] as String?,
       isCompleted: json['is_completed'] as bool? ?? false,

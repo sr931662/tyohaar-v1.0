@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../theme/colors.dart';
@@ -36,13 +37,19 @@ class _VendorMultimediaScreenState extends State<VendorMultimediaScreen> {
   }
 
   Future<void> _uploadPhoto(String bookingId) async {
-    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (image == null) return;
-    setState(() => _uploadingIds.add(bookingId));
     try {
+      final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (image == null) return;
+      setState(() => _uploadingIds.add(bookingId));
       await _bookingService.uploadEventPhoto(bookingId, File(image.path));
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo uploaded.')));
       _load();
+    } on PlatformException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+        );
+      }
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
     } finally {
@@ -51,13 +58,19 @@ class _VendorMultimediaScreenState extends State<VendorMultimediaScreen> {
   }
 
   Future<void> _uploadVideo(String bookingId) async {
-    final video = await ImagePicker().pickVideo(source: ImageSource.gallery);
-    if (video == null) return;
-    setState(() => _uploadingIds.add(bookingId));
     try {
+      final video = await ImagePicker().pickVideo(source: ImageSource.gallery);
+      if (video == null) return;
+      setState(() => _uploadingIds.add(bookingId));
       await _bookingService.uploadEventVideo(bookingId, File(video.path));
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video uploaded.')));
       _load();
+    } on PlatformException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+        );
+      }
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
     } finally {

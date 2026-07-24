@@ -27,3 +27,12 @@ class DuplicatePackageReviewError(ConflictError):
 
 class PackageNotPublishedError(BusinessRuleError):
     default_message = "Package is not published and cannot be booked."
+
+
+class PackageItemNotFoundError(NotFoundError):
+    def __init__(self, package_item_id: str | None = None) -> None:
+        super().__init__("PackageItem", package_item_id)
+
+
+class DuplicatePackageItemReviewError(ConflictError):
+    default_message = "You have already reviewed this package item."

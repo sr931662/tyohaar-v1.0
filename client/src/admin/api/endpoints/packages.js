@@ -63,4 +63,19 @@ export const packagesApi = {
 
   deleteReview: (packageId, reviewId) =>
     apiClient.delete(`/packages/${packageId}/reviews/${reviewId}`).then(extractData),
+
+  moderateReview: (packageId, reviewId, body) =>
+    apiClient.patch(`/packages/${packageId}/reviews/${reviewId}/moderate`, body).then(extractData),
+
+  // Item Reviews
+  listItemReviews: (packageId, itemId, params) =>
+    apiClient.get(`/packages/${packageId}/items/${itemId}/reviews`, { params }).then(extractPaginated),
+
+  deleteItemReview: (packageId, itemId, reviewId) =>
+    apiClient.delete(`/packages/${packageId}/items/${itemId}/reviews/${reviewId}`).then(extractData),
+
+  moderateItemReview: (packageId, itemId, reviewId, body) =>
+    apiClient
+      .patch(`/packages/${packageId}/items/${itemId}/reviews/${reviewId}/moderate`, body)
+      .then(extractData),
 };

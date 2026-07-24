@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from app.models.packages.package_discount import PackageDiscount
     from app.models.packages.package_availability import PackageAvailability
     from app.models.packages.package_review import PackageReview
+    from app.models.packages.package_like import PackageLike
     from app.models.packages.package_faq import PackageFAQ
     from app.models.occasions.occasion import Occasion
     from app.models.occasions.occasion_theme import OccasionTheme
@@ -189,6 +190,7 @@ class Package(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
     average_rating: Mapped[Decimal | None] = mapped_column(Numeric(3, 2), nullable=True)
     review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     booking_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    like_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # ── Status & Visibility ───────────────────────────────────────────────────
 
@@ -318,6 +320,13 @@ class Package(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         "PackageReview",
         back_populates="package",
         lazy="noload",
+    )
+
+    likes: Mapped[list[PackageLike]] = relationship(
+        "PackageLike",
+        back_populates="package",
+        lazy="noload",
+        cascade="all, delete-orphan",
     )
 
     faqs: Mapped[list[PackageFAQ]] = relationship(

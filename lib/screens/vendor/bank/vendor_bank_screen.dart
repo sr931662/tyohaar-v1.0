@@ -47,6 +47,7 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
     final bankCtrl = TextEditingController();
     final branchCtrl = TextEditingController();
     bool isPrimary = _accounts.isEmpty;
+    String? errorText;
 
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -72,8 +73,33 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
                   value: isPrimary,
                   onChanged: (v) => setSheetState(() => isPrimary = v ?? false),
                 ),
+                if (errorText != null) ...[
+                  const SizedBox(height: 8),
+                  Text(errorText!, style: TyType.sans(12.5, color: Colors.red)),
+                ],
                 const SizedBox(height: 12),
-                ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add Account')),
+                ElevatedButton(
+                  onPressed: () {
+                    final holder = holderCtrl.text.trim();
+                    final number = numberCtrl.text.trim();
+                    final ifsc = ifscCtrl.text.trim().toUpperCase();
+                    final bank = bankCtrl.text.trim();
+                    if (holder.isEmpty || bank.isEmpty) {
+                      setSheetState(() => errorText = 'Account holder name and bank name are required.');
+                      return;
+                    }
+                    if (!RegExp(r'^[0-9]{9,18}$').hasMatch(number)) {
+                      setSheetState(() => errorText = 'Enter a valid account number (9-18 digits).');
+                      return;
+                    }
+                    if (!RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(ifsc)) {
+                      setSheetState(() => errorText = 'Enter a valid IFSC code (e.g. ABCD0123456).');
+                      return;
+                    }
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text('Add Account'),
+                ),
               ],
             ),
           ),
@@ -92,6 +118,7 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
         'is_primary': isPrimary,
       });
       _load();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bank account added.')));
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not add account.')));
     }

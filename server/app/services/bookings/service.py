@@ -278,6 +278,9 @@ class BookingService(BaseService):
                 amount_paid=Decimal("0.00"),
                 amount_due=total_amount,
                 special_instructions=data.special_instructions,
+                customization_note=data.customization_note,
+                balloon_color_mode=data.balloon_color_mode,
+                balloon_colors=data.balloon_colors,
             )
             booking = await uow.bookings.bookings.create(booking)
 

@@ -28,6 +28,7 @@ app.*.map.json
 /android/app/google-services.json
 *.jks
 *.keystore
+android/key.properties
 
 # ============================================================
 # iOS / macOS / Xcode

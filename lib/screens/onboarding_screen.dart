@@ -23,24 +23,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Moments That Matter',
       subtitle: 'From a baby’s first steps to golden anniversaries, we turn milestones into memories.',
       icon: Icons.auto_awesome_rounded,
+      image: 'assets/images/onboarding 1.png',
       tint: 'saffron',
     ),
     OnboardingData(
       title: 'Curated Perfection',
       subtitle: 'Browse hand-picked packages designed by experts to fit your unique style and budget.',
       icon: Icons.dashboard_customize_rounded,
+      image: 'assets/images/onboarding 2.png',
       tint: 'rose',
     ),
     PlanOnboardingData(
       title: 'Stress-Free Planning',
       subtitle: 'We handle the vendors, the timeline, and the details. You just enjoy the celebration.',
       icon: Icons.checklist_rtl_rounded,
+      image: 'assets/images/onboarding 3.png',
       tint: 'leaf',
     ),
     OnboardingData(
       title: 'Verified Excellence',
       subtitle: 'Every vendor is Tyohaar-vetted for quality and reliability. Trust is our foundation.',
       icon: Icons.verified_user_rounded,
+      image: 'assets/images/onboarding 4.png',
       tint: 'gold',
     ),
   ];
@@ -151,12 +155,13 @@ class OnboardingData {
   final String title;
   final String subtitle;
   final IconData icon;
+  final String image;
   final String tint;
-  OnboardingData({required this.title, required this.subtitle, required this.icon, required this.tint});
+  OnboardingData({required this.title, required this.subtitle, required this.icon, required this.image, required this.tint});
 }
 
 class PlanOnboardingData extends OnboardingData {
-  PlanOnboardingData({required super.title, required super.subtitle, required super.icon, required super.tint});
+  PlanOnboardingData({required super.title, required super.subtitle, required super.icon, required super.image, required super.tint});
 }
 
 class _OnboardingPage extends StatelessWidget {
@@ -185,16 +190,18 @@ class _OnboardingPage extends StatelessWidget {
                 return Transform.scale(
                   scale: value,
                   child: Container(
-                    width: resp.w(160),
-                    height: resp.w(160),
+                    width: resp.w(220),
+                    height: resp.w(220),
                     decoration: BoxDecoration(
                       color: ty.tint(data.tint).withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      data.icon,
-                      size: resp.w(80),
-                      color: ty.tint(data.tint),
+                    child: Padding(
+                      padding: EdgeInsets.all(resp.w(24)),
+                      child: Image.asset(
+                        data.image,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 );

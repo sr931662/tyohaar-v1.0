@@ -155,8 +155,19 @@ export default function BookingDetailPage() {
               {b.theme_name && (
                 <div className="admin-detail-row"><div className="admin-detail-label">Customization Theme</div><div className="admin-detail-value">{b.theme_name}</div></div>
               )}
+              {b.balloon_colors?.length > 0 && (
+                <div className="admin-detail-row">
+                  <div className="admin-detail-label">Balloon Colours ({b.balloon_color_mode})</div>
+                  <div className="admin-detail-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {b.balloon_colors.map((c, i) => (
+                      <span key={i} title={c} style={{ width: 16, height: 16, borderRadius: '50%', background: c, border: '1px solid rgba(0,0,0,0.15)', display: 'inline-block' }} />
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* was: b.special_notes — backend sends special_instructions */}
               <div className="admin-detail-row"><div className="admin-detail-label">Special Notes</div><div className="admin-detail-value">{b.special_instructions ?? '—'}</div></div>
+              <div className="admin-detail-row"><div className="admin-detail-label">Customization Note</div><div className="admin-detail-value">{b.customization_note ?? '—'}</div></div>
             </div>
           </div>
           <div className="admin-card">

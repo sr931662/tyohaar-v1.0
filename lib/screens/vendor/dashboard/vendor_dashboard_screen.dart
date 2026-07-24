@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
-import '../../../data/app_state.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
 import '../profile/vendor_profile_screen.dart';
 import '../packages/vendor_packages_screen.dart';
+import '../packages/vendor_package_form_screen.dart';
 
 /// Mirrors the web vendor portal's Overview page: status/verification
 /// pills, stat cards, quick actions, business-info card.
@@ -124,8 +124,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => AppState.instance.setPOV(UserPOV.vendor), // This is a placeholder, usually you'd trigger a tab change if needed, but here we just go to packages.
-                    // Wait, the action in plan was prominent buttons.
+                    onPressed: () => Navigator.of(context)
+                        .push(MaterialPageRoute(builder: (_) => const VendorPackageFormScreen()))
+                        .then((_) => _load()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: ty.saffron,
                       foregroundColor: ty.onPrimary,

@@ -20,6 +20,7 @@ class _HelpScreenState extends State<HelpScreen> {
   List<FaqItem> _faqs = [];
   List<FaqItem> _filtered = [];
   bool _isLoading = true;
+  bool _error = false;
   final TextEditingController _searchCtrl = TextEditingController();
   int? _expandedIndex;
 
@@ -37,6 +38,7 @@ class _HelpScreenState extends State<HelpScreen> {
   }
 
   Future<void> _loadFaqs() async {
+    setState(() { _isLoading = true; _error = false; });
     try {
       final faqs = await context.read<CommonService>().listFaqs();
       if (mounted) {
@@ -47,7 +49,7 @@ class _HelpScreenState extends State<HelpScreen> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _error = true; });
     }
   }
 
@@ -106,6 +108,26 @@ class _HelpScreenState extends State<HelpScreen> {
           if (_isLoading) ...[
             const Center(child: CircularProgressIndicator()),
           ] else ...[
+            if (_error) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.red.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text('Could not load FAQs. Please try again.',
+                          style: TyType.sans(13.5, color: ty.ink2)),
+                    ),
+                    TextButton(onPressed: _loadFaqs, child: const Text('Retry')),
+                  ],
+                ),
+              ),
+            ],
             if (_filtered.isEmpty && _searchCtrl.text.isEmpty) ...[
               Text('POPULAR TOPICS', style: TyType.eyebrow(11, color: ty.ink3)),
               const SizedBox(height: 16),

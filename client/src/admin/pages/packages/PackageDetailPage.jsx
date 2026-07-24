@@ -7,6 +7,8 @@ import { formatDate, formatCurrency, initials } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { ConfirmDialog } from '../../components/ui/Modal';
+import RatingSummary from '../../components/ui/RatingSummary';
+import ReviewList from '../../components/reviews/ReviewList';
 
 const EMPTY_ITEM = { name: '', description: '', quantity: 1, unit: '', base_price: '', is_mandatory: true };
 
@@ -56,6 +58,62 @@ export default function PackageDetailPage() {
   });
 
   const invalidate = () => qc.invalidateQueries(['package', packageId]);
+
+  const { data: reviewsPage } = useQuery({
+    queryKey: ['package-reviews', packageId],
+    queryFn: () => packagesApi.listReviews(packageId, { limit: 50 }),
+  });
+  const reviews = reviewsPage?.items ?? [];
+
+  const moderateReviewMutation = useMutation({
+    mutationFn: ({ reviewId, status }) =>
+      packagesApi.moderateReview(packageId, reviewId, { moderation_status: status }),
+    onSuccess: () => {
+      toast.success('Review updated.');
+      qc.invalidateQueries(['package-reviews', packageId]);
+      invalidate();
+    },
+    onError: () => toast.error('Failed to update review.'),
+  });
+
+  const deleteReviewMutation = useMutation({
+    mutationFn: (reviewId) => packagesApi.deleteReview(packageId, reviewId),
+    onSuccess: () => {
+      toast.success('Review deleted.');
+      qc.invalidateQueries(['package-reviews', packageId]);
+      invalidate();
+    },
+    onError: () => toast.error('Failed to delete review.'),
+  });
+
+  const [expandedItemReviews, setExpandedItemReviews] = useState(null);
+  const { data: itemReviewsPage } = useQuery({
+    queryKey: ['package-item-reviews', packageId, expandedItemReviews],
+    queryFn: () => packagesApi.listItemReviews(packageId, expandedItemReviews, { limit: 50 }),
+    enabled: !!expandedItemReviews,
+  });
+  const itemReviews = itemReviewsPage?.items ?? [];
+
+  const moderateItemReviewMutation = useMutation({
+    mutationFn: ({ reviewId, status }) =>
+      packagesApi.moderateItemReview(packageId, expandedItemReviews, reviewId, { moderation_status: status }),
+    onSuccess: () => {
+      toast.success('Review updated.');
+      qc.invalidateQueries(['package-item-reviews', packageId, expandedItemReviews]);
+      invalidate();
+    },
+    onError: () => toast.error('Failed to update review.'),
+  });
+
+  const deleteItemReviewMutation = useMutation({
+    mutationFn: (reviewId) => packagesApi.deleteItemReview(packageId, expandedItemReviews, reviewId),
+    onSuccess: () => {
+      toast.success('Review deleted.');
+      qc.invalidateQueries(['package-item-reviews', packageId, expandedItemReviews]);
+      invalidate();
+    },
+    onError: () => toast.error('Failed to delete review.'),
+  });
 
   const approveMutation = useMutation({
     mutationFn: () => packagesApi.approve(packageId),
@@ -206,6 +264,10 @@ export default function PackageDetailPage() {
           <div className="admin-metric-value">{pkg.review_count ?? 0}</div>
         </div>
         <div className="admin-metric-card">
+          <div className="admin-metric-label">Likes</div>
+          <div className="admin-metric-value">❤️ {pkg.like_count ?? 0}</div>
+        </div>
+        <div className="admin-metric-card">
           <div className="admin-metric-label">Inclusions</div>
           <div className="admin-metric-value">{pkg.inclusions_count ?? 0}</div>
         </div>
@@ -332,6 +394,18 @@ export default function PackageDetailPage() {
         </div>
 
         <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
+          <div className="admin-card-header"><div className="admin-card-title">Reviews</div></div>
+          <div className="admin-card-body">
+            <RatingSummary reviews={reviews} />
+            <ReviewList
+              reviews={reviews}
+              onModerate={(reviewId, status) => moderateReviewMutation.mutateAsync({ reviewId, status })}
+              onDelete={(reviewId) => deleteReviewMutation.mutate(reviewId)}
+            />
+          </div>
+        </div>
+
+        <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
           <div className="admin-card-header">
             <div className="admin-card-title">Items</div>
             {!showAddItem && (
@@ -374,12 +448,34 @@ export default function PackageDetailPage() {
                       {item.quantity > 1 && `${item.quantity}${item.unit ? ' ' + item.unit : 'x'} · `}
                       {formatCurrency(item.base_price ?? 0)}
                     </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                      ⭐ {item.average_rating ? Number(item.average_rating).toFixed(1) : '—'} ({item.review_count ?? 0}) · ❤️ {item.like_count ?? 0}
+                    </div>
                     <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setExpandedItemReviews(expandedItemReviews === item.id ? null : item.id)}
+                      >
+                        {expandedItemReviews === item.id ? 'Hide Reviews' : 'Reviews'}
+                      </button>
                       <button className="btn btn-secondary btn-sm" onClick={() => startEditItem(item)}>Edit</button>
                       <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDeleteItem(item)}>✕</button>
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {expandedItemReviews && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+                <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  Item Reviews
+                </h4>
+                <ReviewList
+                  reviews={itemReviews}
+                  onModerate={(reviewId, status) => moderateItemReviewMutation.mutateAsync({ reviewId, status })}
+                  onDelete={(reviewId) => deleteItemReviewMutation.mutate(reviewId)}
+                />
               </div>
             )}
 

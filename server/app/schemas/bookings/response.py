@@ -20,6 +20,7 @@ from pydantic import AliasChoices, ConfigDict, Field, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
+    BalloonColorMode,
     BookingStatus,
     BookingType,
     CancellationReason,
@@ -95,6 +96,8 @@ class BookingResponse(BaseSchema):
     celebration_title: str | None = Field(default=None, description="Customer-given name for the celebration, e.g. 'Bunty's Mehndi'")
     theme_id: uuid.UUID | None = Field(default=None, description="Selected customization theme (only set for customizable packages)")
     theme_name: str | None = Field(default=None, description="Snapshot of the selected theme's name")
+    balloon_color_mode: BalloonColorMode | None = Field(default=None, description="Single or dual balloon colour choice")
+    balloon_colors: list[str] | None = Field(default=None, description="Hex code(s) of the chosen balloon colour(s)")
     address_id: uuid.UUID | None
     scheduled_date: date
     scheduled_start_time: time | None
@@ -118,6 +121,7 @@ class BookingResponse(BaseSchema):
     completed_at: datetime | None
     # Customer-visible metadata
     special_instructions: str | None
+    customization_note: str | None = None
     cancellation_reason: CancellationReason | None
     created_at: datetime
     updated_at: datetime

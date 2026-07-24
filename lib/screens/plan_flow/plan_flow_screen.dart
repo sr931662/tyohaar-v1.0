@@ -18,8 +18,10 @@ import 'package:tyohaar/screens/send_invitations_screen.dart';
 import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
 import '../../widgets/avatar.dart';
 import '../../widgets/photo_placeholder.dart';
+import '../../widgets/state_screens.dart';
 import '../../widgets/ty_button.dart';
 import '../../widgets/ty_chip.dart';
+import '../../widgets/ty_rating_stars.dart';
 import '../../widgets/common.dart';
 
 class PlanFlowScreen extends StatefulWidget {
@@ -30,8 +32,31 @@ class PlanFlowScreen extends StatefulWidget {
   State<PlanFlowScreen> createState() => _PlanFlowScreenState();
 }
 
-const _venueTypes = ['Home', 'Banquet Hall', 'Outdoor / Garden', 'Hotel'];
 const _colorPalettes = ['Gold', 'Blush Pink', 'Sky Blue', 'Sage Green', 'Lavender', 'Multicolor'];
+
+// Curated, reliably-stockable balloon colours — must match the backend's
+// BALLOON_COLOR_PALETTE (app/core/constants.py) exactly by hex value, since
+// the server only accepts booking colours drawn from that same list.
+const _balloonColorPalette = <String, String>{
+  'Red': '#E63946',
+  'Gold': '#D4AF37',
+  'Rose Gold': '#E8B4B8',
+  'Pink': '#F48FB1',
+  'Sky Blue': '#87CEEB',
+  'Navy Blue': '#1E3A5F',
+  'White': '#FFFFFF',
+  'Black': '#1C1C1C',
+  'Silver': '#C0C0C0',
+  'Purple': '#8E44AD',
+  'Green': '#2ECC71',
+  'Orange': '#F39C12',
+  'Yellow': '#F1C40F',
+};
+
+Color _hexToColor(String hex) {
+  final h = hex.replaceAll('#', '');
+  return Color(int.parse('FF$h', radix: 16));
+}
 
 class _PlanFlowScreenState extends State<PlanFlowScreen> {
   final PackageService _packageService = PackageService();
@@ -57,15 +82,20 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   List<Address> _addresses = [];
   List<CelebrationTheme> _themes = [];
   bool _isLoading = true;
+  bool _loadError = false;
+  bool _packagesError = false;
+  bool _itemsError = false;
 
   Occasion? _occasion;
   final _nameCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
   final Set<String> _vibes = {};
-  String? _venueType;
   final Set<String> _colorPalette = {};
   final List<PlannedGuest> _plannedGuests = [];
   Package? _pkg;
   CelebrationTheme? _theme;
+  String? _balloonColorMode; // 'single' | 'dual'
+  final List<String> _balloonColors = []; // selected palette color names
   Address? _address;
   DateTime _eventDate = DateTime.now().add(const Duration(days: 30));
 
@@ -82,6 +112,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = false;
+    });
     try {
       final results = await Future.wait([
         _packageService.listOccasions(),
@@ -103,7 +137,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       if (_occasion != null) _loadPackagesForOccasion(_occasion!.id);
     } catch (e) {
       debugPrint('Error loading plan flow data: $e');
-      setState(() => _isLoading = false);
+      setState(() { _isLoading = false; _loadError = true; });
     }
   }
 
@@ -111,13 +145,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // occasion changes, so "Choose your package" only ever shows packages that
   // actually apply to what the customer is celebrating.
   Future<void> _loadPackagesForOccasion(String occasionId) async {
-    setState(() => _loadingPackages = true);
+    setState(() { _loadingPackages = true; _packagesError = false; });
     try {
       final packages = await _packageService.listPackages(occasionId: occasionId);
       if (mounted) setState(() { _packages = packages; _loadingPackages = false; });
     } catch (e) {
       debugPrint('Error loading packages for occasion: $e');
-      if (mounted) setState(() => _loadingPackages = false);
+      if (mounted) setState(() { _loadingPackages = false; _packagesError = true; });
     }
   }
 
@@ -141,7 +175,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Future<void> _loadPackageItems() async {
     if (_pkg == null) return;
-    setState(() => _loadingItems = true);
+    setState(() { _loadingItems = true; _itemsError = false; });
     try {
       final items = await _packageService.listPackageItems(_pkg!.id);
       setState(() {
@@ -154,13 +188,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       });
     } catch (e) {
       debugPrint('Error loading package items: $e');
-      setState(() => _loadingItems = false);
+      setState(() { _loadingItems = false; _itemsError = true; });
     }
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _notesCtrl.dispose();
     _couponCtrl.dispose();
     super.dispose();
   }
@@ -224,9 +259,16 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
       final notes = <String>[
         if (_vibes.isNotEmpty) 'Mood: ${_vibes.join(', ')}',
-        if (_venueType != null) 'Venue type: $_venueType',
         if (_colorPalette.isNotEmpty) 'Color palette: ${_colorPalette.join(', ')}',
       ].join(' · ');
+
+      // Only send balloon colours once the selection is complete for the
+      // chosen mode (1 colour for single, 2 for dual) — the backend rejects
+      // a mode/colour-count mismatch, and an incomplete pick just means the
+      // customer hasn't finished this optional step yet.
+      final expectedCount = _balloonColorMode == 'dual' ? 2 : 1;
+      final balloonSelectionComplete = _balloonColorMode != null && _balloonColors.length == expectedCount;
+      final balloonColorsHex = _balloonColors.map((name) => _balloonColorPalette[name]!).toList();
 
       final booking = await _bookingService.createBooking({
         'package_id': _pkg?.id,
@@ -239,6 +281,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'item_ids': optionalSelected,
         'item_quantities': _itemQuantities.map((id, qty) => MapEntry(id, qty)),
         'special_instructions': notes.isNotEmpty ? notes : null,
+        'customization_note': _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
+        if ((_pkg?.isCustomizable ?? false) && balloonSelectionComplete) ...{
+          'balloon_color_mode': _balloonColorMode,
+          'balloon_colors': balloonColorsHex,
+        },
         if (_couponCtrl.text.trim().isNotEmpty && _couponError == null)
           'coupon_code': _couponCtrl.text.trim(),
       });
@@ -278,6 +325,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
     if (_isLoading) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
+    if (_loadError) {
+      return Scaffold(backgroundColor: ty.paper, body: TyStateScreen.error(onAction: _loadData));
     }
 
     final titles = [
@@ -545,21 +596,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _field(context, 'Where', _addressPicker(context)),
         _field(
           context,
-          'Venue type',
-          Wrap(
-            spacing: 9,
-            runSpacing: 9,
-            children: _venueTypes
-                .map((v) => TyChip(
-                      label: v,
-                      active: _venueType == v,
-                      onTap: () => setState(() => _venueType = _venueType == v ? null : v),
-                    ))
-                .toList(),
-          ),
-        ),
-        _field(
-          context,
           'The mood',
           Wrap(
             spacing: 9,
@@ -588,6 +624,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                           _colorPalette.contains(v) ? _colorPalette.remove(v) : _colorPalette.add(v)),
                     ))
                 .toList(),
+          ),
+        ),
+        _field(
+          context,
+          'Anything else we should know?',
+          _textInput(
+            context,
+            _notesCtrl,
+            maxLines: 3,
           ),
         ),
       ],
@@ -834,6 +879,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       );
     }
 
+    if (_packagesError) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: TyStateScreen.error(
+          onAction: () => _occasion != null ? _loadPackagesForOccasion(_occasion!.id) : null,
+        ),
+      );
+    }
+
     if (_packages.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),
@@ -860,8 +914,38 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           children: _packages.map((p) => _packageCard(context, p)).toList(),
         ),
         if (_pkg?.isCustomizable ?? false) _themeStep(context),
+        if (_pkg?.isCustomizable ?? false) _balloonColorStep(context),
       ],
     );
+  }
+
+  Future<void> _toggleLikePackage(Package p) async {
+    final wasLiked = p.isLiked;
+    final index = _packages.indexWhere((x) => x.id == p.id);
+    if (index == -1) return;
+    setState(() {
+      _packages[index] = p.copyWith(isLiked: !wasLiked, likeCount: p.likeCount + (wasLiked ? -1 : 1));
+      if (_pkg?.id == p.id) _pkg = _packages[index];
+    });
+    try {
+      final result = wasLiked
+          ? await _packageService.unlikePackage(p.id)
+          : await _packageService.likePackage(p.id);
+      if (!mounted) return;
+      setState(() {
+        _packages[index] = _packages[index].copyWith(
+          isLiked: result['is_liked'] as bool,
+          likeCount: result['like_count'] as int,
+        );
+        if (_pkg?.id == p.id) _pkg = _packages[index];
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _packages[index] = p;
+        if (_pkg?.id == p.id) _pkg = p;
+      });
+    }
   }
 
   Widget _packageCard(BuildContext context, Package p) {
@@ -907,11 +991,40 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   top: 8, right: 8,
                   child: TyPill(formatPrice(p.price)),
                 ),
+                Positioned(
+                  top: 8, left: 8,
+                  child: GestureDetector(
+                    onTap: () => _toggleLikePackage(p),
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.35),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        p.isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        size: 16,
+                        color: p.isLiked ? Colors.redAccent : Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
             Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.display(15, color: ty.ink)),
             const SizedBox(height: 2),
+            if ((p.averageRating ?? 0) > 0 || p.reviewCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Row(
+                  children: [
+                    TyRatingStars(rating: p.averageRating ?? 0, size: 12),
+                    const SizedBox(width: 4),
+                    Text('(${p.reviewCount})', style: TyType.sans(10.5, color: ty.ink3)),
+                  ],
+                ),
+              ),
             Text(p.description ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: TyType.sans(11.5, color: ty.ink2, height: 1.3)),
             const Spacer(),
             GestureDetector(
@@ -1122,12 +1235,111 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
+  Widget _balloonColorStep(BuildContext context) {
+    final ty = context.ty;
+    final maxColors = _balloonColorMode == 'dual' ? 2 : 1;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('BALLOON COLOURS', style: TyType.eyebrow(11, color: ty.ink3)),
+          const SizedBox(height: 4),
+          Text(
+            'Pick a single accent colour, or a two-colour combination for your balloon décor.',
+            style: TyType.sans(12.5, color: ty.ink2),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 9,
+            runSpacing: 9,
+            children: ['single', 'dual'].map((mode) {
+              return TyChip(
+                label: mode == 'single' ? 'Single Colour' : 'Dual Colour',
+                active: _balloonColorMode == mode,
+                onTap: () => setState(() {
+                  _balloonColorMode = _balloonColorMode == mode ? null : mode;
+                  final newMax = _balloonColorMode == 'dual' ? 2 : 1;
+                  if (_balloonColors.length > newMax) {
+                    _balloonColors.removeRange(newMax, _balloonColors.length);
+                  }
+                }),
+              );
+            }).toList(),
+          ),
+          if (_balloonColorMode != null) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: _balloonColorPalette.entries.map((entry) {
+                final name = entry.key;
+                final color = _hexToColor(entry.value);
+                final on = _balloonColors.contains(name);
+                return GestureDetector(
+                  onTap: () => setState(() {
+                    if (on) {
+                      _balloonColors.remove(name);
+                    } else {
+                      if (_balloonColors.length >= maxColors) {
+                        _balloonColors.removeAt(0);
+                      }
+                      _balloonColors.add(name);
+                    }
+                  }),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 3 : 1),
+                          boxShadow: on
+                              ? [BoxShadow(color: ty.saffron.withOpacity(0.35), blurRadius: 6, offset: const Offset(0, 2))]
+                              : null,
+                        ),
+                        child: on
+                            ? Icon(Icons.check_rounded,
+                                color: color.computeLuminance() > 0.6 ? Colors.black87 : Colors.white, size: 18)
+                            : null,
+                      ),
+                      const SizedBox(height: 4),
+                      SizedBox(
+                        width: 56,
+                        child: Text(
+                          name,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TyType.sans(10.5, color: ty.ink2),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // ── Step 2: Package Items ───────────────────────────────────────────────
 
   Widget _packageItemsStep(BuildContext context) {
     final ty = context.ty;
     if (_loadingItems) return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
     if (_pkg == null) return const SizedBox();
+    if (_itemsError) {
+      return Padding(
+        padding: const EdgeInsets.all(40),
+        child: TyStateScreen.error(onAction: _loadPackageItems),
+      );
+    }
     if (_packageItems.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadPackageItems());
       return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
@@ -1291,6 +1503,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _summaryCard(context, 'Package', _pkg?.name ?? '', onEdit: () => _jumpTo(1)),
         if ((_pkg?.isCustomizable ?? false) && _theme != null)
           _summaryCard(context, 'Theme', _theme!.name, onEdit: () => _jumpTo(1)),
+        if ((_pkg?.isCustomizable ?? false) && _balloonColorMode != null && _balloonColors.isNotEmpty)
+          _summaryCard(
+            context,
+            'Balloon Colours',
+            '${_balloonColorMode == 'dual' ? 'Dual' : 'Single'} · ${_balloonColors.join(', ')}',
+            onEdit: () => _jumpTo(1),
+          ),
         if (selectedOptional.isNotEmpty)
           _summaryCard(context, 'Add-ons', selectedOptional.map((i) {
             final qty = _itemQuantities[i.id] ?? i.quantity;
@@ -1458,10 +1677,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  Widget _textInput(BuildContext context, TextEditingController ctrl, {IconData? icon}) {
+  Widget _textInput(BuildContext context, TextEditingController ctrl, {IconData? icon, int maxLines = 1}) {
     final ty = context.ty;
     return TextField(
       controller: ctrl,
+      maxLines: maxLines,
       style: TyType.sans(15.5, color: ty.ink, weight: FontWeight.w500),
       decoration: InputDecoration(
         isDense: true,

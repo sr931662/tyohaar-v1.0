@@ -6,7 +6,7 @@ class CelebrationService {
 
   Future<List<Celebration>> listCelebrations() async {
     final response = await _api.dio.get('celebrations');
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => Celebration.fromJson(item)).toList();
   }
 
@@ -17,7 +17,7 @@ class CelebrationService {
 
   Future<List<Guest>> listGuests(String celebrationId) async {
     final response = await _api.dio.get('celebrations/$celebrationId/guests');
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => Guest.fromJson(item)).toList();
   }
 

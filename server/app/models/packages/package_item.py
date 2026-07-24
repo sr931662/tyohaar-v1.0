@@ -35,6 +35,8 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 if TYPE_CHECKING:
     from app.models.packages.package import Package
     from app.models.packages.package_item_image import PackageItemImage
+    from app.models.packages.package_item_like import PackageItemLike
+    from app.models.packages.package_item_review import PackageItemReview
     from app.models.packages.package_item_vendor import PackageItemVendor
     from app.models.vendors.vendor_category import VendorCategory
 
@@ -200,6 +202,12 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
                 "event's scheduled start. Copied onto BookingItem at booking time.",
     )
 
+    # ── Reviews & Likes (denormalised for quick display) ──────────────────────
+
+    average_rating: Mapped[Decimal | None] = mapped_column(Numeric(3, 2), nullable=True)
+    review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    like_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
     # ── Relationships ─────────────────────────────────────────────────────────
 
     package: Mapped[Package | None] = relationship(
@@ -223,6 +231,20 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     images: Mapped[list[PackageItemImage]] = relationship(
         "PackageItemImage",
         back_populates="item",
+        lazy="noload",
+        cascade="all, delete-orphan",
+    )
+
+    reviews: Mapped[list[PackageItemReview]] = relationship(
+        "PackageItemReview",
+        back_populates="package_item",
+        lazy="noload",
+        cascade="all, delete-orphan",
+    )
+
+    likes: Mapped[list[PackageItemLike]] = relationship(
+        "PackageItemLike",
+        back_populates="package_item",
         lazy="noload",
         cascade="all, delete-orphan",
     )

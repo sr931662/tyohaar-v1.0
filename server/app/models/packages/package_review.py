@@ -7,7 +7,6 @@ Vendor reviews (internal) are in vendors/vendor_review.py.
 
 from __future__ import annotations
 
-import enum
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -30,23 +29,12 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+from app.models.enums import ReviewModerationStatus as PackageReviewModerationStatus
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.packages.package import Package
     from app.models.users.user import User
-
-
-class PackageReviewModerationStatus(str, enum.Enum):
-    """
-    Content moderation lifecycle for a package review.
-    NOTE: Move to app/models/enums.py in the next enums update.
-    """
-    PENDING = "pending"    # Submitted; awaiting moderation
-    APPROVED = "approved"  # Passed moderation; included in package stats
-    REJECTED = "rejected"  # Violated guidelines; excluded from stats
-    FLAGGED = "flagged"    # Auto-flagged or user-reported; needs human review
-    HIDDEN = "hidden"      # Was approved but later hidden by admin action
 
 
 class PackageReview(UUIDPrimaryKeyMixin, TimestampMixin, Base):

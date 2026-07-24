@@ -82,14 +82,14 @@ class BookingService {
 
   Future<List<Booking>> listMyBookings() async {
     final response = await _api.dio.get('bookings');
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => Booking.fromJson(item)).toList();
   }
 
   Future<List<Booking>> listByCelebration(String celebrationId) async {
     final response = await _api.dio
         .get('bookings', queryParameters: {'celebration_id': celebrationId});
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => Booking.fromJson(item)).toList();
   }
 

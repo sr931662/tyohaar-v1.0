@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -230,7 +231,13 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                     crossAxisSpacing: 8,
                     children: _gallery.map((g) => ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network(g.mediaUrl, fit: BoxFit.cover),
+                          child: CachedNetworkImage(
+                            imageUrl: g.mediaUrl,
+                            fit: BoxFit.cover,
+                            memCacheWidth: 300,
+                            placeholder: (context, url) => Container(color: Colors.black12),
+                            errorWidget: (context, url, error) => Container(color: Colors.black12, child: const Icon(Icons.broken_image_outlined, size: 20)),
+                          ),
                         )).toList(),
                   ),
               ],

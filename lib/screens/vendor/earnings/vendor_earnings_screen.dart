@@ -4,6 +4,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
+import '../../../widgets/state_screens.dart';
 
 class VendorEarningsScreen extends StatefulWidget {
   const VendorEarningsScreen({super.key});
@@ -42,7 +43,10 @@ class _VendorEarningsScreenState extends State<VendorEarningsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _earnings == null
-              ? Center(child: Text('Could not load earnings.', style: TyType.sans(14, color: ty.ink2)))
+              ? TyStateScreen.error(
+                  message: 'Could not load earnings.',
+                  onAction: _load,
+                )
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(

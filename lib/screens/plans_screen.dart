@@ -212,27 +212,11 @@ class _PlansScreenState extends State<PlansScreen> {
                   ),
                   SizedBox(height: resp.h(3)),
                   Text(title, style: TyType.sans(resp.sp(16), color: ty.ink, weight: FontWeight.w700)),
-                  SizedBox(height: resp.h(9)),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: _statusProgress(status),
-                      minHeight: 5,
-                      backgroundColor: ty.surface2,
-                      color: ty.saffron,
-                    ),
-                  ),
                 ],
               ),
             ),
             SizedBox(width: resp.w(12)),
-            Column(
-              children: [
-                Text('${(_statusProgress(status) * 100).round()}%',
-                    style: TyType.sans(resp.sp(15), color: ty.ink, weight: FontWeight.w800)),
-                Text(_capitalise(status), style: TyType.sans(resp.sp(10.5), color: ty.ink3)),
-              ],
-            ),
+            Text(_capitalise(status), style: TyType.sans(resp.sp(11.5), color: ty.ink3)),
           ],
         ),
       ),
@@ -278,17 +262,6 @@ class _PlansScreenState extends State<PlansScreen> {
         ),
       ),
     );
-  }
-
-  static double _statusProgress(String status) {
-    switch (status.toLowerCase()) {
-      case 'idea': return 0.1;
-      case 'planning': return 0.35;
-      case 'confirmed': return 0.6;
-      case 'in_progress': return 0.8;
-      case 'completed': return 1.0;
-      default: return 0.2;
-    }
   }
 
   static String _capitalise(String s) =>

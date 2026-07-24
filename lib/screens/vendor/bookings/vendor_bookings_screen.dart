@@ -5,6 +5,7 @@ import '../../../theme/responsive.dart';
 import '../../../theme/typography.dart';
 import '../../../data/models.dart';
 import '../../../data/services/booking_service.dart';
+import '../../../widgets/state_screens.dart';
 import 'vendor_booking_detail_screen.dart';
 
 const _statusOptions = [
@@ -29,6 +30,7 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
   String _status = '';
   List<Booking> _bookings = [];
   bool _isLoading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -46,20 +48,20 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
     final targetStatus = status ?? _status;
     final targetSearch = search ?? _searchCtrl.text.trim();
 
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _error = false; });
     try {
       final result = await _bookingService.listVendorBookings(
         search: targetSearch,
         status: targetStatus,
       );
       if (mounted) {
-        setState(() { 
-          _bookings = result['items'] as List<Booking>; 
-          _isLoading = false; 
+        setState(() {
+          _bookings = result['items'] as List<Booking>;
+          _isLoading = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _error = true; });
     }
   }
 
@@ -127,9 +129,11 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _bookings.isEmpty
-                      ? Center(child: Text('No bookings found', style: TyType.sans(14, color: ty.ink2)))
-                      : RefreshIndicator(
+                  : _error
+                      ? TyStateScreen.error(onAction: _load)
+                      : _bookings.isEmpty
+                          ? Center(child: Text('No bookings found', style: TyType.sans(14, color: ty.ink2)))
+                          : RefreshIndicator(
                           onRefresh: _load,
                           child: ListView.separated(
                             padding: EdgeInsets.symmetric(horizontal: resp.w(18), vertical: resp.h(10)),

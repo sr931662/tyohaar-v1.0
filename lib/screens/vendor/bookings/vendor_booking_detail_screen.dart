@@ -4,6 +4,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/models.dart';
 import '../../../data/services/booking_service.dart';
+import '../../../widgets/state_screens.dart';
 
 class VendorBookingDetailScreen extends StatefulWidget {
   final String bookingId;
@@ -22,6 +23,7 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
   bool _isLoading = true;
   bool _isActing = false;
   bool _historyLoaded = false;
+  bool _historyError = false;
 
   @override
   void initState() {
@@ -49,6 +51,7 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
   }
 
   Future<void> _loadHistory() async {
+    setState(() => _historyError = false);
     try {
       final results = await Future.wait([
         _bookingService.getBookingHistory(widget.bookingId),
@@ -61,7 +64,9 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
           _historyLoaded = true;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() { _historyLoaded = true; _historyError = true; });
+    }
   }
 
   Future<void> _start() async {
@@ -205,6 +210,12 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
 
   Widget _buildHistory(TyColors ty) {
     if (!_historyLoaded) return const Center(child: CircularProgressIndicator());
+    if (_historyError) {
+      return TyStateScreen.error(onAction: () {
+        setState(() => _historyLoaded = false);
+        _loadHistory();
+      });
+    }
     if (_statusHistory.isEmpty && _history.isEmpty) {
       return Center(child: Text('No history yet', style: TyType.sans(14, color: ty.ink2)));
     }

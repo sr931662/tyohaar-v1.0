@@ -181,7 +181,20 @@ export default function VendorBookingDetailPage() {
               <Row label="End Time" value={b.scheduled_end_time} />
               <Row label="Preparation Start" value={b.preparation_start_at ? formatDateTime(b.preparation_start_at) : null} />
               {b.theme_name && <Row label="Customization Theme" value={b.theme_name} />}
+              {b.balloon_colors?.length > 0 && (
+                <Row
+                  label={`Balloon Colours (${b.balloon_color_mode})`}
+                  value={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {b.balloon_colors.map((c, i) => (
+                        <span key={i} title={c} style={{ width: 16, height: 16, borderRadius: '50%', background: c, border: '1px solid rgba(0,0,0,0.15)', display: 'inline-block' }} />
+                      ))}
+                    </div>
+                  }
+                />
+              )}
               <Row label="Special Instructions" value={b.special_instructions} />
+              <Row label="Customization Note" value={b.customization_note} />
             </Section>
           </div>
 

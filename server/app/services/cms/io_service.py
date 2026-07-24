@@ -43,34 +43,37 @@ _ENTITY_COLUMNS: dict[str, list[str]] = {
         "min_guests", "max_guests", "duration_hours",
         "image_1_url", "image_2_url", "image_3_url", "image_4_url", "image_5_url",
     ],
-    "categories": ["name", "slug", "description"],
-    "cities": ["name", "state", "pincode_prefix"],
+    "package_categories": ["name", "slug", "description"],
+    "cities": ["name", "display_name", "state", "is_metro", "is_serviceable"],
     "states": ["name", "code", "country"],
-    "coupons": ["code", "discount_type", "discount_value", "max_uses", "valid_from", "valid_until", "min_order_value"],
+    "coupons": ["title", "code", "discount_type", "discount_value", "max_uses", "valid_from", "valid_until", "min_order_value"],
     "faqs": ["question", "answer", "category", "display_order"],
-    "notification_templates": ["name", "title_template", "body_template", "channels"],
+    "notification_templates": ["template_key", "channel", "notification_category", "title_template", "body_template"],
     "settings": ["key", "value", "description"],
-    "memberships": ["plan_name", "price", "duration_days", "features"],
-    "services": ["name", "description", "category"],
+    "memberships": ["tier", "name", "monthly_price", "yearly_price", "validity_days", "features"],
+    "vendor_services": ["vendor_phone", "category", "name", "description", "base_price", "pricing_type"],
 }
 
 _REQUIRED_COLUMNS: dict[str, list[str]] = {
     "vendors": ["business_name", "phone"],
     "customers": ["phone"],
     "packages": ["name", "base_price"],
-    "categories": ["name", "slug"],
+    "package_categories": ["name", "slug"],
     "cities": ["name", "state"],
     "states": ["name", "code"],
-    "coupons": ["code", "discount_type", "discount_value", "valid_from", "valid_until"],
+    "coupons": ["title", "discount_type", "discount_value", "valid_from"],
     "faqs": ["question", "answer"],
-    "notification_templates": ["name", "title_template", "body_template"],
+    "notification_templates": ["template_key", "channel", "notification_category", "title_template", "body_template"],
     "settings": ["key", "value"],
-    "memberships": ["plan_name", "price", "duration_days"],
-    "services": ["name"],
+    "memberships": ["tier", "name", "monthly_price"],
+    "vendor_services": ["vendor_phone", "category", "name", "base_price"],
 }
 
 # Entity types with a real bulk-insert implementation in _insert_row().
-EXECUTABLE_ENTITY_TYPES = {"faqs", "settings", "packages", "vendors"}
+EXECUTABLE_ENTITY_TYPES = {
+    "faqs", "settings", "packages", "vendors", "customers", "package_categories",
+    "cities", "states", "coupons", "notification_templates", "memberships", "vendor_services",
+}
 
 
 class IOService(BaseService):
@@ -158,25 +161,27 @@ class IOService(BaseService):
         # Add a sample row
         sample_row = {
             "business_name": "Sample Vendor", "name": "Sample Item",
-            "phone": "+919999999999", "email": "sample@example.com",
-            "base_price": "5000", "discount_type": "PERCENTAGE",
-            "discount_value": "10", "code": "SAMPLE10",
+            "phone": "+919999999999", "vendor_phone": "+919999999999", "email": "sample@example.com",
+            "base_price": "5000", "discount_type": "percentage",
+            "discount_value": "10", "code": "SAMPLE10", "title": "Sample 10% Off",
             "question": "Sample question?", "answer": "Sample answer.",
             "key": "sample_key", "value": "sample_value",
-            "plan_name": "Basic Plan", "price": "299",
-            "duration_days": "30", "features": "feature1,feature2",
+            "tier": "gold", "monthly_price": "299", "yearly_price": "2999",
+            "validity_days": "30", "features": "feature1,feature2",
             "category": "Photography", "slug": "photography",
             "description": "Sample description",
-            "city": "Mumbai", "state": "Maharashtra",
-            "country": "India", "code_field": "MH",
+            "city": "Mumbai", "state": "Maharashtra", "display_name": "Mumbai",
+            "is_metro": "true", "is_serviceable": "true",
+            "country": "IN",
             "valid_from": "2026-01-01", "valid_until": "2026-12-31",
             "max_uses": "100", "min_order_value": "0",
             "min_guests": "10", "max_guests": "100",
             "duration_hours": "4", "currency": "INR",
+            "template_key": "booking_confirmed", "channel": "push",
+            "notification_category": "booking_confirmed",
             "title_template": "Hello {{name}}", "body_template": "Your {{event}} is ready",
-            "channels": "SMS,EMAIL", "display_order": "1",
-            "pincode_prefix": "400", "pincode": "400001",
-            "business_type": "EVENTS",
+            "display_order": "1", "pricing_type": "fixed",
+            "vendor_type": "decorator",
             "image_1_url": "https://example.com/photos/package-cover.jpg",
             "image_2_url": "https://example.com/photos/package-2.jpg",
         }
@@ -529,11 +534,355 @@ class IOService(BaseService):
             session.add(VendorProfile(vendor_id=vendor.id))
             await session.flush()
             return vendor.id
-        # Every other entity_type accepted by /import/validate (customers,
-        # categories, cities, states, coupons, notification_templates,
-        # memberships, services) has no real insert path here yet. Fail
-        # loudly per-row instead of silently reporting 0 rows inserted as
-        # if the import had nothing to do.
+        elif entity_type == "customers":
+            from app.models.enums import AccountStatus, UserRole
+            from app.models.users.user import User
+            from sqlalchemy import select
+
+            phone = (row.get("phone") or "").strip()
+            if not phone:
+                raise ValueError("'phone' is required")
+
+            existing = (await session.execute(
+                select(User).where(User.phone == phone)
+            )).scalars().first()
+            if existing is not None:
+                raise ValueError(f"User already exists with phone '{phone}'")
+
+            obj = User(
+                phone=phone,
+                email=row.get("email") or None,
+                full_name=row.get("full_name") or None,
+                role=UserRole.CUSTOMER,
+                account_status=AccountStatus.ACTIVE,
+            )
+            session.add(obj)
+            await session.flush()
+            return obj.id
+        elif entity_type == "package_categories":
+            import re
+
+            from sqlalchemy import func, select
+
+            from app.models.packages.package_category import PackageCategory
+
+            name = (row.get("name") or "").strip()
+            if not name:
+                raise ValueError("'name' is required")
+
+            slug = (row.get("slug") or "").strip().lower() or re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+            existing = (await session.execute(
+                select(PackageCategory).where(
+                    (func.lower(PackageCategory.name) == name.lower())
+                    | (PackageCategory.slug == slug)
+                )
+            )).scalars().first()
+            if existing is not None:
+                raise ValueError(f"A package category named '{name}' or with slug '{slug}' already exists")
+
+            obj = PackageCategory(
+                name=name,
+                slug=slug,
+                description=row.get("description") or None,
+                is_active=True,
+            )
+            session.add(obj)
+            await session.flush()
+            return obj.id
+        elif entity_type == "states":
+            from app.models.common.state import State
+            from sqlalchemy import func, select
+
+            name = (row.get("name") or "").strip()
+            code = (row.get("code") or "").strip().upper()
+            if not name:
+                raise ValueError("'name' is required")
+            if not code:
+                raise ValueError("'code' is required")
+            country_code = (row.get("country") or "IN").strip().upper()
+
+            existing = (await session.execute(
+                select(State).where(
+                    (func.lower(State.name) == name.lower()) | (State.code == code),
+                    State.country_code == country_code,
+                )
+            )).scalars().first()
+            if existing is not None:
+                raise ValueError(f"A state named '{name}' or with code '{code}' already exists for country '{country_code}'")
+
+            obj = State(name=name, code=code, country_code=country_code)
+            session.add(obj)
+            await session.flush()
+            return obj.id
+        elif entity_type == "cities":
+            import re
+
+            from app.models.common.city import City
+            from app.models.common.state import State
+            from sqlalchemy import func, select
+
+            name = (row.get("name") or "").strip()
+            state_name = (row.get("state") or "").strip()
+            if not name:
+                raise ValueError("'name' is required")
+            if not state_name:
+                raise ValueError("'state' is required")
+
+            state = (await session.execute(
+                select(State).where(func.lower(State.name) == state_name.lower())
+            )).scalars().first()
+            if state is None:
+                raise ValueError(f"No state found named '{state_name}' — import states first")
+
+            existing = (await session.execute(
+                select(City).where(City.state_id == state.id, func.lower(City.name) == name.lower())
+            )).scalars().first()
+            if existing is not None:
+                raise ValueError(f"City '{name}' already exists in state '{state_name}'")
+
+            base_slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+            slug = base_slug
+            suffix = 2
+            while (await session.execute(select(City).where(City.slug == slug))).scalars().first() is not None:
+                slug = f"{base_slug}-{suffix}"
+                suffix += 1
+
+            def _to_bool(value: Any) -> bool:
+                return str(value).strip().lower() in ("true", "1", "yes")
+
+            obj = City(
+                state_id=state.id,
+                name=name,
+                display_name=row.get("display_name") or name,
+                slug=slug,
+                is_metro=_to_bool(row.get("is_metro")),
+                is_serviceable=_to_bool(row.get("is_serviceable")),
+            )
+            session.add(obj)
+            await session.flush()
+            return obj.id
+        elif entity_type == "coupons":
+            from decimal import Decimal, InvalidOperation
+
+            from app.models.enums import CouponAdminStatus, CouponType
+            from app.models.payments.coupon import Coupon
+            from sqlalchemy import select
+
+            title = (row.get("title") or "").strip()
+            if not title:
+                raise ValueError("'title' is required")
+
+            raw_type = (row.get("discount_type") or "").strip().lower()
+            try:
+                coupon_type = CouponType(raw_type)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid discount_type '{raw_type}'. Must be one of: {', '.join(t.value for t in CouponType)}"
+                )
+
+            try:
+                discount_value = Decimal(str(row.get("discount_value")))
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValueError(f"Invalid discount_value: {row.get('discount_value')!r}")
+
+            try:
+                valid_from = datetime.fromisoformat(str(row.get("valid_from")))
+            except (TypeError, ValueError):
+                raise ValueError(f"Invalid valid_from date: {row.get('valid_from')!r}")
+
+            valid_until_raw = (row.get("valid_until") or "").strip()
+            valid_until = None
+            if valid_until_raw:
+                try:
+                    valid_until = datetime.fromisoformat(valid_until_raw)
+                except ValueError:
+                    raise ValueError(f"Invalid valid_until date: {valid_until_raw!r}")
+
+            code = (row.get("code") or "").strip().upper() or None
+            if code:
+                existing = (await session.execute(
+                    select(Coupon).where(Coupon.code == code)
+                )).scalars().first()
+                if existing is not None:
+                    raise ValueError(f"A coupon with code '{code}' already exists")
+
+            max_uses_raw = (row.get("max_uses") or "").strip()
+            min_order_raw = (row.get("min_order_value") or "").strip()
+
+            obj = Coupon(
+                title=title,
+                code=code,
+                coupon_type=coupon_type,
+                discount_value=discount_value,
+                valid_from=valid_from,
+                valid_until=valid_until,
+                total_usage_limit=int(max_uses_raw) if max_uses_raw else None,
+                min_order_value=Decimal(min_order_raw) if min_order_raw else None,
+                # Imported coupons always start in Draft so an admin reviews
+                # eligibility rules before they can be redeemed by customers.
+                admin_status=CouponAdminStatus.DRAFT,
+            )
+            session.add(obj)
+            await session.flush()
+            return obj.id
+        elif entity_type == "notification_templates":
+            from app.models.enums import NotificationChannel, NotificationType
+            from app.models.notifications.template import NotificationTemplate
+            from sqlalchemy import select
+
+            template_key = (row.get("template_key") or "").strip()
+            title_template = (row.get("title_template") or "").strip()
+            body_template = (row.get("body_template") or "").strip()
+            if not template_key:
+                raise ValueError("'template_key' is required")
+            if not title_template:
+                raise ValueError("'title_template' is required")
+            if not body_template:
+                raise ValueError("'body_template' is required")
+
+            raw_channel = (row.get("channel") or "").strip().lower()
+            try:
+                channel = NotificationChannel(raw_channel)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid channel '{raw_channel}'. Must be one of: {', '.join(c.value for c in NotificationChannel)}"
+                )
+
+            raw_category = (row.get("notification_category") or "").strip().lower()
+            try:
+                notification_category = NotificationType(raw_category)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid notification_category '{raw_category}'. "
+                    f"Must be one of: {', '.join(t.value for t in NotificationType)}"
+                )
+
+            existing = (await session.execute(
+                select(NotificationTemplate).where(
+                    NotificationTemplate.template_key == template_key,
+                    NotificationTemplate.channel == channel,
+                    NotificationTemplate.language == "en",
+                    NotificationTemplate.version == 1,
+                )
+            )).scalars().first()
+            if existing is not None:
+                raise ValueError(f"A template '{template_key}' for channel '{raw_channel}' already exists")
+
+            obj = NotificationTemplate(
+                template_key=template_key,
+                channel=channel,
+                notification_category=notification_category,
+                title_template=title_template,
+                body_template=body_template,
+            )
+            session.add(obj)
+            await session.flush()
+            return obj.id
+        elif entity_type == "memberships":
+            import re
+            from decimal import Decimal, InvalidOperation
+
+            from app.models.enums import MembershipTier
+            from app.models.memberships.membership_plan import MembershipPlan
+            from sqlalchemy import select
+
+            name = (row.get("name") or "").strip()
+            if not name:
+                raise ValueError("'name' is required")
+
+            raw_tier = (row.get("tier") or "").strip().lower()
+            try:
+                tier = MembershipTier(raw_tier)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid tier '{raw_tier}'. Must be one of: {', '.join(t.value for t in MembershipTier)}"
+                )
+
+            existing = (await session.execute(
+                select(MembershipPlan).where(MembershipPlan.tier == tier)
+            )).scalars().first()
+            if existing is not None:
+                raise ValueError(f"A membership plan for tier '{raw_tier}' already exists")
+
+            try:
+                monthly_price = Decimal(str(row.get("monthly_price")))
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValueError(f"Invalid monthly_price: {row.get('monthly_price')!r}")
+
+            yearly_raw = (row.get("yearly_price") or "").strip()
+            validity_raw = (row.get("validity_days") or "").strip()
+            features_raw = (row.get("features") or "").strip()
+
+            slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+            obj = MembershipPlan(
+                tier=tier,
+                name=name,
+                slug=slug,
+                monthly_price=monthly_price,
+                yearly_price=Decimal(yearly_raw) if yearly_raw else Decimal("0.00"),
+                validity_days=int(validity_raw) if validity_raw else None,
+                benefits={"features": [f.strip() for f in features_raw.split(",") if f.strip()]} if features_raw else None,
+            )
+            session.add(obj)
+            await session.flush()
+            return obj.id
+        elif entity_type == "vendor_services":
+            from decimal import Decimal, InvalidOperation
+
+            from app.models.enums import PackagePricingType
+            from app.models.users.user import User
+            from app.models.vendors.vendor import Vendor
+            from app.models.vendors.vendor_category import VendorCategory
+            from app.models.vendors.vendor_service import VendorService
+            from sqlalchemy import func, select
+
+            name = (row.get("name") or "").strip()
+            vendor_phone = (row.get("vendor_phone") or "").strip()
+            category_name = (row.get("category") or "").strip()
+            if not name:
+                raise ValueError("'name' is required")
+            if not vendor_phone:
+                raise ValueError("'vendor_phone' is required")
+            if not category_name:
+                raise ValueError("'category' is required")
+
+            try:
+                base_price = Decimal(str(row.get("base_price")))
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValueError(f"Invalid base_price: {row.get('base_price')!r}")
+
+            vendor = (await session.execute(
+                select(Vendor).join(User, User.id == Vendor.user_id).where(User.phone == vendor_phone)
+            )).scalars().first()
+            if vendor is None:
+                raise ValueError(f"No vendor found with phone '{vendor_phone}'")
+
+            category = (await session.execute(
+                select(VendorCategory).where(func.lower(VendorCategory.name) == category_name.lower())
+            )).scalars().first()
+            if category is None:
+                raise ValueError(f"No vendor category found named '{category_name}'")
+
+            raw_pricing = (row.get("pricing_type") or "").strip().lower()
+            try:
+                pricing_type = PackagePricingType(raw_pricing) if raw_pricing else PackagePricingType.FIXED
+            except ValueError:
+                pricing_type = PackagePricingType.FIXED
+
+            obj = VendorService(
+                vendor_id=vendor.id,
+                category_id=category.id,
+                name=name,
+                description=row.get("description") or None,
+                pricing_type=pricing_type,
+                base_price=base_price,
+                is_active=False,
+            )
+            session.add(obj)
+            await session.flush()
+            return obj.id
         raise NotImplementedError(
             f"Bulk import for entity_type='{entity_type}' is not implemented yet."
         )
@@ -594,6 +943,88 @@ class IOService(BaseService):
                         vid = uuid.UUID(vendor_id)
                         await uow.session.execute(delete(VendorProfile).where(VendorProfile.vendor_id == vid))
                         await uow.session.execute(delete(Vendor).where(Vendor.id == vid))
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "customers":
+                from app.models.users.user import User
+                from sqlalchemy import delete
+                for user_id in inserted_ids:
+                    try:
+                        stmt = delete(User).where(User.id == uuid.UUID(user_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "package_categories":
+                from app.models.packages.package_category import PackageCategory
+                from sqlalchemy import delete
+                for cat_id in inserted_ids:
+                    try:
+                        stmt = delete(PackageCategory).where(PackageCategory.id == uuid.UUID(cat_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "cities":
+                from app.models.common.city import City
+                from sqlalchemy import delete
+                for city_id in inserted_ids:
+                    try:
+                        stmt = delete(City).where(City.id == uuid.UUID(city_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "states":
+                from app.models.common.state import State
+                from sqlalchemy import delete
+                for state_id in inserted_ids:
+                    try:
+                        stmt = delete(State).where(State.id == uuid.UUID(state_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "coupons":
+                from app.models.payments.coupon import Coupon
+                from sqlalchemy import delete
+                for coupon_id in inserted_ids:
+                    try:
+                        stmt = delete(Coupon).where(Coupon.id == uuid.UUID(coupon_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "notification_templates":
+                from app.models.notifications.template import NotificationTemplate
+                from sqlalchemy import delete
+                for template_id in inserted_ids:
+                    try:
+                        stmt = delete(NotificationTemplate).where(NotificationTemplate.id == uuid.UUID(template_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "memberships":
+                from app.models.memberships.membership_plan import MembershipPlan
+                from sqlalchemy import delete
+                for plan_id in inserted_ids:
+                    try:
+                        stmt = delete(MembershipPlan).where(MembershipPlan.id == uuid.UUID(plan_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "vendor_services":
+                # Only the VendorService rows created by this import are
+                # removed — the parent vendor and category are left intact.
+                from app.models.vendors.vendor_service import VendorService
+                from sqlalchemy import delete
+                for service_id in inserted_ids:
+                    try:
+                        stmt = delete(VendorService).where(VendorService.id == uuid.UUID(service_id))
+                        await uow.session.execute(stmt)
                         deleted_count += 1
                     except Exception:
                         pass
@@ -789,6 +1220,8 @@ class IOService(BaseService):
                         "id": str(b.id),
                         "status": b.booking_status.value if hasattr(b.booking_status, "value") else str(b.booking_status),
                         "total_amount": str(b.total_amount),
+                        "special_instructions": b.special_instructions or "",
+                        "customization_note": b.customization_note or "",
                         "created_at": str(b.created_at),
                     }
                     for b in rows
@@ -849,6 +1282,182 @@ class IOService(BaseService):
                         "created_at": str(pkg.created_at),
                     }
                     for pkg in rows
+                ]
+
+            elif entity_type == "faqs":
+                from app.models.common.faq import FAQ
+                stmt = select(FAQ).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+                return [
+                    {
+                        "id": str(f.id),
+                        "question": f.question,
+                        "answer": f.answer,
+                        "category": f.faq_category.value if hasattr(f.faq_category, "value") else str(f.faq_category),
+                        "display_order": f.display_order,
+                        "created_at": str(f.created_at),
+                    }
+                    for f in rows
+                ]
+
+            elif entity_type == "settings":
+                from app.models.common.app_setting import AppSetting
+                stmt = select(AppSetting).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+                return [
+                    {
+                        "id": str(s.id),
+                        "key": s.key,
+                        "value": s.value,
+                        "description": s.description or "",
+                        "created_at": str(s.created_at),
+                    }
+                    for s in rows
+                ]
+
+            elif entity_type == "package_categories":
+                from app.models.packages.package_category import PackageCategory
+                stmt = select(PackageCategory).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+                return [
+                    {
+                        "id": str(c.id),
+                        "name": c.name,
+                        "slug": c.slug,
+                        "description": c.description or "",
+                        "created_at": str(c.created_at),
+                    }
+                    for c in rows
+                ]
+
+            elif entity_type == "states":
+                from app.models.common.state import State
+                stmt = select(State).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+                return [
+                    {
+                        "id": str(s.id),
+                        "name": s.name,
+                        "code": s.code,
+                        "country": s.country_code,
+                        "created_at": str(s.created_at),
+                    }
+                    for s in rows
+                ]
+
+            elif entity_type == "cities":
+                from sqlalchemy.orm import selectinload
+
+                from app.models.common.city import City
+
+                stmt = select(City).options(selectinload(City.state)).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+                return [
+                    {
+                        "id": str(c.id),
+                        "name": c.name,
+                        "display_name": c.display_name,
+                        "state": c.state.name if c.state else "",
+                        "is_metro": c.is_metro,
+                        "is_serviceable": c.is_serviceable,
+                        "created_at": str(c.created_at),
+                    }
+                    for c in rows
+                ]
+
+            elif entity_type == "coupons":
+                from app.models.payments.coupon import Coupon
+                stmt = select(Coupon).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+                return [
+                    {
+                        "id": str(c.id),
+                        "title": c.title,
+                        "code": c.code or "",
+                        "discount_type": c.coupon_type.value if hasattr(c.coupon_type, "value") else str(c.coupon_type),
+                        "discount_value": str(c.discount_value),
+                        "max_uses": c.total_usage_limit if c.total_usage_limit is not None else "",
+                        "valid_from": str(c.valid_from),
+                        "valid_until": str(c.valid_until) if c.valid_until else "",
+                        "min_order_value": str(c.min_order_value) if c.min_order_value is not None else "",
+                        "admin_status": c.admin_status.value if hasattr(c.admin_status, "value") else str(c.admin_status),
+                        "created_at": str(c.created_at),
+                    }
+                    for c in rows
+                ]
+
+            elif entity_type == "notification_templates":
+                from app.models.notifications.template import NotificationTemplate
+                stmt = select(NotificationTemplate).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+                return [
+                    {
+                        "id": str(t.id),
+                        "template_key": t.template_key,
+                        "channel": t.channel.value if hasattr(t.channel, "value") else str(t.channel),
+                        "notification_category": t.notification_category.value if hasattr(t.notification_category, "value") else str(t.notification_category),
+                        "title_template": t.title_template,
+                        "body_template": t.body_template,
+                        "created_at": str(t.created_at),
+                    }
+                    for t in rows
+                ]
+
+            elif entity_type == "memberships":
+                from app.models.memberships.membership_plan import MembershipPlan
+                stmt = select(MembershipPlan).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+                return [
+                    {
+                        "id": str(m.id),
+                        "tier": m.tier.value if hasattr(m.tier, "value") else str(m.tier),
+                        "name": m.name,
+                        "monthly_price": str(m.monthly_price),
+                        "yearly_price": str(m.yearly_price),
+                        "validity_days": m.validity_days if m.validity_days is not None else "",
+                        "features": ",".join((m.benefits or {}).get("features", [])) if m.benefits else "",
+                        "created_at": str(m.created_at),
+                    }
+                    for m in rows
+                ]
+
+            elif entity_type == "vendor_services":
+                from sqlalchemy.orm import selectinload
+
+                from app.models.users.user import User
+                from app.models.vendors.vendor import Vendor
+                from app.models.vendors.vendor_service import VendorService
+
+                stmt = (
+                    select(VendorService)
+                    .where(VendorService.deleted_at.is_(None))
+                    .options(selectinload(VendorService.category))
+                    .limit(10000)
+                )
+                rows = (await session.execute(stmt)).scalars().all()
+
+                vendor_ids = list({v.vendor_id for v in rows if v.vendor_id})
+                phone_by_vendor_id: dict[Any, str] = {}
+                if vendor_ids:
+                    vendor_rows = (await session.execute(
+                        select(Vendor.id, User.phone)
+                        .join(User, User.id == Vendor.user_id)
+                        .where(Vendor.id.in_(vendor_ids))
+                    )).all()
+                    phone_by_vendor_id = {vid: phone for vid, phone in vendor_rows}
+
+                return [
+                    {
+                        "id": str(vs.id),
+                        "vendor_phone": phone_by_vendor_id.get(vs.vendor_id, ""),
+                        "category": vs.category.name if vs.category else "",
+                        "name": vs.name,
+                        "description": vs.description or "",
+                        "base_price": str(vs.base_price),
+                        "pricing_type": vs.pricing_type.value if hasattr(vs.pricing_type, "value") else str(vs.pricing_type),
+                        "created_at": str(vs.created_at),
+                    }
+                    for vs in rows
                 ]
 
             return []

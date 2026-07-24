@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -29,11 +31,25 @@ class _GuestsScreenState extends State<GuestsScreen> {
   String? _activeCelebrationId;
   String? _error;
   bool _isMutating = false;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
     _loadGuests();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String v) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _search = v);
+    });
   }
 
   Future<void> _loadGuests() async {
@@ -206,110 +222,126 @@ class _GuestsScreenState extends State<GuestsScreen> {
             child: RefreshIndicator(
               onRefresh: _loadGuests,
               color: ty.saffron,
-              child: ListView(
+              child: ListView.builder(
                 padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(4), resp.w(18), resp.h(20)),
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(resp.w(18)),
-                    decoration: _card(ty, resp),
-                    child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('$total', style: TyType.display(resp.sp(42), color: ty.ink)),
-                          SizedBox(width: resp.w(6)),
-                          Padding(
-                            padding: EdgeInsets.only(bottom: resp.h(6)),
-                            child: Text('guests invited',
-                                style: TyType.sans(resp.sp(13), color: ty.ink2)),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: resp.h(14)),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(resp.w(6)),
-                        child: Row(children: [
-                          if (yes > 0) Expanded(flex: yes, child: Container(height: resp.h(9), color: ty.leaf)),
-                          if (maybe > 0) ...[
-                            SizedBox(width: resp.w(2)),
-                            Expanded(flex: maybe, child: Container(height: resp.h(9), color: ty.saffron)),
-                          ],
-                          if (pending > 0) ...[
-                            SizedBox(width: resp.w(2)),
-                            Expanded(flex: pending, child: Container(height: resp.h(9), color: ty.surface2)),
-                          ],
-                          if (total == 0) Expanded(child: Container(height: resp.h(9), color: ty.surface2)),
-                        ]),
-                      ),
-                      SizedBox(height: resp.h(11)),
-                      Wrap(spacing: resp.w(16), runSpacing: resp.h(6), children: [
-                        _legend(context, ty.leaf, '$yes coming'),
-                        _legend(context, ty.saffron, '$maybe maybe'),
-                        _legend(context, ty.ink3, '$pending pending'),
-                      ]),
-                    ],
-                  ),
-                ),
-                SizedBox(height: resp.h(16)),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: resp.w(14)),
-                        decoration: BoxDecoration(
-                          color: ty.surface2,
-                          borderRadius: BorderRadius.circular(resp.w(14)),
-                          border: Border.all(color: ty.line),
-                        ),
-                        child: Row(children: [
-                          Icon(Icons.search_rounded, size: resp.sp(17), color: ty.ink3),
-                          SizedBox(width: resp.w(8)),
-                          Expanded(
-                            child: TextField(
-                              onChanged: (v) => setState(() => _search = v),
-                              decoration: InputDecoration(
-                                isDense: true,
-                                border: InputBorder.none,
-                                hintText: 'Search a guest…',
-                                hintStyle: TyType.sans(resp.sp(14), color: ty.ink3),
-                              ),
-                              style: TyType.sans(resp.sp(14), color: ty.ink),
-                            ),
-                          ),
-                        ]),
-                      ),
-                    ),
-                    SizedBox(width: resp.w(10)),
-                    TyButton('', icon: Icons.add_rounded, enabled: !_isMutating, onTap: _openAddGuestDialog),
-                  ],
-                ),
-                SizedBox(height: resp.h(16)),
-                Row(children: [
-                  for (final f in const ['All', 'Coming', 'Pending'])
-                    Padding(
-                      padding: EdgeInsets.only(right: resp.w(8)),
-                      child: TyChip(
-                          label: f,
-                          active: _filter == f,
-                          onTap: () => setState(() => _filter = f)),
-                    ),
-                ]),
-                SizedBox(height: resp.h(14)),
-                if (_guests.isEmpty)
-                  Center(child: Padding(
-                    padding: EdgeInsets.only(top: resp.h(40)),
-                    child: Text('No guests in your list yet — tap + to add one', style: TyType.sans(resp.sp(14), color: ty.ink3)),
-                  ))
-                else
-                  ...shown.asMap().entries.map((e) => _guestRow(context, e.value, e.key, resp)),
-                ],
+                // Header (stats/search/filters) is item 0 so the whole page still
+                // scrolls as one list, while guest rows are only built lazily.
+                itemCount: 1 + (_guests.isEmpty ? 1 : shown.length),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return _guestsHeader(context, ty, resp, total: total, yes: yes, maybe: maybe, pending: pending);
+                  }
+                  if (_guests.isEmpty) {
+                    return Center(child: Padding(
+                      padding: EdgeInsets.only(top: resp.h(40)),
+                      child: Text('No guests in your list yet — tap + to add one', style: TyType.sans(resp.sp(14), color: ty.ink3)),
+                    ));
+                  }
+                  final i = index - 1;
+                  return _guestRow(context, shown[i], i, resp);
+                },
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _guestsHeader(BuildContext context, TyColors ty, TyResponsive resp,
+      {required int total, required int yes, required int maybe, required int pending}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: EdgeInsets.all(resp.w(18)),
+          decoration: _card(ty, resp),
+          child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('$total', style: TyType.display(resp.sp(42), color: ty.ink)),
+                SizedBox(width: resp.w(6)),
+                Padding(
+                  padding: EdgeInsets.only(bottom: resp.h(6)),
+                  child: Text('guests invited',
+                      style: TyType.sans(resp.sp(13), color: ty.ink2)),
+                ),
+              ],
+            ),
+            SizedBox(height: resp.h(14)),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(resp.w(6)),
+              child: Row(children: [
+                if (yes > 0) Expanded(flex: yes, child: Container(height: resp.h(9), color: ty.leaf)),
+                if (maybe > 0) ...[
+                  SizedBox(width: resp.w(2)),
+                  Expanded(flex: maybe, child: Container(height: resp.h(9), color: ty.saffron)),
+                ],
+                if (pending > 0) ...[
+                  SizedBox(width: resp.w(2)),
+                  Expanded(flex: pending, child: Container(height: resp.h(9), color: ty.surface2)),
+                ],
+                if (total == 0) Expanded(child: Container(height: resp.h(9), color: ty.surface2)),
+              ]),
+            ),
+            SizedBox(height: resp.h(11)),
+            Wrap(spacing: resp.w(16), runSpacing: resp.h(6), children: [
+              _legend(context, ty.leaf, '$yes coming'),
+              _legend(context, ty.saffron, '$maybe maybe'),
+              _legend(context, ty.ink3, '$pending pending'),
+            ]),
+          ],
+        ),
+      ),
+      SizedBox(height: resp.h(16)),
+      Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: resp.w(14)),
+              decoration: BoxDecoration(
+                color: ty.surface2,
+                borderRadius: BorderRadius.circular(resp.w(14)),
+                border: Border.all(color: ty.line),
+              ),
+              child: Row(children: [
+                Icon(Icons.search_rounded, size: resp.sp(17), color: ty.ink3),
+                SizedBox(width: resp.w(8)),
+                Expanded(
+                  child: TextField(
+                    onChanged: _onSearchChanged,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      hintText: 'Search a guest…',
+                      hintStyle: TyType.sans(resp.sp(14), color: ty.ink3),
+                    ),
+                    style: TyType.sans(resp.sp(14), color: ty.ink),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+          SizedBox(width: resp.w(10)),
+          TyButton('', icon: Icons.add_rounded, enabled: !_isMutating, onTap: _openAddGuestDialog),
+        ],
+      ),
+      SizedBox(height: resp.h(16)),
+      Row(children: [
+        for (final f in const ['All', 'Coming', 'Pending'])
+          Padding(
+            padding: EdgeInsets.only(right: resp.w(8)),
+            child: TyChip(
+                label: f,
+                active: _filter == f,
+                onTap: () => setState(() => _filter = f)),
+          ),
+      ]),
+      SizedBox(height: resp.h(14)),
+      ],
     );
   }
 

@@ -9,6 +9,7 @@ import '../utils/currency.dart';
 import '../widgets/common.dart';
 import '../widgets/emblem.dart';
 import '../widgets/photo_placeholder.dart';
+import '../widgets/state_screens.dart';
 import '../widgets/ty_button.dart';
 import 'plan_flow/plan_flow_screen.dart';
 import 'package_detail_screen.dart';
@@ -25,6 +26,7 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
   final PackageService _packageService = PackageService();
   List<Package> _packages = [];
   bool _isLoadingPackages = true;
+  bool _packagesError = false;
 
   @override
   void initState() {
@@ -33,12 +35,16 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
   }
 
   Future<void> _loadPackages() async {
+    setState(() {
+      _isLoadingPackages = true;
+      _packagesError = false;
+    });
     try {
       final packages = await _packageService.listPackages(occasionId: widget.occasion.id);
       if (mounted) setState(() { _packages = packages; _isLoadingPackages = false; });
     } catch (e) {
       debugPrint('Error loading packages for occasion: $e');
-      if (mounted) setState(() => _isLoadingPackages = false);
+      if (mounted) setState(() { _isLoadingPackages = false; _packagesError = true; });
     }
   }
 
@@ -99,6 +105,11 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
                       child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_packagesError)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: TyStateScreen.error(onAction: _loadPackages),
                     )
                   else if (_packages.isEmpty)
                     Padding(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -12,6 +14,7 @@ import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_chip.dart';
 import '../widgets/common.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
+import '../widgets/state_screens.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
 import 'package:tyohaar/screens/package_filter_screen.dart';
 
@@ -56,8 +59,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String _searchQuery = '';
   List<Package> _allPackages = [];
   bool _isLoading = true;
+  bool _error = false;
   bool _categoriesLoaded = false;
+
+  // Filters applied from PackageFilterScreen — client-side only, same tier
+  // as the existing search-text filter below (no server query params exist
+  // for these yet).
+  String _filterSort = 'Popularity';
+  RangeValues? _filterPriceRange;
+  List<String> _filterThemes = [];
   final GlobalKey _searchKey = GlobalKey();
+  Timer? _searchDebounce;
 
   String get _selectedCitySlug => _CityPref.selected ?? '';
   String get _selectedCityLabel {
@@ -83,6 +95,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String v) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _searchQuery = v);
+    });
+  }
+
   Future<void> _loadCategories() async {
     if (_categoriesLoaded) return;
     try {
@@ -99,7 +124,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _loadPackages() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = false;
+    });
     try {
       final city = _selectedCitySlug.isEmpty ? null : _selectedCitySlug;
       final packages = await _packageService.listPackages(
@@ -112,7 +140,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
       });
     } catch (e) {
       debugPrint('Error loading packages: $e');
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _error = true;
+      });
     }
   }
 
@@ -201,11 +232,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final resp = context.resp;
     final topPadding = MediaQuery.of(context).padding.top + resp.h(85);
 
-    // Client-side search filter only — category and city are applied server-side.
-    final List<Package> list = _allPackages.where((p) {
-      return p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+    // Client-side search + filter — category and city are applied server-side.
+    List<Package> list = _allPackages.where((p) {
+      final matchesSearch = p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           (p.slug ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
+      final range = _filterPriceRange;
+      final matchesPrice = range == null || (p.price >= range.start && p.price <= range.end);
+      final matchesThemes = _filterThemes.isEmpty || p.themeIds.any(_filterThemes.contains);
+      return matchesSearch && matchesPrice && matchesThemes;
     }).toList();
+
+    switch (_filterSort) {
+      case 'Price: Low to High':
+        list.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'Price: High to Low':
+        list.sort((a, b) => b.price.compareTo(a.price));
+        break;
+      case 'Popularity':
+        list.sort((a, b) => (b.bookingCount + b.likeCount).compareTo(a.bookingCount + a.likeCount));
+        break;
+    }
 
     final featured = list.where((p) => p.isFeatured).take(5).toList();
 
@@ -256,7 +303,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     SizedBox(width: resp.w(8)),
                     ChromeIconButton(
                       icon: Icons.tune_rounded,
-                      onTap: () => _push(context, const PackageFilterScreen()),
+                      onTap: () async {
+                        final result = await Navigator.of(context).push<Map<String, dynamic>>(
+                          MaterialPageRoute(
+                            builder: (_) => PackageFilterScreen(
+                              initialSort: _filterSort,
+                              initialPriceRange: _filterPriceRange,
+                              initialThemes: _filterThemes,
+                            ),
+                          ),
+                        );
+                        if (result != null && mounted) {
+                          setState(() {
+                            _filterSort = result['sort'] as String? ?? _filterSort;
+                            _filterPriceRange = result['priceRange'] as RangeValues? ?? _filterPriceRange;
+                            _filterThemes = List<String>.from(result['themes'] as List? ?? _filterThemes);
+                          });
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -275,7 +339,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       SizedBox(width: resp.w(8)),
                       Expanded(
                         child: TextField(
-                          onChanged: (v) => setState(() => _searchQuery = v),
+                          onChanged: _onSearchChanged,
                           decoration: InputDecoration(
                             isDense: true,
                             border: InputBorder.none,
@@ -330,13 +394,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : list.isEmpty
-                    ? _buildEmptyState(context)
-                    : RefreshIndicator(
-                        onRefresh: _loadPackages,
-                        color: ty.saffron,
-                        child: _buildPackagesList(context, list, featured, resp),
-                      ),
+                : _error
+                    ? TyStateScreen.error(onAction: _loadPackages)
+                    : list.isEmpty
+                        ? _buildEmptyState(context)
+                        : RefreshIndicator(
+                            onRefresh: _loadPackages,
+                            color: ty.saffron,
+                            child: _buildPackagesList(context, list, featured, resp),
+                          ),
           ),
         ],
       ),
@@ -441,6 +507,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     height: resp.h(135),
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    memCacheWidth: 660,
                     placeholder: (context, url) =>
                         PhotoPlaceholder(tint: p.tint, height: resp.h(135), arch: false),
                     errorWidget: (context, url, error) =>
@@ -491,6 +558,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 child: CachedNetworkImage(
                   imageUrl: p.coverImageUrl ?? '',
                   fit: BoxFit.cover,
+                  memCacheWidth: 264,
                   placeholder: (context, url) =>
                       PhotoPlaceholder(tint: p.tint, arch: false),
                   errorWidget: (context, url, error) =>

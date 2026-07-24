@@ -34,7 +34,7 @@ class PackageService {
       // filter-free/city-scoped browse queries repeat often enough to help.
       options: query == null ? _cacheable() : null,
     );
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => Package.fromJson(item as Map<String, dynamic>)).toList();
   }
 
@@ -51,7 +51,7 @@ class PackageService {
 
   Future<List<PackageCategory>> listCategories() async {
     final response = await _api.dio.get('packages/categories', options: _cacheable());
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list
         .map((item) => PackageCategory.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -59,13 +59,102 @@ class PackageService {
 
   Future<List<Occasion>> listOccasions() async {
     final response = await _api.dio.get('occasions', options: _cacheable());
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => Occasion.fromJson(item)).toList();
   }
 
   Future<List<CelebrationTheme>> listThemes() async {
     final response = await _api.dio.get('occasions/themes', options: _cacheable());
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => CelebrationTheme.fromJson(item)).toList();
+  }
+
+  // ── Package Reviews ────────────────────────────────────────────────────────
+
+  Future<List<PackageReviewModel>> listPackageReviews(String packageId, {String? cursor}) async {
+    final response = await _api.dio.get(
+      'packages/$packageId/reviews',
+      queryParameters: {if (cursor != null) 'cursor': cursor},
+    );
+    final List list = (response.data['data'] ?? []) as List;
+    return list.map((item) => PackageReviewModel.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<PackageReviewModel> addPackageReview(
+    String packageId, {
+    String? bookingId,
+    required int rating,
+    String? title,
+    String? body,
+  }) async {
+    final response = await _api.dio.post('packages/$packageId/reviews', data: {
+      if (bookingId != null) 'booking_id': bookingId,
+      'rating': rating,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+    });
+    return PackageReviewModel.fromJson(response.data['data']);
+  }
+
+  Future<void> deletePackageReview(String packageId, String reviewId) =>
+      _api.dio.delete('packages/$packageId/reviews/$reviewId');
+
+  // ── Package Item Reviews ───────────────────────────────────────────────────
+
+  Future<List<PackageItemReviewModel>> listPackageItemReviews(
+    String packageId,
+    String itemId, {
+    String? cursor,
+  }) async {
+    final response = await _api.dio.get(
+      'packages/$packageId/items/$itemId/reviews',
+      queryParameters: {if (cursor != null) 'cursor': cursor},
+    );
+    final List list = (response.data['data'] ?? []) as List;
+    return list
+        .map((item) => PackageItemReviewModel.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<PackageItemReviewModel> addPackageItemReview(
+    String packageId,
+    String itemId, {
+    String? bookingId,
+    required int rating,
+    String? title,
+    String? body,
+  }) async {
+    final response = await _api.dio.post('packages/$packageId/items/$itemId/reviews', data: {
+      if (bookingId != null) 'booking_id': bookingId,
+      'rating': rating,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+    });
+    return PackageItemReviewModel.fromJson(response.data['data']);
+  }
+
+  Future<void> deletePackageItemReview(String packageId, String itemId, String reviewId) =>
+      _api.dio.delete('packages/$packageId/items/$itemId/reviews/$reviewId');
+
+  // ── Likes ──────────────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> likePackage(String packageId) async {
+    final response = await _api.dio.post('packages/$packageId/like');
+    return response.data['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> unlikePackage(String packageId) async {
+    final response = await _api.dio.delete('packages/$packageId/like');
+    return response.data['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> likePackageItem(String packageId, String itemId) async {
+    final response = await _api.dio.post('packages/$packageId/items/$itemId/like');
+    return response.data['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> unlikePackageItem(String packageId, String itemId) async {
+    final response = await _api.dio.delete('packages/$packageId/items/$itemId/like');
+    return response.data['data'] as Map<String, dynamic>;
   }
 }

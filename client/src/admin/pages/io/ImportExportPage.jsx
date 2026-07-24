@@ -10,23 +10,38 @@ import { SkeletonTable } from '../../components/ui/Skeleton';
 // io_service.py) — entity types not recognized there would silently
 // download a blank template.
 const ENTITY_TYPES = [
-  'vendors', 'customers', 'packages', 'categories', 'cities', 'states',
-  'coupons', 'faqs', 'notification_templates', 'settings', 'memberships', 'services',
+  'vendors', 'customers', 'packages', 'package_categories', 'cities', 'states',
+  'coupons', 'faqs', 'notification_templates', 'settings', 'memberships', 'vendor_services',
 ];
 
-// Of those, only these currently have real row-insert logic on execute —
-// everything else will validate fine but fail per-row at execute time
-// (each row insert isn't wired to its domain service yet).
-const EXECUTABLE_ENTITY_TYPES = new Set(['faqs', 'settings', 'packages', 'vendors']);
+// Every entity type above now has real row-insert logic in _insert_row()
+// on the backend (io_service.py) — kept as an explicit set (mirroring the
+// backend's EXECUTABLE_ENTITY_TYPES) so a future entity added to the list
+// above without backend wiring still shows the "validate only" warning
+// instead of silently failing every row at execute time.
+const EXECUTABLE_ENTITY_TYPES = new Set(ENTITY_TYPES);
 
-// Export has an entirely separate, narrower set of supported entity types
-// (see _fetch_export_rows in io_service.py) — it does not share Import's list.
-const EXPORT_ENTITY_TYPES = ['vendors', 'customers', 'bookings', 'payments', 'packages'];
+// Export now covers the same entities as Import (see _fetch_export_rows
+// in io_service.py) plus bookings/payments, which have no import path.
+const EXPORT_ENTITY_TYPES = [
+  'vendors', 'customers', 'bookings', 'payments', 'packages', 'package_categories',
+  'cities', 'states', 'coupons', 'notification_templates', 'settings', 'memberships',
+  'vendor_services', 'faqs',
+];
 
 const ENTITY_HINTS = {
-  packages: 'To attach a package to a vendor, include a "vendor_phone" column matching that vendor\'s registered phone number. "category" matches an existing category name (leave blank to skip). Packages import as Draft — publish them from Vendor Packages after review.',
+  packages: 'To attach a package to a vendor, include a "vendor_phone" column matching that vendor\'s registered phone number. "category" matches an existing package category name (leave blank to skip). Packages import as Draft — publish them from Vendor Packages after review.',
   vendors: 'A new login account is created automatically from "phone" if one doesn\'t already exist. "vendor_type" should be one of: decorator, caterer, photographer, videographer, baker, florist, entertainer, venue, planner.',
+  cities: 'Import States first — "state" must exactly match an existing state name (case-insensitive).',
+  coupons: '"discount_type" must be one of: percentage, fixed_amount, fixed_price, free_service, cashback. Coupons import as Draft — publish them from Discounts after review.',
+  notification_templates: '"channel" must be one of: push, sms, email, whatsapp, in_app — add one row per channel needed for the same "template_key". "notification_category" must match a known event type, e.g. booking_confirmed, payment_received.',
+  memberships: '"tier" must be one of: free, silver, gold, platinum. Each tier can only exist once — importing a tier that already has a plan will fail that row.',
+  vendor_services: '"vendor_phone" must match a registered vendor\'s phone number. "category" must match an existing Vendor Category name. Services import as inactive — publish them from Vendors after review.',
 };
+
+function entityLabel(entityType) {
+  return entityType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -130,7 +145,7 @@ function ImportTab() {
               <select className="form-control" value={entityType} onChange={e => { setEntityType(e.target.value); setFile(null); setValidationResult(null); }}>
                 {ENTITY_TYPES.map(t => (
                   <option key={t} value={t}>
-                    {t.charAt(0).toUpperCase() + t.slice(1)}{!EXECUTABLE_ENTITY_TYPES.has(t) ? ' (validate only — import not wired up yet)' : ''}
+                    {entityLabel(t)}{!EXECUTABLE_ENTITY_TYPES.has(t) ? ' (validate only — import not wired up yet)' : ''}
                   </option>
                 ))}
               </select>
@@ -145,7 +160,7 @@ function ImportTab() {
               </div>
             )}
             <button className="btn btn-secondary btn-sm" onClick={downloadTemplate} style={{ marginBottom: 16 }}>
-              Download {entityType} template
+              Download {entityLabel(entityType)} template
             </button>
             <div className="form-group">
               <label className="form-label">Upload Excel / CSV</label>
@@ -267,7 +282,7 @@ function ExportTab() {
           <div className="form-group">
             <label className="form-label">Entity Type</label>
             <select className="form-control" value={entityType} onChange={e => setEntityType(e.target.value)}>
-              {EXPORT_ENTITY_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+              {EXPORT_ENTITY_TYPES.map(t => <option key={t} value={t}>{entityLabel(t)}</option>)}
             </select>
           </div>
           <div className="form-group">

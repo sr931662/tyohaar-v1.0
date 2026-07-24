@@ -9,12 +9,14 @@ from fastapi import APIRouter, status
 from app.controllers.packages import controller as ctrl
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
 from app.schemas.packages import (
+    LikeToggleResponse,
     PackageAvailabilityResponse,
     PackageCategoryResponse,
     PackageDetailResponse,
     PackageGalleryResponse,
     PackageItemImageResponse,
     PackageItemResponse,
+    PackageItemReviewResponse,
     PackageResponse,
     PackageReviewResponse,
 )
@@ -437,4 +439,109 @@ router.add_api_route(
     summary="Delete Package Review",
     description="Remove a review from the package. Only the original reviewer may delete it.",
     operation_id="packages_delete_review",
+)
+
+router.add_api_route(
+    "/{package_id}/reviews/{review_id}/moderate",
+    ctrl.moderate_review,
+    methods=["PATCH"],
+    response_model=SuccessResponse[PackageReviewResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Moderate Package Review (Admin)",
+    description="Approve, reject, flag, or hide a package review. Admin access required.",
+    operation_id="packages_moderate_review",
+)
+
+# ── Likes ─────────────────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/{package_id}/like",
+    ctrl.like_package,
+    methods=["POST"],
+    response_model=SuccessResponse[LikeToggleResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Like Package",
+    description="Like a package. Idempotent — liking an already-liked package is a no-op.",
+    operation_id="packages_like",
+)
+
+router.add_api_route(
+    "/{package_id}/like",
+    ctrl.unlike_package,
+    methods=["DELETE"],
+    response_model=SuccessResponse[LikeToggleResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Unlike Package",
+    description="Unlike a package. Idempotent — unliking a not-liked package is a no-op.",
+    operation_id="packages_unlike",
+)
+
+# ── Item Reviews ──────────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/{package_id}/items/{item_id}/reviews",
+    ctrl.list_item_reviews,
+    methods=["GET"],
+    response_model=CursorPaginatedResponse[PackageItemReviewResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List Package Item Reviews",
+    description="Return a cursor-paginated list of reviews for the package item.",
+    operation_id="packages_list_item_reviews",
+)
+
+router.add_api_route(
+    "/{package_id}/items/{item_id}/reviews",
+    ctrl.add_item_review,
+    methods=["POST"],
+    response_model=SuccessResponse[PackageItemReviewResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Add Package Item Review",
+    description="Submit a review for a package item. Customer role required.",
+    operation_id="packages_add_item_review",
+)
+
+router.add_api_route(
+    "/{package_id}/items/{item_id}/reviews/{review_id}",
+    ctrl.delete_item_review,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Delete Package Item Review",
+    description="Remove a review from the package item. Only the original reviewer may delete it.",
+    operation_id="packages_delete_item_review",
+)
+
+router.add_api_route(
+    "/{package_id}/items/{item_id}/reviews/{review_id}/moderate",
+    ctrl.moderate_item_review,
+    methods=["PATCH"],
+    response_model=SuccessResponse[PackageItemReviewResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Moderate Package Item Review (Admin)",
+    description="Approve, reject, flag, or hide a package item review. Admin access required.",
+    operation_id="packages_moderate_item_review",
+)
+
+# ── Item Likes ────────────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/{package_id}/items/{item_id}/like",
+    ctrl.like_item,
+    methods=["POST"],
+    response_model=SuccessResponse[LikeToggleResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Like Package Item",
+    description="Like a package item. Idempotent — liking an already-liked item is a no-op.",
+    operation_id="packages_like_item",
+)
+
+router.add_api_route(
+    "/{package_id}/items/{item_id}/like",
+    ctrl.unlike_item,
+    methods=["DELETE"],
+    response_model=SuccessResponse[LikeToggleResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Unlike Package Item",
+    description="Unlike a package item. Idempotent — unliking a not-liked item is a no-op.",
+    operation_id="packages_unlike_item",
 )

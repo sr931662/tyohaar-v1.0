@@ -23,6 +23,7 @@ from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessRespo
 from app.models.enums import UserRole
 from app.schemas.base import CursorPage
 from app.schemas.packages import (
+    LikeToggleResponse,
     PackageAvailabilityCreate,
     PackageAvailabilityResponse,
     PackageAvailabilityUpdate,
@@ -39,9 +40,12 @@ from app.schemas.packages import (
     PackageItemImageCreate,
     PackageItemImageResponse,
     PackageItemResponse,
+    PackageItemReviewCreate,
+    PackageItemReviewResponse,
     PackageItemUpdate,
     PackageResponse,
     PackageReviewCreate,
+    PackageReviewModerateRequest,
     PackageReviewResponse,
     PackageUpdate,
 )
@@ -432,6 +436,107 @@ async def list_reviews(
         package_id=package_id, cursor=pagination.cursor, limit=pagination.page_size
     )
     return _cursor_resp(page, pagination.page_size)
+
+
+async def moderate_review(
+    package_id: uuid.UUID,
+    review_id: uuid.UUID,
+    body: PackageReviewModerateRequest,
+    current_user: AdminDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageReviewResponse]:
+    result = await service.moderate_review(
+        package_id=package_id, review_id=review_id, moderator_id=current_user.id, data=body
+    )
+    return SuccessResponse(data=result, message="Review moderated.")
+
+
+async def like_package(
+    package_id: uuid.UUID,
+    current_user: CustomerDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[LikeToggleResponse]:
+    result = await service.like_package(package_id=package_id, user_id=current_user.id)
+    return SuccessResponse(data=result, message="Package liked.")
+
+
+async def unlike_package(
+    package_id: uuid.UUID,
+    current_user: CustomerDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[LikeToggleResponse]:
+    result = await service.unlike_package(package_id=package_id, user_id=current_user.id)
+    return SuccessResponse(data=result, message="Package unliked.")
+
+
+async def add_item_review(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: PackageItemReviewCreate,
+    current_user: CustomerDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageItemReviewResponse]:
+    result = await service.add_review_for_item(
+        package_item_id=item_id, reviewer_id=current_user.id, data=body
+    )
+    return SuccessResponse(data=result, message="Review submitted.")
+
+
+async def delete_item_review(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    review_id: uuid.UUID,
+    current_user: CustomerDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    await service.delete_review_for_item(review_id=review_id, reviewer_id=current_user.id)
+    return SuccessResponse(data=None, message="Review deleted.")
+
+
+async def list_item_reviews(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    pagination: Annotated[CursorPaginationParams, Depends(get_cursor_pagination)],
+    service: PackageServiceDep,
+) -> CursorPaginatedResponse[PackageItemReviewResponse]:
+    page = await service.list_reviews_for_item(
+        package_item_id=item_id, cursor=pagination.cursor, limit=pagination.page_size
+    )
+    return _cursor_resp(page, pagination.page_size)
+
+
+async def moderate_item_review(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    review_id: uuid.UUID,
+    body: PackageReviewModerateRequest,
+    current_user: AdminDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageItemReviewResponse]:
+    result = await service.moderate_item_review(
+        package_item_id=item_id, review_id=review_id, moderator_id=current_user.id, data=body
+    )
+    return SuccessResponse(data=result, message="Review moderated.")
+
+
+async def like_item(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    current_user: CustomerDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[LikeToggleResponse]:
+    result = await service.like_package_item(package_item_id=item_id, user_id=current_user.id)
+    return SuccessResponse(data=result, message="Item liked.")
+
+
+async def unlike_item(
+    package_id: uuid.UUID,
+    item_id: uuid.UUID,
+    current_user: CustomerDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[LikeToggleResponse]:
+    result = await service.unlike_package_item(package_item_id=item_id, user_id=current_user.id)
+    return SuccessResponse(data=result, message="Item unliked.")
 
 
 async def list_categories(

@@ -8,7 +8,7 @@ class MediaService {
 
   Future<List<Memory>> listMemories() async {
     final response = await _api.dio.get('media/memories');
-    final List list = response.data['data'];
+    final List list = (response.data['data'] ?? []) as List;
     return list.map<Memory>((item) {
       return Memory(
         title: item['title'] ?? '',
@@ -31,9 +31,9 @@ class MediaService {
           queryParameters: {'entity_type': 'booking'}),
     ]);
 
-    final images = (results[0].data['data'] as List)
+    final images = ((results[0].data['data'] ?? []) as List)
         .map((item) => EventMediaItem.fromJson(item, isVideo: false));
-    final videos = (results[1].data['data'] as List)
+    final videos = ((results[1].data['data'] ?? []) as List)
         .map((item) => EventMediaItem.fromJson(item, isVideo: true));
 
     final items = [...images, ...videos];
@@ -58,6 +58,6 @@ class MediaService {
     
     // The backend returns ImageResponse in SuccessResponse.data
     // ImageResponse has a 'url' field (or similar, let's check response.py)
-    return response.data['data']['url'] as String;
+    return (response.data['data'] as Map?)?['url'] as String? ?? '';
   }
 }

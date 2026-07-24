@@ -5,6 +5,7 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/services/support_service.dart';
 import '../widgets/common.dart';
+import '../widgets/state_screens.dart';
 import '../widgets/ty_button.dart';
 
 class TicketDetailScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   List<SupportMessage> _messages = [];
   late SupportTicket _ticket;
   bool _isLoading = true;
+  bool _error = false;
   bool _isSending = false;
 
   bool get _isClosed => _ticket.status == 'closed' || _ticket.status == 'resolved';
@@ -39,7 +41,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _error = false; });
     try {
       final results = await Future.wait([
         _supportService.getTicket(_ticket.id),
@@ -53,7 +55,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _error = true; });
     }
   }
 
@@ -112,15 +114,17 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? Center(
-                        child: Text('No replies yet.', style: TyType.sans(13, color: ty.ink3)),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(20),
-                        itemCount: _messages.length,
-                        itemBuilder: (_, i) => _messageBubble(context, _messages[i]),
-                      ),
+                : _error
+                    ? TyStateScreen.error(onAction: _load)
+                    : _messages.isEmpty
+                        ? Center(
+                            child: Text('No replies yet.', style: TyType.sans(13, color: ty.ink3)),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(20),
+                            itemCount: _messages.length,
+                            itemBuilder: (_, i) => _messageBubble(context, _messages[i]),
+                          ),
           ),
           if (_isClosed)
             Container(

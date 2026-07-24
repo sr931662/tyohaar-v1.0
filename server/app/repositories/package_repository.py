@@ -22,7 +22,10 @@ from app.models.packages.package_faq import PackageFAQ
 from app.models.packages.package_gallery import PackageGallery
 from app.models.packages.package_item import PackageItem, package_item_links
 from app.models.packages.package_item_image import PackageItemImage
+from app.models.packages.package_item_like import PackageItemLike
+from app.models.packages.package_item_review import PackageItemReview
 from app.models.packages.package_item_vendor import PackageItemVendor
+from app.models.packages.package_like import PackageLike
 from app.models.packages.package_pricing import PackagePricing
 from app.models.packages.package_review import PackageReview
 from app.repositories.base import BaseRepository
@@ -310,6 +313,54 @@ class PackageReviewRepository(BaseRepository[PackageReview]):
         return await self.find_many(PackageReview.customer_id == customer_id)
 
 
+class PackageItemReviewRepository(BaseRepository[PackageItemReview]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, PackageItemReview)
+
+    async def find_by_item(
+        self,
+        package_item_id: uuid.UUID,
+        *,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[PackageItemReview]:
+        return await self.find_many(
+            PackageItemReview.package_item_id == package_item_id,
+            order_by=PackageItemReview.created_at.desc(),
+            skip=skip,
+            limit=limit,
+        )
+
+    async def find_by_customer(self, customer_id: uuid.UUID) -> list[PackageItemReview]:
+        return await self.find_many(PackageItemReview.customer_id == customer_id)
+
+
+class PackageLikeRepository(BaseRepository[PackageLike]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, PackageLike)
+
+    async def find_by_user_and_package(
+        self, user_id: uuid.UUID, package_id: uuid.UUID
+    ) -> PackageLike | None:
+        return await self.find_one(
+            PackageLike.user_id == user_id,
+            PackageLike.package_id == package_id,
+        )
+
+
+class PackageItemLikeRepository(BaseRepository[PackageItemLike]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, PackageItemLike)
+
+    async def find_by_user_and_item(
+        self, user_id: uuid.UUID, package_item_id: uuid.UUID
+    ) -> PackageItemLike | None:
+        return await self.find_one(
+            PackageItemLike.user_id == user_id,
+            PackageItemLike.package_item_id == package_item_id,
+        )
+
+
 class PackageFAQRepository(BaseRepository[PackageFAQ]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, PackageFAQ)
@@ -345,5 +396,8 @@ class PackageRepositoryAggregate:
         self.availability = PackageAvailabilityRepository(session)
         self.gallery = PackageGalleryRepository(session)
         self.reviews = PackageReviewRepository(session)
+        self.item_reviews = PackageItemReviewRepository(session)
+        self.likes = PackageLikeRepository(session)
+        self.item_likes = PackageItemLikeRepository(session)
         self.faqs = PackageFAQRepository(session)
         self.customizations = PackageCustomizationRepository(session)

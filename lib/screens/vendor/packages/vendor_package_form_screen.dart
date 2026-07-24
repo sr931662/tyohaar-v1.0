@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../theme/colors.dart';
@@ -99,12 +100,19 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
   }
 
   Future<void> _pickCoverImage() async {
-    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (image == null) return;
-    setState(() => _uploadingCover = true);
     try {
+      final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (image == null) return;
+      setState(() => _uploadingCover = true);
       final url = await _vendorService.uploadImage(File(image.path), 'package_image');
       if (mounted) setState(() { _coverImageUrl = url; _uploadingCover = false; });
+    } on PlatformException {
+      if (mounted) {
+        setState(() => _uploadingCover = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+        );
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _uploadingCover = false);
@@ -306,7 +314,8 @@ class _ThemeCard extends StatelessWidget {
     Color hexToColor(String? hex) {
       if (hex == null || hex.isEmpty) return Colors.transparent;
       final h = hex.replaceAll('#', '');
-      return Color(int.parse('FF$h', radix: 16));
+      final value = int.tryParse('FF$h', radix: 16);
+      return value != null ? Color(value) : Colors.transparent;
     }
 
     // Themes may define 1, 2, or 4 colors — only render the ones present.

@@ -6,6 +6,7 @@ import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/celebration_service.dart';
 import '../widgets/invitation_card.dart';
+import '../widgets/state_screens.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 
@@ -24,6 +25,7 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
   Celebration? _selected;
   List<Guest> _guests = [];
   bool _isLoading = true;
+  bool _error = false;
   bool _isSharing = false;
 
   @override
@@ -33,7 +35,7 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _error = false; });
     try {
       final celebrations = await _celebrationService.listCelebrations();
       if (celebrations.isNotEmpty) {
@@ -54,7 +56,7 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
       }
     } catch (e) {
       debugPrint('Error loading invitation data: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _error = true; });
     }
   }
 
@@ -96,6 +98,14 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
 
     if (_isLoading && _celebrations.isEmpty) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error && _celebrations.isEmpty) {
+      return Scaffold(
+        backgroundColor: ty.paper,
+        appBar: tyAppBar(context, title: 'Manage Invitations'),
+        body: TyStateScreen.error(onAction: _loadData),
+      );
     }
 
     if (_celebrations.isEmpty) {

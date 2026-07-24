@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from uuid import UUID
 
 from app.db.session import AsyncSessionLocal
@@ -9,9 +9,16 @@ from app.models.packages.package_availability import PackageAvailability
 from app.models.packages.package_category import PackageCategory
 from app.models.packages.package_item import PackageItem
 from app.models.packages.package_review import PackageReview
-from app.models.enums import MediaStatus, MediaType, MediaUsage, PackageStatus
+from app.models.enums import (
+    MediaStatus,
+    MediaType,
+    MediaUsage,
+    PackageStatus,
+    ReviewModerationStatus,
+)
 from app.schemas.base import CursorPage
 from app.schemas.packages import (
+    LikeToggleResponse,
     PackageAvailabilityCreate,
     PackageAvailabilityResponse,
     PackageAvailabilityUpdate,
@@ -30,16 +37,21 @@ from app.schemas.packages import (
     PackageItemImageCreate,
     PackageItemImageResponse,
     PackageItemResponse,
+    PackageItemReviewCreate,
+    PackageItemReviewResponse,
     PackageItemUpdate,
     PackageResponse,
     PackageReviewCreate,
+    PackageReviewModerateRequest,
     PackageReviewResponse,
     PackageUpdate,
 )
 from app.services.base import BaseService
 from app.services.packages.validators import (
     validate_item_limit,
+    validate_item_review_not_duplicate,
     validate_package_exists,
+    validate_package_item_exists,
     validate_package_ownership,
     validate_review_not_duplicate,
 )
@@ -905,19 +917,220 @@ class PackageService(BaseService):
     async def _update_package_avg_rating(self, package_id: UUID) -> None:
         """Recompute and persist the package's average rating from approved reviews."""
         async with self._uow() as uow:
-            from app.models.packages.package_review import PackageReviewModerationStatus
             reviews = await uow.packages.reviews.find_many(
                 uow.packages.reviews._model.package_id == package_id,
-                uow.packages.reviews._model.moderation_status == PackageReviewModerationStatus.APPROVED,
+                uow.packages.reviews._model.moderation_status == ReviewModerationStatus.APPROVED,
             )
-            if not reviews:
-                return
-            avg = sum(r.rating for r in reviews) / len(reviews)
             package = await uow.packages.packages.get_by_id(package_id)
             if package is not None:
-                # Package model stores avg via review aggregation — update if column exists
-                pass  # avg_rating is computed via DB or background job; no direct column found
+                if reviews:
+                    package.average_rating = round(
+                        sum(r.rating for r in reviews) / len(reviews), 2
+                    )
+                    package.review_count = len(reviews)
+                else:
+                    package.average_rating = None
+                    package.review_count = 0
             await uow.commit()
+
+    async def moderate_review(
+        self,
+        package_id: UUID,
+        review_id: UUID,
+        moderator_id: UUID,
+        data: PackageReviewModerateRequest,
+    ) -> PackageReviewResponse:
+        async with self._uow() as uow:
+            from app.services.exceptions import NotFoundError
+
+            review = await uow.packages.reviews.get_by_id(review_id)
+            if review is None or review.package_id != package_id:
+                raise NotFoundError("PackageReview", str(review_id))
+            review.moderation_status = data.moderation_status
+            review.moderation_notes = data.moderation_notes
+            review.moderated_by_id = moderator_id
+            review.moderated_at = datetime.now(timezone.utc)
+            review.is_published = data.moderation_status == ReviewModerationStatus.APPROVED
+            await uow.commit()
+
+        await self._update_package_avg_rating(package_id)
+        return PackageReviewResponse.model_validate(review)
+
+    # ── Package Item Reviews ──────────────────────────────────────────────────
+
+    async def add_review_for_item(
+        self,
+        package_item_id: UUID,
+        reviewer_id: UUID,
+        data: PackageItemReviewCreate,
+    ) -> PackageItemReviewResponse:
+        async with self._uow() as uow:
+            await validate_package_item_exists(package_item_id, uow)
+            await validate_item_review_not_duplicate(package_item_id, reviewer_id, uow)
+            payload = data.model_dump(exclude_unset=True)
+            payload["package_item_id"] = package_item_id
+            payload["customer_id"] = reviewer_id
+            payload.pop("reviewer_id", None)
+            review = await uow.packages.item_reviews.create_from_dict(payload)
+            await uow.commit()
+
+        await self._update_package_item_avg_rating(package_item_id)
+        return PackageItemReviewResponse.model_validate(review)
+
+    async def _update_package_item_avg_rating(self, package_item_id: UUID) -> None:
+        """Recompute and persist the package item's average rating from approved reviews."""
+        async with self._uow() as uow:
+            reviews = await uow.packages.item_reviews.find_many(
+                uow.packages.item_reviews._model.package_item_id == package_item_id,
+                uow.packages.item_reviews._model.moderation_status == ReviewModerationStatus.APPROVED,
+            )
+            item = await uow.packages.items.get_by_id(package_item_id)
+            if item is not None:
+                if reviews:
+                    item.average_rating = round(
+                        sum(r.rating for r in reviews) / len(reviews), 2
+                    )
+                    item.review_count = len(reviews)
+                else:
+                    item.average_rating = None
+                    item.review_count = 0
+            await uow.commit()
+
+    async def delete_review_for_item(
+        self,
+        review_id: UUID,
+        reviewer_id: UUID,
+    ) -> None:
+        async with self._uow() as uow:
+            from app.services.exceptions import NotFoundError, PermissionError
+
+            review = await uow.packages.item_reviews.get_by_id(review_id)
+            if review is None:
+                raise NotFoundError("PackageItemReview", str(review_id))
+            if review.customer_id != reviewer_id:
+                raise PermissionError("You did not write this review.")
+            package_item_id = review.package_item_id
+            await uow.packages.item_reviews.delete(review)
+            await uow.commit()
+
+        await self._update_package_item_avg_rating(package_item_id)
+
+    async def list_reviews_for_item(
+        self,
+        package_item_id: UUID,
+        cursor: str | None,
+        limit: int,
+    ) -> CursorPage[PackageItemReviewResponse]:
+        async with self._uow() as uow:
+            await validate_package_item_exists(package_item_id, uow)
+            page = await uow.packages.item_reviews.cursor_paginate(
+                uow.packages.item_reviews._model.package_item_id == package_item_id,
+                cursor=cursor,
+                limit=limit,
+            )
+            items = [PackageItemReviewResponse.model_validate(r) for r in page.items]
+            return CursorPage(
+                items=items,
+                next_cursor=page.next_cursor,
+                has_more=page.has_next,
+            )
+
+    async def moderate_item_review(
+        self,
+        package_item_id: UUID,
+        review_id: UUID,
+        moderator_id: UUID,
+        data: PackageReviewModerateRequest,
+    ) -> PackageItemReviewResponse:
+        async with self._uow() as uow:
+            from app.services.exceptions import NotFoundError
+
+            review = await uow.packages.item_reviews.get_by_id(review_id)
+            if review is None or review.package_item_id != package_item_id:
+                raise NotFoundError("PackageItemReview", str(review_id))
+            review.moderation_status = data.moderation_status
+            review.moderation_notes = data.moderation_notes
+            review.moderated_by_id = moderator_id
+            review.moderated_at = datetime.now(timezone.utc)
+            review.is_published = data.moderation_status == ReviewModerationStatus.APPROVED
+            await uow.commit()
+
+        await self._update_package_item_avg_rating(package_item_id)
+        return PackageItemReviewResponse.model_validate(review)
+
+    # ── Likes ──────────────────────────────────────────────────────────────────
+
+    async def like_package(self, package_id: UUID, user_id: UUID) -> LikeToggleResponse:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            existing = await uow.packages.likes.find_by_user_and_package(user_id, package_id)
+            if existing is None:
+                await uow.packages.likes.create_from_dict(
+                    {"package_id": package_id, "user_id": user_id}
+                )
+                await uow.commit()
+        count = await self._recompute_package_like_count(package_id)
+        return LikeToggleResponse(is_liked=True, like_count=count)
+
+    async def unlike_package(self, package_id: UUID, user_id: UUID) -> LikeToggleResponse:
+        async with self._uow() as uow:
+            existing = await uow.packages.likes.find_by_user_and_package(user_id, package_id)
+            if existing is not None:
+                await uow.packages.likes.delete(existing)
+                await uow.commit()
+        count = await self._recompute_package_like_count(package_id)
+        return LikeToggleResponse(is_liked=False, like_count=count)
+
+    async def _recompute_package_like_count(self, package_id: UUID) -> int:
+        async with self._uow() as uow:
+            count = await uow.packages.likes.count(
+                uow.packages.likes._model.package_id == package_id
+            )
+            package = await uow.packages.packages.get_by_id(package_id)
+            if package is not None:
+                package.like_count = count
+                await uow.commit()
+            return count
+
+    async def like_package_item(
+        self, package_item_id: UUID, user_id: UUID
+    ) -> LikeToggleResponse:
+        async with self._uow() as uow:
+            await validate_package_item_exists(package_item_id, uow)
+            existing = await uow.packages.item_likes.find_by_user_and_item(
+                user_id, package_item_id
+            )
+            if existing is None:
+                await uow.packages.item_likes.create_from_dict(
+                    {"package_item_id": package_item_id, "user_id": user_id}
+                )
+                await uow.commit()
+        count = await self._recompute_package_item_like_count(package_item_id)
+        return LikeToggleResponse(is_liked=True, like_count=count)
+
+    async def unlike_package_item(
+        self, package_item_id: UUID, user_id: UUID
+    ) -> LikeToggleResponse:
+        async with self._uow() as uow:
+            existing = await uow.packages.item_likes.find_by_user_and_item(
+                user_id, package_item_id
+            )
+            if existing is not None:
+                await uow.packages.item_likes.delete(existing)
+                await uow.commit()
+        count = await self._recompute_package_item_like_count(package_item_id)
+        return LikeToggleResponse(is_liked=False, like_count=count)
+
+    async def _recompute_package_item_like_count(self, package_item_id: UUID) -> int:
+        async with self._uow() as uow:
+            count = await uow.packages.item_likes.count(
+                uow.packages.item_likes._model.package_item_id == package_item_id
+            )
+            item = await uow.packages.items.get_by_id(package_item_id)
+            if item is not None:
+                item.like_count = count
+                await uow.commit()
+            return count
 
     async def delete_review(
         self,

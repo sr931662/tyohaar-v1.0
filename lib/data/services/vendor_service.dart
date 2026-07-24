@@ -247,6 +247,6 @@ class VendorService {
       'usage': usage,
     });
     final response = await _api.dio.post('media/upload', data: formData);
-    return response.data['data']['url'] as String;
+    return (response.data['data'] as Map?)?['url'] as String? ?? '';
   }
 }

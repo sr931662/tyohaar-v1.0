@@ -167,6 +167,12 @@ export const vendorPackagesApi = {
     vendorClient.post(`/packages/${packageId}/common-items/${itemId}`).then(extractData),
   detachCommonItem: (packageId, itemId) =>
     vendorClient.delete(`/packages/${packageId}/common-items/${itemId}`).then(extractData),
+
+  // Reviews (read-only — vendors cannot moderate their own package/item reviews)
+  listReviews: (packageId, params) =>
+    vendorClient.get(`/packages/${packageId}/reviews`, { params }).then(extractPaginated),
+  listItemReviews: (packageId, itemId, params) =>
+    vendorClient.get(`/packages/${packageId}/items/${itemId}/reviews`, { params }).then(extractPaginated),
 };
 
 // ── Occasions (reference data for package linking) ─────────────────────────────

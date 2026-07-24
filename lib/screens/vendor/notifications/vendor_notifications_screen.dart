@@ -4,6 +4,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/models.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../widgets/state_screens.dart';
 
 class VendorNotificationsScreen extends StatefulWidget {
   const VendorNotificationsScreen({super.key});
@@ -16,6 +17,7 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
   final _notificationService = NotificationService();
   List<NotifItem> _items = [];
   bool _isLoading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -24,12 +26,12 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _error = false; });
     try {
       final items = await _notificationService.listNotifications();
       if (mounted) setState(() { _items = items; _isLoading = false; });
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _error = true; });
     }
   }
 
@@ -62,7 +64,9 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
       backgroundColor: Colors.transparent,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
+          : _error
+              ? TyStateScreen.error(onAction: _load)
+              : _items.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

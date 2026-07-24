@@ -41,6 +41,7 @@ const VendorAvailabilityPage    = lazy(() => import('./vendor/pages/availability
 const VendorMultimediaPage      = lazy(() => import('./vendor/pages/multimedia/VendorMultimediaPage.jsx'));
 const VendorEarningsPage        = lazy(() => import('./vendor/pages/earnings/VendorEarningsPage.jsx'));
 const VendorReviewsPage         = lazy(() => import('./vendor/pages/reviews/VendorReviewsPage.jsx'));
+const VendorPackageReviewsPage  = lazy(() => import('./vendor/pages/reviews/VendorPackageReviewsPage.jsx'));
 const VendorNotificationsPage   = lazy(() => import('./vendor/pages/notifications/VendorNotificationsPage.jsx'));
 const VendorSupportPage         = lazy(() => import('./vendor/pages/support/VendorSupportPage.jsx'));
 
@@ -157,6 +158,7 @@ export default function App() {
                 <Route path="multimedia" element={<VendorMultimediaPage />} />
                 <Route path="earnings" element={<VendorEarningsPage />} />
                 <Route path="reviews" element={<VendorReviewsPage />} />
+                <Route path="reviews/packages" element={<VendorPackageReviewsPage />} />
                 <Route path="notifications" element={<VendorNotificationsPage />} />
                 <Route path="support" element={<VendorSupportPage />} />
               </Route>

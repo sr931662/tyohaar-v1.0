@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../theme/colors.dart';
@@ -39,14 +41,20 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
   }
 
   Future<void> _addPhoto() async {
-    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (image == null) return;
-    
-    setState(() => _isUploading = true);
     try {
+      final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (image == null) return;
+
+      setState(() => _isUploading = true);
       final url = await _vendorService.uploadImage(File(image.path), 'package_gallery');
       await _vendorService.addPackageGalleryItem(widget.package.id, url);
       _load();
+    } on PlatformException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+        );
+      }
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
     } finally {
@@ -140,7 +148,13 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
                           child: Stack(
                             children: [
                               Positioned.fill(
-                                child: Image.network(item.mediaUrl, fit: BoxFit.cover),
+                                child: CachedNetworkImage(
+                                  imageUrl: item.mediaUrl,
+                                  fit: BoxFit.cover,
+                                  memCacheWidth: 400,
+                                  placeholder: (context, url) => Container(color: Colors.black12),
+                                  errorWidget: (context, url, error) => Container(color: Colors.black12, child: const Icon(Icons.broken_image_outlined, size: 24)),
+                                ),
                               ),
                               Positioned(
                                 top: 8,
