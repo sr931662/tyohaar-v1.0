@@ -1,6 +1,12 @@
 .page { padding-top: 0; }
 
-.hero { background: var(--paper); padding-top: clamp(140px, 16vw, 180px); }
+.hero {
+  background: var(--paper);
+  min-height: unset;
+  justify-content: flex-start;
+  padding-top: clamp(120px, 14vw, 160px);
+  padding-bottom: clamp(28px, 3vw, 36px);
+}
 .heroInner { max-width: 780px; }
 
 .eyebrow {
@@ -28,7 +34,13 @@
   max-width: 640px;
 }
 
-.body { background: var(--surface-2); }
+.body {
+  background: var(--surface-2);
+  min-height: unset;
+  justify-content: flex-start;
+  padding-top: clamp(32px, 4vw, 44px);
+  padding-bottom: clamp(48px, 6vw, 64px);
+}
 
 .channels {
   display: grid;
