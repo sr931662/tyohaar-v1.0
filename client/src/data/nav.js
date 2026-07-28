@@ -16,24 +16,20 @@ export const footerColumns = [
       { label: 'Occasions', href: '#occasions' },
       { label: 'How it works', href: '#how' },
       { label: 'Partners', href: '#partners' },
-      { label: 'Pricing', href: '#' },
     ],
   },
   {
     title: 'For partners',
     links: [
-      { label: 'Become a partner', href: '#' },
-      { label: 'Partner login', href: '#' },
-      { label: 'Standards & vetting', href: '#' },
+      { label: 'Become a partner', href: '/vendor/register', isRoute: true },
+      { label: 'Partner login', href: '/workspace/login', isRoute: true },
     ],
   },
   {
     title: 'Company',
     links: [
-      { label: 'Our story', href: '/about' },
-      { label: 'Careers', href: '#' },
-      { label: 'Press', href: '#' },
-      { label: 'Contact', href: '#' },
+      { label: 'Our story', href: '/about', isRoute: true },
+      { label: 'Contact us', href: '/contact', isRoute: true },
     ],
   },
 ];

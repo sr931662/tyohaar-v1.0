@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import Logo from '../ui/Logo.jsx';
 import Diya from '../ui/Diya.jsx';
 import { footerColumns } from '../../data/nav.js';
@@ -34,7 +35,11 @@ export default function Footer() {
               <ul>
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <a href={l.href}>{l.label}</a>
+                    {l.isRoute ? (
+                      <Link to={l.href}>{l.label}</Link>
+                    ) : (
+                      <a href={l.href}>{l.label}</a>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -47,11 +52,16 @@ export default function Footer() {
         <span className={styles.copy}>
           © {year} Tyohaar <Diya size={7} pulse={false} /> Made in India, for India.
         </span>
-        <span className={styles.credit}>Designed and Developed by MaviCode</span>
+        <span className={styles.credit}>
+          Designed and Developed by{' '}
+          <a href="https://mavicode.in" target="_blank" rel="noopener noreferrer">
+            MaviCode
+          </a>
+        </span>
         <div className={styles.legal}>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
-          <a href="#">Cookies</a>
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
+          <Link to="/cancellation-policy">Cancellation Policy</Link>
         </div>
       </div>
     </footer>

@@ -52,7 +52,7 @@ class _VendorSupportScreenState extends State<VendorSupportScreen> {
                 Text('New Support Ticket', style: TyType.display(20, color: context.ty.ink)),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: category,
+                  initialValue: category,
                   decoration: const InputDecoration(labelText: 'Category'),
                   // ticketCategoryOptions maps several UI labels onto the same
                   // backend value (e.g. "Planning"/"Others" both -> "general")
@@ -75,16 +75,19 @@ class _VendorSupportScreenState extends State<VendorSupportScreen> {
       ),
     );
 
-    if (saved != true) return;
-    if (descCtrl.text.trim().length < 20) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Description must be at least 20 characters.')));
-      return;
-    }
     try {
+      if (saved != true) return;
+      if (descCtrl.text.trim().length < 20) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Description must be at least 20 characters.')));
+        return;
+      }
       await _supportService.createTicket(category: category, subject: subjectCtrl.text.trim(), description: descCtrl.text.trim());
       _load();
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not create ticket.')));
+    } finally {
+      subjectCtrl.dispose();
+      descCtrl.dispose();
     }
   }
 

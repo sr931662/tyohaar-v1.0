@@ -26,6 +26,14 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
   bool _done = false;
   String _error = '';
 
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _otpCtrl.dispose();
+    _newPasswordCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _requestOtp() async {
     if (_emailCtrl.text.trim().isEmpty) {
       setState(() => _error = 'Please enter your email.');

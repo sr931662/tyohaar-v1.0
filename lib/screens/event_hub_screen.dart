@@ -19,6 +19,7 @@ import '../data/services/booking_service.dart';
 import '../data/services/package_service.dart';
 import '../data/services/media_service.dart';
 import '../utils/gallery_album.dart';
+import '../utils/log.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
@@ -93,7 +94,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
           packageItems =
               await _packageService.listPackageItems(booking.packageId!);
         } catch (e) {
-          debugPrint('Error loading package details: $e');
+          logDebug('Error loading package details: $e');
         }
       }
 
@@ -136,7 +137,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading event hub: $e');
+      logDebug('Error loading event hub: $e');
       if (mounted) setState(() { _isLoading = false; _error = true; });
     }
   }
@@ -149,7 +150,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
       final media = await _mediaService.listBookingMedia(booking.id);
       if (mounted) setState(() => _eventMedia = media);
     } catch (e) {
-      debugPrint('Error loading event media: $e');
+      logDebug('Error loading event media: $e');
     } finally {
       if (mounted) setState(() => _loadingMedia = false);
     }

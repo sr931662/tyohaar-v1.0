@@ -5,6 +5,7 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/celebration_service.dart';
+import '../utils/log.dart';
 import '../widgets/invitation_card.dart';
 import '../widgets/state_screens.dart';
 import '../widgets/ty_button.dart';
@@ -55,7 +56,7 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
         if (mounted) setState(() { _celebrations = []; _isLoading = false; });
       }
     } catch (e) {
-      debugPrint('Error loading invitation data: $e');
+      logDebug('Error loading invitation data: $e');
       if (mounted) setState(() { _isLoading = false; _error = true; });
     }
   }

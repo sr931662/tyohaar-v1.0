@@ -20,28 +20,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingData> _screens = [
     OnboardingData(
       title: 'Moments That Matter',
-      subtitle: 'From a baby’s first steps to golden anniversaries, we turn milestones into memories.',
+      subtitle:
+          'From a baby’s first steps to golden anniversaries, we turn milestones into memories.',
       icon: Icons.auto_awesome_rounded,
       image: 'assets/images/onboarding 1.png',
       tint: 'saffron',
     ),
     OnboardingData(
       title: 'Curated Perfection',
-      subtitle: 'Browse hand-picked packages designed by experts to fit your unique style and budget.',
+      subtitle:
+          'Browse hand-picked packages designed by experts to fit your unique style and budget.',
       icon: Icons.dashboard_customize_rounded,
       image: 'assets/images/onboarding 2.png',
       tint: 'rose',
     ),
     PlanOnboardingData(
       title: 'Stress-Free Planning',
-      subtitle: 'We handle the vendors, the timeline, and the details. You just enjoy the celebration.',
+      subtitle:
+          'We handle the vendors, the timeline, and the details. You just enjoy the celebration.',
       icon: Icons.checklist_rtl_rounded,
       image: 'assets/images/onboarding 3.png',
       tint: 'leaf',
     ),
     OnboardingData(
       title: 'Verified Excellence',
-      subtitle: 'Every vendor is Tyohaar-vetted for quality and reliability. Trust is our foundation.',
+      subtitle:
+          'Every vendor is Tyohaar-vetted for quality and reliability. Trust is our foundation.',
       icon: Icons.verified_user_rounded,
       image: 'assets/images/onboarding 4.png',
       tint: 'gold',
@@ -72,7 +76,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
-          
+
           PageView.builder(
             controller: _pageController,
             onPageChanged: (index) => setState(() => _currentPage = index),
@@ -100,17 +104,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       height: resp.h(8),
                       width: _currentPage == index ? resp.w(24) : resp.w(8),
                       decoration: BoxDecoration(
-                        color: _currentPage == index ? ty.tint(_screens[_currentPage].tint) : ty.line,
+                        color: _currentPage == index
+                            ? ty.tint(_screens[_currentPage].tint)
+                            : ty.line,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ),
                 ),
                 SizedBox(height: resp.h(32)),
-                
+
                 // Primary Action Button
                 TyButton(
-                  _currentPage == _screens.length - 1 ? 'Start Celebrating' : 'Next',
+                  _currentPage == _screens.length - 1
+                      ? 'Start Celebrating'
+                      : 'Next',
                   full: true,
                   onTap: () async {
                     if (_currentPage < _screens.length - 1) {
@@ -120,7 +128,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       );
                     } else {
                       await AuthManager.instance.completeOnboarding();
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (_) => const AuthScreen()),
@@ -128,18 +136,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     }
                   },
                 ),
-                
+
                 if (_currentPage < _screens.length - 1)
                   TextButton(
                     onPressed: () async {
                       await AuthManager.instance.completeOnboarding();
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (_) => const AuthScreen()),
                       );
                     },
-                    child: Text('Skip', style: TyType.sans(resp.sp(14), color: ty.ink3, weight: FontWeight.w600)),
+                    child: Text('Skip',
+                        style: TyType.sans(resp.sp(14),
+                            color: ty.ink3, weight: FontWeight.w600)),
                   ),
               ],
             ),
@@ -156,11 +166,21 @@ class OnboardingData {
   final IconData icon;
   final String image;
   final String tint;
-  OnboardingData({required this.title, required this.subtitle, required this.icon, required this.image, required this.tint});
+  OnboardingData(
+      {required this.title,
+      required this.subtitle,
+      required this.icon,
+      required this.image,
+      required this.tint});
 }
 
 class PlanOnboardingData extends OnboardingData {
-  PlanOnboardingData({required super.title, required super.subtitle, required super.icon, required super.image, required super.tint});
+  PlanOnboardingData(
+      {required super.title,
+      required super.subtitle,
+      required super.icon,
+      required super.image,
+      required super.tint});
 }
 
 class _OnboardingPage extends StatelessWidget {
@@ -172,73 +192,80 @@ class _OnboardingPage extends StatelessWidget {
     final ty = context.ty;
     final resp = context.resp;
 
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(), // Managed by PageView
-      child: Container(
-        height: MediaQuery.of(context).size.height,
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        // Vertical scroll here doesn't fight the PageView's horizontal swipe,
+        // and gives short screens / larger accessibility text scales a
+        // graceful fallback instead of a RenderFlex overflow.
         padding: EdgeInsets.symmetric(horizontal: resp.w(40)),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Animated Icon Container
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.elasticOut,
-              builder: (context, value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: Container(
-                    width: resp.w(220),
-                    height: resp.w(220),
-                    decoration: BoxDecoration(
-                      color: ty.tint(data.tint).withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(resp.w(24)),
-                      child: Image.asset(
-                        data.image,
-                        fit: BoxFit.contain,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: IntrinsicHeight(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Animated Icon Container
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: Container(
+                        width: resp.w(220),
+                        height: resp.w(220),
+                        decoration: BoxDecoration(
+                          color: ty.tint(data.tint).withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(resp.w(24)),
+                          child: Image.asset(
+                            data.image,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
                       ),
-                    ),
+                    );
+                  },
+                ),
+                SizedBox(height: resp.h(60)),
+
+                // Animated Text Content
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 600),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 20 * (1 - value)),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      Text(
+                        data.title,
+                        textAlign: TextAlign.center,
+                        style: TyType.display(resp.sp(32), color: ty.ink),
+                      ),
+                      SizedBox(height: resp.h(16)),
+                      Text(
+                        data.subtitle,
+                        textAlign: TextAlign.center,
+                        style: TyType.sans(resp.sp(16),
+                            color: ty.ink2, height: 1.5),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+                SizedBox(height: resp.h(100)), // Space for bottom buttons
+              ],
             ),
-            SizedBox(height: resp.h(60)),
-            
-            // Animated Text Content
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 600),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, 20 * (1 - value)),
-                    child: child,
-                  ),
-                );
-              },
-              child: Column(
-                children: [
-                  Text(
-                    data.title,
-                    textAlign: TextAlign.center,
-                    style: TyType.display(resp.sp(32), color: ty.ink),
-                  ),
-                  SizedBox(height: resp.h(16)),
-                  Text(
-                    data.subtitle,
-                    textAlign: TextAlign.center,
-                    style: TyType.sans(resp.sp(16), color: ty.ink2, height: 1.5),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: resp.h(100)), // Space for bottom buttons
-          ],
+          ),
         ),
       ),
     );

@@ -1,0 +1,125 @@
+name: Android CI / Release Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/android-build.yml'
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/android-build.yml'
+  workflow_dispatch:
+    inputs:
+      build_mode:
+        description: 'Build mode (debug or release)'
+        required: true
+        default: 'release'
+
+jobs:
+  analyze:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.41.7'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: flutter analyze
+        run: flutter analyze
+
+      - name: flutter test
+        run: |
+          if find test -name '*_test.dart' | grep -q .; then
+            flutter test
+          else
+            echo "No test files found under test/ — skipping (tracked as a known coverage gap)."
+          fi
+
+  build:
+    name: Build signed App Bundle
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.41.7'
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Decode release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set — cannot produce a signed release build. Add the repo secrets (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD) before running this workflow."
+            exit 1
+          fi
+          echo -n "$ANDROID_KEYSTORE_BASE64" | base64 --decode -o android/app/tyohaar-release-key.jks
+          cat > android/key.properties <<EOF
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=tyohaar-release-key.jks
+          EOF
+
+      - name: Decode google-services.json
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON_BASE64 secret is not set — Firebase (push notifications, Crashlytics) will fail to initialize in this build."
+          else
+            echo -n "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode -o android/app/google-services.json
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build App Bundle
+        env:
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          DEFINES=""
+          if [ -n "$RAZORPAY_KEY_ID" ]; then
+            DEFINES="$DEFINES --dart-define=RAZORPAY_KEY_ID=$RAZORPAY_KEY_ID"
+          else
+            echo "::warning::RAZORPAY_KEY_ID secret is not set — building with the compiled-in test placeholder key (rzp_test_PLACEHOLDER_KEY). Add the RAZORPAY_KEY_ID repo secret before shipping a build that takes real payments."
+          fi
+          if [ -n "$API_BASE_URL" ]; then
+            DEFINES="$DEFINES --dart-define=API_BASE_URL=$API_BASE_URL"
+          fi
+          flutter build appbundle --${{ github.event.inputs.build_mode }} $DEFINES
+
+      - name: Upload App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-appbundle-${{ github.event.inputs.build_mode }}
+          path: build/app/outputs/bundle/release/*.aab

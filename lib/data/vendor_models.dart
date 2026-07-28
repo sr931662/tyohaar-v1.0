@@ -3,7 +3,7 @@
 /// (client/src/vendor/api/index.js is the source-of-truth contract).
 library;
 
-import 'models.dart' show asDouble, asUrl;
+import 'models.dart' show asDouble, asUrl, asString;
 
 class VendorBusinessProfile {
   final String id;
@@ -52,7 +52,7 @@ class VendorBusinessProfile {
 
   factory VendorBusinessProfile.fromJson(Map<String, dynamic> json) {
     return VendorBusinessProfile(
-      id: json['id'] as String,
+      id: asString(json['id']),
       userId: json['user_id'] as String? ?? '',
       businessName: json['business_name'] as String? ?? '',
       vendorType: json['vendor_type'] as String? ?? 'other',
@@ -123,7 +123,7 @@ class VendorGalleryItem {
 
   factory VendorGalleryItem.fromJson(Map<String, dynamic> json) {
     return VendorGalleryItem(
-      id: json['id'] as String,
+      id: asString(json['id']),
       mediaUrl: json['media_url'] as String? ?? json['file_url'] as String? ?? '',
       caption: json['caption'] as String?,
       isFeatured: json['is_featured'] as bool? ?? false,
@@ -148,7 +148,7 @@ class VendorDocument {
 
   factory VendorDocument.fromJson(Map<String, dynamic> json) {
     return VendorDocument(
-      id: json['id'] as String,
+      id: asString(json['id']),
       documentType: json['document_type'] as String? ?? 'other',
       documentUrl: json['document_url'] as String? ?? '',
       verificationStatus: json['verification_status'] as String? ?? 'unverified',
@@ -180,7 +180,7 @@ class VendorBankAccount {
 
   factory VendorBankAccount.fromJson(Map<String, dynamic> json) {
     return VendorBankAccount(
-      id: json['id'] as String,
+      id: asString(json['id']),
       accountHolderName: json['account_holder_name'] as String? ?? '',
       maskedAccountNumber: json['masked_account_number'] as String? ?? json['account_number'] as String? ?? '',
       ifscCode: json['ifsc_code'] as String? ?? '',
@@ -273,7 +273,7 @@ class VendorPublicDetail {
     final profile = json['vendor_profile'] as Map<String, dynamic>? ?? json['profile'] as Map<String, dynamic>? ?? json;
     final gallery = (json['gallery'] as List?)?.map((g) => g['image_url'] as String? ?? g['media_url'] as String? ?? '').where((u) => u.isNotEmpty).toList() ?? <String>[];
     return VendorPublicDetail(
-      id: json['id'] as String,
+      id: asString(json['id']),
       businessName: json['business_name'] as String? ?? 'Vendor',
       businessCategory: json['vendor_type'] as String?,
       bio: profile['about'] as String?,
@@ -308,7 +308,7 @@ class PublicVendorReview {
 
   factory PublicVendorReview.fromJson(Map<String, dynamic> json) {
     return PublicVendorReview(
-      id: json['id'] as String,
+      id: asString(json['id']),
       reviewerName: json['reviewer_name'] as String? ?? 'Customer',
       rating: asDouble(json['rating']),
       comment: json['body'] as String? ?? json['comment'] as String?,
@@ -338,7 +338,7 @@ class VendorReview {
 
   factory VendorReview.fromJson(Map<String, dynamic> json) {
     return VendorReview(
-      id: json['id'] as String,
+      id: asString(json['id']),
       reviewerName: json['reviewer_name'] as String?,
       rating: json['rating'] as int? ?? 5,
       title: json['title'] as String?,
@@ -388,7 +388,7 @@ class VendorPackage {
 
   factory VendorPackage.fromJson(Map<String, dynamic> json) {
     return VendorPackage(
-      id: json['id'] as String,
+      id: asString(json['id']),
       name: json['name'] as String? ?? '',
       shortDescription: json['short_description'] as String?,
       description: json['description'] as String?,
@@ -437,7 +437,7 @@ class VendorPackageItem {
 
   factory VendorPackageItem.fromJson(Map<String, dynamic> json) {
     return VendorPackageItem(
-      id: json['id'] as String,
+      id: asString(json['id']),
       name: json['name'] as String? ?? '',
       description: json['description'] as String?,
       basePrice: asDouble(json['base_price']),
@@ -477,7 +477,7 @@ class VendorCommonItem {
 
   factory VendorCommonItem.fromJson(Map<String, dynamic> json) {
     return VendorCommonItem(
-      id: json['id'] as String,
+      id: asString(json['id']),
       name: json['name'] as String? ?? '',
       description: json['description'] as String?,
       basePrice: asDouble(json['base_price']),
@@ -538,7 +538,7 @@ class VendorPaymentRecord {
 
   factory VendorPaymentRecord.fromJson(Map<String, dynamic> json) {
     return VendorPaymentRecord(
-      id: json['id'] as String,
+      id: asString(json['id']),
       paymentNumber: json['payment_number'] as String?,
       method: json['payment_method'] as String? ?? json['method'] as String?,
       amount: asDouble(json['amount']),

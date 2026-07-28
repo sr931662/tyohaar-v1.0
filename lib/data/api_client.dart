@@ -54,6 +54,75 @@ class _MemoryCacheInterceptor extends Interceptor {
   void clear() => _cache.clear();
 }
 
+/// Retries idempotent GET requests on transient network failures
+/// (connection/receive/send timeouts, connection errors, and 502/503/504)
+/// with exponential backoff. Never retries non-GET requests — retrying a
+/// POST/PUT/DELETE blindly risks duplicating a booking/payment/etc. Never
+/// retries 4xx responses, since those won't succeed on a second attempt.
+class _RetryInterceptor extends Interceptor {
+  final Dio _dio;
+  static const _maxRetries = 2;
+  static const _baseDelay = Duration(milliseconds: 500);
+
+  _RetryInterceptor(this._dio);
+
+  bool _isRetryable(DioException e) {
+    if (e.requestOptions.method.toUpperCase() != 'GET') return false;
+    final status = e.response?.statusCode;
+    if (status != null) return status == 502 || status == 503 || status == 504;
+    return e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.connectionError;
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    final attempt = (err.requestOptions.extra['retryAttempt'] as int?) ?? 0;
+    if (!_isRetryable(err) || attempt >= _maxRetries) {
+      return handler.next(err);
+    }
+    await Future.delayed(_baseDelay * (attempt + 1));
+    final opts = err.requestOptions;
+    opts.extra['retryAttempt'] = attempt + 1;
+    try {
+      final response = await _dio.fetch(opts);
+      return handler.resolve(response);
+    } on DioException catch (e) {
+      return handler.next(e);
+    }
+  }
+}
+
+/// Maps a caught network/API error to a short, user-facing message instead
+/// of Dio's technical `DioException [type]: ...` text. Screens that
+/// currently render `error.toString()` directly to the user should use
+/// this instead.
+String describeApiError(Object error) {
+  if (error is DioException) {
+    switch (error.type) {
+      case DioExceptionType.connectionError:
+        return 'No internet connection. Please check your network and try again.';
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return 'The request timed out. Please try again.';
+      case DioExceptionType.badResponse:
+        final status = error.response?.statusCode;
+        if (status != null && status >= 500) {
+          return 'Something went wrong on our end. Please try again shortly.';
+        }
+        if (status == 404) return 'The requested information could not be found.';
+        return 'That request could not be completed. Please try again.';
+      case DioExceptionType.cancel:
+        return 'Request cancelled.';
+      default:
+        return 'Something went wrong. Please try again.';
+    }
+  }
+  return 'Something went wrong. Please try again.';
+}
+
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
@@ -78,6 +147,7 @@ class ApiClient {
         baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 15),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -86,6 +156,7 @@ class ApiClient {
     );
 
     dio.interceptors.add(_cacheInterceptor);
+    dio.interceptors.add(_RetryInterceptor(dio));
 
     if (kDebugMode) {
       dio.interceptors.add(LogInterceptor(

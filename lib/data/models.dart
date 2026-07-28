@@ -23,6 +23,24 @@ String? asUrl(dynamic value) {
   return s.isEmpty ? null : s;
 }
 
+/// Coerces a JSON value to a non-null String, falling back to [fallback]
+/// (default empty string) when the field is missing/null. Use this instead
+/// of `as String` for fields the backend may legitimately omit — a raw cast
+/// throws and takes down the whole screen for one bad/missing field.
+String asString(dynamic value, [String fallback = '']) {
+  if (value == null) return fallback;
+  return value.toString();
+}
+
+/// Parses an ISO-8601 date/time string defensively. A missing or malformed
+/// value falls back to [fallback] (default: now) instead of throwing —
+/// `DateTime.parse` on a null or unparsable value crashes the caller.
+DateTime asDateTime(dynamic value, [DateTime? fallback]) {
+  if (value is DateTime) return value;
+  if (value == null) return fallback ?? DateTime.now();
+  return DateTime.tryParse(value.toString()) ?? (fallback ?? DateTime.now());
+}
+
 // ---------------------------------------------------------------------------
 // USER  →  UserResponse
 // ---------------------------------------------------------------------------
@@ -268,8 +286,8 @@ class PackageCategory {
   factory PackageCategory.fromJson(Map<String, dynamic> json) {
     return PackageCategory(
       id: json['id'] as String? ?? '',
-      name: json['name'] as String,
-      slug: json['slug'] as String,
+      name: asString(json['name']),
+      slug: asString(json['slug']),
       iconUrl: asUrl(json['icon_url']),
       coverImageUrl: asUrl(json['cover_image_url']),
       displayOrder: json['display_order'] as int? ?? 0,
@@ -528,7 +546,7 @@ class PackageItem {
     final isMandatory = json['is_mandatory'] as bool? ?? true;
     return PackageItem(
       id: json['id'] as String? ?? '',
-      name: json['name'] as String,
+      name: asString(json['name']),
       description: json['description'] as String?,
       // Was: json['item_type'] — backend has no item_type field; unit is closest.
       unit: json['unit'] as String?,
@@ -629,7 +647,7 @@ class Booking {
       totalAmount: asDouble(json['total_amount']),
       amountPaid: asDouble(json['amount_paid']),
       amountDue: asDouble(json['amount_due']),
-      scheduledDate: DateTime.parse(json['scheduled_date']),
+      scheduledDate: asDateTime(json['scheduled_date']),
       packageId: json['package_id'] as String?,
       packageName: json['package_name'] as String?,
       packageCoverUrl: asUrl(json['package_cover_url']),
@@ -648,7 +666,7 @@ class Booking {
       preparationStartAt: json['preparation_start_at'] != null
           ? DateTime.tryParse(json['preparation_start_at'] as String)
           : null,
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: asDateTime(json['created_at']),
       items: (json['items'] as List? ?? [])
           .map((e) => BookingItemLine.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -710,7 +728,7 @@ class EventMediaItem {
   factory EventMediaItem.fromJson(Map<String, dynamic> json, {required bool isVideo}) {
     return EventMediaItem(
       id: json['id'] as String? ?? '',
-      url: json['url'] as String,
+      url: asString(json['url']),
       thumbnailUrl: asUrl(json['thumbnail_url']),
       isVideo: isVideo,
       uploadedAt: json['uploaded_at'] != null
@@ -1121,7 +1139,7 @@ class PackageReviewModel {
   factory PackageReviewModel.fromJson(Map<String, dynamic> json) {
     return PackageReviewModel(
       id: json['id'] as String? ?? '',
-      packageId: json['package_id'] as String,
+      packageId: asString(json['package_id']),
       customerId: json['reviewer_id'] as String? ?? json['customer_id'] as String? ?? '',
       bookingId: json['booking_id'] as String?,
       rating: (json['rating'] as num? ?? 0).toInt(),
@@ -1166,7 +1184,7 @@ class PackageItemReviewModel {
   factory PackageItemReviewModel.fromJson(Map<String, dynamic> json) {
     return PackageItemReviewModel(
       id: json['id'] as String? ?? '',
-      packageItemId: json['package_item_id'] as String,
+      packageItemId: asString(json['package_item_id']),
       customerId: json['customer_id'] as String? ?? '',
       bookingId: json['booking_id'] as String?,
       rating: (json['rating'] as num? ?? 0).toInt(),

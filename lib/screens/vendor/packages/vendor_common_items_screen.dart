@@ -70,8 +70,8 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
       ),
     );
 
-    if (saved != true) return;
     try {
+      if (saved != true) return;
       await _vendorService.createCommonItem({
         'name': nameCtrl.text.trim(),
         'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
@@ -82,6 +82,12 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
       _load();
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not create item.')));
+    } finally {
+      nameCtrl.dispose();
+      priceCtrl.dispose();
+      qtyCtrl.dispose();
+      unitCtrl.dispose();
+      descCtrl.dispose();
     }
   }
 

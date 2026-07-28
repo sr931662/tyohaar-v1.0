@@ -63,6 +63,22 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _businessNameCtrl.dispose();
+    _legalNameCtrl.dispose();
+    _gstCtrl.dispose();
+    _panCtrl.dispose();
+    _yearsCtrl.dispose();
+    _establishedCtrl.dispose();
+    _radiusCtrl.dispose();
+    _taglineCtrl.dispose();
+    _aboutCtrl.dispose();
+    _citiesCtrl.dispose();
+    _websiteCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     setState(() => _isLoading = true);
     try {
@@ -214,7 +230,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           const SizedBox(height: 10),
           _field(ty, 'Business Name *', _businessNameCtrl, enabled: _isNew),
           _labeled(ty, 'Vendor Type', DropdownButtonFormField<String>(
-            value: _vendorType,
+            initialValue: _vendorType,
             items: _vendorTypes.map((t) => DropdownMenuItem(value: t, child: Text(t.replaceAll('_', ' ')))).toList(),
             onChanged: _isNew ? (v) => setState(() => _vendorType = v ?? _vendorType) : null,
           )),

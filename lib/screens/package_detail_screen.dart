@@ -13,6 +13,7 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../data/models.dart';
+import '../utils/log.dart';
 import '../data/services/package_service.dart';
 import '../utils/currency.dart';
 import '../utils/gallery_album.dart';
@@ -71,7 +72,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading package details: $e');
+      logDebug('Error loading package details: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }

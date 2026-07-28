@@ -12,6 +12,7 @@ import '../data/services/celebration_service.dart';
 import '../data/services/booking_service.dart';
 import '../data/services/user_service.dart';
 import '../utils/currency.dart';
+import '../utils/log.dart';
 import '../widgets/avatar.dart';
 import '../widgets/emblem.dart';
 import '../widgets/photo_placeholder.dart';
@@ -69,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final city = address.city.trim();
       return city.isEmpty ? null : city;
     } catch (e) {
-      debugPrint('Error loading addresses: $e');
+      logDebug('Error loading addresses: $e');
       return null;
     }
   }
@@ -100,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _featuredIsFallback = true;
       return anyPackages.take(8).toList();
     } catch (e) {
-      debugPrint('Error loading packages: $e');
+      logDebug('Error loading packages: $e');
       return <Package>[];
     }
   }
@@ -111,11 +112,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final results = await Future.wait([
         _loadFeatured(city),
         _packageService.listOccasions().catchError((e) {
-          debugPrint('Error loading occasions: $e');
+          logDebug('Error loading occasions: $e');
           return <Occasion>[];
         }),
         _celebrationService.listCelebrations().catchError((e) {
-          debugPrint('Error loading celebrations: $e');
+          logDebug('Error loading celebrations: $e');
           return <Celebration>[];
         }),
       ]);
@@ -144,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final guests = await _celebrationService.listGuests(celebrationId);
       setState(() => _guests = guests);
     } catch (e) {
-      debugPrint('Error loading guests: $e');
+      logDebug('Error loading guests: $e');
     }
   }
 
@@ -158,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading active booking: $e');
+      logDebug('Error loading active booking: $e');
       if (mounted) setState(() => _isBookingLoading = false);
     }
   }

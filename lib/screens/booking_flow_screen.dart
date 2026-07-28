@@ -8,6 +8,7 @@ import '../data/auth_manager.dart';
 import '../data/services/package_service.dart';
 import '../data/services/user_service.dart';
 import '../data/services/booking_service.dart';
+import '../utils/log.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import 'email_verification_screen.dart';
@@ -52,6 +53,15 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _recipientNameCtrl.dispose();
+    _recipientPhoneCtrl.dispose();
+    _landmarkCtrl.dispose();
+    _specialNotesCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
     try {
       final results = await Future.wait([
@@ -68,7 +78,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading booking flow data: $e');
+      logDebug('Error loading booking flow data: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -153,7 +163,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         ),
       );
     } catch (e) {
-      debugPrint('Error creating booking: $e');
+      logDebug('Error creating booking: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to create booking. Please try again.')),

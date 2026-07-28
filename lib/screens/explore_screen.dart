@@ -10,6 +10,7 @@ import '../theme/responsive.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../utils/currency.dart';
+import '../utils/log.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_chip.dart';
 import '../widgets/common.dart';
@@ -119,7 +120,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading categories: $e');
+      logDebug('Error loading categories: $e');
     }
   }
 
@@ -139,7 +140,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading packages: $e');
+      logDebug('Error loading packages: $e');
       setState(() {
         _isLoading = false;
         _error = true;

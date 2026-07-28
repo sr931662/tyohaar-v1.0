@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/services/support_service.dart';
+import '../utils/log.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 
@@ -53,7 +54,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      debugPrint('Error raising ticket: $e');
+      logDebug('Error raising ticket: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to raise ticket. Please try again.')),

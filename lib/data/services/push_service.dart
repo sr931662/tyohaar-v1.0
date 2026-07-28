@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
 import '../api_client.dart';
+import '../../utils/log.dart';
 
 /// Handles Firebase Cloud Messaging setup: permission request, token
 /// registration with the backend, foreground display via a local
@@ -41,7 +41,7 @@ class PushService {
     try {
       await Firebase.initializeApp();
     } catch (e) {
-      debugPrint('PushService: Firebase not configured yet ($e). Push notifications disabled.');
+      logDebug('PushService: Firebase not configured yet ($e). Push notifications disabled.');
       return;
     }
 
@@ -57,7 +57,7 @@ class PushService {
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
     } catch (e) {
-      debugPrint('PushService: initialization failed ($e).');
+      logDebug('PushService: initialization failed ($e).');
     }
   }
 
@@ -103,7 +103,7 @@ class PushService {
   void _handleNotificationTap(RemoteMessage message) {
     // Deep-link routing can be added here using message.data['action_url']
     // once a global navigator key is wired in — left as a no-op for now.
-    debugPrint('PushService: notification tapped, data=${message.data}');
+    logDebug('PushService: notification tapped, data=${message.data}');
   }
 
   Future<String> _getStableDeviceId() async {
@@ -162,7 +162,7 @@ class PushService {
         'os_version': osVersion,
       });
     } catch (e) {
-      debugPrint('PushService: device registration failed ($e).');
+      logDebug('PushService: device registration failed ($e).');
     }
   }
 }

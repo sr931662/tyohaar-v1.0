@@ -107,8 +107,8 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
       ),
     );
 
-    if (saved != true) return;
     try {
+      if (saved != true) return;
       await _vendorService.addBankAccount(_vendorId!, {
         'account_holder_name': holderCtrl.text.trim(),
         'account_number': numberCtrl.text.trim(),
@@ -121,6 +121,12 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bank account added.')));
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not add account.')));
+    } finally {
+      holderCtrl.dispose();
+      numberCtrl.dispose();
+      ifscCtrl.dispose();
+      bankCtrl.dispose();
+      branchCtrl.dispose();
     }
   }
 

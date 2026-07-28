@@ -6,6 +6,7 @@ import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../utils/currency.dart';
+import '../utils/log.dart';
 import '../widgets/common.dart';
 import '../widgets/emblem.dart';
 import '../widgets/photo_placeholder.dart';
@@ -43,7 +44,7 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
       final packages = await _packageService.listPackages(occasionId: widget.occasion.id);
       if (mounted) setState(() { _packages = packages; _isLoadingPackages = false; });
     } catch (e) {
-      debugPrint('Error loading packages for occasion: $e');
+      logDebug('Error loading packages for occasion: $e');
       if (mounted) setState(() { _isLoadingPackages = false; _packagesError = true; });
     }
   }

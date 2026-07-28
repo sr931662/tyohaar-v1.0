@@ -6,6 +6,7 @@ import '../theme/typography.dart';
 import '../data/services/vendor_service.dart';
 import '../data/vendor_models.dart';
 import '../utils/currency.dart';
+import '../utils/log.dart';
 import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
@@ -57,7 +58,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading vendor detail: $e');
+      logDebug('Error loading vendor detail: $e');
       if (mounted) setState(() { _error = 'Could not load vendor details.'; _isLoading = false; });
     }
   }

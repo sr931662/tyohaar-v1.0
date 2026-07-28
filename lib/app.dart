@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
@@ -22,6 +23,7 @@ import 'screens/vendor/vendor_root_nav.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/root_nav.dart';
 import 'screens/auth_screen.dart';
+import 'widgets/offline_banner.dart';
 
 class TyohaarApp extends StatelessWidget {
   const TyohaarApp({super.key});
@@ -56,8 +58,11 @@ class TyohaarApp extends StatelessWidget {
             theme: buildTyTheme(Brightness.light),
             darkTheme: buildTyTheme(Brightness.dark),
             themeMode: themeController.mode,
+            navigatorObservers: [
+              FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+            ],
             builder: (context, child) {
-              return child ?? const SizedBox.shrink();
+              return OfflineBanner(child: child ?? const SizedBox.shrink());
             },
             home: pov == UserPOV.vendor
                 ? const VendorRootNav()

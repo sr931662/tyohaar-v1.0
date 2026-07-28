@@ -97,16 +97,16 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
       ),
     );
 
-    if (saved != true) return;
-    final body = {
-      'name': nameCtrl.text.trim(),
-      'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
-      'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
-      'unit': unitCtrl.text.trim().isEmpty ? null : unitCtrl.text.trim(),
-      'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
-      'is_mandatory': isMandatory,
-    };
     try {
+      if (saved != true) return;
+      final body = {
+        'name': nameCtrl.text.trim(),
+        'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
+        'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
+        'unit': unitCtrl.text.trim().isEmpty ? null : unitCtrl.text.trim(),
+        'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+        'is_mandatory': isMandatory,
+      };
       if (existing == null) {
         await _vendorService.addPackageItem(widget.package.id, body);
       } else {
@@ -115,6 +115,12 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
       _load();
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save item.')));
+    } finally {
+      nameCtrl.dispose();
+      priceCtrl.dispose();
+      qtyCtrl.dispose();
+      unitCtrl.dispose();
+      descCtrl.dispose();
     }
   }
 

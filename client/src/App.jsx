@@ -8,6 +8,10 @@ import Navbar from './components/layout/Navbar.jsx';
 const WorkspaceLoginPage = lazy(() => import('./workspace/pages/WorkspaceLoginPage.jsx'));
 
 const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
+const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
+const TermsPage = lazy(() => import('./pages/legal/TermsPage.jsx'));
+const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage.jsx'));
+const CancellationPolicyPage = lazy(() => import('./pages/legal/CancellationPolicyPage.jsx'));
 
 import Footer from './components/layout/Footer.jsx';
 import Hero from './components/sections/Hero.jsx';
@@ -110,6 +114,38 @@ export default function App() {
         element={
           <Suspense fallback={<AdminFallback />}>
             <AboutPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/contact"
+        element={
+          <Suspense fallback={<AdminFallback />}>
+            <ContactPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/terms"
+        element={
+          <Suspense fallback={<AdminFallback />}>
+            <TermsPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/privacy"
+        element={
+          <Suspense fallback={<AdminFallback />}>
+            <PrivacyPolicyPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/cancellation-policy"
+        element={
+          <Suspense fallback={<AdminFallback />}>
+            <CancellationPolicyPage />
           </Suspense>
         }
       />

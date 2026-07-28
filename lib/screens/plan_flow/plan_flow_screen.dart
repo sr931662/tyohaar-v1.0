@@ -14,6 +14,7 @@ import '../../data/services/user_service.dart';
 import '../../data/services/booking_service.dart';
 import '../../data/services/payment_service.dart';
 import '../../utils/currency.dart';
+import '../../utils/log.dart';
 import 'package:tyohaar/screens/email_verification_screen.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
 import 'package:tyohaar/screens/send_invitations_screen.dart';
@@ -138,7 +139,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       _precacheOccasionImages(_occasions);
       if (_occasion != null) _loadPackagesForOccasion(_occasion!.id);
     } catch (e) {
-      debugPrint('Error loading plan flow data: $e');
+      logDebug('Error loading plan flow data: $e');
       setState(() { _isLoading = false; _loadError = true; });
     }
   }
@@ -152,7 +153,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       final packages = await _packageService.listPackages(occasionId: occasionId);
       if (mounted) setState(() { _packages = packages; _loadingPackages = false; });
     } catch (e) {
-      debugPrint('Error loading packages for occasion: $e');
+      logDebug('Error loading packages for occasion: $e');
       if (mounted) setState(() { _loadingPackages = false; _packagesError = true; });
     }
   }
@@ -189,7 +190,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _loadingItems = false;
       });
     } catch (e) {
-      debugPrint('Error loading package items: $e');
+      logDebug('Error loading package items: $e');
       setState(() { _loadingItems = false; _itemsError = true; });
     }
   }
@@ -323,7 +324,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         ),
       );
     } catch (e) {
-      debugPrint('Error creating booking: $e');
+      logDebug('Error creating booking: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not create booking. Please try again.')),
@@ -855,7 +856,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Contact import failed: $e');
+      logDebug('Contact import failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not read contacts. Please try again.')),
@@ -1544,15 +1545,19 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               if (_addresses.isEmpty)
                 TyButton('Add Address', kind: TyButtonKind.ghost, leadingIcon: Icons.add_location_alt_outlined, onTap: _openAddAddress)
               else
-                ..._addresses.map((addr) => RadioListTile<Address>(
-                  value: addr,
+                RadioGroup<Address>(
                   groupValue: _address,
-                  activeColor: ty.saffron,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(addr.label, style: TyType.sans(14, weight: FontWeight.w700)),
-                  subtitle: Text(addr.fullAddress, style: TyType.sans(12, color: ty.ink2)),
                   onChanged: (v) => setState(() => _address = v!),
-                )),
+                  child: Column(
+                    children: _addresses.map((addr) => RadioListTile<Address>(
+                          value: addr,
+                          activeColor: ty.saffron,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(addr.label, style: TyType.sans(14, weight: FontWeight.w700)),
+                          subtitle: Text(addr.fullAddress, style: TyType.sans(12, color: ty.ink2)),
+                        )).toList(),
+                  ),
+                ),
             ],
           ),
         ),

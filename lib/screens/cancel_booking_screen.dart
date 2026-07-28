@@ -152,14 +152,20 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
           const SizedBox(height: 24),
           Text('Why are you cancelling?', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
           const SizedBox(height: 10),
-          ..._kCancellationReasons.entries.map((e) => RadioListTile<String>(
-                value: e.key,
-                groupValue: _reason,
-                onChanged: (v) => setState(() => _reason = v!),
-                title: Text(e.value, style: TyType.sans(14, color: ty.ink)),
-                contentPadding: EdgeInsets.zero,
-                activeColor: ty.saffron,
-              )),
+          RadioGroup<String>(
+            groupValue: _reason,
+            onChanged: (v) => setState(() => _reason = v!),
+            child: Column(
+              children: _kCancellationReasons.entries
+                  .map((e) => RadioListTile<String>(
+                        value: e.key,
+                        title: Text(e.value, style: TyType.sans(14, color: ty.ink)),
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: ty.saffron,
+                      ))
+                  .toList(),
+            ),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _detailCtrl,

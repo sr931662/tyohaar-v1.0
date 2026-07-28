@@ -11,6 +11,7 @@ import '../data/services/user_service.dart';
 import '../data/services/vendor_service.dart';
 import '../data/services/media_service.dart';
 import '../data/auth_manager.dart';
+import '../utils/log.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import 'vendor/vendor_availability_screen.dart';
@@ -79,6 +80,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     final image = await picker.pickImage(source: ImageSource.gallery);
     
     if (image == null) return;
+    if (!mounted) return;
 
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: image.path,
@@ -162,7 +164,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         );
       }
     } catch (e) {
-      debugPrint('Error updating profile: $e');
+      logDebug('Error updating profile: $e');
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(

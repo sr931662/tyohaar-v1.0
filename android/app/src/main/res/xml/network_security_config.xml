@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Explicit network security policy for production hardening. This mirrors
+  the platform default (system CAs only, cleartext blocked) but makes the
+  policy explicit rather than implicit, and gives us a single place to add
+  certificate pinning later if the backend team wants it — do not add pins
+  here without a verified rotation plan, since a bad pin bricks all network
+  calls until the next app update.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
