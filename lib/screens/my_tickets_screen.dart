@@ -6,6 +6,7 @@ import '../data/services/support_service.dart';
 import '../widgets/common.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_detail_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class MyTicketsScreen extends StatefulWidget {
   const MyTicketsScreen({super.key});
@@ -33,7 +34,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       tickets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       if (mounted) setState(() { _tickets = tickets; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load your tickets.'; _isLoading = false; });
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.myTicketsLoadError; _isLoading = false; });
     }
   }
 
@@ -59,12 +60,12 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'My Tickets'),
+      appBar: tyAppBar(context, title: AppLocalizations.of(context)!.myTicketsTitle),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: ty.saffron,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('New Ticket'),
+        label: Text(AppLocalizations.of(context)!.myTicketsNewTicketButtonLabel),
         onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RaiseTicketScreen()));
           _load();
@@ -97,10 +98,10 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
           children: [
             Icon(Icons.confirmation_number_outlined, size: 48, color: ty.ink3),
             const SizedBox(height: 16),
-            Text('No support tickets yet', style: TyType.display(18, color: ty.ink)),
+            Text(AppLocalizations.of(context)!.myTicketsEmptyTitle, style: TyType.display(18, color: ty.ink)),
             const SizedBox(height: 8),
             Text(
-              'Raised a ticket? It\'ll show up here so you can track replies.',
+              AppLocalizations.of(context)!.myTicketsEmptyMessage,
               textAlign: TextAlign.center,
               style: TyType.sans(13.5, color: ty.ink3),
             ),
@@ -156,7 +157,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Text('#${ticket.ticketNumber}', style: TyType.sans(11, color: ty.ink3)),
+                Text(AppLocalizations.of(context)!.myTicketsTicketNumberLabel(ticket.ticketNumber), style: TyType.sans(11, color: ty.ink3)),
                 const Spacer(),
                 Icon(Icons.chevron_right_rounded, size: 18, color: ty.ink3),
               ],

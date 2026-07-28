@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
@@ -19,7 +20,8 @@ class BookingConfirmationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    
+    final l10n = AppLocalizations.of(context)!;
+
     // Simulate mobile status bar notification
     Future.delayed(const Duration(seconds: 1), () {
       if (context.mounted) {
@@ -29,7 +31,7 @@ class BookingConfirmationScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.notifications_active, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
-                Expanded(child: Text('Tyohaar: Celebration Confirmed for $packageName on $date!')),
+                Expanded(child: Text(l10n.bookingConfirmationNotificationMessage(packageName, date))),
               ],
             ),
             behavior: SnackBarBehavior.floating,
@@ -58,10 +60,10 @@ class BookingConfirmationScreen extends StatelessWidget {
                 child: Icon(Icons.check_circle_rounded, color: ty.leaf, size: 64),
               ),
               const SizedBox(height: 32),
-              Text('Celebration Confirmed!', style: TyType.display(32, color: ty.ink), textAlign: TextAlign.center),
+              Text(l10n.bookingConfirmationHeading, style: TyType.display(32, color: ty.ink), textAlign: TextAlign.center),
               const SizedBox(height: 12),
               Text(
-                'We’ve received your booking for $packageName. Our team will start prepping for your special day right away.',
+                l10n.bookingConfirmationBodyMessage(packageName),
                 style: TyType.sans(15, color: ty.ink2, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -75,21 +77,21 @@ class BookingConfirmationScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    _row(context, 'Booking ID', '#${bookingId.substring(0, 8).toUpperCase()}'),
+                    _row(context, l10n.bookingConfirmationBookingIdLabel, '#${bookingId.substring(0, 8).toUpperCase()}'),
                     const Divider(height: 32),
-                    _row(context, 'Delivery Date', date),
+                    _row(context, l10n.bookingConfirmationDeliveryDateLabel, date),
                     const Divider(height: 32),
-                    _row(context, 'Package', packageName),
+                    _row(context, l10n.bookingConfirmationPackageLabel, packageName),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-              TyButton('Download Invoice', kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.description_outlined, onTap: () {
+              TyButton(l10n.bookingConfirmationDownloadInvoiceButtonLabel, kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.description_outlined, onTap: () {
                 // TODO: Implement invoice download
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Downloading invoice...')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.bookingConfirmationDownloadingInvoiceMessage)));
               }),
               const Spacer(),
-              TyButton('Go to Event Hub', full: true, onTap: () {
+              TyButton(l10n.bookingConfirmationGoToEventHubButtonLabel, full: true, onTap: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const RootNav()),
                   (route) => false,

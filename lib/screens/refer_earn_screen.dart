@@ -8,6 +8,7 @@ import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import '../data/services/referral_service.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class ReferEarnScreen extends StatefulWidget {
   const ReferEarnScreen({super.key});
@@ -50,7 +51,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() { _error = 'Could not load referral data.'; _loading = false; });
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.referEarnLoadError; _loading = false; });
     }
   }
 
@@ -63,14 +64,14 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
       if (mounted) {
         _applyCtrl.clear();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Referral code applied successfully!')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.referEarnCodeAppliedMessage)),
         );
         _load();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid or already used referral code.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.referEarnInvalidCodeMessage)),
         );
       }
     } finally {
@@ -82,17 +83,18 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
     final code = _code?.code ?? '';
     Clipboard.setData(ClipboardData(text: code));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Referral code copied!')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.referEarnCodeCopiedMessage)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Refer & Earn'),
+      appBar: tyAppBar(context, title: l10n.referEarnTitle),
       body: _loading
           ? _buildSkeleton(ty)
           : _error != null
@@ -102,32 +104,32 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
                   children: [
                     _buildHero(ty),
                     const SizedBox(height: 32),
-                    Text('HOW IT WORKS', style: TyType.eyebrow(11, color: ty.ink3)),
+                    Text(l10n.referEarnHowItWorksLabel, style: TyType.eyebrow(11, color: ty.ink3)),
                     const SizedBox(height: 16),
-                    _step(context, 1, 'Share your code', 'Invite friends to Tyohaar using your unique referral code.'),
-                    _step(context, 2, 'They book a package', 'They get a discount on their first celebration booking.'),
-                    _step(context, 3, 'You earn rewards', 'Earn wallet credits for every successful referral.'),
+                    _step(context, 1, l10n.referEarnStep1Title, l10n.referEarnStep1Subtitle),
+                    _step(context, 2, l10n.referEarnStep2Title, l10n.referEarnStep2Subtitle),
+                    _step(context, 3, l10n.referEarnStep3Title, l10n.referEarnStep3Subtitle),
                     const SizedBox(height: 32),
-                    Text('YOUR REFERRAL CODE', style: TyType.eyebrow(11, color: ty.ink3)),
+                    Text(l10n.referEarnYourCodeLabel, style: TyType.eyebrow(11, color: ty.ink3)),
                     const SizedBox(height: 12),
                     _buildCodeCard(ty),
                     const SizedBox(height: 24),
                     _buildStats(ty),
                     const SizedBox(height: 32),
-                    Text('APPLY A CODE', style: TyType.eyebrow(11, color: ty.ink3)),
+                    Text(l10n.referEarnApplyCodeLabel, style: TyType.eyebrow(11, color: ty.ink3)),
                     const SizedBox(height: 12),
                     _buildApplyField(ty),
                     const SizedBox(height: 40),
                     TyButton(
-                      'Share with Friends',
+                      l10n.referEarnShareButtonLabel,
                       full: true,
                       leadingIcon: Icons.share_rounded,
                       onTap: () {
                         final code = _code?.code ?? '';
                         if (code.isNotEmpty) {
-                          Clipboard.setData(ClipboardData(text: 'Join Tyohaar using my code $code'));
+                          Clipboard.setData(ClipboardData(text: l10n.referEarnShareMessage(code)));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Share text copied to clipboard!')),
+                            SnackBar(content: Text(l10n.referEarnShareCopiedMessage)),
                           );
                         }
                       },
@@ -163,7 +165,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
           const SizedBox(height: 12),
           Text(_error!, style: TyType.sans(14, color: ty.ink2)),
           const SizedBox(height: 16),
-          TextButton(onPressed: _load, child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700))),
+          TextButton(onPressed: _load, child: Text(AppLocalizations.of(context)!.commonTryAgain, style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700))),
         ],
       ),
     );
@@ -189,7 +191,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
             child: Icon(Icons.card_giftcard_rounded, size: 56, color: ty.saffron),
           ),
           const SizedBox(height: 16),
-          Text('Share the joy, earn rewards!', style: TyType.display(20, color: ty.ink)),
+          Text(AppLocalizations.of(context)!.referEarnHeroHeading, style: TyType.display(20, color: ty.ink)),
         ],
       ),
     );
@@ -209,7 +211,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
           Text(code, style: TyType.display(20, color: ty.ink)),
           const Spacer(),
           TyButton(
-            'Copy',
+            AppLocalizations.of(context)!.referEarnCopyButtonLabel,
             kind: TyButtonKind.ghost,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             onTap: _copyCode,
@@ -224,14 +226,15 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
     final earned = stats != null ? '₹${stats.totalEarned.toStringAsFixed(0)}' : '—';
     final total = stats?.totalReferrals.toString() ?? '—';
     final success = stats?.successfulReferrals.toString() ?? '—';
+    final l10n = AppLocalizations.of(context)!;
 
     return Row(
       children: [
-        _stat(context, earned, 'Total Earned', ty.leaf),
+        _stat(context, earned, l10n.referEarnStatTotalEarnedLabel, ty.leaf),
         const SizedBox(width: 12),
-        _stat(context, total, 'Total Referrals', ty.saffron),
+        _stat(context, total, l10n.referEarnStatTotalReferralsLabel, ty.saffron),
         const SizedBox(width: 12),
-        _stat(context, success, 'Successful', ty.rose),
+        _stat(context, success, l10n.referEarnStatSuccessfulLabel, ty.rose),
       ],
     );
   }
@@ -251,7 +254,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
               controller: _applyCtrl,
               style: TyType.sans(15, color: ty.ink),
               decoration: InputDecoration(
-                hintText: 'Enter a friend\'s code',
+                hintText: AppLocalizations.of(context)!.referEarnApplyCodeHint,
                 hintStyle: TyType.sans(14, color: ty.ink3),
                 border: InputBorder.none,
               ),
@@ -260,7 +263,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
         ),
         const SizedBox(width: 12),
         TyButton(
-          _applying ? '...' : 'Apply',
+          _applying ? AppLocalizations.of(context)!.referEarnApplyingLabel : AppLocalizations.of(context)!.referEarnApplyButtonLabel,
           enabled: !_applying,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           onTap: _applyCode,

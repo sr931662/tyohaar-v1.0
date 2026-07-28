@@ -11,6 +11,7 @@ import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class VendorDetailScreen extends StatefulWidget {
   final String vendorId;
@@ -59,13 +60,14 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
       }
     } catch (e) {
       logDebug('Error loading vendor detail: $e');
-      if (mounted) setState(() { _error = 'Could not load vendor details.'; _isLoading = false; });
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.vendorDetailLoadError; _isLoading = false; });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l = AppLocalizations.of(context)!;
 
     if (_isLoading) {
       return Scaffold(
@@ -77,18 +79,18 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
     if (_error != null || _vendor == null) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: widget.displayName ?? 'Vendor'),
+        appBar: tyAppBar(context, title: widget.displayName ?? l.vendorDetailVendorFallback),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.error_outline_rounded, size: 48, color: ty.rose),
               const SizedBox(height: 12),
-              Text(_error ?? 'Vendor not found', style: TyType.sans(14, color: ty.ink2)),
+              Text(_error ?? l.vendorDetailNotFoundMessage, style: TyType.sans(14, color: ty.ink2)),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: _loadData,
-                child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+                child: Text(l.commonTryAgain, style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
               ),
             ],
           ),
@@ -203,7 +205,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                 Text(v.rating!.toStringAsFixed(1), style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
                               ]),
                               if (v.totalReviews != null)
-                                Text('${v.totalReviews} reviews', style: TyType.sans(11.5, color: ty.ink3)),
+                                Text(l.vendorDetailReviewsCountLabel(v.totalReviews!), style: TyType.sans(11.5, color: ty.ink3)),
                             ],
                           ),
                       ],
@@ -219,10 +221,10 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                     const SizedBox(height: 18),
                     Row(
                       children: [
-                        if (v.isVerified == true) _trust(context, Icons.verified_outlined, 'Verified'),
+                        if (v.isVerified == true) _trust(context, Icons.verified_outlined, l.vendorDetailVerifiedLabel),
                         if (v.yearsInBusiness != null) ...[
                           const SizedBox(width: 10),
-                          _trust(context, Icons.schedule_rounded, '${v.yearsInBusiness} yrs'),
+                          _trust(context, Icons.schedule_rounded, l.vendorDetailYearsValue(v.yearsInBusiness!)),
                         ],
                         if (v.businessCategory != null) ...[
                           const SizedBox(width: 10),
@@ -232,19 +234,19 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                     ),
                     if (v.bio != null && v.bio!.isNotEmpty) ...[
                       const SizedBox(height: 26),
-                      Text('About', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
+                      Text(l.vendorDetailAboutLabel, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
                       const SizedBox(height: 8),
                       Text(v.bio!, style: TyType.sans(14.5, color: ty.ink2, height: 1.6)),
                     ],
                     if (_packages.isNotEmpty) ...[
                       const SizedBox(height: 26),
-                      Text('Packages', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
+                      Text(l.vendorDetailPackagesLabel, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
                       const SizedBox(height: 10),
                       for (int i = 0; i < _packages.length; i++) _pkgRow(context, i),
                     ],
                     if (_reviews.isNotEmpty) ...[
                       const SizedBox(height: 26),
-                      Text('What families say', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
+                      Text(l.vendorDetailReviewsHeading, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
                       const SizedBox(height: 10),
                       ..._reviews.take(3).map((r) => _reviewCard(context, r)),
                     ],
@@ -279,8 +281,8 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                   Expanded(
                     child: TyButton(
                       _packages.isNotEmpty
-                          ? 'Add to celebration · ${formatPrice(selectedPkgPrice)}'
-                          : 'Contact Vendor',
+                          ? l.vendorDetailAddToCelebrationLabel(formatPrice(selectedPkgPrice))
+                          : l.vendorDetailContactButtonLabel,
                       full: true,
                       onTap: () => Navigator.of(context).maybePop(),
                     ),
@@ -334,7 +336,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
     final ty = context.ty;
     final selected = _selectedPkg == i;
     final p = _packages[i];
-    final name = p['name'] as String? ?? 'Package ${i + 1}';
+    final name = p['name'] as String? ?? AppLocalizations.of(context)!.vendorDetailPackageFallback(i + 1);
     final desc = p['description'] as String? ?? '';
     final price = p['base_price'] ?? 0;
 

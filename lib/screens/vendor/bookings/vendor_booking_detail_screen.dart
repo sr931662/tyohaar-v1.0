@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/models.dart';
@@ -77,7 +78,7 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
     } catch (e) {
       if (mounted) {
         setState(() => _isActing = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not start service.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorBookingDetailStartServiceError)));
       }
     }
   }
@@ -90,7 +91,7 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
     } catch (e) {
       if (mounted) {
         setState(() => _isActing = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not mark complete.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorBookingDetailMarkCompleteError)));
       }
     }
   }
@@ -109,7 +110,7 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
     } catch (_) {
       if (mounted) {
         setState(() => _isActing = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not update prep time.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorBookingDetailUpdatePrepTimeError)));
       }
     }
   }
@@ -122,16 +123,17 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
       return Scaffold(backgroundColor: ty.paper, appBar: AppBar(), body: const Center(child: CircularProgressIndicator()));
     }
     if (_booking == null) {
-      return Scaffold(backgroundColor: ty.paper, appBar: AppBar(), body: const Center(child: Text('Booking not found')));
+      return Scaffold(backgroundColor: ty.paper, appBar: AppBar(), body: Center(child: Text(AppLocalizations.of(context)!.vendorBookingDetailNotFound)));
     }
 
     final b = _booking!;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: AppBar(
         title: Text(b.bookingNumber),
-        bottom: TabBar(controller: _tabController, tabs: const [Tab(text: 'Overview'), Tab(text: 'Items'), Tab(text: 'History')]),
+        bottom: TabBar(controller: _tabController, tabs: [Tab(text: l10n.vendorBookingDetailTabOverview), Tab(text: l10n.vendorBookingDetailTabItems), Tab(text: l10n.vendorBookingDetailTabHistory)]),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -145,33 +147,34 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
   }
 
   Widget _buildOverview(TyColors ty, Booking b) {
+    final l10n = AppLocalizations.of(context)!;
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
         if (b.celebrationTitle != null && b.celebrationTitle!.isNotEmpty)
-          _row(ty, 'Celebration', b.celebrationTitle!),
-        _row(ty, 'Package', b.packageName ?? '—'),
+          _row(ty, l10n.vendorBookingDetailCelebrationLabel, b.celebrationTitle!),
+        _row(ty, l10n.vendorBookingDetailPackageLabel, b.packageName ?? '—'),
         if (b.themeName != null && b.themeName!.isNotEmpty)
-          _row(ty, 'Customization Theme', b.themeName!),
-        _row(ty, 'Status', b.status.replaceAll('_', ' ')),
-        _row(ty, 'Payment', b.paymentStatus.replaceAll('_', ' ')),
-        _row(ty, 'Scheduled', '${b.scheduledDate.day}/${b.scheduledDate.month}/${b.scheduledDate.year}'),
-        _row(ty, 'Total', '₹${b.totalAmount.toStringAsFixed(0)}'),
-        _row(ty, 'Paid', '₹${b.amountPaid.toStringAsFixed(0)}'),
-        _row(ty, 'Due', '₹${b.amountDue.toStringAsFixed(0)}'),
+          _row(ty, l10n.vendorBookingDetailCustomizationThemeLabel, b.themeName!),
+        _row(ty, l10n.vendorBookingDetailStatusLabel, b.status.replaceAll('_', ' ')),
+        _row(ty, l10n.vendorBookingDetailPaymentLabel, b.paymentStatus.replaceAll('_', ' ')),
+        _row(ty, l10n.vendorBookingDetailScheduledLabel, '${b.scheduledDate.day}/${b.scheduledDate.month}/${b.scheduledDate.year}'),
+        _row(ty, l10n.vendorBookingDetailTotalLabel, '₹${b.totalAmount.toStringAsFixed(0)}'),
+        _row(ty, l10n.vendorBookingDetailPaidLabel, '₹${b.amountPaid.toStringAsFixed(0)}'),
+        _row(ty, l10n.vendorBookingDetailDueLabel, '₹${b.amountDue.toStringAsFixed(0)}'),
         if (b.specialInstructions != null && b.specialInstructions!.isNotEmpty)
-          _row(ty, 'Instructions', b.specialInstructions!),
+          _row(ty, l10n.vendorBookingDetailInstructionsLabel, b.specialInstructions!),
         if (b.preparationStartAt != null)
-          _row(ty, 'Prep Start', b.preparationStartAt.toString()),
+          _row(ty, l10n.vendorBookingDetailPrepStartLabel, b.preparationStartAt.toString()),
         const SizedBox(height: 20),
         if (b.status == 'confirmed') ...[
-          ElevatedButton(onPressed: _isActing ? null : _start, child: const Text('Start Service')),
+          ElevatedButton(onPressed: _isActing ? null : _start, child: Text(l10n.vendorBookingDetailStartServiceButton)),
           const SizedBox(height: 10),
-          OutlinedButton(onPressed: _isActing ? null : _setPst, child: const Text('Set Preparation Start Time')),
+          OutlinedButton(onPressed: _isActing ? null : _setPst, child: Text(l10n.vendorBookingDetailSetPrepStartTimeButton)),
         ] else if (b.status == 'in_progress') ...[
-          ElevatedButton(onPressed: _isActing ? null : _complete, child: const Text('Mark Complete')),
+          ElevatedButton(onPressed: _isActing ? null : _complete, child: Text(l10n.vendorBookingDetailMarkCompleteButton)),
           const SizedBox(height: 10),
-          OutlinedButton(onPressed: _isActing ? null : _setPst, child: const Text('Update Preparation Start Time')),
+          OutlinedButton(onPressed: _isActing ? null : _setPst, child: Text(l10n.vendorBookingDetailUpdatePrepStartTimeButton)),
         ],
       ],
     );
@@ -179,7 +182,7 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
 
   Widget _buildItems(TyColors ty) {
     final items = _booking!.items;
-    if (items.isEmpty) return Center(child: Text('No items', style: TyType.sans(14, color: ty.ink2)));
+    if (items.isEmpty) return Center(child: Text(AppLocalizations.of(context)!.vendorBookingDetailNoItemsMessage, style: TyType.sans(14, color: ty.ink2)));
     return ListView.separated(
       padding: const EdgeInsets.all(18),
       itemCount: items.length,
@@ -196,7 +199,13 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
-                    Text('Qty ${item.quantity} · ₹${item.unitPrice.toStringAsFixed(0)} each', style: TyType.sans(12.5, color: ty.ink2)),
+                    Text(
+                      AppLocalizations.of(context)!.vendorBookingDetailItemQtyPrice(
+                        '${item.quantity}',
+                        '₹${item.unitPrice.toStringAsFixed(0)}',
+                      ),
+                      style: TyType.sans(12.5, color: ty.ink2),
+                    ),
                   ],
                 ),
               ),
@@ -211,27 +220,28 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
   Widget _buildHistory(TyColors ty) {
     if (!_historyLoaded) return const Center(child: CircularProgressIndicator());
     if (_historyError) {
-      return TyStateScreen.error(onAction: () {
+      return TyStateScreen.error(context, onAction: () {
         setState(() => _historyLoaded = false);
         _loadHistory();
       });
     }
     if (_statusHistory.isEmpty && _history.isEmpty) {
-      return Center(child: Text('No history yet', style: TyType.sans(14, color: ty.ink2)));
+      return Center(child: Text(AppLocalizations.of(context)!.vendorBookingDetailNoHistoryMessage, style: TyType.sans(14, color: ty.ink2)));
     }
+    final l10n = AppLocalizations.of(context)!;
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
         if (_statusHistory.isNotEmpty) ...[
-          Text('Status Changes', style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+          Text(l10n.vendorBookingDetailStatusChangesLabel, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
           const SizedBox(height: 8),
           ..._statusHistory.map((s) => _historyRow(ty, '${s['from_status'] ?? '—'} → ${s['to_status'] ?? '—'}', s['created_at']?.toString())),
           const SizedBox(height: 16),
         ],
         if (_history.isNotEmpty) ...[
-          Text('Event Log', style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+          Text(l10n.vendorBookingDetailEventLogLabel, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
           const SizedBox(height: 8),
-          ..._history.map((e) => _historyRow(ty, e['event_label']?.toString() ?? e['event_type']?.toString() ?? 'Event', e['created_at']?.toString())),
+          ..._history.map((e) => _historyRow(ty, e['event_label']?.toString() ?? e['event_type']?.toString() ?? l10n.vendorBookingDetailEventFallback, e['created_at']?.toString())),
         ],
       ],
     );

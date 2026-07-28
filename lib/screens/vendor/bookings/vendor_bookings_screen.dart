@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/responsive.dart';
 import '../../../theme/typography.dart';
@@ -8,14 +9,17 @@ import '../../../data/services/booking_service.dart';
 import '../../../widgets/state_screens.dart';
 import 'vendor_booking_detail_screen.dart';
 
-const _statusOptions = [
-  ('', 'All Statuses'),
-  ('pending', 'Pending'),
-  ('confirmed', 'Confirmed'),
-  ('in_progress', 'In Progress'),
-  ('completed', 'Completed'),
-  ('cancelled', 'Cancelled'),
-];
+List<(String, String)> _statusOptions(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  return [
+    ('', l10n.vendorBookingsAllStatusesLabel),
+    ('pending', l10n.vendorBookingsPendingLabel),
+    ('confirmed', l10n.vendorBookingsConfirmedLabel),
+    ('in_progress', l10n.vendorBookingsInProgressLabel),
+    ('completed', l10n.vendorBookingsCompletedLabel),
+    ('cancelled', l10n.vendorBookingsCancelledLabel),
+  ];
+}
 
 class VendorBookingsScreen extends StatefulWidget {
   const VendorBookingsScreen({super.key});
@@ -83,7 +87,7 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
                   TextField(
                     controller: _searchCtrl,
                     decoration: InputDecoration(
-                      hintText: 'Search by booking # or customer…',
+                      hintText: AppLocalizations.of(context)!.vendorBookingsSearchHint,
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: ty.surface,
@@ -96,7 +100,7 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: _statusOptions.map((s) {
+                      children: _statusOptions(context).map((s) {
                         final isSelected = _status == s.$1;
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
@@ -130,9 +134,9 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _error
-                      ? TyStateScreen.error(onAction: _load)
+                      ? TyStateScreen.error(context, onAction: _load)
                       : _bookings.isEmpty
-                          ? Center(child: Text('No bookings found', style: TyType.sans(14, color: ty.ink2)))
+                          ? Center(child: Text(AppLocalizations.of(context)!.vendorBookingsEmptyMessage, style: TyType.sans(14, color: ty.ink2)))
                           : RefreshIndicator(
                           onRefresh: _load,
                           child: ListView.separated(
@@ -175,11 +179,11 @@ class _VendorBookingsScreenState extends State<VendorBookingsScreen> {
                   Text(b.bookingNumber, style: TyType.sans(13, color: ty.ink3, weight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
-                    (b.celebrationTitle?.isNotEmpty ?? false) ? b.celebrationTitle! : (b.packageName ?? 'Package'),
+                    (b.celebrationTitle?.isNotEmpty ?? false) ? b.celebrationTitle! : (b.packageName ?? AppLocalizations.of(context)!.vendorBookingsPackageFallback),
                     style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700),
                   ),
                   if (b.celebrationTitle?.isNotEmpty ?? false)
-                    Text(b.packageName ?? 'Package', style: TyType.sans(12.5, color: ty.ink2)),
+                    Text(b.packageName ?? AppLocalizations.of(context)!.vendorBookingsPackageFallback, style: TyType.sans(12.5, color: ty.ink2)),
                   const SizedBox(height: 4),
                   Text('${b.scheduledDate.day}/${b.scheduledDate.month}/${b.scheduledDate.year} · ₹${b.totalAmount.toStringAsFixed(0)}',
                       style: TyType.sans(12.5, color: ty.ink2)),

@@ -13,6 +13,7 @@ import '../data/services/auth_service.dart';
 import '../data/services/user_service.dart';
 import 'auth_screen.dart';
 import 'root_nav.dart';
+import '../l10n/generated/app_localizations.dart';
 
 const _kResendCooldownSeconds = 30;
 
@@ -59,10 +60,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialSendFailed) {
-      _error = "We couldn't send the verification code. Tap Resend to try again.";
-    } else {
+    if (!widget.initialSendFailed) {
       _startCooldown();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.initialSendFailed && _error.isEmpty) {
+      _error = AppLocalizations.of(context)!.emailVerificationInitialSendFailedError;
     }
   }
 
@@ -92,15 +99,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     try {
       await AuthService().requestEmailVerificationOtp(widget.email);
       if (!mounted) return;
-      setState(() { _isResending = false; _notice = 'A new code has been sent.'; });
+      setState(() { _isResending = false; _notice = AppLocalizations.of(context)!.emailVerificationResendSuccessMessage; });
       _startCooldown();
     } on DioException catch (e) {
+      if (!mounted) return;
       final detail = e.response?.data;
-      String msg = 'Could not send the code. Please try again.';
+      String msg = AppLocalizations.of(context)!.emailVerificationSendCodeError;
       if (detail is Map) msg = detail['detail'] as String? ?? msg;
-      if (mounted) setState(() { _isResending = false; _error = msg; });
+      setState(() { _isResending = false; _error = msg; });
     } catch (_) {
-      if (mounted) setState(() { _isResending = false; _error = 'An unexpected error occurred.'; });
+      if (mounted) setState(() { _isResending = false; _error = AppLocalizations.of(context)!.emailVerificationUnexpectedError; });
     }
   }
 
@@ -108,7 +116,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     if (_isLoading) return;
     final code = _otpCtrl.text.trim();
     if (code.length != 6) {
-      setState(() => _error = 'Enter the 6-digit code.');
+      setState(() => _error = AppLocalizations.of(context)!.emailVerificationEnterCodeError);
       return;
     }
     setState(() { _isLoading = true; _error = ''; _notice = ''; });
@@ -129,12 +137,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         );
       }
     } on DioException catch (e) {
+      if (!mounted) return;
       final detail = e.response?.data;
-      String msg = 'Verification failed. Please try again.';
+      String msg = AppLocalizations.of(context)!.emailVerificationFailedError;
       if (detail is Map) msg = detail['detail'] as String? ?? msg;
-      if (mounted) setState(() { _isLoading = false; _error = msg; });
+      setState(() { _isLoading = false; _error = msg; });
     } catch (_) {
-      if (mounted) setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
+      if (mounted) setState(() { _isLoading = false; _error = AppLocalizations.of(context)!.emailVerificationUnexpectedError; });
     }
   }
 
@@ -164,10 +173,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Verify Your Email'),
+      appBar: tyAppBar(context, title: l10n.emailVerificationTitle),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(horizontal: resp.w(24), vertical: resp.h(24)),
@@ -176,14 +186,14 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
             children: [
               Icon(Icons.mark_email_read_outlined, color: ty.saffron, size: 48),
               SizedBox(height: resp.h(16)),
-              Text('Check your email', style: TyType.display(resp.sp(22), color: ty.ink)),
+              Text(l10n.emailVerificationHeading, style: TyType.display(resp.sp(22), color: ty.ink)),
               SizedBox(height: resp.h(8)),
               Text(
-                "We've sent a 6-digit verification code to ${widget.email}. Enter it below to verify your account.",
+                l10n.emailVerificationBodyMessage(widget.email),
                 style: TyType.sans(resp.sp(14), color: ty.ink2, height: 1.5),
               ),
               SizedBox(height: resp.h(24)),
-              Text('VERIFICATION CODE', style: TyType.eyebrow(resp.sp(11), color: ty.ink3)),
+              Text(l10n.emailVerificationCodeLabel, style: TyType.eyebrow(resp.sp(11), color: ty.ink3)),
               SizedBox(height: resp.h(8)),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: resp.w(16)),
@@ -212,8 +222,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                   onPressed: (_cooldownSeconds > 0 || _isResending) ? null : _resend,
                   child: Text(
                     _isResending
-                        ? 'Sending...'
-                        : (_cooldownSeconds > 0 ? 'Resend code in ${_cooldownSeconds}s' : 'Resend code'),
+                        ? l10n.emailVerificationSendingLabel
+                        : (_cooldownSeconds > 0 ? l10n.emailVerificationResendCountdownLabel(_cooldownSeconds) : l10n.emailVerificationResendButtonLabel),
                     style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600),
                   ),
                 ),
@@ -228,7 +238,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               ],
               SizedBox(height: resp.h(24)),
               TyButton(
-                _isLoading ? 'Verifying...' : 'Verify',
+                _isLoading ? l10n.emailVerificationVerifyingLabel : l10n.emailVerificationVerifyButtonLabel,
                 full: true,
                 onTap: _verify,
                 enabled: !_isLoading,
@@ -238,7 +248,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 Center(
                   child: TextButton(
                     onPressed: _skip,
-                    child: Text('Skip for now', style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600)),
+                    child: Text(l10n.emailVerificationSkipButtonLabel, style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -246,7 +256,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               Center(
                 child: TextButton(
                   onPressed: _logout,
-                  child: Text('Log out', style: TyType.sans(resp.sp(13), color: ty.ink3, weight: FontWeight.w600)),
+                  child: Text(l10n.emailVerificationLogoutButtonLabel, style: TyType.sans(resp.sp(13), color: ty.ink3, weight: FontWeight.w600)),
                 ),
               ),
             ],

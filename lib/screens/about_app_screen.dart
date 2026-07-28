@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AboutAppScreen extends StatelessWidget {
   const AboutAppScreen({super.key});
@@ -9,9 +10,10 @@ class AboutAppScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'About App'),
+      appBar: tyAppBar(context, title: l10n.aboutAppTitle),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
@@ -21,24 +23,24 @@ class AboutAppScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 Image.asset('assets/images/tyohaar-mark.png', width: 100, height: 100),
                 const SizedBox(height: 16),
-                Text('Tyohaar', style: TyType.display(32, color: ty.ink)),
-                Text('Version 1.0.4 (Build 122)', style: TyType.sans(12, color: ty.ink3)),
+                Text(l10n.aboutAppBrandName, style: TyType.display(32, color: ty.ink)),
+                Text(l10n.aboutAppVersionLabel, style: TyType.sans(12, color: ty.ink3)),
               ],
             ),
           ),
           const SizedBox(height: 48),
-          Text('Our Mission', style: TyType.eyebrow(11, color: ty.ink3)),
+          Text(l10n.aboutAppMissionHeading, style: TyType.eyebrow(11, color: ty.ink3)),
           const SizedBox(height: 12),
           Text(
-            'At Tyohaar, we believe that every milestone deserves to be celebrated with joy and zero stress. Our mission is to preserve tradition while embracing the convenience of the modern world, making family gatherings more meaningful and effortless.',
+            l10n.aboutAppMissionBody,
             style: TyType.sans(15, color: ty.ink2, height: 1.6),
           ),
           const SizedBox(height: 32),
-          _item(context, 'Website', 'www.tyohaar.co'),
-          _item(context, 'Contact Email', 'support@tyohaar.co'),
+          _item(context, l10n.aboutAppWebsiteLabel, l10n.aboutAppWebsiteValue),
+          _item(context, l10n.aboutAppContactEmailLabel, l10n.aboutAppContactEmailValue),
           const SizedBox(height: 48),
           Center(
-            child: Text('Designed and Developed by MaviCode', style: TyType.sans(13, color: ty.ink3)),
+            child: Text(l10n.aboutAppDesignedByLabel, style: TyType.sans(13, color: ty.ink3)),
           ),
         ],
       ),

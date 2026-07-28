@@ -20,6 +20,7 @@ import '../utils/gallery_album.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class PackageDetailScreen extends StatefulWidget {
   final Package package;
@@ -113,9 +114,9 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
         if (!granted) {
           if (await Permission.photos.request().isDenied && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content:
-                      Text('Photo library access is needed to save images.')),
+              SnackBar(
+                  content: Text(AppLocalizations.of(context)!
+                      .packageDetailPhotoAccessNeededMessage)),
             );
             return;
           }
@@ -134,14 +135,14 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image saved to your gallery.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.packageDetailImageSavedMessage)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Could not save the image. Please try again.')),
+          SnackBar(
+              content: Text(AppLocalizations.of(context)!.packageDetailSaveImageError)),
         );
       }
     } finally {
@@ -162,6 +163,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
@@ -203,7 +205,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                                       .withValues(alpha: 0.15),
                                   foreground: ty.tint(_fullPackage.tint)),
                               const Spacer(),
-                              Text('Base: ${formatPrice(_fullPackage.price)}',
+                              Text(l.packageDetailBasePriceLabel(formatPrice(_fullPackage.price)),
                                   style: TyType.sans(resp.sp(14),
                                       color: ty.ink2, weight: FontWeight.w600)),
                             ],
@@ -217,7 +219,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                               style: TyType.sans(resp.sp(15),
                                   color: ty.ink2, height: 1.5)),
                           SizedBox(height: resp.h(32)),
-                          Text('Core Inclusions',
+                          Text(l.packageDetailCoreInclusionsLabel,
                               style:
                                   TyType.eyebrow(resp.sp(12), color: ty.ink3)),
                           SizedBox(height: resp.h(16)),
@@ -230,14 +232,14 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                             ..._fullPackage.inclusions
                                 .map((item) => _inclusionRow(context, item)),
                           SizedBox(height: resp.h(32)),
-                          Text('Guest Count',
+                          Text(l.packageDetailGuestCountLabel,
                               style:
                                   TyType.eyebrow(resp.sp(12), color: ty.ink3)),
                           SizedBox(height: resp.h(12)),
                           _guestStepper(context),
                           if (_optionalItems.isNotEmpty) ...[
                             SizedBox(height: resp.h(32)),
-                            Text('Optional Add-ons',
+                            Text(l.packageDetailOptionalAddOnsLabel,
                                 style: TyType.eyebrow(resp.sp(12),
                                     color: ty.ink3)),
                             SizedBox(height: resp.h(16)),
@@ -273,7 +275,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Estimated Total',
+                        Text(l.packageDetailEstimatedTotalLabel,
                             style: TyType.sans(resp.sp(12),
                                 color: ty.ink3, weight: FontWeight.w600)),
                         Text(formatPrice(_totalPrice),
@@ -284,7 +286,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                   SizedBox(width: resp.w(16)),
                   Expanded(
                     flex: 2,
-                    child: TyButton('Select & Continue', full: true, onTap: () {
+                    child: TyButton(l.packageDetailSelectContinueButtonLabel, full: true, onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -305,6 +307,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   Widget _imageSlider(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l = AppLocalizations.of(context)!;
     final urls = _allImageUrls;
 
     if (urls.isEmpty) {
@@ -381,7 +384,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                         Icon(Icons.download_rounded,
                             color: Colors.black87, size: resp.sp(16)),
                         SizedBox(width: resp.w(6)),
-                        Text('Save',
+                        Text(l.packageDetailSaveButtonLabel,
                             style: TyType.sans(resp.sp(12.5),
                                 color: Colors.black87,
                                 weight: FontWeight.w700)),
@@ -477,7 +480,10 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
             SizedBox(width: resp.w(12)),
             Expanded(
               child: Text(
-                  item.quantity > 1 ? '${item.quantity}x ${item.name}' : item.name,
+                  item.quantity > 1
+                      ? AppLocalizations.of(context)!
+                          .packageDetailQuantityItemNameLabel(item.quantity, item.name)
+                      : item.name,
                   style: TyType.sans(resp.sp(14.5),
                       color: ty.ink, weight: FontWeight.w600)),
             ),
@@ -603,6 +609,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   Widget _guestStepper(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l = AppLocalizations.of(context)!;
     return Container(
       padding:
           EdgeInsets.symmetric(horizontal: resp.w(16), vertical: resp.h(8)),
@@ -628,7 +635,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
               decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
-                suffixText: ' Guests',
+                suffixText: l.packageDetailGuestsSuffixLabel,
                 suffixStyle: TextStyle(
                     fontSize: resp.sp(14), fontWeight: FontWeight.w500),
               ),
@@ -709,6 +716,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
 
   Widget _verifiedBadge(BuildContext context) {
     final resp = context.resp;
+    final l = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: () => _showVerifiedInfo(context),
       child: Container(
@@ -726,7 +734,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                 color: Colors.white, size: resp.sp(14)),
             SizedBox(width: resp.w(6)),
             Text(
-              'Tyohaar Verified',
+              l.packageDetailTyohaarVerifiedLabel,
               style: TyType.sans(resp.sp(11),
                   color: Colors.white, weight: FontWeight.w700),
             ),
@@ -739,6 +747,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   void _showVerifiedInfo(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -750,18 +759,18 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
             Icon(Icons.verified_user_rounded,
                 color: ty.saffron, size: resp.sp(24)),
             SizedBox(width: resp.w(12)),
-            Text('Tyohaar Verified',
+            Text(l.packageDetailTyohaarVerifiedLabel,
                 style: TyType.display(resp.sp(20), color: ty.ink)),
           ],
         ),
         content: Text(
-          'Every vendor in this package is hand-picked and vetted for quality, ensuring your celebration is handled by true professionals.',
+          l.packageDetailVerifiedInfoMessage,
           style: TyType.sans(resp.sp(14.5), color: ty.ink2, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Got it',
+            child: Text(l.packageDetailGotItLabel,
                 style: TyType.sans(resp.sp(14),
                     color: ty.saffron, weight: FontWeight.w700)),
           ),

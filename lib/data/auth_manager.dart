@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import '../screens/auth_screen.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -137,6 +138,7 @@ class _AuthGateSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).padding.bottom + 32),
@@ -163,16 +165,16 @@ class _AuthGateSheet extends StatelessWidget {
             child: Icon(Icons.lock_outline_rounded, size: 40, color: ty.saffron),
           ),
           const SizedBox(height: 24),
-          Text('Sign in required', style: TyType.display(28, color: ty.ink)),
+          Text(l10n.authGateSignInRequiredTitle, style: TyType.display(28, color: ty.ink)),
           const SizedBox(height: 12),
           Text(
-            'To $action, you\'ll need to create an account or sign in.',
+            l10n.authGateMessage(action),
             textAlign: TextAlign.center,
             style: TyType.sans(15, color: ty.ink2, height: 1.5),
           ),
           const SizedBox(height: 32),
           TyButton(
-            'Sign In / Sign Up',
+            l10n.authGateSignInSignUpButtonLabel,
             full: true,
             onTap: () {
               Navigator.pop(context);
@@ -187,7 +189,7 @@ class _AuthGateSheet extends StatelessWidget {
           const SizedBox(height: 12),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Maybe Later',
+            child: Text(l10n.authGateMaybeLaterButtonLabel,
                 style: TyType.sans(14, color: ty.ink3, weight: FontWeight.w600)),
           ),
         ],

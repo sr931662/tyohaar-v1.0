@@ -10,23 +10,60 @@ import '../../../data/app_state.dart';
 import '../../../data/auth_manager.dart';
 import '../../../data/services/auth_service.dart';
 import '../vendor_root_nav.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
-const _vendorTypes = [
-  {'value': 'decorator', 'label': 'Decorator'},
-  {'value': 'caterer', 'label': 'Caterer'},
-  {'value': 'photographer', 'label': 'Photographer'},
-  {'value': 'videographer', 'label': 'Videographer'},
-  {'value': 'baker', 'label': 'Baker'},
-  {'value': 'florist', 'label': 'Florist'},
-  {'value': 'entertainer', 'label': 'Entertainer'},
-  {'value': 'venue', 'label': 'Venue'},
-  {'value': 'planner', 'label': 'Event Planner'},
-  {'value': 'makeup_artist', 'label': 'Makeup Artist'},
-  {'value': 'mehndi_artist', 'label': 'Mehndi Artist'},
-  {'value': 'music', 'label': 'Music / DJ'},
-  {'value': 'multi_service', 'label': 'Multi-Service'},
-  {'value': 'other', 'label': 'Other'},
+const _vendorTypeValues = [
+  'decorator',
+  'caterer',
+  'photographer',
+  'videographer',
+  'baker',
+  'florist',
+  'entertainer',
+  'venue',
+  'planner',
+  'makeup_artist',
+  'mehndi_artist',
+  'music',
+  'multi_service',
+  'other',
 ];
+
+String _vendorTypeLabel(BuildContext context, String value) {
+  final l10n = AppLocalizations.of(context)!;
+  switch (value) {
+    case 'decorator':
+      return l10n.vendorRegisterTypeDecorator;
+    case 'caterer':
+      return l10n.vendorRegisterTypeCaterer;
+    case 'photographer':
+      return l10n.vendorRegisterTypePhotographer;
+    case 'videographer':
+      return l10n.vendorRegisterTypeVideographer;
+    case 'baker':
+      return l10n.vendorRegisterTypeBaker;
+    case 'florist':
+      return l10n.vendorRegisterTypeFlorist;
+    case 'entertainer':
+      return l10n.vendorRegisterTypeEntertainer;
+    case 'venue':
+      return l10n.vendorRegisterTypeVenue;
+    case 'planner':
+      return l10n.vendorRegisterTypePlanner;
+    case 'makeup_artist':
+      return l10n.vendorRegisterTypeMakeupArtist;
+    case 'mehndi_artist':
+      return l10n.vendorRegisterTypeMehndiArtist;
+    case 'music':
+      return l10n.vendorRegisterTypeMusic;
+    case 'multi_service':
+      return l10n.vendorRegisterTypeMultiService;
+    case 'other':
+      return l10n.vendorRegisterTypeOther;
+    default:
+      return value;
+  }
+}
 
 class VendorRegisterScreen extends StatefulWidget {
   const VendorRegisterScreen({super.key});
@@ -60,20 +97,21 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
 
   Future<void> _handleSubmit() async {
     if (_isLoading) return;
+    final l10n = AppLocalizations.of(context)!;
     if (_nameCtrl.text.trim().isEmpty ||
         _emailCtrl.text.trim().isEmpty ||
         _phoneCtrl.text.trim().isEmpty ||
         _businessCtrl.text.trim().isEmpty ||
         _passwordCtrl.text.isEmpty) {
-      setState(() => _error = 'Please fill in all fields.');
+      setState(() => _error = l10n.vendorRegisterFillAllFieldsError);
       return;
     }
     if (_passwordCtrl.text != _confirmCtrl.text) {
-      setState(() => _error = 'Passwords do not match.');
+      setState(() => _error = l10n.vendorRegisterPasswordMismatchError);
       return;
     }
     if (_passwordCtrl.text.length < 8) {
-      setState(() => _error = 'Password must be at least 8 characters.');
+      setState(() => _error = l10n.vendorRegisterPasswordTooShortError);
       return;
     }
 
@@ -98,7 +136,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       );
     } on DioException catch (e) {
       final detail = e.response?.data;
-      String msg = 'Registration failed. Please try again.';
+      String msg = l10n.vendorRegisterFailedError;
       if (detail is Map) {
         msg = detail['detail'] as String? ?? detail['message'] as String? ?? msg;
       } else if (detail is String) {
@@ -106,7 +144,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       }
       if (mounted) setState(() { _isLoading = false; _error = msg; });
     } catch (_) {
-      if (mounted) setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
+      if (mounted) setState(() { _isLoading = false; _error = l10n.vendorRegisterUnexpectedError; });
     }
   }
 
@@ -114,10 +152,11 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Partner Registration'),
+      appBar: tyAppBar(context, title: l10n.vendorRegisterTitle),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
@@ -125,22 +164,22 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: resp.h(20)),
-              Text('List your business on Tyohaar', style: TyType.display(resp.sp(26), color: ty.ink)),
+              Text(l10n.vendorRegisterHeading, style: TyType.display(resp.sp(26), color: ty.ink)),
               SizedBox(height: resp.h(8)),
               Text(
-                'Your account will be reviewed before it goes live.',
+                l10n.vendorRegisterSubheading,
                 style: TyType.sans(resp.sp(14), color: ty.ink2),
               ),
               SizedBox(height: resp.h(28)),
-              _field(ty, resp, 'FULL NAME', _nameCtrl),
+              _field(ty, resp, l10n.vendorRegisterFullNameLabel, _nameCtrl),
               SizedBox(height: resp.h(16)),
-              _field(ty, resp, 'EMAIL', _emailCtrl, type: TextInputType.emailAddress),
+              _field(ty, resp, l10n.vendorRegisterEmailLabel, _emailCtrl, type: TextInputType.emailAddress),
               SizedBox(height: resp.h(16)),
-              _field(ty, resp, 'PHONE', _phoneCtrl, type: TextInputType.phone),
+              _field(ty, resp, l10n.vendorRegisterPhoneLabel, _phoneCtrl, type: TextInputType.phone),
               SizedBox(height: resp.h(16)),
-              _field(ty, resp, 'BUSINESS NAME', _businessCtrl),
+              _field(ty, resp, l10n.vendorRegisterBusinessNameLabel, _businessCtrl),
               SizedBox(height: resp.h(16)),
-              Text('VENDOR TYPE', style: TyType.eyebrow(resp.sp(11), color: ty.ink3)),
+              Text(l10n.vendorRegisterVendorTypeLabel, style: TyType.eyebrow(resp.sp(11), color: ty.ink3)),
               SizedBox(height: resp.h(8)),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: resp.w(16)),
@@ -153,25 +192,25 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                   child: DropdownButton<String>(
                     value: _vendorType,
                     isExpanded: true,
-                    items: _vendorTypes
-                        .map((t) => DropdownMenuItem(value: t['value'], child: Text(t['label']!)))
+                    items: _vendorTypeValues
+                        .map((v) => DropdownMenuItem(value: v, child: Text(_vendorTypeLabel(context, v))))
                         .toList(),
                     onChanged: (v) => setState(() => _vendorType = v ?? _vendorType),
                   ),
                 ),
               ),
               SizedBox(height: resp.h(16)),
-              _field(ty, resp, 'PASSWORD', _passwordCtrl,
+              _field(ty, resp, l10n.vendorRegisterPasswordLabel, _passwordCtrl,
                   obscure: _obscure, onToggle: () => setState(() => _obscure = !_obscure)),
               SizedBox(height: resp.h(16)),
-              _field(ty, resp, 'CONFIRM PASSWORD', _confirmCtrl, obscure: _obscure),
+              _field(ty, resp, l10n.vendorRegisterConfirmPasswordLabel, _confirmCtrl, obscure: _obscure),
               if (_error.isNotEmpty) ...[
                 SizedBox(height: resp.h(16)),
                 Text(_error, style: TyType.sans(resp.sp(13), color: ty.rose, weight: FontWeight.w600)),
               ],
               SizedBox(height: resp.h(32)),
               TyButton(
-                _isLoading ? 'Submitting...' : 'Register as Partner',
+                _isLoading ? l10n.vendorRegisterSubmittingLabel : l10n.vendorRegisterSubmitLabel,
                 full: true,
                 onTap: _handleSubmit,
                 enabled: !_isLoading,

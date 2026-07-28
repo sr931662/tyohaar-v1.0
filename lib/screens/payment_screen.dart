@@ -8,6 +8,7 @@ import '../data/services/payment_service.dart';
 import '../widgets/ty_button.dart';
 import 'booking_confirmation_screen.dart';
 import 'send_invitations_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String bookingId;
@@ -83,7 +84,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       _razorpay.open(options);
     } catch (e) {
-      if (mounted) setState(() { _isProcessing = false; _error = 'Could not initiate payment. Please try again.'; });
+      if (mounted) setState(() { _isProcessing = false; _error = AppLocalizations.of(context)!.paymentInitiateError; });
     }
   }
 
@@ -125,7 +126,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
     } catch (_) {
       if (mounted) {
-        setState(() { _isProcessing = false; _error = 'Payment received but verification failed. Contact support.'; });
+        setState(() { _isProcessing = false; _error = AppLocalizations.of(context)!.paymentVerificationFailedError; });
       }
     }
   }
@@ -134,7 +135,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (mounted) {
       setState(() {
         _isProcessing = false;
-        _error = response.message ?? 'Payment failed. Please try again.';
+        _error = response.message ?? AppLocalizations.of(context)!.paymentFailedError;
       });
     }
   }
@@ -156,7 +157,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           icon: Icon(Icons.close_rounded, color: ty.ink),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: Text('Payment', style: TyType.sans(17, color: ty.ink, weight: FontWeight.w700)),
+        title: Text(AppLocalizations.of(context)!.paymentTitle, style: TyType.sans(17, color: ty.ink, weight: FontWeight.w700)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
@@ -173,7 +174,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Order Summary', style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+                  Text(AppLocalizations.of(context)!.paymentOrderSummaryLabel, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -183,7 +184,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text('Booking #${widget.bookingId.substring(0, 8).toUpperCase()}',
+                  Text(AppLocalizations.of(context)!.paymentBookingNumberLabel(widget.bookingId.substring(0, 8).toUpperCase()),
                       style: TyType.sans(12, color: ty.ink3)),
                 ],
               ),
@@ -199,7 +200,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 children: [
                   Icon(Icons.lock_outline_rounded, color: ty.leaf, size: 18),
                   const SizedBox(width: 10),
-                  Text('Secured by Razorpay — 256-bit SSL encryption',
+                  Text(AppLocalizations.of(context)!.paymentSecuredByRazorpayLabel,
                       style: TyType.sans(12.5, color: ty.ink2)),
                 ],
               ),
@@ -224,7 +225,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ],
             const Spacer(),
             TyButton(
-              _isProcessing ? 'Processing...' : 'Pay ₹${widget.amount.toInt()}',
+              _isProcessing ? AppLocalizations.of(context)!.paymentProcessingLabel : AppLocalizations.of(context)!.paymentPayButtonLabel('${widget.amount.toInt()}'),
               full: true,
               icon: Icons.payment_rounded,
               enabled: !_isProcessing,
@@ -233,7 +234,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             const SizedBox(height: 12),
             Center(
               child: Text(
-                'By proceeding you agree to Tyohaar\'s Terms & Conditions',
+                AppLocalizations.of(context)!.paymentTermsAgreementLabel,
                 textAlign: TextAlign.center,
                 style: TyType.sans(11, color: ty.ink3),
               ),

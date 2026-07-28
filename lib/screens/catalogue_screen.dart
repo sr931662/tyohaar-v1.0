@@ -5,6 +5,7 @@ import '../data/models.dart';
 import 'product_detail_screen.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class CatalogueScreen extends StatelessWidget {
   final String category;
@@ -31,17 +32,18 @@ class CatalogueScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     if (items.isEmpty) {
       return Scaffold(
-        appBar: tyAppBar(context, title: '$category Catalogue'),
+        appBar: tyAppBar(context, title: l10n.catalogueTitle(category)),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.inventory_2_outlined, size: 64, color: ty.ink3),
               const SizedBox(height: 16),
-              Text('No items available', style: TyType.sans(16, color: ty.ink2)),
+              Text(l10n.catalogueEmptyMessage, style: TyType.sans(16, color: ty.ink2)),
             ],
           ),
         ),
@@ -49,7 +51,7 @@ class CatalogueScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: tyAppBar(context, title: '$category Catalogue'),
+      appBar: tyAppBar(context, title: l10n.catalogueTitle(category)),
       body: GridView.builder(
         padding: const EdgeInsets.all(18),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -111,7 +113,8 @@ class CatalogueScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          item.unit ?? 'service'.replaceAll('_', ' ').toUpperCase(),
+                          item.unit ??
+                              l10n.catalogueDefaultUnitFallback.replaceAll('_', ' ').toUpperCase(),
                           style: TyType.sans(10, color: ty.ink3, weight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),

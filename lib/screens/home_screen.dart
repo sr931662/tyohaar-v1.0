@@ -18,6 +18,7 @@ import '../widgets/emblem.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'event_hub_screen.dart';
 import 'manage_address_screen.dart';
 import 'membership_plan_screen.dart';
@@ -181,13 +182,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
-      return TyStateScreen.error(onAction: _loadData);
+      return TyStateScreen.error(context, onAction: _loadData);
     }
 
     final totalGuests = _guests.length;
@@ -217,17 +219,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
 
               if (_occasions.isNotEmpty) ...[
-                SectionHeader('Browse by Occasion'),
+                SectionHeader(l10n.homeBrowseByOccasionHeader),
                 _festivalRail(context, _occasions),
                 SizedBox(height: resp.h(12)),
               ],
 
               _taskRow(
                 context,
-                'Manage Invitations',
-                totalGuests > 0 ? '$totalGuests invited · $rsvpdGuests RSVP\'d' : 'No invitations yet',
+                l10n.homeManageInvitationsLabel,
+                totalGuests > 0
+                    ? l10n.homeInvitationsMetaLabel(totalGuests, rsvpdGuests)
+                    : l10n.homeNoInvitationsYetMessage,
                 icon: Icons.mail_outline_rounded,
-                onTap: () => _push(context, const InvitationManagementScreen(), authAction: 'manage invitations'),
+                onTap: () => _push(context, const InvitationManagementScreen(), authAction: l10n.homeAuthActionManageInvitations),
               ),
               SizedBox(height: resp.h(12)),
 
@@ -235,19 +239,19 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(height: resp.h(12)),
 
               if (majorFestivals.isNotEmpty) ...[
-                SectionHeader('Popular Festivals'),
+                SectionHeader(l10n.homePopularFestivalsHeader),
                 _festivalRail(context, majorFestivals),
                 SizedBox(height: resp.h(12)),
               ],
 
               if (lifeEvents.isNotEmpty) ...[
-                SectionHeader('Life Moments'),
+                SectionHeader(l10n.homeLifeMomentsHeader),
                 _festivalRail(context, lifeEvents),
                 SizedBox(height: resp.h(12)),
               ],
 
               if (minorFestivals.isNotEmpty) ...[
-                SectionHeader('Upcoming Celebrations'),
+                SectionHeader(l10n.homeUpcomingCelebrationsHeader),
                 _festivalRail(context, minorFestivals),
               ],
             ],
@@ -264,19 +268,20 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     final double radius = resp.w(42.0);
-    
-    final title = _activeCelebration?.title ?? 'Start Planning';
+
+    final title = _activeCelebration?.title ?? l10n.homeStartPlanningFallback;
     final dt = _activeCelebration?.celebrationDate;
     final date = dt != null ? '${dt.day}/${dt.month}/${dt.year}' : '';
-    final location = _activeCelebration?.venueAddress ?? 'Select Location';
-    
+    final location = _activeCelebration?.venueAddress ?? l10n.homeSelectLocationFallback;
+
     // Resolve hero image and display name from occasions list if needed.
     // _activeCelebration.category is the raw category_id UUID (backend does
     // not nest the occasion object in CelebrationResponse) — never shown to
     // the user directly. Look up the matching Occasion for a human-readable name.
     String? heroUrl = _activeBooking?.packageCoverUrl ?? _activeCelebration?.heroImageUrl;
-    String displayLabel = 'Celebration';
+    String displayLabel = l10n.homeCelebrationFallback;
 
     if (_activeCelebration?.occasionId != null) {
       final occ = _occasions.cast<Occasion?>().firstWhere(
@@ -297,22 +302,22 @@ class _HomeScreenState extends State<HomeScreen> {
           .difference(DateTime(today.year, today.month, today.day))
           .inDays;
       if (daysLeft < 0) {
-        statusLabel = 'Completed';
+        statusLabel = l10n.homeStatusCompletedLabel;
         statusColor = Colors.grey;
       } else if (daysLeft == 0) {
-        statusLabel = 'Today!';
+        statusLabel = l10n.homeStatusTodayLabel;
         statusColor = ty.rose;
       } else if (daysLeft == 1) {
-        statusLabel = 'Tomorrow';
+        statusLabel = l10n.homeStatusTomorrowLabel;
         statusColor = Colors.orange;
       } else {
-        statusLabel = '$daysLeft days left';
+        statusLabel = l10n.homeStatusDaysLeftLabel(daysLeft);
         statusColor = Colors.orange;
       }
     }
 
     return GestureDetector(
-      onTap: () => _push(context, const EventHubScreen(), authAction: 'view your event hub'),
+      onTap: () => _push(context, const EventHubScreen(), authAction: l10n.homeAuthActionViewEventHub),
       child: SizedBox(
         height: resp.h(420),
         child: Stack(
@@ -419,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('YOUR NEXT CELEBRATION',
+                    Text(l10n.homeYourNextCelebrationLabel,
                         style: TyType.eyebrow(resp.sp(11.5), color: Colors.white.withValues(alpha: 0.88))),
                     SizedBox(height: resp.h(12)),
                     Row(children: [
@@ -447,7 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icon(Icons.event, size: resp.sp(15), color: Colors.white.withValues(alpha: 0.86)),
                       SizedBox(width: resp.w(6)),
                       Expanded(
-                        child: Text('$date · $location',
+                        child: Text(l10n.homeDateLocationLabel(date, location),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TyType.sans(resp.sp(14), color: Colors.white.withValues(alpha: 0.9))),
@@ -472,8 +477,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _membershipBanner(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
-      onTap: () => _push(context, const MembershipPlanScreen(), authAction: 'view membership plans'),
+      onTap: () => _push(context, const MembershipPlanScreen(), authAction: l10n.homeAuthActionViewMembershipPlans),
       child: Container(
       padding: EdgeInsets.all(resp.w(20)),
       decoration: BoxDecoration(
@@ -497,10 +503,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Upgrade to Gold',
+                Text(l10n.homeMembershipBannerHeading,
                     style: TyType.display(resp.sp(20), color: Colors.white)),
                 SizedBox(height: resp.h(4)),
-                Text('Get exclusive access to premium themes and early bird discounts.',
+                Text(l10n.homeMembershipBannerBody,
                     style: TyType.sans(resp.sp(12), color: Colors.white.withValues(alpha: 0.9))),
               ],
             ),
@@ -512,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(resp.w(12)),
             ),
-            child: Text('Join Now',
+            child: Text(l10n.homeMembershipBannerButtonLabel,
                 style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w700)),
           ),
         ],
@@ -611,6 +617,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _stackedAvatars(BuildContext context, List<Guest> guests, int total) {
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     if (guests.isEmpty) return const SizedBox();
     return SizedBox(
       width: resp.w(112),
@@ -634,7 +641,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
                 ),
-                child: Text('+${total - 4}',
+                child: Text(l10n.homeMoreGuestsCountLabel(total - 4),
                     style: TextStyle(
                         color: Colors.white, fontSize: resp.sp(10.5), fontWeight: FontWeight.w700)),
               ),
@@ -648,13 +655,14 @@ class _HomeScreenState extends State<HomeScreen> {
   /// known; otherwise "near you" with a "Set city" action that opens the
   /// address flow (home reloads on return via [_push]).
   Widget _featuredHeader(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final canSetCity = _cityName == null && AuthManager.instance.isAuthenticated;
-    final label = _featuredIsFallback ? 'Popular Packages' : 'Featured Packages';
+    final label = _featuredIsFallback ? l10n.homePopularPackagesLabel : l10n.homeFeaturedPackagesLabel;
     return SectionHeader(
-      _cityName != null ? '$label in $_cityName' : '$label near you',
-      action: canSetCity ? 'Set city' : null,
+      _cityName != null ? l10n.homePackagesInCityHeader(label, _cityName!) : l10n.homePackagesNearYouHeader(label),
+      action: canSetCity ? l10n.homeSetCityActionLabel : null,
       onAction: canSetCity
-          ? () => _push(context, const ManageAddressScreen(), authAction: 'manage your address')
+          ? () => _push(context, const ManageAddressScreen(), authAction: l10n.homeAuthActionManageAddress)
           : null,
     );
   }

@@ -7,6 +7,7 @@ import '../data/models.dart';
 import '../data/services/notification_service.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -33,16 +34,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final notifs = await _notificationService.listNotifications();
       if (mounted) setState(() { _notifications = notifs; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load notifications.'; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _error = AppLocalizations.of(context)!.notificationsLoadError;
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: tyAppBar(context, title: 'Activity', actions: [
+      appBar: tyAppBar(context, title: l10n.notificationsTitle, actions: [
         Padding(
           padding: const EdgeInsets.only(right: 18),
           child: Center(
@@ -51,7 +58,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 await _notificationService.markAllAsRead();
                 _loadNotifications();
               },
-              child: Text('Mark read',
+              child: Text(l10n.notificationsMarkAllReadButtonLabel,
                   style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700)),
             ),
           ),
@@ -60,7 +67,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? TyStateScreen.error(onAction: _loadNotifications)
+              ? TyStateScreen.error(context, onAction: _loadNotifications)
               : _notifications.isEmpty
                   ? _buildEmptyState(context)
                   : ListView.builder(
@@ -72,7 +79,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   final ty = context.ty;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Text('RECENT', style: TyType.eyebrow(11.5, color: ty.ink3)),
+                    child: Text(l10n.notificationsRecentSectionLabel, style: TyType.eyebrow(11.5, color: ty.ink3)),
                   );
                 }
                 return _row(context, _notifications[index - 1]);
@@ -82,9 +89,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return TyStateScreen.empty(
-      title: 'No activity yet',
-      message: "We'll notify you here about your bookings, payments, and upcoming celebrations.",
+      title: l10n.notificationsEmptyTitle,
+      message: l10n.notificationsEmptyMessage,
       icon: Icons.notifications_none_rounded,
     );
   }
@@ -155,7 +163,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _formatNotificationTime(n.time),
+                  _formatNotificationTime(context, n.time),
                   style: TyType.sans(11.5, color: ty.ink3),
                 ),
               ],
@@ -170,7 +178,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   static final _dayMonthFmt = DateFormat('d MMM · h:mm a');
   static final _dayMonthYearFmt = DateFormat('d MMM y · h:mm a');
 
-  String _formatNotificationTime(String raw) {
+  String _formatNotificationTime(BuildContext context, String raw) {
     final parsed = DateTime.tryParse(raw);
     if (parsed == null) return raw;
 
@@ -179,12 +187,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final today = DateTime(now.year, now.month, now.day);
     final date = DateTime(local.year, local.month, local.day);
     final dayDiff = today.difference(date).inDays;
+    final l10n = AppLocalizations.of(context)!;
 
     if (dayDiff == 0) {
-      return 'Today · ${_timeFmt.format(local)}';
+      return l10n.notificationsTodayAtLabel(_timeFmt.format(local));
     }
     if (dayDiff == 1) {
-      return 'Yesterday · ${_timeFmt.format(local)}';
+      return l10n.notificationsYesterdayAtLabel(_timeFmt.format(local));
     }
     if (local.year == now.year) {
       return _dayMonthFmt.format(local);

@@ -14,6 +14,7 @@ import '../widgets/state_screens.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
 import 'event_hub_screen.dart';
 import 'cancel_booking_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -43,17 +44,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         setState(() { _bookings = bookings; _isLoading = false; });
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
+          final l10n = AppLocalizations.of(context)!;
           TutorialOverlay.show(context, screenKey: 'my_bookings', steps: [
             TutorialStep(
               targetKey: _bodyKey,
-              title: 'All your bookings, in one place',
-              description: 'Upcoming and past bookings are listed here — tap any booking to see full details.',
+              title: l10n.myBookingsTutorialTitle,
+              description: l10n.myBookingsTutorialDescription,
             ),
           ]);
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load bookings.'; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _error = AppLocalizations.of(context)!.myBookingsLoadError;
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -66,7 +73,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'My Bookings'),
+      appBar: tyAppBar(context, title: AppLocalizations.of(context)!.myBookingsTitle),
       body: _isLoading
           ? _buildSkeleton(context)
           : _error != null
@@ -82,6 +89,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   Widget _buildBookingsList(BuildContext context, List<Booking> upcoming, List<Booking> past) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     Text sectionHeader(String label) =>
         Text(label, style: TyType.eyebrow(11, color: ty.ink3));
 
@@ -90,7 +98,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     // eagerly building every booking card up front.
     final rows = <Widget Function()>[];
     if (upcoming.isNotEmpty) {
-      rows.add(() => sectionHeader('UPCOMING'));
+      rows.add(() => sectionHeader(l10n.myBookingsUpcomingSectionLabel));
       rows.add(() => const SizedBox(height: 12));
       for (final b in upcoming) {
         rows.add(() => _bookingCard(context, b));
@@ -98,7 +106,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       rows.add(() => const SizedBox(height: 32));
     }
     if (past.isNotEmpty) {
-      rows.add(() => sectionHeader('PAST'));
+      rows.add(() => sectionHeader(l10n.myBookingsPastSectionLabel));
       rows.add(() => const SizedBox(height: 12));
       for (final b in past) {
         rows.add(() => _bookingCard(context, b));
@@ -130,21 +138,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 
   Widget _buildError(BuildContext context) {
-    return TyStateScreen.error(onAction: _loadBookings);
+    return TyStateScreen.error(context, onAction: _loadBookings);
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return TyStateScreen.empty(
-      title: 'No bookings yet',
-      message: 'Your upcoming celebrations will appear here once you start planning.',
+      title: l10n.myBookingsEmptyTitle,
+      message: l10n.myBookingsEmptyMessage,
       icon: Icons.calendar_today_outlined,
-      actionLabel: 'Start Planning',
+      actionLabel: l10n.plansStartPlanningButtonLabel,
       onAction: () => Navigator.of(context).pop(),
     );
   }
 
   Widget _bookingCard(BuildContext context, Booking b) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final isDone = b.status == 'completed';
     final dateStr = DateFormat('dd MMM').format(b.scheduledDate);
     final isCancellable = !isDone &&
@@ -184,7 +194,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(b.packageName ?? 'Custom Booking', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
+                      Text(b.packageName ?? l10n.myBookingsCustomBookingFallback, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
                       const SizedBox(height: 2),
                       Text(dateStr, style: TyType.sans(12, color: ty.ink2)),
                       if (b.preparationStartAt != null) ...[
@@ -195,7 +205,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                'Prep starts ${DateFormat('dd MMM, h:mm a').format(b.preparationStartAt!.toLocal())}',
+                                l10n.myBookingsPrepStartsLabel(
+                                    DateFormat('dd MMM, h:mm a').format(b.preparationStartAt!.toLocal())),
                                 style: TyType.sans(11.5, color: ty.saffronDeep, weight: FontWeight.w600),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -230,7 +241,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       MaterialPageRoute(builder: (_) => CancelBookingScreen(booking: b)));
                   if (cancelled == true) _loadBookings();
                 },
-                child: Text('Cancel Booking',
+                child: Text(l10n.cancelBookingTitle,
                     style: TyType.sans(12.5, color: ty.rose, weight: FontWeight.w700)),
               ),
             ),

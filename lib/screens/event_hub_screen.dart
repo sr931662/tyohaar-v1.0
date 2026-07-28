@@ -25,6 +25,7 @@ import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'guests_screen.dart';
 import 'package_detail_screen.dart';
 
@@ -126,12 +127,12 @@ class _EventHubScreenState extends State<EventHubScreen> {
         _loadEventMedia();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
+          final l10n = AppLocalizations.of(context)!;
           TutorialOverlay.show(context, screenKey: 'event_hub', steps: [
             TutorialStep(
               targetKey: _heroKey,
-              title: 'Your celebration, at a glance',
-              description:
-                  'Track the countdown and guest RSVPs for this event right here.',
+              title: l10n.eventHubTutorialTitle,
+              description: l10n.eventHubTutorialDescription,
             ),
           ]);
         });
@@ -160,6 +161,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_isLoading) {
       return Scaffold(
@@ -170,17 +172,17 @@ class _EventHubScreenState extends State<EventHubScreen> {
     if (_error) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: 'Event Hub'),
-        body: TyStateScreen.error(onAction: _load),
+        appBar: tyAppBar(context, title: l10n.eventHubAppBarTitle),
+        body: TyStateScreen.error(context, onAction: _load),
       );
     }
 
     if (_celebration == null) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: 'Event Hub'),
+        appBar: tyAppBar(context, title: l10n.eventHubAppBarTitle),
         body: Center(
-            child: Text('No active celebration',
+            child: Text(l10n.eventHubNoActiveCelebrationMessage,
                 style: TyType.sans(resp.sp(16), color: ty.ink2))),
       );
     }
@@ -244,7 +246,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            TyPill(_celebration?.occasionName ?? 'Celebration',
+                            TyPill(_celebration?.occasionName ?? l10n.eventHubCelebrationFallback,
                                 background: ty.saffron,
                                 foreground: ty.onPrimary),
                             SizedBox(height: resp.h(12)),
@@ -275,18 +277,18 @@ class _EventHubScreenState extends State<EventHubScreen> {
                         children: [
                           Row(
                             children: [
-                              _stat(context, _daysLeft, 'days'),
+                              _stat(context, _daysLeft, l10n.eventHubDaysLabel),
                               SizedBox(width: resp.w(10)),
-                              _stat(context, _hoursLeft, 'hrs'),
+                              _stat(context, _hoursLeft, l10n.eventHubHoursLabel),
                               SizedBox(width: resp.w(10)),
-                              _stat(context, '$totalGuests', 'guests'),
+                              _stat(context, '$totalGuests', l10n.eventHubGuestsLabel),
                             ],
                           ),
                           SizedBox(height: resp.h(22)),
-                          SectionHeader('Package details'),
+                          SectionHeader(l10n.eventHubPackageDetailsHeader),
                           _buildPackageSection(context),
                           SizedBox(height: resp.h(18)),
-                          SectionHeader('The gathering', action: 'Manage',
+                          SectionHeader(l10n.eventHubGatheringHeader, action: l10n.eventHubManageActionLabel,
                               onAction: () {
                             Navigator.of(context)
                                 .push(MaterialPageRoute(
@@ -326,12 +328,12 @@ class _EventHubScreenState extends State<EventHubScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text('$totalGuests loved ones',
+                                          Text(l10n.eventHubLovedOnesCountLabel(totalGuests),
                                               style: TyType.sans(resp.sp(15),
                                                   color: ty.ink,
                                                   weight: FontWeight.w700)),
                                           Text(
-                                              '${_guests.length} households invited',
+                                              l10n.eventHubHouseholdsInvitedLabel(_guests.length),
                                               style: TyType.sans(resp.sp(12.5),
                                                   color: ty.ink2)),
                                         ],
@@ -351,7 +353,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                             ),
                           ),
                           SizedBox(height: resp.h(18)),
-                          const SectionHeader('Multimedia'),
+                          SectionHeader(l10n.eventHubMultimediaHeader),
                           _EventMediaSection(
                             media: _eventMedia,
                             isLoading: _loadingMedia,
@@ -409,13 +411,14 @@ class _EventHubScreenState extends State<EventHubScreen> {
   Widget _buildPackageSection(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     final pkg = _package;
 
     if (pkg == null) {
       return Container(
         padding: EdgeInsets.all(resp.w(16)),
         decoration: _card(ty, resp),
-        child: Text('No package selected yet',
+        child: Text(l10n.eventHubNoPackageSelectedMessage,
             style: TyType.sans(resp.sp(14), color: ty.ink2)),
       );
     }
@@ -463,7 +466,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                           style: TyType.sans(resp.sp(16),
                               color: ty.ink, weight: FontWeight.w700)),
                       SizedBox(height: resp.h(2)),
-                      Text('₹${pkg.price.toStringAsFixed(0)}',
+                      Text(l10n.eventHubPackagePriceLabel(pkg.price.toStringAsFixed(0)),
                           style: TyType.sans(resp.sp(13),
                               color: ty.saffronDeep, weight: FontWeight.w600)),
                     ],
@@ -479,7 +482,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                 children: [
                   Icon(Icons.palette_outlined, size: resp.sp(15), color: ty.ink3),
                   SizedBox(width: resp.w(6)),
-                  Text('Theme: ${_booking!.themeName}',
+                  Text(l10n.eventHubThemeLabel(_booking!.themeName!),
                       style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
                 ],
               ),
@@ -498,7 +501,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                         Expanded(
                           child: Text(
                               item.quantity > 1
-                                  ? '${item.name} × ${item.quantity}'
+                                  ? l10n.eventHubItemQuantityLabel(item.name, item.quantity)
                                   : item.name,
                               style: TyType.sans(resp.sp(13), color: ty.ink2)),
                         ),
@@ -506,7 +509,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                     ),
                   )),
               if (_packageItems.length > 4)
-                Text('+ ${_packageItems.length - 4} more',
+                Text(l10n.eventHubMoreItemsLabel(_packageItems.length - 4),
                     style: TyType.sans(resp.sp(12.5), color: ty.ink3)),
             ],
           ],
@@ -518,6 +521,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
   Widget _buildRsvpBreakdown(BuildContext context) {
     final theme = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     final attending =
         _guests.where((g) => g.displayStatus == 'attending').length;
     final declined = _guests.where((g) => g.displayStatus == 'declined').length;
@@ -539,10 +543,10 @@ class _EventHubScreenState extends State<EventHubScreen> {
 
     return Row(
       children: [
-        stat('Attending', attending, Colors.green.shade600),
-        stat('Maybe', maybe, Colors.orange.shade600),
-        stat('Declined', declined, Colors.red.shade400),
-        stat('Pending', pending, theme.ink3),
+        stat(l10n.eventHubRsvpAttendingLabel, attending, Colors.green.shade600),
+        stat(l10n.eventHubRsvpMaybeLabel, maybe, Colors.orange.shade600),
+        stat(l10n.eventHubRsvpDeclinedLabel, declined, Colors.red.shade400),
+        stat(l10n.eventHubRsvpPendingLabel, pending, theme.ink3),
       ],
     );
   }
@@ -639,7 +643,7 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open the video.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.eventHubCouldNotOpenVideoMessage)),
         );
       }
     }
@@ -653,7 +657,7 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
     await Permission.photos.request();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo library access is needed to save media.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.eventHubPhotoAccessNeededForMediaMessage)),
       );
     }
     return false;
@@ -704,10 +708,11 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
         _selecting = false;
         _selectedIds.clear();
       });
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(failed == 0
-            ? 'Saved $saved item${saved == 1 ? '' : 's'} to your gallery.'
-            : 'Saved $saved item${saved == 1 ? '' : 's'} — $failed failed.'),
+            ? l10n.eventHubSavedItemsMessage(saved)
+            : l10n.eventHubSavedItemsWithFailuresMessage(saved, failed)),
       ));
     }
   }
@@ -716,6 +721,7 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     final decoration = BoxDecoration(
       color: ty.surface,
       borderRadius: BorderRadius.circular(resp.w(20)),
@@ -736,7 +742,7 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
         padding: EdgeInsets.all(resp.w(16)),
         decoration: decoration,
         child: Text(
-          'Your vendor will share event photos and videos here once the celebration is complete.',
+          l10n.eventHubMultimediaEmptyMessage,
           style: TyType.sans(resp.sp(13), color: ty.ink2),
         ),
       );
@@ -749,7 +755,7 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             if (_selecting) ...[
-              Text('${_selectedIds.length} selected',
+              Text(l10n.eventHubSelectedCountLabel(_selectedIds.length),
                   style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
               const Spacer(),
               TextButton(
@@ -760,19 +766,19 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
                         height: resp.w(16),
                         child: const CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Download'),
+                    : Text(l10n.eventHubDownloadButtonLabel),
               ),
               TextButton(
                 onPressed: () => setState(() {
                   _selecting = false;
                   _selectedIds.clear();
                 }),
-                child: const Text('Cancel'),
+                child: Text(l10n.commonCancel),
               ),
             ] else
               TextButton(
                 onPressed: () => setState(() => _selecting = true),
-                child: const Text('Select'),
+                child: Text(l10n.eventHubSelectButtonLabel),
               ),
           ],
         ),
@@ -870,7 +876,7 @@ class _EventMediaViewerScreenState extends State<_EventMediaViewerScreen> {
           await Permission.photos.request();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Photo library access is needed to save images.')),
+              SnackBar(content: Text(AppLocalizations.of(context)!.eventHubPhotoAccessNeededForImagesMessage)),
             );
           }
           return;
@@ -889,13 +895,13 @@ class _EventMediaViewerScreenState extends State<_EventMediaViewerScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image saved to your gallery.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.eventHubImageSavedMessage)),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not save the image. Please try again.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.eventHubSaveImageError)),
         );
       }
     } finally {
@@ -942,7 +948,7 @@ class _EventMediaViewerScreenState extends State<_EventMediaViewerScreen> {
                       icon: const Icon(Icons.close_rounded, color: Colors.white),
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),
-                    Text('${_index + 1} / ${widget.images.length}',
+                    Text(AppLocalizations.of(context)!.eventHubImageCounterLabel(_index + 1, widget.images.length),
                         style: const TextStyle(color: Colors.white)),
                     IconButton(
                       icon: _isDownloading

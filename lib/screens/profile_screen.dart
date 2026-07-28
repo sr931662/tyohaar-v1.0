@@ -6,29 +6,35 @@ import '../theme/theme_controller.dart';
 import '../theme/responsive.dart';
 import '../widgets/common.dart';
 import '../widgets/ty_button.dart';
+import '../l10n/generated/app_localizations.dart';
 
 /// Profile — identity, households, payments and settings.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  static const _menu = [
-    [Icons.group_outlined, 'Households & family', '3 groups'],
-    [Icons.account_balance_wallet_outlined, 'Payment methods', '2 cards'],
-    [Icons.notifications_none_rounded, 'Notifications', ''],
-    [Icons.shield_outlined, 'Privacy & security', ''],
-    [Icons.help_outline_rounded, 'Help & support', ''],
-  ];
+  static List<List<Object>> _menu(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      [Icons.group_outlined, l10n.profileMenuHouseholdsFamilyLabel, l10n.profileMenuHouseholdsFamilySubtitle],
+      [Icons.account_balance_wallet_outlined, l10n.profileMenuPaymentMethodsLabel, l10n.profileMenuPaymentMethodsSubtitle],
+      [Icons.notifications_none_rounded, l10n.profileMenuNotificationsLabel, ''],
+      [Icons.shield_outlined, l10n.profileMenuPrivacySecurityLabel, ''],
+      [Icons.help_outline_rounded, l10n.profileMenuHelpSupportLabel, ''],
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
+    final menu = _menu(context);
     return ListView(
       padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), resp.h(28)),
       children: [
         Row(
           children: [
-            Expanded(child: Text('You', style: TyType.display(resp.sp(26), color: ty.ink))),
+            Expanded(child: Text(l10n.profileYouHeading, style: TyType.display(resp.sp(26), color: ty.ink))),
             ChromeIconButton(
               icon: themeController.isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
               onTap: themeController.toggle,
@@ -44,14 +50,14 @@ class ProfileScreen extends StatelessWidget {
               height: resp.w(84),
               alignment: Alignment.center,
               decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle),
-              child: Text('A',
+              child: Text(l10n.profileAvatarInitialLabel,
                   style: TextStyle(
                       color: ty.onPrimary, fontWeight: FontWeight.w800, fontSize: resp.sp(34))),
             ),
             SizedBox(height: resp.h(12)),
-            Text('Aarav Sharma', style: TyType.display(resp.sp(25), color: ty.ink)),
+            Text(l10n.profileMockUserName, style: TyType.display(resp.sp(25), color: ty.ink)),
             SizedBox(height: resp.h(2)),
-            Text('aarav.sharma@gmail.com · Jaipur',
+            Text(l10n.profileMockUserEmailLocation,
                 style: TyType.sans(resp.sp(13), color: ty.ink2)),
             SizedBox(height: resp.h(10)),
             Container(
@@ -60,7 +66,7 @@ class ProfileScreen extends StatelessWidget {
                 color: ty.saffronSoft,
                 borderRadius: BorderRadius.circular(999),
               ),
-              child: Text('✦ Member since 2024',
+              child: Text(l10n.profileMemberSinceBadge,
                   style: TyType.sans(resp.sp(12.5), color: ty.saffronDeep, weight: FontWeight.w700)),
             ),
           ],
@@ -69,11 +75,11 @@ class ProfileScreen extends StatelessWidget {
         // stats
         Row(
           children: [
-            _stat(context, '7', 'Celebrations'),
+            _stat(context, '7', l10n.profileStatCelebrationsLabel),
             SizedBox(width: resp.w(10)),
-            _stat(context, '684', 'Photos'),
+            _stat(context, '684', l10n.profileStatPhotosLabel),
             SizedBox(width: resp.w(10)),
-            _stat(context, '12', 'Saved partners'),
+            _stat(context, '12', l10n.profileStatSavedPartnersLabel),
           ],
         ),
         SizedBox(height: resp.h(24)),
@@ -86,13 +92,13 @@ class ProfileScreen extends StatelessWidget {
           ),
           child: Column(
             children: [
-              for (int i = 0; i < _menu.length; i++)
-                _menuRow(context, _menu[i], last: i == _menu.length - 1),
+              for (int i = 0; i < menu.length; i++)
+                _menuRow(context, menu[i], last: i == menu.length - 1),
             ],
           ),
         ),
         SizedBox(height: resp.h(18)),
-        TyButton('Sign out',
+        TyButton(l10n.profileSignOutLabel,
             kind: TyButtonKind.ghost,
             full: true,
             leadingIcon: Icons.logout_rounded,

@@ -16,6 +16,7 @@ import '../widgets/ty_chip.dart';
 import '../widgets/common.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
 import '../widgets/state_screens.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
 import 'package:tyohaar/screens/package_filter_screen.dart';
 
@@ -73,8 +74,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Timer? _searchDebounce;
 
   String get _selectedCitySlug => _CityPref.selected ?? '';
-  String get _selectedCityLabel {
-    if (_selectedCitySlug.isEmpty) return 'All Cities';
+  String _selectedCityLabel(BuildContext context) {
+    if (_selectedCitySlug.isEmpty) {
+      return AppLocalizations.of(context)!.exploreAllCitiesLabel;
+    }
     final match = _kCities.where((c) => c.$2 == _selectedCitySlug).firstOrNull;
     return match?.$1 ?? _selectedCitySlug;
   }
@@ -86,11 +89,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _loadPackages();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       TutorialOverlay.show(context, screenKey: 'explore', steps: [
         TutorialStep(
           targetKey: _searchKey,
-          title: 'Find the perfect package',
-          description: 'Search by occasion, or use the filter and city picker above to narrow things down.',
+          title: l10n.exploreTutorialTitle,
+          description: l10n.exploreTutorialDescription,
         ),
       ]);
     });
@@ -154,6 +158,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final ty = ctx.ty;
+        final l10n = AppLocalizations.of(ctx)!;
         return Container(
           decoration: BoxDecoration(
             color: ty.paper,
@@ -172,7 +177,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
-                    Text('Select Your City', style: TyType.display(20, color: ty.ink)),
+                    Text(l10n.exploreSelectCityTitle, style: TyType.display(20, color: ty.ink)),
                     const Spacer(),
                     IconButton(
                       icon: Icon(Icons.close, color: ty.ink2),
@@ -188,7 +193,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                   itemCount: _kCities.length,
                   itemBuilder: (_, i) {
-                    final (label, slug) = _kCities[i];
+                    final (cityLabel, slug) = _kCities[i];
+                    final label = slug.isEmpty ? l10n.exploreAllCitiesLabel : cityLabel;
                     final isSelected = slug == _selectedCitySlug;
                     return ListTile(
                       onTap: () {
@@ -231,6 +237,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     final topPadding = MediaQuery.of(context).padding.top + resp.h(85);
 
     // Client-side search + filter — category and city are applied server-side.
@@ -268,7 +275,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 Row(
                   children: [
                     Expanded(
-                        child: Text('Discover packages',
+                        child: Text(l10n.exploreDiscoverPackagesHeading,
                             style: TyType.display(resp.sp(25), color: ty.ink))),
                     // City picker button
                     GestureDetector(
@@ -289,7 +296,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 size: resp.sp(14),
                                 color: _selectedCitySlug.isEmpty ? ty.ink3 : ty.saffron),
                             SizedBox(width: resp.w(4)),
-                            Text(_selectedCityLabel,
+                            Text(_selectedCityLabel(context),
                                 style: TyType.sans(resp.sp(13),
                                     color: _selectedCitySlug.isEmpty ? ty.ink2 : ty.saffron,
                                     weight: FontWeight.w600)),
@@ -344,7 +351,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           decoration: InputDecoration(
                             isDense: true,
                             border: InputBorder.none,
-                            hintText: 'Search birthdays, weddings, Diwali…',
+                            hintText: l10n.exploreSearchHint,
                             hintStyle: TyType.sans(resp.sp(14.5), color: ty.ink3),
                           ),
                           style: TyType.sans(resp.sp(14.5), color: ty.ink),
@@ -367,7 +374,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               itemBuilder: (context, i) {
                 if (i == 0) {
                   return TyChip(
-                    label: 'All',
+                    label: l10n.exploreAllCategoriesChipLabel,
                     active: _selectedCategoryId == null,
                     onTap: () {
                       if (_selectedCategoryId != null) {
@@ -396,7 +403,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _error
-                    ? TyStateScreen.error(onAction: _loadPackages)
+                    ? TyStateScreen.error(context, onAction: _loadPackages)
                     : list.isEmpty
                         ? _buildEmptyState(context)
                         : RefreshIndicator(
@@ -416,6 +423,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     List<Package> featured,
     TyResponsive resp,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final showFeatured = featured.isNotEmpty && _searchQuery.isEmpty;
 
     // Flatten the featured rail + section header + package rows into a
@@ -423,7 +431,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     // ListView.builder instead of eagerly building every package row.
     final rows = <Widget Function()>[];
     if (showFeatured) {
-      rows.add(() => const SectionHeader('Featured for you'));
+      rows.add(() => SectionHeader(l10n.exploreFeaturedForYouHeader));
       rows.add(() => SizedBox(
             height: resp.h(220),
             child: ListView.separated(
@@ -436,7 +444,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       rows.add(() => SizedBox(height: resp.h(24)));
     }
     rows.add(() => SectionHeader(
-          _selectedCitySlug.isEmpty ? 'Available Packages' : 'Packages in $_selectedCityLabel',
+          _selectedCitySlug.isEmpty
+              ? l10n.exploreAvailablePackagesHeader
+              : l10n.explorePackagesInCityHeader(_selectedCityLabel(context)),
         ));
     for (final p in list) {
       rows.add(() => _packageRow(context, p));
@@ -453,6 +463,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _buildEmptyState(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -461,15 +472,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
           SizedBox(height: resp.h(16)),
           Text(
             _selectedCitySlug.isEmpty
-                ? 'No packages found'
-                : 'No packages in $_selectedCityLabel',
+                ? l10n.exploreNoPackagesFoundMessage
+                : l10n.exploreNoPackagesInCityMessage(_selectedCityLabel(context)),
             style: TyType.display(resp.sp(20), color: ty.ink),
           ),
           SizedBox(height: resp.h(8)),
           Text(
             _selectedCitySlug.isEmpty
-                ? 'Try searching for something else or change categories.'
-                : 'Try a different city or browse all cities.',
+                ? l10n.exploreTrySearchingElseMessage
+                : l10n.exploreTryDifferentCityMessage,
             style: TyType.sans(resp.sp(14), color: ty.ink2),
             textAlign: TextAlign.center,
           ),
@@ -480,7 +491,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 setState(() => _CityPref.selected = null);
                 _loadPackages();
               },
-              child: Text('Browse all cities',
+              child: Text(l10n.exploreBrowseAllCitiesLabel,
                   style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w600)),
             ),
           ],
@@ -538,6 +549,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _packageRow(BuildContext context, Package p) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: () => _push(context, PackageDetailScreen(package: p)),
       child: Container(
@@ -597,12 +609,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   Text(p.name,
                       style: TyType.sans(resp.sp(16), color: ty.ink, weight: FontWeight.w700)),
                   SizedBox(height: resp.h(1)),
-                  Text('${p.inclusionsCount} Inclusions',
+                  Text(l10n.exploreInclusionsCountLabel(p.inclusionsCount),
                       style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
                   SizedBox(height: resp.h(12)),
                   Row(
                     children: [
-                      Text('Starting from', style: TyType.sans(resp.sp(11), color: ty.ink3)),
+                      Text(l10n.exploreStartingFromLabel, style: TyType.sans(resp.sp(11), color: ty.ink3)),
                       SizedBox(width: resp.w(4)),
                       Text(formatPrice(p.price),
                           style: TyType.sans(resp.sp(14),

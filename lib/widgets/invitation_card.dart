@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import '../theme/colors.dart';
 import '../theme/mood_styles.dart';
 import '../theme/typography.dart';
@@ -115,7 +116,7 @@ class InvitationCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        (celebration.occasionName ?? 'CELEBRATION').toUpperCase(),
+                        (celebration.occasionName ?? AppLocalizations.of(context)!.invitationCardCelebrationFallback).toUpperCase(),
                         style: TyType.eyebrow(12, color: Colors.white.withValues(alpha: 0.85)),
                       ),
                       if (celebration.mood != null) ...[
@@ -142,7 +143,7 @@ class InvitationCard extends StatelessWidget {
                       ],
                       const SizedBox(height: 14),
                       Text(
-                        "You're Invited to",
+                        AppLocalizations.of(context)!.invitationCardYoureInvitedTo,
                         textAlign: TextAlign.center,
                         style: TyType.sans(14, color: Colors.white.withValues(alpha: 0.9), spacing: 0.3),
                       ),
@@ -185,7 +186,7 @@ class InvitationCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                         ),
-                        child: Text('Presented by Tyohaar', style: TyType.sans(11, color: Colors.white.withValues(alpha: 0.85), weight: FontWeight.w700)),
+                        child: Text(AppLocalizations.of(context)!.invitationCardPresentedBy, style: TyType.sans(11, color: Colors.white.withValues(alpha: 0.85), weight: FontWeight.w700)),
                       ),
                     ],
                   ),

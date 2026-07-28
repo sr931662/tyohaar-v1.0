@@ -14,6 +14,7 @@ import '../data/auth_manager.dart';
 import '../utils/log.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'vendor/vendor_availability_screen.dart';
 import 'guest_history_screen.dart';
 
@@ -71,7 +72,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load profile.'; _isLoading = false; });
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.myProfileLoadError; _isLoading = false; });
     }
   }
 
@@ -82,19 +83,20 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     if (image == null) return;
     if (!mounted) return;
 
+    final cropperTitle = AppLocalizations.of(context)!.myProfileCropperToolbarTitle;
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: image.path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
       uiSettings: [
         AndroidUiSettings(
-          toolbarTitle: 'Edit Profile Picture',
+          toolbarTitle: cropperTitle,
           toolbarColor: context.ty.ink,
           toolbarWidgetColor: Colors.white,
           initAspectRatio: CropAspectRatioPreset.square,
           lockAspectRatio: true,
         ),
         IOSUiSettings(
-          title: 'Edit Profile Picture',
+          title: cropperTitle,
         ),
       ],
     );
@@ -115,14 +117,14 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           _isUploading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated!')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.myProfilePictureUpdatedMessage)),
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isUploading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to upload image.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.myProfileUploadImageError)),
         );
       }
     }
@@ -137,7 +139,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
     if (name.isEmpty || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name and Phone are required')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.myProfileNamePhoneRequiredError)),
       );
       return;
     }
@@ -160,7 +162,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           _isSaving = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully!')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.myProfileUpdatedSuccessMessage)),
         );
       }
     } catch (e) {
@@ -168,7 +170,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update profile. Please try again.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.myProfileUpdateError)),
         );
       }
     }
@@ -177,7 +179,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    
+    final l = AppLocalizations.of(context)!;
+
     if (_isLoading) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
     }
@@ -185,7 +188,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     if (_error != null) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: 'My Profile'),
+        appBar: tyAppBar(context, title: l.myProfileTitle),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -196,7 +199,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               const SizedBox(height: 16),
               TextButton(
                 onPressed: _loadProfile,
-                child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+                child: Text(l.commonTryAgain, style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
               ),
             ],
           ),
@@ -206,7 +209,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'My Profile'),
+      appBar: tyAppBar(context, title: l.myProfileTitle),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
@@ -249,13 +252,13 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             ),
           ),
           const SizedBox(height: 32),
-          _editableField(context, 'Full Name', _nameController, hint: 'e.g. Rahul Sharma'),
-          _editableField(context, 'Email Address', _emailController, hint: 'you@example.com', keyboardType: TextInputType.emailAddress),
-          _editableField(context, 'Phone Number', _phoneController, hint: '+91 9876543210', keyboardType: TextInputType.phone),
-          _field(context, 'Role', _user?.role.toUpperCase() ?? 'CUSTOMER'),
+          _editableField(context, l.myProfileFullNameLabel, _nameController, hint: l.myProfileFullNameHint),
+          _editableField(context, l.myProfileEmailAddressLabel, _emailController, hint: l.myProfileEmailAddressHint, keyboardType: TextInputType.emailAddress),
+          _editableField(context, l.myProfilePhoneNumberLabel, _phoneController, hint: l.myProfilePhoneNumberHint, keyboardType: TextInputType.phone),
+          _field(context, l.myProfileRoleLabel, _user?.role.toUpperCase() ?? l.myProfileCustomerFallback),
 
           const SizedBox(height: 32),
-          _sectionHeader('History'),
+          _sectionHeader(l.myProfileHistorySectionLabel),
           const SizedBox(height: 16),
           GestureDetector(
             onTap: () => Navigator.of(context)
@@ -280,8 +283,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Guest Activity', style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
-                        Text('Invitations sent, opened, and RSVP changes',
+                        Text(l.myProfileGuestActivityLabel, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
+                        Text(l.myProfileGuestActivitySubtitle,
                             style: TyType.sans(12, color: ty.ink3)),
                       ],
                     ),
@@ -294,14 +297,14 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
           if (_user?.role == 'vendor') ...[
             const SizedBox(height: 32),
-            _sectionHeader('Business Availability'),
+            _sectionHeader(l.myProfileBusinessAvailabilitySectionLabel),
             const SizedBox(height: 16),
             _availabilityCard(context),
           ],
 
           const SizedBox(height: 40),
           TyButton(
-            _isSaving ? 'Saving...' : 'Save Changes',
+            _isSaving ? l.myProfileSavingLabel : l.myProfileSaveChangesButtonLabel,
             full: true,
             enabled: !_isSaving,
             onTap: _saveChanges,
@@ -352,6 +355,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
   Widget _availabilityCard(BuildContext context) {
     final ty = context.ty;
+    final l = AppLocalizations.of(context)!;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -370,12 +374,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Working Hours', style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
-                    Text('Manage your weekly availability', style: TyType.sans(12.5, color: ty.ink2)),
+                    Text(l.myProfileWorkingHoursLabel, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
+                    Text(l.myProfileManageAvailabilitySubtitle, style: TyType.sans(12.5, color: ty.ink2)),
                   ],
                 ),
               ),
-              TyButton('Edit', kind: TyButtonKind.ghost, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), onTap: () {
+              TyButton(l.myProfileEditButtonLabel, kind: TyButtonKind.ghost, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), onTap: () {
                 // Navigate to availability screen
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VendorAvailabilityScreen()));
               }),

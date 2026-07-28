@@ -6,6 +6,7 @@ import '../data/models.dart';
 import '../data/services/media_service.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class MemoriesScreen extends StatefulWidget {
   const MemoriesScreen({super.key});
@@ -32,7 +33,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
       final memories = await _mediaService.listMemories();
       if (mounted) setState(() { _memories = memories; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load memories.'; _isLoading = false; });
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.memoriesLoadError; _isLoading = false; });
     }
   }
 
@@ -54,7 +55,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: _loadMemories,
-                        child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+                        child: Text(AppLocalizations.of(context)!.commonTryAgain, style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -68,9 +69,9 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Memories', style: TyType.display(26, color: ty.ink)),
+                        Text(AppLocalizations.of(context)!.memoriesTitle, style: TyType.display(26, color: ty.ink)),
                         const SizedBox(height: 1),
-                        Text('Your family’s story, year by year',
+                        Text(AppLocalizations.of(context)!.memoriesSubtitle,
                             style: TyType.sans(13, color: ty.ink2)),
                       ],
                     ),
@@ -97,9 +98,9 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
           children: [
             Icon(Icons.photo_library_outlined, size: 64, color: ty.ink3),
             const SizedBox(height: 16),
-            Text('No memories yet', style: TyType.display(20, color: ty.ink)),
+            Text(AppLocalizations.of(context)!.memoriesEmptyTitle, style: TyType.display(20, color: ty.ink)),
             const SizedBox(height: 8),
-            Text('Complete your first celebration to start your gallery.', 
+            Text(AppLocalizations.of(context)!.memoriesEmptyMessage,
               style: TyType.sans(14, color: ty.ink2)),
           ],
         ),
@@ -160,7 +161,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
             Positioned(
               top: 10,
               right: 10,
-              child: TyPill('📷 ${m.photos}'),
+              child: TyPill(AppLocalizations.of(context)!.memoriesPhotoCountLabel(m.photos)),
             ),
             Positioned(
               left: 13,

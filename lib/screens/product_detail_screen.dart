@@ -8,6 +8,7 @@ import '../widgets/ty_button.dart';
 import '../widgets/ty_rating_stars.dart';
 import 'catalogue_screen.dart';
 import 'review/submit_review_sheet.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final PackageItem item;
@@ -116,7 +117,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       children: [
                         TyRatingStars(rating: item.averageRating ?? 0, size: 15),
                         const SizedBox(width: 6),
-                        Text('(${item.reviewCount} reviews)', style: TyType.sans(12.5, color: ty.ink3)),
+                        Text(AppLocalizations.of(context)!.productDetailReviewCountLabel(item.reviewCount), style: TyType.sans(12.5, color: ty.ink3)),
                         const SizedBox(width: 10),
                         Icon(Icons.favorite_rounded, size: 13, color: ty.ink3),
                         const SizedBox(width: 3),
@@ -126,14 +127,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ],
                   const SizedBox(height: 8),
                   Text(
-                    '₹${item.unitPrice.toInt()}',
+                    AppLocalizations.of(context)!.productDetailPriceLabel('${item.unitPrice.toInt()}'),
                     style: TyType.sans(24, color: ty.saffron, weight: FontWeight.w800),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     item.description?.isNotEmpty == true
                         ? item.description!
-                        : 'A premium add-on for your celebration, crafted with attention to detail and quality.',
+                        : AppLocalizations.of(context)!.productDetailDefaultDescription,
                     style: TyType.sans(15, color: ty.ink2, height: 1.6),
                   ),
                   if (widget.packageId != null) ...[
@@ -141,7 +142,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     GestureDetector(
                       onTap: () => showSubmitReviewSheet(
                         context,
-                        title: 'Review ${item.name}',
+                        title: AppLocalizations.of(context)!.productDetailReviewDialogTitle(item.name),
                         onSubmit: (rating, title, body) => _packageService.addPackageItemReview(
                           widget.packageId!,
                           item.id,
@@ -154,7 +155,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         children: [
                           Icon(Icons.rate_review_outlined, size: 16, color: ty.saffron),
                           const SizedBox(width: 6),
-                          Text('Write a review', style: TyType.sans(13.5, color: ty.saffron, weight: FontWeight.w700)),
+                          Text(AppLocalizations.of(context)!.productDetailWriteReviewLabel, style: TyType.sans(13.5, color: ty.saffron, weight: FontWeight.w700)),
                         ],
                       ),
                     ),
@@ -166,7 +167,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         Icon(Icons.inventory_2_outlined, size: 18, color: ty.ink3),
                         const SizedBox(width: 8),
                         Text(
-                          'Quantity included: ${item.quantity}',
+                          AppLocalizations.of(context)!.productDetailQuantityIncludedLabel(item.quantity),
                           style: TyType.sans(14, color: ty.ink2, weight: FontWeight.w600),
                         ),
                       ],
@@ -187,7 +188,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
         ),
         child: TyButton(
-          'Add to Plan',
+          AppLocalizations.of(context)!.productDetailAddToPlanButtonLabel,
           full: true,
           onTap: () => Navigator.pop(context, item),
         ),

@@ -11,6 +11,7 @@ import '../data/services/booking_service.dart';
 import '../utils/log.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'email_verification_screen.dart';
 import 'payment_screen.dart';
 
@@ -89,13 +90,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       final phone = _recipientPhoneCtrl.text.trim();
       if (name.isEmpty || phone.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter recipient name and phone number.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.bookingFlowRecipientRequiredError)),
         );
         return;
       }
       if (!RegExp(r'^[0-9]{10}$').hasMatch(phone.replaceAll(RegExp(r'[^0-9]'), ''))) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid 10-digit phone number.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.bookingFlowInvalidPhoneError)),
         );
         return;
       }
@@ -166,7 +167,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       logDebug('Error creating booking: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to create booking. Please try again.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.bookingFlowCreateBookingError)),
         );
       }
     } finally {
@@ -185,10 +186,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     final ty = context.ty;
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
+    final l = AppLocalizations.of(context)!;
     final titles = [
-      ['Enhance your package', 'Select optional add-ons to make it extra special.'],
-      ['Delivery Details', 'Where and who should receive the celebration package?'],
-      ['Review & Confirm', 'A transparent look at your celebration details.'],
+      [l.bookingFlowAddonsStepTitle, l.bookingFlowAddonsStepSubtitle],
+      [l.bookingFlowDeliveryStepTitle, l.bookingFlowDeliveryStepSubtitle],
+      [l.bookingFlowReviewStepTitle, l.bookingFlowReviewStepSubtitle],
     ];
 
     return Scaffold(
@@ -197,7 +199,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         backgroundColor: ty.paper,
         elevation: 0,
         leading: ChromeIconButton(icon: Icons.chevron_left_rounded, onTap: _back),
-        title: Text('Booking', style: TyType.display(20, color: ty.ink)),
+        title: Text(l.bookingFlowAppBarTitle, style: TyType.display(20, color: ty.ink)),
         centerTitle: true,
       ),
       body: Column(
@@ -251,6 +253,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   }
 
   Widget _addonsStep(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final optional = _allItems.where((i) => i.isOptional).toList();
     if (optional.isEmpty) {
       return Center(
@@ -259,9 +262,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             const SizedBox(height: 40),
             Icon(Icons.auto_awesome_outlined, size: 64, color: context.ty.ink3),
             const SizedBox(height: 16),
-            Text('No extra add-ons needed', style: TyType.sans(16, color: context.ty.ink2)),
+            Text(l.bookingFlowNoAddOnsHeading, style: TyType.sans(16, color: context.ty.ink2)),
             const SizedBox(height: 8),
-            Text('This package is already complete!', style: TyType.sans(14, color: context.ty.ink3)),
+            Text(l.bookingFlowPackageCompleteMessage, style: TyType.sans(14, color: context.ty.ink3)),
           ],
         ),
       );
@@ -316,10 +319,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   }
 
   Widget _deliveryStep(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('EVENT TIMING'),
+        _sectionLabel(l.bookingFlowEventTimingLabel),
         Row(
           children: [
             Expanded(child: _staticField(context, Icons.event, DateFormat('dd MMM yyyy').format(_eventDate), onTap: _pickDate)),
@@ -328,32 +332,33 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           ],
         ),
         const SizedBox(height: 24),
-        _sectionLabel('RECEIVER DETAILS'),
-        _textField(context, 'Recipient Name', _recipientNameCtrl, icon: Icons.person_outline),
-        _textField(context, 'Phone Number', _recipientPhoneCtrl, icon: Icons.phone_android_outlined, type: TextInputType.phone),
+        _sectionLabel(l.bookingFlowReceiverDetailsLabel),
+        _textField(context, l.bookingFlowRecipientNameHint, _recipientNameCtrl, icon: Icons.person_outline),
+        _textField(context, l.bookingFlowPhoneNumberHint, _recipientPhoneCtrl, icon: Icons.phone_android_outlined, type: TextInputType.phone),
         const SizedBox(height: 24),
-        _sectionLabel('DELIVERY ADDRESS'),
+        _sectionLabel(l.bookingFlowDeliveryAddressLabel),
         if (_savedAddresses.isNotEmpty) ...[
           _addressPicker(context),
           const SizedBox(height: 12),
         ],
-        _textField(context, 'Building / Floor / Landmark', _landmarkCtrl, icon: Icons.location_city_outlined),
-        _textField(context, 'Special Instructions', _specialNotesCtrl, icon: Icons.note_add_outlined, lines: 2),
+        _textField(context, l.bookingFlowLandmarkHint, _landmarkCtrl, icon: Icons.location_city_outlined),
+        _textField(context, l.bookingFlowSpecialInstructionsHint, _specialNotesCtrl, icon: Icons.note_add_outlined, lines: 2),
       ],
     );
   }
 
   Widget _summaryStep(BuildContext context) {
     final ty = context.ty;
+    final l = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _infoRow('Package', _fullPackage.name),
-        _infoRow('Date & Time', '${DateFormat('dd MMM').format(_eventDate)} · ${_eventTime.format(context)}'),
-        _infoRow('Delivery To', _recipientNameCtrl.text.isNotEmpty ? _recipientNameCtrl.text : 'Me'),
-        
+        _infoRow(l.bookingFlowPackageLabel, _fullPackage.name),
+        _infoRow(l.bookingFlowDateTimeLabel, '${DateFormat('dd MMM').format(_eventDate)} · ${_eventTime.format(context)}'),
+        _infoRow(l.bookingFlowDeliveryToLabel, _recipientNameCtrl.text.isNotEmpty ? _recipientNameCtrl.text : l.bookingFlowMeFallback),
+
         const SizedBox(height: 32),
-        _sectionLabel('PRICE BREAKDOWN'),
+        _sectionLabel(l.bookingFlowPriceBreakdownLabel),
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
@@ -363,12 +368,12 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           ),
           child: Column(
             children: [
-              _priceRow('Package Base Price', _fullPackage.price),
+              _priceRow(l.bookingFlowPackageBasePriceLabel, _fullPackage.price),
               if (_selectedOptionalItemIds.isNotEmpty)
-                _priceRow('Selected Add-ons', _addonsTotal),
-              _priceRow('GST (18%)', _totalPrice * 0.18),
+                _priceRow(l.bookingFlowSelectedAddOnsLabel, _addonsTotal),
+              _priceRow(l.bookingFlowGstLabel, _totalPrice * 0.18),
               const Divider(height: 32),
-              _priceRow('Grand Total', _totalPrice * 1.18, isBold: true),
+              _priceRow(l.bookingFlowGrandTotalLabel, _totalPrice * 1.18, isBold: true),
             ],
           ),
         ),
@@ -413,6 +418,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
   Widget _footer(BuildContext context) {
     final ty = context.ty;
+    final l = AppLocalizations.of(context)!;
     return Container(
       padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 16),
       decoration: BoxDecoration(
@@ -427,7 +433,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Total Amount', style: TyType.sans(11, color: ty.ink3)),
+                  Text(l.bookingFlowTotalAmountLabel, style: TyType.sans(11, color: ty.ink3)),
                   Text('₹${(_totalPrice * 1.18).toInt()}', style: TyType.display(22, color: ty.ink)),
                 ],
               ),
@@ -435,7 +441,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           Expanded(
             flex: 2,
             child: TyButton(
-              _step == 2 ? (_isSubmitting ? 'Processing...' : 'Confirm & Pay') : 'Continue',
+              _step == 2 ? (_isSubmitting ? l.bookingFlowProcessingLabel : l.bookingFlowConfirmButtonLabel) : l.bookingFlowContinueButtonLabel,
               full: true,
               enabled: !_isSubmitting,
               onTap: _next,

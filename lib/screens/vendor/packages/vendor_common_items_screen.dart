@@ -4,6 +4,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Vendor-wide reusable item templates, attachable to any of the vendor's
 /// own packages instead of being recreated per package.
@@ -42,6 +43,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
     final unitCtrl = TextEditingController();
     final descCtrl = TextEditingController();
 
+    final l10n = AppLocalizations.of(context)!;
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -52,18 +54,18 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('New Common Item', style: TyType.display(20, color: context.ty.ink)),
+              Text(l10n.vendorCommonItemsNewItemTitle, style: TyType.display(20, color: context.ty.ink)),
               const SizedBox(height: 16),
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
-              TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Base Price')),
+              TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.vendorCommonItemsNameLabel)),
+              TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorCommonItemsBasePriceLabel)),
               Row(children: [
-                Expanded(child: TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity'))),
+                Expanded(child: TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorCommonItemsQuantityLabel))),
                 const SizedBox(width: 12),
-                Expanded(child: TextField(controller: unitCtrl, decoration: const InputDecoration(labelText: 'Unit'))),
+                Expanded(child: TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.vendorCommonItemsUnitLabel))),
               ]),
-              TextField(controller: descCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Description')),
+              TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorCommonItemsDescriptionLabel)),
               const SizedBox(height: 12),
-              ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create')),
+              ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.vendorCommonItemsCreateButtonLabel)),
             ],
           ),
         ),
@@ -81,7 +83,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
       });
       _load();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not create item.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorCommonItemsCreateError)));
     } finally {
       nameCtrl.dispose();
       priceCtrl.dispose();
@@ -92,14 +94,15 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
   }
 
   Future<void> _delete(VendorCommonItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete common item?'),
-        content: Text('This removes "${item.name}" from all packages it\'s attached to.'),
+        title: Text(l10n.vendorCommonItemsDeleteConfirmTitle),
+        content: Text(l10n.vendorCommonItemsDeleteConfirmMessage(item.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.commonCancel)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.vendorCommonItemsDeleteButtonLabel)),
         ],
       ),
     );
@@ -108,21 +111,22 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
       await _vendorService.deleteCommonItem(item.id);
       _load();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not delete item.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorCommonItemsDeleteError)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: AppBar(title: const Text('Common Items')),
+      appBar: AppBar(title: Text(l10n.vendorCommonItemsTitle)),
       floatingActionButton: FloatingActionButton(onPressed: _showCreateForm, child: const Icon(Icons.add)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-              ? Center(child: Text('No common items yet', style: TyType.sans(14, color: ty.ink2)))
+              ? Center(child: Text(l10n.vendorCommonItemsEmptyMessage, style: TyType.sans(14, color: ty.ink2)))
               : ListView.separated(
                   padding: const EdgeInsets.all(18),
                   itemCount: _items.length,
@@ -139,7 +143,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
-                                Text('Qty ${item.quantity} · ₹${item.basePrice.toStringAsFixed(0)}', style: TyType.sans(12, color: ty.ink2)),
+                                Text(l10n.vendorCommonItemsQtyPriceLabel(item.quantity.toString(), item.basePrice.toStringAsFixed(0)), style: TyType.sans(12, color: ty.ink2)),
                               ],
                             ),
                           ),

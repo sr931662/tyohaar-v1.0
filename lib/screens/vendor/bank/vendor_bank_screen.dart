@@ -4,6 +4,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class VendorBankScreen extends StatefulWidget {
   const VendorBankScreen({super.key});
@@ -41,6 +42,7 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
 
   Future<void> _showAddSheet() async {
     if (_vendorId == null) return;
+    final l10n = AppLocalizations.of(context)!;
     final holderCtrl = TextEditingController();
     final numberCtrl = TextEditingController();
     final ifscCtrl = TextEditingController();
@@ -60,16 +62,16 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Add Bank Account', style: TyType.display(20, color: context.ty.ink)),
+                Text(l10n.vendorBankAddAccountTitle, style: TyType.display(20, color: context.ty.ink)),
                 const SizedBox(height: 16),
-                TextField(controller: holderCtrl, decoration: const InputDecoration(labelText: 'Account Holder Name')),
-                TextField(controller: numberCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Account Number')),
-                TextField(controller: ifscCtrl, decoration: const InputDecoration(labelText: 'IFSC Code')),
-                TextField(controller: bankCtrl, decoration: const InputDecoration(labelText: 'Bank Name')),
-                TextField(controller: branchCtrl, decoration: const InputDecoration(labelText: 'Branch Name (optional)')),
+                TextField(controller: holderCtrl, decoration: InputDecoration(labelText: l10n.vendorBankAccountHolderNameLabel)),
+                TextField(controller: numberCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorBankAccountNumberLabel)),
+                TextField(controller: ifscCtrl, decoration: InputDecoration(labelText: l10n.vendorBankIfscCodeLabel)),
+                TextField(controller: bankCtrl, decoration: InputDecoration(labelText: l10n.vendorBankBankNameLabel)),
+                TextField(controller: branchCtrl, decoration: InputDecoration(labelText: l10n.vendorBankBranchNameLabel)),
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Set as primary'),
+                  title: Text(l10n.vendorBankSetAsPrimaryLabel),
                   value: isPrimary,
                   onChanged: (v) => setSheetState(() => isPrimary = v ?? false),
                 ),
@@ -85,20 +87,20 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
                     final ifsc = ifscCtrl.text.trim().toUpperCase();
                     final bank = bankCtrl.text.trim();
                     if (holder.isEmpty || bank.isEmpty) {
-                      setSheetState(() => errorText = 'Account holder name and bank name are required.');
+                      setSheetState(() => errorText = l10n.vendorBankHolderAndBankRequiredError);
                       return;
                     }
                     if (!RegExp(r'^[0-9]{9,18}$').hasMatch(number)) {
-                      setSheetState(() => errorText = 'Enter a valid account number (9-18 digits).');
+                      setSheetState(() => errorText = l10n.vendorBankInvalidAccountNumberError);
                       return;
                     }
                     if (!RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(ifsc)) {
-                      setSheetState(() => errorText = 'Enter a valid IFSC code (e.g. ABCD0123456).');
+                      setSheetState(() => errorText = l10n.vendorBankInvalidIfscError);
                       return;
                     }
                     Navigator.pop(context, true);
                   },
-                  child: const Text('Add Account'),
+                  child: Text(l10n.vendorBankAddAccountButtonLabel),
                 ),
               ],
             ),
@@ -118,9 +120,9 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
         'is_primary': isPrimary,
       });
       _load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bank account added.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorBankAddedMessage)));
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not add account.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorBankAddError)));
     } finally {
       holderCtrl.dispose();
       numberCtrl.dispose();
@@ -132,13 +134,14 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
 
   Future<void> _delete(VendorBankAccount account) async {
     if (_vendorId == null) return;
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Remove bank account?'),
+        title: Text(l10n.vendorBankRemoveConfirmTitle),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Remove')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.commonCancel)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.vendorBankRemoveLabel)),
         ],
       ),
     );
@@ -147,13 +150,14 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
       await _vendorService.deleteBankAccount(_vendorId!, account.id);
       _load();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not remove account.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorBankRemoveError)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -161,7 +165,7 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _accounts.isEmpty
-              ? Center(child: Text('No bank accounts added yet', style: TyType.sans(14, color: ty.ink2)))
+              ? Center(child: Text(l10n.vendorBankEmptyMessage, style: TyType.sans(14, color: ty.ink2)))
               : ListView.separated(
                   padding: const EdgeInsets.all(18),
                   itemCount: _accounts.length,
@@ -184,7 +188,7 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                                      child: Text('Primary', style: TyType.sans(10, color: Colors.green.shade700, weight: FontWeight.w700)),
+                                      child: Text(l10n.vendorBankPrimaryBadgeLabel, style: TyType.sans(10, color: Colors.green.shade700, weight: FontWeight.w700)),
                                     ),
                                   ],
                                 ]),

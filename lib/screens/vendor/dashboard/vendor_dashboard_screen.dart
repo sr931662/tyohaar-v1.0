@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
@@ -61,16 +62,16 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               children: [
                 Icon(Icons.storefront_outlined, size: 56, color: ty.ink3),
                 const SizedBox(height: 16),
-                Text('Set up your business profile', style: TyType.display(22, color: ty.ink)),
+                Text(AppLocalizations.of(context)!.vendorDashboardSetupProfileHeading, style: TyType.display(22, color: ty.ink)),
                 const SizedBox(height: 8),
-                Text('Create your vendor profile to start listing packages and receiving bookings.',
+                Text(AppLocalizations.of(context)!.vendorDashboardSetupProfileMessage,
                     textAlign: TextAlign.center, style: TyType.sans(14, color: ty.ink2)),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () => Navigator.of(context)
                       .push(MaterialPageRoute(builder: (_) => const VendorProfileScreen()))
                       .then((_) => _load()),
-                  child: const Text('Create Profile'),
+                  child: Text(AppLocalizations.of(context)!.vendorDashboardCreateProfileButton),
                 ),
               ],
             ),
@@ -110,14 +111,14 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               crossAxisSpacing: 16,
               childAspectRatio: 1.4,
               children: [
-                _statCard(ty, '⭐ ${_vendor!.averageRating.toStringAsFixed(1)}', '${_vendor!.reviewCount} reviews', Icons.star_rounded),
-                _statCard(ty, '$active', 'Active Packages', Icons.inventory_2_outlined),
-                _statCard(ty, '$pending', 'Pending Review', Icons.hourglass_empty_rounded),
-                _statCard(ty, '$draft', 'Drafts', Icons.edit_note_rounded),
+                _statCard(ty, '⭐ ${_vendor!.averageRating.toStringAsFixed(1)}', AppLocalizations.of(context)!.vendorDashboardReviewsCountLabel('${_vendor!.reviewCount}'), Icons.star_rounded),
+                _statCard(ty, '$active', AppLocalizations.of(context)!.vendorDashboardActivePackagesLabel, Icons.inventory_2_outlined),
+                _statCard(ty, '$pending', AppLocalizations.of(context)!.vendorDashboardPendingReviewLabel, Icons.hourglass_empty_rounded),
+                _statCard(ty, '$draft', AppLocalizations.of(context)!.vendorDashboardDraftsLabel, Icons.edit_note_rounded),
               ],
             ),
             const SizedBox(height: 32),
-            Text('Quick Actions', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
+            Text(AppLocalizations.of(context)!.vendorDashboardQuickActionsLabel, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -133,7 +134,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.add_circle_outline, size: 20),
-                    label: const Text('Add Package'),
+                    label: Text(AppLocalizations.of(context)!.vendorDashboardAddPackageButton),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -148,7 +149,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.edit_outlined, size: 20),
-                    label: const Text('Edit Profile'),
+                    label: Text(AppLocalizations.of(context)!.vendorDashboardEditProfileButton),
                   ),
                 ),
               ],
@@ -167,13 +168,13 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Business Info', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
+                  Text(AppLocalizations.of(context)!.vendorDashboardBusinessInfoLabel, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w800)),
                   const SizedBox(height: 16),
-                  _infoRow(ty, 'Type', _vendor!.vendorType.replaceAll('_', ' ')),
-                  _infoRow(ty, 'Experience', '${_vendor!.yearsOfExperience ?? '—'} yrs'),
-                  _infoRow(ty, 'Service Radius', '${_vendor!.serviceRadiusKm ?? '—'} km'),
-                  _infoRow(ty, 'Acceptance Rate', '${_vendor!.acceptanceRatePct.toStringAsFixed(0)}%'),
-                  _infoRow(ty, 'Completed Bookings', '${_vendor!.completionCount}'),
+                  _infoRow(ty, AppLocalizations.of(context)!.vendorDashboardTypeLabel, _vendor!.vendorType.replaceAll('_', ' ')),
+                  _infoRow(ty, AppLocalizations.of(context)!.vendorDashboardExperienceLabel, AppLocalizations.of(context)!.vendorDashboardYearsValue('${_vendor!.yearsOfExperience ?? '—'}')),
+                  _infoRow(ty, AppLocalizations.of(context)!.vendorDashboardServiceRadiusLabel, AppLocalizations.of(context)!.vendorDashboardRadiusValue('${_vendor!.serviceRadiusKm ?? '—'}')),
+                  _infoRow(ty, AppLocalizations.of(context)!.vendorDashboardAcceptanceRateLabel, '${_vendor!.acceptanceRatePct.toStringAsFixed(0)}%'),
+                  _infoRow(ty, AppLocalizations.of(context)!.vendorDashboardCompletedBookingsLabel, '${_vendor!.completionCount}'),
                 ],
               ),
             ),

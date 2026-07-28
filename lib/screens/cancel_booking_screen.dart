@@ -9,14 +9,18 @@ import '../data/services/booking_service.dart';
 import '../widgets/common.dart';
 import '../widgets/ty_button.dart';
 import 'cancellation_policy_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
-const _kCancellationReasons = <String, String>{
-  'change_of_plans': 'Change of plans',
-  'found_better_option': 'Found a better option',
-  'weather': 'Weather concerns',
-  'customer_request': 'No longer needed',
-  'other': 'Other',
-};
+Map<String, String> _cancellationReasons(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  return <String, String>{
+    'change_of_plans': l10n.cancelBookingReasonChangeOfPlans,
+    'found_better_option': l10n.cancelBookingReasonFoundBetterOption,
+    'weather': l10n.cancelBookingReasonWeatherConcerns,
+    'customer_request': l10n.cancelBookingReasonNoLongerNeeded,
+    'other': l10n.cancelBookingReasonOther,
+  };
+}
 
 class CancelBookingScreen extends StatefulWidget {
   final Booking booking;
@@ -54,7 +58,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not submit cancellation. Please try again.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.cancelBookingSubmitError)),
         );
       }
     } finally {
@@ -65,21 +69,22 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_result != null) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: 'Cancellation Requested'),
+        appBar: tyAppBar(context, title: l10n.cancelBookingRequestedTitle),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
           children: [
             Icon(Icons.check_circle_rounded, color: ty.leaf, size: 56),
             const SizedBox(height: 16),
-            Text('Your cancellation request has been submitted',
+            Text(l10n.cancelBookingSubmittedHeading,
                 style: TyType.display(20, color: ty.ink)),
             const SizedBox(height: 8),
             Text(
-              'Our team will review it shortly. Here\'s what to expect based on our cancellation policy:',
+              l10n.cancelBookingReviewMessage,
               style: TyType.sans(14, color: ty.ink2, height: 1.5),
             ),
             const SizedBox(height: 20),
@@ -93,16 +98,16 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _row(context, 'Cancellation fee',
+                  _row(context, l10n.cancelBookingFeeLabel,
                       _result!.cancellationFee != null ? '₹${_result!.cancellationFee!.toStringAsFixed(0)}' : '—'),
                   const SizedBox(height: 10),
-                  _row(context, 'Refund amount',
+                  _row(context, l10n.cancelBookingRefundAmountLabel,
                       _result!.refundAmount != null ? '₹${_result!.refundAmount!.toStringAsFixed(0)}' : '—'),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            TyButton('Done', full: true, onTap: () => Navigator.of(context).pop(true)),
+            TyButton(l10n.cancelBookingDoneButtonLabel, full: true, onTap: () => Navigator.of(context).pop(true)),
           ],
         ),
       );
@@ -110,13 +115,13 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Cancel Booking'),
+      appBar: tyAppBar(context, title: l10n.cancelBookingTitle),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
-          Text(widget.booking.packageName ?? 'Booking', style: TyType.display(20, color: ty.ink)),
+          Text(widget.booking.packageName ?? l10n.cancelBookingPackageFallback, style: TyType.display(20, color: ty.ink)),
           const SizedBox(height: 4),
-          Text('Booking #${widget.booking.bookingNumber}', style: TyType.sans(13, color: ty.ink3)),
+          Text(l10n.cancelBookingNumberLabel(widget.booking.bookingNumber), style: TyType.sans(13, color: ty.ink3)),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(14),
@@ -134,9 +139,9 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                     text: TextSpan(
                       style: TyType.sans(13, color: ty.ink2, height: 1.5),
                       children: [
-                        const TextSpan(text: 'A cancellation fee may apply depending on how close this is to your event date. '),
+                        TextSpan(text: l10n.cancelBookingFeeNoticeText),
                         TextSpan(
-                          text: 'Read our Cancellation & Refund Policy.',
+                          text: l10n.cancelBookingReadPolicyLinkLabel,
                           style: TyType.sans(13, color: ty.saffronDeep, weight: FontWeight.w700),
                           recognizer: TapGestureRecognizer()
                             ..onTap = () => Navigator.of(context).push(
@@ -150,13 +155,13 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          Text('Why are you cancelling?', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+          Text(l10n.cancelBookingReasonQuestionLabel, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
           const SizedBox(height: 10),
           RadioGroup<String>(
             groupValue: _reason,
             onChanged: (v) => setState(() => _reason = v!),
             child: Column(
-              children: _kCancellationReasons.entries
+              children: _cancellationReasons(context).entries
                   .map((e) => RadioListTile<String>(
                         value: e.key,
                         title: Text(e.value, style: TyType.sans(14, color: ty.ink)),
@@ -171,7 +176,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
             controller: _detailCtrl,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'Additional details (optional)',
+              hintText: l10n.cancelBookingDetailsHint,
               hintStyle: TyType.sans(13, color: ty.ink3),
               filled: true,
               fillColor: ty.surface,
@@ -183,7 +188,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
           ),
           const SizedBox(height: 24),
           TyButton(
-            _isSubmitting ? 'Submitting…' : 'Request Cancellation',
+            _isSubmitting ? l10n.cancelBookingSubmittingLabel : l10n.cancelBookingRequestButtonLabel,
             full: true,
             enabled: !_isSubmitting,
             onTap: _submit,

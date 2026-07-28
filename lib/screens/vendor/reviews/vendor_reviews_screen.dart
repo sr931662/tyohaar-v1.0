@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
@@ -48,7 +49,7 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _vendor == null
-              ? Center(child: Text('Set up your vendor profile first.', style: TyType.sans(14, color: ty.ink2)))
+              ? Center(child: Text(AppLocalizations.of(context)!.vendorReviewsSetupProfileMessage, style: TyType.sans(14, color: ty.ink2)))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.builder(
@@ -65,7 +66,7 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
                               children: [
                                 Icon(Icons.rate_review_outlined, size: 48, color: ty.ink3.withValues(alpha: 0.5)),
                                 const SizedBox(height: 16),
-                                Text('No reviews yet', style: TyType.sans(14, color: ty.ink2)),
+                                Text(AppLocalizations.of(context)!.vendorReviewsEmptyMessage, style: TyType.sans(14, color: ty.ink2)),
                               ],
                             ),
                           ),
@@ -102,7 +103,7 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
                     color: ty.gold, size: 20,
                   ))),
               const SizedBox(height: 2),
-              Text('${_vendor!.reviewCount} verified reviews', style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
+              Text(AppLocalizations.of(context)!.vendorReviewsVerifiedCountLabel('${_vendor!.reviewCount}'), style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
             ],
           ),
         ],

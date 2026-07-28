@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/generated/app_localizations.dart';
+
 /// Wraps the whole app and shows a slim "you're offline" bar whenever the
 /// device has no network connectivity. Purely presentational — it doesn't
 /// block interaction or retry anything itself; screens still handle their
@@ -54,12 +56,12 @@ class _OfflineBannerState extends State<OfflineBanner> {
                 padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
-                    SizedBox(width: 8),
+                  children: [
+                    const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
+                    const SizedBox(width: 8),
                     Text(
-                      'No internet connection',
-                      style: TextStyle(color: Colors.white, fontSize: 13),
+                      AppLocalizations.of(context)!.commonNoInternetConnection,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
                     ),
                   ],
                 ),

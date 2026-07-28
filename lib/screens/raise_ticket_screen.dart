@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/services/support_service.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../utils/log.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
@@ -32,10 +33,11 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
   }
 
   Future<void> _submit() async {
+    final l = AppLocalizations.of(context)!;
     final description = _descCtrl.text.trim();
     if (description.length < 20) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please describe your issue in at least 20 characters.')),
+        SnackBar(content: Text(l.raiseTicketDescriptionTooShortError)),
       );
       return;
     }
@@ -43,13 +45,13 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
     setState(() => _isSubmitting = true);
     try {
       await _supportService.createTicket(
-        category: ticketCategoryOptions[_category] ?? 'general',
-        subject: 'Ticket: $_category',
+        category: ticketCategoryOptions(context)[_category] ?? 'general',
+        subject: l.raiseTicketSubjectLabel(_category),
         description: description,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ticket raised successfully!')),
+          SnackBar(content: Text(l.raiseTicketSuccessMessage)),
         );
         Navigator.of(context).pop();
       }
@@ -57,7 +59,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
       logDebug('Error raising ticket: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to raise ticket. Please try again.')),
+          SnackBar(content: Text(l.raiseTicketSubmitError)),
         );
       }
     } finally {
@@ -68,19 +70,20 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Raise a Ticket'),
+      appBar: tyAppBar(context, title: l.raiseTicketTitle),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
-          Text('Tell us what’s wrong', style: TyType.display(24, color: ty.ink)),
+          Text(l.raiseTicketHeading, style: TyType.display(24, color: ty.ink)),
           const SizedBox(height: 8),
-          Text('We usually respond within 2-4 business hours.', style: TyType.sans(14, color: ty.ink2)),
+          Text(l.raiseTicketResponseTimeMessage, style: TyType.sans(14, color: ty.ink2)),
           const SizedBox(height: 32),
-          
-          _fieldLabel(context, 'Category'),
+
+          _fieldLabel(context, l.raiseTicketCategoryLabel),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -96,23 +99,23 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                 icon: Icon(Icons.keyboard_arrow_down_rounded, color: ty.ink2),
                 style: TyType.sans(15, color: ty.ink, weight: FontWeight.w600),
                 onChanged: (v) => setState(() => _category = v!),
-                items: ['Planning', 'Packages', 'Payments', 'Technical Issue', 'Others']
+                items: ticketCategoryOptions(context).keys
                     .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                     .toList(),
               ),
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
-          _fieldLabel(context, 'Description'),
+
+          _fieldLabel(context, l.raiseTicketDescriptionLabel),
           const SizedBox(height: 12),
           TextField(
             controller: _descCtrl,
             maxLines: 6,
             style: TyType.sans(15, color: ty.ink),
             decoration: InputDecoration(
-              hintText: 'Describe your issue in detail (at least 20 characters)...',
+              hintText: l.raiseTicketDescriptionHint,
               hintStyle: TyType.sans(14, color: ty.ink3),
               filled: true,
               fillColor: ty.surface,
@@ -126,10 +129,10 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
-          _fieldLabel(context, 'Attachments (Optional)'),
+
+          _fieldLabel(context, l.raiseTicketAttachmentsLabel),
           const SizedBox(height: 12),
           GestureDetector(
             onTap: () {},
@@ -145,17 +148,17 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                 children: [
                   Icon(Icons.add_a_photo_outlined, color: ty.ink3, size: 28),
                   const SizedBox(height: 8),
-                  Text('Add screenshots', style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+                  Text(l.raiseTicketAddScreenshotsLabel, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
                 ],
               ),
             ),
           ),
-          
+
           const SizedBox(height: 48),
-          
+
           TyButton(
-            _isSubmitting ? 'Submitting...' : 'Submit Ticket', 
-            full: true, 
+            _isSubmitting ? l.raiseTicketSubmittingLabel : l.raiseTicketSubmitButtonLabel,
+            full: true,
             enabled: !_isSubmitting && _descCtrl.text.isNotEmpty,
             onTap: _submit
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/tutorial_manager.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 
@@ -104,7 +105,7 @@ class _TutorialOverlayWidgetState extends State<_TutorialOverlayWidget> {
                   backgroundColor: Colors.black.withValues(alpha: 0.35),
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Skip'),
+                child: Text(AppLocalizations.of(context)!.tutorialSkip),
               ),
             ),
           ],
@@ -149,7 +150,9 @@ class _TutorialOverlayWidgetState extends State<_TutorialOverlayWidget> {
                 TextButton(
                   onPressed: _next,
                   child: Text(
-                    _index >= widget.steps.length - 1 ? 'Got it' : 'Next',
+                    _index >= widget.steps.length - 1
+                        ? AppLocalizations.of(context)!.tutorialGotIt
+                        : AppLocalizations.of(context)!.tutorialNext,
                     style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700),
                   ),
                 ),

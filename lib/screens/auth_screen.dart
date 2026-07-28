@@ -15,6 +15,7 @@ import 'vendor/vendor_root_nav.dart';
 import 'vendor/auth/vendor_register_screen.dart';
 import 'vendor/auth/vendor_forgot_password_screen.dart';
 import 'email_verification_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AuthScreen extends StatefulWidget {
   final VoidCallback? onAuthenticated;
@@ -101,7 +102,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     final email = _loginEmailCtrl.text.trim();
     final password = _loginPasswordCtrl.text;
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Please fill in all fields.');
+      setState(() => _error = AppLocalizations.of(context)!.authLoginFillAllFieldsError);
       return;
     }
 
@@ -111,16 +112,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       if (!mounted) return;
       await _onSuccess(creds);
     } on DioException catch (e) {
+      if (!mounted) return;
       final detail = e.response?.data;
-      String msg = 'Login failed. Please try again.';
+      String msg = AppLocalizations.of(context)!.authLoginFailedError;
       if (detail is Map) {
         msg = detail['detail'] as String? ?? detail['message'] as String? ?? msg;
       } else if (detail is String) {
         msg = detail;
       }
-      if (mounted) setState(() { _isLoading = false; _error = msg; });
+      setState(() { _isLoading = false; _error = msg; });
     } catch (_) {
-      if (mounted) setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
+      if (mounted) setState(() { _isLoading = false; _error = AppLocalizations.of(context)!.authUnexpectedError; });
     }
   }
 
@@ -132,15 +134,15 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     final confirm = _regConfirmCtrl.text;
 
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Please fill in all required fields.');
+      setState(() => _error = AppLocalizations.of(context)!.authRegisterFillAllFieldsError);
       return;
     }
     if (password != confirm) {
-      setState(() => _error = 'Passwords do not match.');
+      setState(() => _error = AppLocalizations.of(context)!.authPasswordMismatchError);
       return;
     }
     if (password.length < 8) {
-      setState(() => _error = 'Password must be at least 8 characters.');
+      setState(() => _error = AppLocalizations.of(context)!.authPasswordTooShortError);
       return;
     }
 
@@ -156,16 +158,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         ),
       );
     } on DioException catch (e) {
+      if (!mounted) return;
       final detail = e.response?.data;
-      String msg = 'Registration failed. Please try again.';
+      String msg = AppLocalizations.of(context)!.authRegisterFailedError;
       if (detail is Map) {
         msg = detail['detail'] as String? ?? detail['message'] as String? ?? msg;
       } else if (detail is String) {
         msg = detail;
       }
-      if (mounted) setState(() { _isLoading = false; _error = msg; });
+      setState(() { _isLoading = false; _error = msg; });
     } catch (_) {
-      if (mounted) setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
+      if (mounted) setState(() { _isLoading = false; _error = AppLocalizations.of(context)!.authUnexpectedError; });
     }
   }
 
@@ -181,10 +184,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Welcome'),
+      appBar: tyAppBar(context, title: l10n.authWelcomeTitle),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -200,10 +204,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Join Tyohaar', style: TyType.display(resp.sp(32), color: ty.ink)),
+                      Text(l10n.authHeading, style: TyType.display(resp.sp(32), color: ty.ink)),
                       SizedBox(height: resp.h(8)),
                       Text(
-                        'Start your journey of creating unforgettable moments.',
+                        l10n.authSubheading,
                         style: TyType.sans(resp.sp(15), color: ty.ink2, height: 1.4),
                       ),
                     ],
@@ -231,7 +235,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                       unselectedLabelStyle: TyType.sans(resp.sp(14), weight: FontWeight.w500),
                       labelColor: Colors.white,
                       unselectedLabelColor: ty.ink2,
-                      tabs: const [Tab(text: 'Login'), Tab(text: 'Register')],
+                      tabs: [Tab(text: l10n.authTabLogin), Tab(text: l10n.authTabRegister)],
                     ),
                   ),
                 ),
@@ -251,16 +255,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildLoginTab(TyColors ty, TyResponsive resp) {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(height: resp.h(28)),
-          _buildField(ty, resp, 'EMAIL', 'you@example.com', _loginEmailCtrl,
+          _buildField(ty, resp, l10n.authEmailLabel, l10n.authEmailHint, _loginEmailCtrl,
               icon: Icons.email_outlined, type: TextInputType.emailAddress),
           SizedBox(height: resp.h(20)),
-          _buildField(ty, resp, 'PASSWORD', '••••••••', _loginPasswordCtrl,
+          _buildField(ty, resp, l10n.authPasswordLabel, l10n.authPasswordHint, _loginPasswordCtrl,
               icon: Icons.lock_outline_rounded,
               obscure: _loginObscure,
               onToggleObscure: () => setState(() => _loginObscure = !_loginObscure)),
@@ -271,7 +276,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 context,
                 MaterialPageRoute(builder: (_) => const VendorForgotPasswordScreen()),
               ),
-              child: Text('Forgot password?', style: TyType.sans(resp.sp(13), color: ty.ink3, weight: FontWeight.w600)),
+              child: Text(l10n.authForgotPasswordLabel, style: TyType.sans(resp.sp(13), color: ty.ink3, weight: FontWeight.w600)),
             ),
           ),
           if (_error.isNotEmpty) ...[
@@ -280,7 +285,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           ],
           SizedBox(height: resp.h(36)),
           TyButton(
-            _isLoading ? 'Signing in...' : 'Sign In',
+            _isLoading ? l10n.authSigningInLabel : l10n.authSignInButtonLabel,
             full: true,
             onTap: _handleLogin,
             enabled: !_isLoading,
@@ -292,7 +297,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             Center(
               child: TextButton(
                 onPressed: _handleSkip,
-                child: Text('Continue as Guest',
+                child: Text(l10n.authContinueAsGuestLabel,
                     style: TyType.sans(resp.sp(14), color: ty.ink3, weight: FontWeight.w600)),
               ),
             ),
@@ -304,24 +309,25 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildRegisterTab(TyColors ty, TyResponsive resp) {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(height: resp.h(28)),
-          _buildField(ty, resp, 'FULL NAME (OPTIONAL)', 'Rahul Sharma', _regNameCtrl,
+          _buildField(ty, resp, l10n.authFullNameOptionalLabel, l10n.authNameHint, _regNameCtrl,
               icon: Icons.person_outline_rounded),
           SizedBox(height: resp.h(20)),
-          _buildField(ty, resp, 'EMAIL', 'you@example.com', _regEmailCtrl,
+          _buildField(ty, resp, l10n.authEmailLabel, l10n.authEmailHint, _regEmailCtrl,
               icon: Icons.email_outlined, type: TextInputType.emailAddress),
           SizedBox(height: resp.h(20)),
-          _buildField(ty, resp, 'PASSWORD', '••••••••', _regPasswordCtrl,
+          _buildField(ty, resp, l10n.authPasswordLabel, l10n.authPasswordHint, _regPasswordCtrl,
               icon: Icons.lock_outline_rounded,
               obscure: _regObscure,
               onToggleObscure: () => setState(() => _regObscure = !_regObscure)),
           SizedBox(height: resp.h(20)),
-          _buildField(ty, resp, 'CONFIRM PASSWORD', '••••••••', _regConfirmCtrl,
+          _buildField(ty, resp, l10n.authConfirmPasswordLabel, l10n.authPasswordHint, _regConfirmCtrl,
               icon: Icons.lock_outline_rounded,
               obscure: _regConfirmObscure,
               onToggleObscure: () => setState(() => _regConfirmObscure = !_regConfirmObscure)),
@@ -331,7 +337,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           ],
           SizedBox(height: resp.h(36)),
           TyButton(
-            _isLoading ? 'Creating account...' : 'Create Account',
+            _isLoading ? l10n.authCreatingAccountLabel : l10n.authCreateAccountButtonLabel,
             full: true,
             onTap: _handleRegister,
             enabled: !_isLoading,
@@ -343,7 +349,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 context,
                 MaterialPageRoute(builder: (_) => const VendorRegisterScreen()),
               ),
-              child: Text('Are you a business? Register as a Partner',
+              child: Text(l10n.authBusinessRegisterPromptLabel,
                   style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600)),
             ),
           ),
@@ -359,7 +365,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         Expanded(child: Divider(color: ty.line)),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: resp.w(16)),
-          child: Text('OR', style: TyType.eyebrow(resp.sp(10), color: ty.ink3)),
+          child: Text(AppLocalizations.of(context)!.authOrDividerLabel, style: TyType.eyebrow(resp.sp(10), color: ty.ink3)),
         ),
         Expanded(child: Divider(color: ty.line)),
       ],

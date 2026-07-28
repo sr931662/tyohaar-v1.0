@@ -8,6 +8,7 @@ import '../theme/typography.dart';
 import '../widgets/common.dart';
 import '../widgets/simple_html_text.dart';
 import '../data/services/common_service.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class PrivacyPolicyScreen extends StatefulWidget {
   const PrivacyPolicyScreen({super.key});
@@ -33,17 +34,18 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       final policy = await context.read<CommonService>().getPrivacyPolicy();
       if (mounted) setState(() { _policy = policy; _loading = false; });
     } catch (_) {
-      if (mounted) setState(() { _error = 'Could not load Privacy Policy.'; _loading = false; });
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.privacyPolicyLoadError; _loading = false; });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Privacy Policy'),
+      appBar: tyAppBar(context, title: l10n.privacyPolicyTitle),
       body: _loading
           ? Shimmer.fromColors(
               baseColor: ty.line,
@@ -68,7 +70,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: _load,
-                        child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
+                        child: Text(l10n.commonTryAgain, style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -78,7 +80,10 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
                   children: [
                     if (_policy != null) ...[
                       Text(
-                        'Version ${_policy!.version} · Effective ${DateFormat('d MMM y').format(_policy!.effectiveDate)}',
+                        l10n.policyVersionEffective(
+                          _policy!.version,
+                          DateFormat('d MMM y').format(_policy!.effectiveDate),
+                        ),
                         style: TyType.sans(12, color: ty.ink3),
                       ),
                       const SizedBox(height: 24),

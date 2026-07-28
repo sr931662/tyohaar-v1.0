@@ -8,6 +8,7 @@ import '../data/models.dart';
 import '../data/services/user_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class ManageAddressScreen extends StatefulWidget {
   const ManageAddressScreen({super.key});
@@ -28,26 +29,28 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
   }
 
   Future<void> _load() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() { _loading = true; _error = null; });
     try {
       final addresses = await context.read<UserService>().getAddresses();
       if (mounted) setState(() { _addresses = addresses; _loading = false; });
     } catch (_) {
-      if (mounted) setState(() { _error = 'Could not load addresses.'; _loading = false; });
+      if (mounted) setState(() { _error = l10n.manageAddressLoadError; _loading = false; });
     }
   }
 
   Future<void> _delete(String addressId) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete address?'),
-        content: const Text('This address will be permanently removed.'),
+        title: Text(l10n.manageAddressDeleteDialogTitle),
+        content: Text(l10n.manageAddressDeleteConfirmMessage),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(l10n.manageAddressDeleteButtonLabel, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -57,14 +60,14 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
       await context.read<UserService>().deleteAddress(addressId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Address removed.')),
+          SnackBar(content: Text(l10n.manageAddressRemovedMessage)),
         );
         _load();
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not delete. Please try again.')),
+          SnackBar(content: Text(l10n.manageAddressDeleteError)),
         );
       }
     }
@@ -102,21 +105,22 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Manage Addresses'),
+      appBar: tyAppBar(context, title: l10n.manageAddressTitle),
       body: _loading
           ? _buildSkeleton(ty)
           : _error != null
-              ? _buildError(ty)
+              ? _buildError(ty, context)
               : ListView(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
                   children: [
-                    if (_addresses.isEmpty) _buildEmpty(ty),
+                    if (_addresses.isEmpty) _buildEmpty(ty, context),
                     ..._addresses.map((addr) => _addressCard(context, addr)),
                     const SizedBox(height: 24),
                     TyButton(
-                      'Add New Address',
+                      l10n.manageAddressAddButtonLabel,
                       full: true,
                       leadingIcon: Icons.add_location_alt_outlined,
                       onTap: _openAddForm,
@@ -141,7 +145,8 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
     );
   }
 
-  Widget _buildError(TyColors ty) {
+  Widget _buildError(TyColors ty, BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -152,21 +157,22 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
             const SizedBox(height: 12),
             Text(_error!, style: TyType.sans(14, color: ty.ink2)),
             const SizedBox(height: 16),
-            TextButton(onPressed: _load, child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700))),
+            TextButton(onPressed: _load, child: Text(l10n.commonTryAgain, style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700))),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEmpty(TyColors ty) {
+  Widget _buildEmpty(TyColors ty, BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.only(bottom: 24, top: 20),
       child: Column(
         children: [
           Icon(Icons.place_outlined, size: 48, color: ty.ink3),
           const SizedBox(height: 12),
-          Text('No addresses saved', style: TyType.sans(14, color: ty.ink2)),
+          Text(l10n.manageAddressEmptyMessage, style: TyType.sans(14, color: ty.ink2)),
         ],
       ),
     );
@@ -174,6 +180,7 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
 
   Widget _addressCard(BuildContext context, Address addr) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final isHome = addr.addressType == 'home';
 
     return Container(
@@ -208,32 +215,35 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(color: ty.saffronSoft, borderRadius: BorderRadius.circular(6)),
-                        child: Text('DEFAULT', style: TyType.eyebrow(9, color: ty.saffron)),
+                        child: Text(l10n.manageAddressDefaultBadgeLabel, style: TyType.eyebrow(9, color: ty.saffron)),
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 4),
                 if (addr.recipientName != null)
-                  Text(addr.recipientName! + (addr.recipientPhone != null ? ' · ${addr.recipientPhone}' : ''),
+                  Text(
+                      addr.recipientPhone != null
+                          ? l10n.manageAddressRecipientNamePhoneLine(addr.recipientName!, addr.recipientPhone!)
+                          : addr.recipientName!,
                       style: TyType.sans(12.5, color: ty.ink, weight: FontWeight.w600)),
                 Text(addr.addressLine1, style: TyType.sans(13, color: ty.ink2, height: 1.4)),
                 if (addr.addressLine2 != null && addr.addressLine2!.isNotEmpty)
                   Text(addr.addressLine2!, style: TyType.sans(13, color: ty.ink2, height: 1.4)),
                 if (addr.landmark != null && addr.landmark!.isNotEmpty)
-                  Text('Near ${addr.landmark}', style: TyType.sans(12, color: ty.ink3, height: 1.4)),
-                Text('${addr.city}, ${addr.state} - ${addr.postalCode}', style: TyType.sans(13, color: ty.ink2, height: 1.4)),
+                  Text(l10n.manageAddressNearLandmarkLabel(addr.landmark!), style: TyType.sans(12, color: ty.ink3, height: 1.4)),
+                Text(l10n.manageAddressCityStateLine(addr.city, addr.state, addr.postalCode), style: TyType.sans(13, color: ty.ink2, height: 1.4)),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     GestureDetector(
                       onTap: () => _openEditForm(addr),
-                      child: Text('Edit', style: TyType.sans(13, color: ty.saffron, weight: FontWeight.w700)),
+                      child: Text(l10n.manageAddressEditButtonLabel, style: TyType.sans(13, color: ty.saffron, weight: FontWeight.w700)),
                     ),
                     const SizedBox(width: 20),
                     GestureDetector(
                       onTap: () => _delete(addr.id),
-                      child: Text('Remove', style: TyType.sans(13, color: ty.rose, weight: FontWeight.w700)),
+                      child: Text(l10n.manageAddressRemoveButtonLabel, style: TyType.sans(13, color: ty.rose, weight: FontWeight.w700)),
                     ),
                   ],
                 ),
@@ -283,6 +293,20 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
 
   static const _labelToType = {'Home': 'home', 'Work': 'work', 'Other': 'other'};
 
+  // The picker options above are canonical keys stored as-is in `_label` and
+  // sent to the backend as the address `label` field; this only localizes
+  // what's rendered on the chip.
+  String _labelDisplayText(AppLocalizations l10n, String label) {
+    switch (label) {
+      case 'Home':
+        return l10n.manageAddressLabelHome;
+      case 'Work':
+        return l10n.manageAddressLabelWork;
+      default:
+        return l10n.manageAddressLabelOther;
+    }
+  }
+
   @override
   void dispose() {
     _recipientNameCtrl.dispose();
@@ -297,12 +321,13 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     final line1 = _line1Ctrl.text.trim();
     final city = _cityCtrl.text.trim();
     final state = _stateCtrl.text.trim();
     final pin = _pinCtrl.text.trim();
     if (line1.isEmpty || city.isEmpty || state.isEmpty || pin.isEmpty) {
-      setState(() => _error = 'Please fill in address line, city, state, and PIN code.');
+      setState(() => _error = l10n.manageAddressFormValidationError);
       return;
     }
     setState(() { _saving = true; _error = null; });
@@ -323,18 +348,19 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Address saved!')),
+          SnackBar(content: Text(l10n.manageAddressSavedMessage)),
         );
         Navigator.pop(context);
       }
     } catch (_) {
-      if (mounted) setState(() { _saving = false; _error = 'Could not save. Please try again.'; });
+      if (mounted) setState(() { _saving = false; _error = l10n.manageAddressSaveError; });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 32),
       decoration: BoxDecoration(
@@ -353,7 +379,7 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            Text(widget.existing != null ? 'Edit Address' : 'Add Address', style: TyType.display(22, color: ty.ink)),
+            Text(widget.existing != null ? l10n.manageAddressEditAddressTitle : l10n.manageAddressAddAddressTitle, style: TyType.display(22, color: ty.ink)),
             const SizedBox(height: 20),
             // Label picker
             Row(
@@ -368,7 +394,7 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: _label == l ? ty.saffron : ty.line),
                     ),
-                    child: Text(l, style: TyType.sans(13, color: _label == l ? Colors.white : ty.ink, weight: FontWeight.w600)),
+                    child: Text(_labelDisplayText(l10n, l), style: TyType.sans(13, color: _label == l ? Colors.white : ty.ink, weight: FontWeight.w600)),
                   ),
                 ),
               )).toList(),
@@ -376,33 +402,33 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _field(ty, 'RECIPIENT NAME', 'Who receives at this address?', _recipientNameCtrl)),
+                Expanded(child: _field(ty, l10n.manageAddressRecipientNameLabel, l10n.manageAddressRecipientNameHint, _recipientNameCtrl)),
                 const SizedBox(width: 12),
-                Expanded(child: _field(ty, 'RECIPIENT PHONE', '10-digit mobile', _recipientPhoneCtrl, type: TextInputType.phone)),
+                Expanded(child: _field(ty, l10n.manageAddressRecipientPhoneLabel, l10n.manageAddressRecipientPhoneHint, _recipientPhoneCtrl, type: TextInputType.phone)),
               ],
             ),
             const SizedBox(height: 12),
-            _field(ty, 'ADDRESS LINE 1', 'House/flat no., building, street', _line1Ctrl),
+            _field(ty, l10n.manageAddressLine1Label, l10n.manageAddressLine1Hint, _line1Ctrl),
             const SizedBox(height: 12),
-            _field(ty, 'ADDRESS LINE 2 (OPTIONAL)', 'Area, sector, colony', _line2Ctrl),
+            _field(ty, l10n.manageAddressLine2Label, l10n.manageAddressLine2Hint, _line2Ctrl),
             const SizedBox(height: 12),
-            _field(ty, 'LANDMARK (OPTIONAL)', 'e.g. Near City Park', _landmarkCtrl),
+            _field(ty, l10n.manageAddressLandmarkLabel, l10n.manageAddressLandmarkHint, _landmarkCtrl),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _field(ty, 'CITY', 'Jaipur', _cityCtrl)),
+                Expanded(child: _field(ty, l10n.manageAddressCityLabel, l10n.manageAddressCityHint, _cityCtrl)),
                 const SizedBox(width: 12),
-                Expanded(child: _field(ty, 'STATE', 'Rajasthan', _stateCtrl)),
+                Expanded(child: _field(ty, l10n.manageAddressStateLabel, l10n.manageAddressStateHint, _stateCtrl)),
               ],
             ),
             const SizedBox(height: 12),
-            _field(ty, 'PIN CODE', '302001', _pinCtrl, type: TextInputType.number),
+            _field(ty, l10n.manageAddressPinCodeLabel, l10n.manageAddressPinCodeHint, _pinCtrl, type: TextInputType.number),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: TyType.sans(13, color: ty.rose)),
             ],
             const SizedBox(height: 24),
-            TyButton(_saving ? 'Saving...' : 'Save Address', full: true, enabled: !_saving, onTap: _save),
+            TyButton(_saving ? l10n.manageAddressSavingLabel : l10n.manageAddressSaveButtonLabel, full: true, enabled: !_saving, onTap: _save),
           ],
         ),
       ),

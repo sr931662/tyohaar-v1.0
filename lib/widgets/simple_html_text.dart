@@ -1,15 +1,37 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:html/dom.dart' as dom;
+import 'package:html/parser.dart' as html_parser;
 import 'package:url_launcher/url_launcher.dart';
 
 /// Renders the small HTML subset produced by the admin panel's legal-document
-/// editor (h1, h2, p, ul/ol/li, b/strong, i/em, u, a, br) as native Flutter
-/// widgets, instead of showing the raw tags as literal text.
+/// editor (h1, h2, p, div, ul/ol/li, b/strong, i/em, u, a, br) as native
+/// Flutter widgets, instead of showing the raw tags — or, worse, an entire
+/// malformed document — as literal/misplaced text.
 ///
-/// This is a deliberately minimal hand-rolled parser rather than a
-/// full HTML-rendering package — the content is always authored through our
-/// own admin RichTextEditor, which only ever emits this exact tag set, so a
-/// general-purpose HTML engine (and its dependency weight) isn't needed.
+/// Block boundaries are found by walking a real parsed DOM tree (via
+/// `package:html`, a pure-Dart HTML5 parser — no extra native dependency),
+/// rather than a flat regex. That matters because admin-authored content is
+/// never guaranteed clean: browsers wrap plain typed paragraphs in `<div>`
+/// by default (RichTextEditor.jsx never sets defaultParagraphSeparator to
+/// 'p'), and a native "select + copy" from a styled page can paste in with
+/// heavy `<font>`/`<span style="...">` wrapping, or even end up nested
+/// inside an unrelated block tag (e.g. an entire document accidentally
+/// nested inside one stray `<h1>`). A flat regex has no way to tell where a
+/// tag "really" ends in a document like that — it just matches the first
+/// occurrence of the same closing tag, however far away — so a single
+/// misplaced tag could swallow the rest of the document into one heading.
+/// Walking the actual tree sidesteps that entirely: any element containing
+/// block-level children is expanded into those children instead of being
+/// treated as one leaf block, regardless of how deep or how mismatched the
+/// nesting is.
+///
+/// Once a block's own boundary is found, its inner HTML is handed to a
+/// small regex-based inline formatter for bold/italic/underline/links/line
+/// breaks — that part of the original approach was never the problem, so
+/// it's kept as-is. Presentation wrapper tags (font, span, and any other
+/// unrecognized tag) are stripped rather than shown as literal text or
+/// treated as their own block, so unexpected markup degrades gracefully.
 class SimpleHtmlText extends StatelessWidget {
   final String html;
   final TextStyle? bodyStyle;
@@ -48,9 +70,9 @@ class SimpleHtmlText extends StatelessWidget {
   Widget _buildBlock(_Block block, {required TextStyle body, required TextStyle h1, required TextStyle h2, required Color link}) {
     switch (block.type) {
       case _BlockType.h1:
-        return RichText(text: TextSpan(style: h1, children: _parseInline(block.text, h1, link)));
+        return RichText(text: TextSpan(style: h1, children: _parseInline(block.innerHtml, h1, link)));
       case _BlockType.h2:
-        return RichText(text: TextSpan(style: h2, children: _parseInline(block.text, h2, link)));
+        return RichText(text: TextSpan(style: h2, children: _parseInline(block.innerHtml, h2, link)));
       case _BlockType.listItem:
         return Padding(
           padding: const EdgeInsets.only(left: 4),
@@ -58,55 +80,106 @@ class SimpleHtmlText extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(block.ordinal != null ? '${block.ordinal}. ' : '•  ', style: body),
-              Expanded(child: RichText(text: TextSpan(style: body, children: _parseInline(block.text, body, link)))),
+              Expanded(child: RichText(text: TextSpan(style: body, children: _parseInline(block.innerHtml, body, link)))),
             ],
           ),
         );
       case _BlockType.paragraph:
-        return RichText(text: TextSpan(style: body, children: _parseInline(block.text, body, link)));
+        return RichText(text: TextSpan(style: body, children: _parseInline(block.innerHtml, body, link)));
     }
   }
 
+  // Tags that can legitimately contain further block-level structure. When a
+  // candidate block element has one of these among its direct children, it's
+  // expanded (recursed into) rather than treated as a single leaf block —
+  // this is what correctly unwinds malformed/nested content instead of
+  // swallowing it whole.
+  static const _blockTags = {'h1', 'h2', 'p', 'div', 'blockquote', 'ul', 'ol'};
+
+  static bool _hasBlockChild(dom.Element el) =>
+      el.children.any((c) => _blockTags.contains(c.localName?.toLowerCase()));
+
   static List<_Block> _parseBlocks(String rawHtml) {
     final blocks = <_Block>[];
-    // Strip whitespace between tags so stray newlines from the source don't
-    // turn into spurious paragraphs.
-    final src = rawHtml.trim();
-    if (src.isEmpty) return blocks;
+    final trimmed = rawHtml.trim();
+    if (trimmed.isEmpty) return blocks;
 
-    final blockTag = RegExp(
-      r'<h1[^>]*>(.*?)</h1>|<h2[^>]*>(.*?)</h2>|<ul[^>]*>(.*?)</ul>|<ol[^>]*>(.*?)</ol>|<p[^>]*>(.*?)</p>',
-      caseSensitive: false,
-      dotAll: true,
-    );
+    final document = html_parser.parse(trimmed);
+    final root = document.body ?? document.documentElement;
+    if (root == null) return blocks;
 
-    var lastEnd = 0;
-    for (final m in blockTag.allMatches(src)) {
-      // Any bare text between recognized block tags (content not wrapped in
-      // a tag at all) becomes its own paragraph, so nothing silently vanishes.
-      final between = src.substring(lastEnd, m.start).trim();
-      if (between.isNotEmpty) blocks.add(_Block(_BlockType.paragraph, between));
-      lastEnd = m.end;
-
-      if (m.group(1) != null) {
-        blocks.add(_Block(_BlockType.h1, m.group(1)!.trim()));
-      } else if (m.group(2) != null) {
-        blocks.add(_Block(_BlockType.h2, m.group(2)!.trim()));
-      } else if (m.group(3) != null || m.group(4) != null) {
-        final isOrdered = m.group(4) != null;
-        final listInner = (m.group(3) ?? m.group(4))!;
-        final liTag = RegExp(r'<li[^>]*>(.*?)</li>', caseSensitive: false, dotAll: true);
-        var n = 1;
-        for (final li in liTag.allMatches(listInner)) {
-          blocks.add(_Block(_BlockType.listItem, li.group(1)!.trim(), ordinal: isOrdered ? n : null));
-          n++;
+    void walk(dom.Node node) {
+      if (node is dom.Text) {
+        if (node.text.trim().isNotEmpty) {
+          blocks.add(_Block(_BlockType.paragraph, node.text));
         }
-      } else if (m.group(5) != null) {
-        blocks.add(_Block(_BlockType.paragraph, m.group(5)!.trim()));
+        return;
+      }
+      if (node is! dom.Element) return;
+
+      final tag = node.localName?.toLowerCase();
+      switch (tag) {
+        case 'h1':
+        case 'h2':
+          if (_hasBlockChild(node)) {
+            for (final child in node.nodes) {
+              walk(child);
+            }
+            return;
+          }
+          if (node.text.trim().isNotEmpty) {
+            blocks.add(_Block(tag == 'h1' ? _BlockType.h1 : _BlockType.h2, node.innerHtml));
+          }
+          return;
+
+        case 'ul':
+        case 'ol':
+          // Note: a <ul>/<ol> nested inside an <li> is not recursed into
+          // here (only top-level li text), so it collapses into one
+          // run-on line via _parseInline's tag-stripping instead of
+          // rendering as its own nested list. No known admin-authored
+          // content produces nested lists today; revisit if that changes.
+          final ordered = tag == 'ol';
+          var n = 1;
+          for (final child in node.children) {
+            if (child.localName?.toLowerCase() == 'li') {
+              if (child.text.trim().isNotEmpty) {
+                blocks.add(_Block(_BlockType.listItem, child.innerHtml, ordinal: ordered ? n : null));
+              }
+              n++;
+            }
+          }
+          return;
+
+        case 'p':
+        case 'div':
+        case 'blockquote':
+          if (_hasBlockChild(node)) {
+            for (final child in node.nodes) {
+              walk(child);
+            }
+            return;
+          }
+          if (node.text.trim().isNotEmpty) {
+            blocks.add(_Block(_BlockType.paragraph, node.innerHtml));
+          }
+          return;
+
+        default:
+          // Unrecognized element (font, span, body/html wrappers, or a
+          // block-position inline tag like a bare top-level <b>) — not a
+          // block itself, so recurse into its children rather than either
+          // rendering it as a paragraph verbatim or dropping it.
+          for (final child in node.nodes) {
+            walk(child);
+          }
+          return;
       }
     }
-    final tail = src.substring(lastEnd).trim();
-    if (tail.isNotEmpty) blocks.add(_Block(_BlockType.paragraph, tail));
+
+    for (final child in root.nodes) {
+      walk(child);
+    }
 
     return blocks;
   }
@@ -114,7 +187,7 @@ class SimpleHtmlText extends StatelessWidget {
   static List<InlineSpan> _parseInline(String text, TextStyle base, Color linkColor) {
     final spans = <InlineSpan>[];
     final inlineTag = RegExp(
-      r'<(b|strong|i|em|u|a)(?:\s+href="([^"]*)")?[^>]*>(.*?)</\1>|<br\s*/?>',
+      r'''<(b|strong|i|em|u|a)(?:\s+href=(["'])([^"']*)\2)?[^>]*>(.*?)</\1>|<br\s*/?>''',
       caseSensitive: false,
       dotAll: true,
     );
@@ -122,7 +195,7 @@ class SimpleHtmlText extends StatelessWidget {
     var lastEnd = 0;
     for (final m in inlineTag.allMatches(text)) {
       final before = text.substring(lastEnd, m.start);
-      if (before.isNotEmpty) spans.add(TextSpan(text: _unescape(before)));
+      if (before.isNotEmpty) spans.add(TextSpan(text: _unescape(_stripTags(before))));
       lastEnd = m.end;
 
       final tag = m.group(1)?.toLowerCase();
@@ -131,7 +204,7 @@ class SimpleHtmlText extends StatelessWidget {
         spans.add(const TextSpan(text: '\n'));
         continue;
       }
-      final inner = m.group(3) ?? '';
+      final inner = m.group(4) ?? '';
       switch (tag) {
         case 'b':
         case 'strong':
@@ -145,11 +218,11 @@ class SimpleHtmlText extends StatelessWidget {
           spans.add(TextSpan(text: _unescape(_stripTags(inner)), style: base.copyWith(decoration: TextDecoration.underline)));
           break;
         case 'a':
-          final href = m.group(2);
+          final href = m.group(3);
           spans.add(TextSpan(
             text: _unescape(_stripTags(inner)),
             style: base.copyWith(color: linkColor, decoration: TextDecoration.underline),
-            recognizer: href != null
+            recognizer: href != null && href.isNotEmpty
                 ? (TapGestureRecognizer()..onTap = () => launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication))
                 : null,
           ));
@@ -157,7 +230,7 @@ class SimpleHtmlText extends StatelessWidget {
       }
     }
     final rest = text.substring(lastEnd);
-    if (rest.isNotEmpty) spans.add(TextSpan(text: _unescape(rest)));
+    if (rest.isNotEmpty) spans.add(TextSpan(text: _unescape(_stripTags(rest))));
     return spans;
   }
 
@@ -165,6 +238,13 @@ class SimpleHtmlText extends StatelessWidget {
 
   static String _unescape(String s) => s
       .replaceAll('&nbsp;', ' ')
+      .replaceAll('&mdash;', '—')
+      .replaceAll('&ndash;', '–')
+      .replaceAll('&hellip;', '…')
+      .replaceAll('&rsquo;', '’')
+      .replaceAll('&lsquo;', '‘')
+      .replaceAll('&rdquo;', '”')
+      .replaceAll('&ldquo;', '“')
       .replaceAll('&amp;', '&')
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>')
@@ -176,7 +256,7 @@ enum _BlockType { h1, h2, paragraph, listItem }
 
 class _Block {
   final _BlockType type;
-  final String text;
+  final String innerHtml;
   final int? ordinal;
-  _Block(this.type, this.text, {this.ordinal});
+  _Block(this.type, this.innerHtml, {this.ordinal});
 }

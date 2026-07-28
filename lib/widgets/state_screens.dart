@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import 'ty_button.dart';
@@ -23,17 +24,19 @@ class TyStateScreen extends StatelessWidget {
     this.icon,
   });
 
-  factory TyStateScreen.error({
+  factory TyStateScreen.error(
+    BuildContext context, {
     String? title,
     String? message,
     String? actionLabel,
     VoidCallback? onAction,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     return TyStateScreen(
       type: TyStateType.error,
-      title: title ?? 'Something went wrong',
-      message: message ?? 'We encountered an unexpected error. Please try again.',
-      actionLabel: actionLabel ?? 'Try Again',
+      title: title ?? l10n.commonSomethingWentWrong,
+      message: message ?? l10n.commonUnexpectedErrorMessage,
+      actionLabel: actionLabel ?? l10n.commonTryAgain,
       onAction: onAction,
       icon: Icons.error_outline_rounded,
     );
@@ -56,27 +59,30 @@ class TyStateScreen extends StatelessWidget {
     );
   }
 
-  factory TyStateScreen.notFound({
+  factory TyStateScreen.notFound(
+    BuildContext context, {
     String? title,
     String? message,
     VoidCallback? onAction,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     return TyStateScreen(
       type: TyStateType.notFound,
-      title: title ?? "Something's missing",
-      message: message ?? "The page or item you're looking for doesn't exist or has been moved.",
-      actionLabel: 'Go Back',
+      title: title ?? l10n.commonSomethingMissing,
+      message: message ?? l10n.commonNotFoundMessage,
+      actionLabel: l10n.commonGoBack,
       onAction: onAction,
       icon: Icons.search_off_rounded,
     );
   }
 
-  factory TyStateScreen.offline({VoidCallback? onRetry}) {
+  factory TyStateScreen.offline(BuildContext context, {VoidCallback? onRetry}) {
+    final l10n = AppLocalizations.of(context)!;
     return TyStateScreen(
       type: TyStateType.offline,
-      title: 'No connection',
-      message: 'Please check your internet settings and try again.',
-      actionLabel: 'Retry',
+      title: l10n.commonNoConnection,
+      message: l10n.commonNoConnectionMessage,
+      actionLabel: l10n.commonRetry,
       onAction: onRetry,
       icon: Icons.wifi_off_rounded,
     );

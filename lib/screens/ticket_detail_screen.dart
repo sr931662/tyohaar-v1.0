@@ -7,6 +7,7 @@ import '../data/services/support_service.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
 import '../widgets/ty_button.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   final SupportTicket ticket;
@@ -70,7 +71,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to send. Please try again.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.ticketDetailSendError)),
         );
       }
     } finally {
@@ -81,10 +82,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: '#${_ticket.ticketNumber}'),
+      appBar: tyAppBar(context, title: l10n.myTicketsTicketNumberLabel(_ticket.ticketNumber)),
       body: Column(
         children: [
           Container(
@@ -105,7 +107,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                       color: ty.saffronSoft.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text('Resolution: ${_ticket.resolutionSummary}', style: TyType.sans(12.5, color: ty.ink2)),
+                    child: Text(l10n.ticketDetailResolutionLabel(_ticket.resolutionSummary!), style: TyType.sans(12.5, color: ty.ink2)),
                   ),
                 ],
               ],
@@ -115,10 +117,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _error
-                    ? TyStateScreen.error(onAction: _load)
+                    ? TyStateScreen.error(context, onAction: _load)
                     : _messages.isEmpty
                         ? Center(
-                            child: Text('No replies yet.', style: TyType.sans(13, color: ty.ink3)),
+                            child: Text(l10n.ticketDetailNoRepliesMessage, style: TyType.sans(13, color: ty.ink3)),
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.all(20),
@@ -132,7 +134,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(border: Border(top: BorderSide(color: ty.line2))),
               child: Text(
-                'This ticket is ${_ticket.status}. No further replies can be added.',
+                l10n.ticketDetailClosedMessage(_ticket.status),
                 textAlign: TextAlign.center,
                 style: TyType.sans(12.5, color: ty.ink3),
               ),
@@ -150,7 +152,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                         controller: _replyCtrl,
                         style: TyType.sans(14, color: ty.ink),
                         decoration: InputDecoration(
-                          hintText: 'Type a reply…',
+                          hintText: l10n.ticketDetailReplyHint,
                           hintStyle: TyType.sans(14, color: ty.ink3),
                           filled: true,
                           fillColor: ty.surface2,
@@ -164,7 +166,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     ),
                     const SizedBox(width: 10),
                     TyButton(
-                      _isSending ? '…' : 'Send',
+                      _isSending ? l10n.ticketDetailSendingButtonLabel : l10n.ticketDetailSendButtonLabel,
                       enabled: !_isSending,
                       onTap: _send,
                     ),
@@ -179,6 +181,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   Widget _messageBubble(BuildContext context, SupportMessage msg) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final isMine = msg.isMine;
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
@@ -201,7 +204,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              '${isMine ? "You" : "Support"} · ${DateFormat('d MMM, h:mm a').format(msg.createdAt)}',
+              l10n.ticketDetailMessageSenderTimeLabel(
+                isMine ? l10n.ticketDetailYouLabel : l10n.ticketDetailSupportLabel,
+                DateFormat('d MMM, h:mm a').format(msg.createdAt),
+              ),
               style: TyType.sans(11, color: ty.ink3),
             ),
           ],

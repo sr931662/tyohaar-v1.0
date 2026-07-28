@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/common.dart';
@@ -54,27 +55,36 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
+    // Internal sort values are kept in English and match ExploreScreen's
+    // switch statement (which consumes the value returned via Navigator.pop)
+    // — only the displayed chip label is localized.
+    final sortOptions = <String, String>{
+      'Popularity': l10n.packageFilterSortPopularity,
+      'Price: Low to High': l10n.packageFilterSortPriceLowToHigh,
+      'Price: High to Low': l10n.packageFilterSortPriceHighToLow,
+    };
     return Scaffold(
-      appBar: tyAppBar(context, title: 'Filter Packages'),
+      appBar: tyAppBar(context, title: l10n.packageFilterTitle),
       body: Column(
         children: [
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                _sectionTitle('Sort By'),
+                _sectionTitle(context, l10n.packageFilterSortByLabel),
                 Wrap(
                   spacing: 10,
-                  children: ['Popularity', 'Price: Low to High', 'Price: High to Low'].map((s) {
+                  children: sortOptions.entries.map((e) {
                     return TyChip(
-                      label: s,
-                      active: _selectedSort == s,
-                      onTap: () => setState(() => _selectedSort = s),
+                      label: e.value,
+                      active: _selectedSort == e.key,
+                      onTap: () => setState(() => _selectedSort = e.key),
                     );
                   }).toList(),
                 ),
                 const SizedBox(height: 32),
-                _sectionTitle('Price Range (₹)'),
+                _sectionTitle(context, l10n.packageFilterPriceRangeLabel),
                 RangeSlider(
                   values: _priceRange,
                   min: 0,
@@ -83,21 +93,21 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
                   activeColor: ty.saffron,
                   inactiveColor: ty.saffronSoft,
                   labels: RangeLabels(
-                    '₹${(_priceRange.start / 1000).round()}K',
-                    '₹${(_priceRange.end / 1000).round()}K',
+                    l10n.packageFilterPriceKLabel('${(_priceRange.start / 1000).round()}'),
+                    l10n.packageFilterPriceKLabel('${(_priceRange.end / 1000).round()}'),
                   ),
                   onChanged: (v) => setState(() => _priceRange = v),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('₹0', style: TyType.sans(12, color: ty.ink3)),
-                    Text('₹100K+', style: TyType.sans(12, color: ty.ink3)),
+                    Text(l10n.packageFilterPriceMinLabel, style: TyType.sans(12, color: ty.ink3)),
+                    Text(l10n.packageFilterPriceMaxLabel, style: TyType.sans(12, color: ty.ink3)),
                   ],
                 ),
                 const SizedBox(height: 32),
                 if (_themes.isNotEmpty) ...[
-                  _sectionTitle('Themes'),
+                  _sectionTitle(context, l10n.packageFilterThemesLabel),
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
@@ -127,7 +137,7 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: TyButton('Reset', kind: TyButtonKind.ghost, onTap: () {
+                  child: TyButton(l10n.packageFilterResetButtonLabel, kind: TyButtonKind.ghost, onTap: () {
                     setState(() {
                       _priceRange = const RangeValues(5000, 50000);
                       _selectedSort = 'Popularity';
@@ -137,7 +147,7 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: TyButton('Apply Filters', onTap: () => Navigator.pop(context, {
+                  child: TyButton(l10n.packageFilterApplyButtonLabel, onTap: () => Navigator.pop(context, {
                     'sort': _selectedSort,
                     'priceRange': _priceRange,
                     'themes': List<String>.from(_selectedThemes),
@@ -151,7 +161,7 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionTitle(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Text(title, style: TyType.sans(16, color: context.ty.ink, weight: FontWeight.w700)),

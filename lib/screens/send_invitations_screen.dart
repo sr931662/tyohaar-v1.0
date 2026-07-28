@@ -11,6 +11,7 @@ import '../widgets/avatar.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import 'booking_confirmation_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 /// Shown right after a successful payment when the customer added guests
 /// during planning. Syncs those guests to the newly-active celebration, then
@@ -81,14 +82,15 @@ class _SendInvitationsScreenState extends State<SendInvitationsScreen> {
     return '${ApiClient.baseUrl}public/rsvp/${g.rsvpToken}/page';
   }
 
-  String _inviteMessage(Guest g) {
+  String _inviteMessage(BuildContext context, Guest g) {
+    final l10n = AppLocalizations.of(context)!;
     final link = _rsvpPageUrl(g);
-    return 'Hi ${g.name}! You\'re invited to ${widget.packageName} on ${widget.date} 🎉'
-        '${link.isNotEmpty ? '\n\nPlease RSVP here: $link' : ''}';
+    return l10n.sendInvitationsInviteMessage(g.name, widget.packageName, widget.date) +
+        (link.isNotEmpty ? l10n.sendInvitationsRsvpSuffix(link) : '');
   }
 
   Future<void> _sendWhatsApp(Guest g) async {
-    final message = Uri.encodeComponent(_inviteMessage(g));
+    final message = Uri.encodeComponent(_inviteMessage(context, g));
     final phone = g.phone?.replaceAll(RegExp(r'[^0-9+]'), '');
     if (phone != null && phone.isNotEmpty) {
       final uri = Uri.parse('https://wa.me/$phone?text=$message');
@@ -100,7 +102,8 @@ class _SendInvitationsScreenState extends State<SendInvitationsScreen> {
     }
     // No phone on file, or WhatsApp couldn't be opened — fall back to the
     // native share sheet so the customer can still send it some other way.
-    await Share.share(_inviteMessage(g), subject: 'You\'re invited!');
+    if (!mounted) return;
+    await Share.share(_inviteMessage(context, g), subject: AppLocalizations.of(context)!.sendInvitationsShareSubject);
     setState(() => _sent.add(g.id));
   }
 
@@ -120,9 +123,10 @@ class _SendInvitationsScreenState extends State<SendInvitationsScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Send Invitations'),
+      appBar: tyAppBar(context, title: l10n.sendInvitationsTitle),
       body: _syncing
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -131,8 +135,8 @@ class _SendInvitationsScreenState extends State<SendInvitationsScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                   child: Text(
                     _guests.isEmpty
-                        ? 'No guests added yet — you can invite people anytime from the Guests tab.'
-                        : 'Your booking is confirmed! Tap a guest to send their invite on WhatsApp.',
+                        ? l10n.sendInvitationsEmptyMessage
+                        : l10n.sendInvitationsConfirmedMessage,
                     style: TyType.sans(13.5, color: ty.ink2, height: 1.4),
                   ),
                 ),
@@ -170,7 +174,7 @@ class _SendInvitationsScreenState extends State<SendInvitationsScreen> {
                                     ),
                                   ),
                                   TyButton(
-                                    sent ? 'Sent ✓' : 'WhatsApp',
+                                    sent ? l10n.sendInvitationsSentLabel : l10n.sendInvitationsWhatsAppButtonLabel,
                                     kind: sent ? TyButtonKind.ghost : TyButtonKind.primary,
                                     leadingIcon: sent ? null : Icons.chat_bubble_outline_rounded,
                                     onTap: () => _sendWhatsApp(g),
@@ -183,7 +187,7 @@ class _SendInvitationsScreenState extends State<SendInvitationsScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                  child: TyButton('Continue', full: true, icon: Icons.chevron_right_rounded, onTap: _continue),
+                  child: TyButton(l10n.sendInvitationsContinueButtonLabel, full: true, icon: Icons.chevron_right_rounded, onTap: _continue),
                 ),
               ],
             ),

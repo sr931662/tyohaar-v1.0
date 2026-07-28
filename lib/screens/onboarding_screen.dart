@@ -4,6 +4,7 @@ import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../widgets/ty_button.dart';
 import '../data/auth_manager.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'auth_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -17,45 +18,46 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<OnboardingData> _screens = [
-    OnboardingData(
-      title: 'Moments That Matter',
-      subtitle:
-          'From a baby’s first steps to golden anniversaries, we turn milestones into memories.',
-      icon: Icons.auto_awesome_rounded,
-      image: 'assets/images/onboarding 1.png',
-      tint: 'saffron',
-    ),
-    OnboardingData(
-      title: 'Curated Perfection',
-      subtitle:
-          'Browse hand-picked packages designed by experts to fit your unique style and budget.',
-      icon: Icons.dashboard_customize_rounded,
-      image: 'assets/images/onboarding 2.png',
-      tint: 'rose',
-    ),
-    PlanOnboardingData(
-      title: 'Stress-Free Planning',
-      subtitle:
-          'We handle the vendors, the timeline, and the details. You just enjoy the celebration.',
-      icon: Icons.checklist_rtl_rounded,
-      image: 'assets/images/onboarding 3.png',
-      tint: 'leaf',
-    ),
-    OnboardingData(
-      title: 'Verified Excellence',
-      subtitle:
-          'Every vendor is Tyohaar-vetted for quality and reliability. Trust is our foundation.',
-      icon: Icons.verified_user_rounded,
-      image: 'assets/images/onboarding 4.png',
-      tint: 'gold',
-    ),
-  ];
+  List<OnboardingData> _buildScreens(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      OnboardingData(
+        title: l10n.onboardingSlideOneTitle,
+        subtitle: l10n.onboardingSlideOneSubtitle,
+        icon: Icons.auto_awesome_rounded,
+        image: 'assets/images/onboarding 1.png',
+        tint: 'saffron',
+      ),
+      OnboardingData(
+        title: l10n.onboardingSlideTwoTitle,
+        subtitle: l10n.onboardingSlideTwoSubtitle,
+        icon: Icons.dashboard_customize_rounded,
+        image: 'assets/images/onboarding 2.png',
+        tint: 'rose',
+      ),
+      PlanOnboardingData(
+        title: l10n.onboardingSlideThreeTitle,
+        subtitle: l10n.onboardingSlideThreeSubtitle,
+        icon: Icons.checklist_rtl_rounded,
+        image: 'assets/images/onboarding 3.png',
+        tint: 'leaf',
+      ),
+      OnboardingData(
+        title: l10n.onboardingSlideFourTitle,
+        subtitle: l10n.onboardingSlideFourSubtitle,
+        icon: Icons.verified_user_rounded,
+        image: 'assets/images/onboarding 4.png',
+        tint: 'gold',
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
+    final screens = _buildScreens(context);
 
     return Scaffold(
       backgroundColor: ty.paper,
@@ -69,7 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  ty.tint(_screens[_currentPage].tint).withValues(alpha: 0.15),
+                  ty.tint(screens[_currentPage].tint).withValues(alpha: 0.15),
                   ty.paper,
                 ],
                 stops: const [0.0, 0.4],
@@ -80,9 +82,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           PageView.builder(
             controller: _pageController,
             onPageChanged: (index) => setState(() => _currentPage = index),
-            itemCount: _screens.length,
+            itemCount: screens.length,
             itemBuilder: (context, index) {
-              return _OnboardingPage(data: _screens[index]);
+              return _OnboardingPage(data: screens[index]);
             },
           ),
 
@@ -97,7 +99,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(
-                    _screens.length,
+                    screens.length,
                     (index) => AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       margin: EdgeInsets.symmetric(horizontal: resp.w(4)),
@@ -105,7 +107,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       width: _currentPage == index ? resp.w(24) : resp.w(8),
                       decoration: BoxDecoration(
                         color: _currentPage == index
-                            ? ty.tint(_screens[_currentPage].tint)
+                            ? ty.tint(screens[_currentPage].tint)
                             : ty.line,
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -116,12 +118,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
                 // Primary Action Button
                 TyButton(
-                  _currentPage == _screens.length - 1
-                      ? 'Start Celebrating'
-                      : 'Next',
+                  _currentPage == screens.length - 1
+                      ? l10n.onboardingStartCelebratingButtonLabel
+                      : l10n.tutorialNext,
                   full: true,
                   onTap: () async {
-                    if (_currentPage < _screens.length - 1) {
+                    if (_currentPage < screens.length - 1) {
                       _pageController.nextPage(
                         duration: const Duration(milliseconds: 400),
                         curve: Curves.easeInOut,
@@ -137,7 +139,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   },
                 ),
 
-                if (_currentPage < _screens.length - 1)
+                if (_currentPage < screens.length - 1)
                   TextButton(
                     onPressed: () async {
                       await AuthManager.instance.completeOnboarding();
@@ -147,7 +149,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         MaterialPageRoute(builder: (_) => const AuthScreen()),
                       );
                     },
-                    child: Text('Skip',
+                    child: Text(l10n.tutorialSkip,
                         style: TyType.sans(resp.sp(14),
                             color: ty.ink3, weight: FontWeight.w600)),
                   ),

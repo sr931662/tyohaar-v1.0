@@ -26,6 +26,7 @@ import '../../widgets/ty_button.dart';
 import '../../widgets/ty_chip.dart';
 import '../../widgets/ty_rating_stars.dart';
 import '../../widgets/common.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class PlanFlowScreen extends StatefulWidget {
   final int startStep;
@@ -35,7 +36,20 @@ class PlanFlowScreen extends StatefulWidget {
   State<PlanFlowScreen> createState() => _PlanFlowScreenState();
 }
 
-const _colorPalettes = ['Gold', 'Blush Pink', 'Sky Blue', 'Sage Green', 'Lavender', 'Multicolor'];
+// Localized display labels — depend on BuildContext, so these are functions
+// rather than top-level consts; call sites (all within this file) pass the
+// context they already have available.
+List<String> _colorPalettes(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  return [
+    l10n.planFlowColorGold,
+    l10n.planFlowColorBlushPink,
+    l10n.planFlowColorSkyBlue,
+    l10n.planFlowColorSageGreen,
+    l10n.planFlowColorLavender,
+    l10n.planFlowColorMulticolor,
+  ];
+}
 
 // Curated, reliably-stockable balloon colours — must match the backend's
 // BALLOON_COLOR_PALETTE (app/core/constants.py) exactly by hex value, since
@@ -55,6 +69,43 @@ const _balloonColorPalette = <String, String>{
   'Orange': '#F39C12',
   'Yellow': '#F1C40F',
 };
+
+// Display label for a balloon colour name. The map keys above stay in
+// English — they're used as stable identifiers (selection state, hex
+// lookup at booking submission) — only the rendered label is localized.
+String _balloonColorLabel(BuildContext context, String name) {
+  final l10n = AppLocalizations.of(context)!;
+  switch (name) {
+    case 'Red':
+      return l10n.planFlowBalloonColorRed;
+    case 'Gold':
+      return l10n.planFlowBalloonColorGold;
+    case 'Rose Gold':
+      return l10n.planFlowBalloonColorRoseGold;
+    case 'Pink':
+      return l10n.planFlowBalloonColorPink;
+    case 'Sky Blue':
+      return l10n.planFlowBalloonColorSkyBlue;
+    case 'Navy Blue':
+      return l10n.planFlowBalloonColorNavyBlue;
+    case 'White':
+      return l10n.planFlowBalloonColorWhite;
+    case 'Black':
+      return l10n.planFlowBalloonColorBlack;
+    case 'Silver':
+      return l10n.planFlowBalloonColorSilver;
+    case 'Purple':
+      return l10n.planFlowBalloonColorPurple;
+    case 'Green':
+      return l10n.planFlowBalloonColorGreen;
+    case 'Orange':
+      return l10n.planFlowBalloonColorOrange;
+    case 'Yellow':
+      return l10n.planFlowBalloonColorYellow;
+    default:
+      return name;
+  }
+}
 
 Color _hexToColor(String hex) {
   final h = hex.replaceAll('#', '');
@@ -224,7 +275,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _couponError = preview.couponError;
       });
     } catch (e) {
-      setState(() => _couponError = 'Could not validate this code. Please try again.');
+      setState(() => _couponError = AppLocalizations.of(context)!.planFlowCouponValidationError);
     } finally {
       if (mounted) setState(() => _couponLoading = false);
     }
@@ -316,7 +367,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           builder: (_) => PaymentScreen(
             bookingId: booking.id,
             amount: booking.totalAmount,
-            packageName: _pkg?.name ?? 'Celebration Package',
+            packageName: _pkg?.name ?? AppLocalizations.of(context)!.planFlowDefaultPackageName,
             scheduledDate: DateFormat('d MMMM yyyy').format(_eventDate),
             celebrationId: booking.celebrationId,
             plannedGuests: _plannedGuests,
@@ -327,7 +378,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       logDebug('Error creating booking: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not create booking. Please try again.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.planFlowCreateBookingError)),
         );
       }
     } finally {
@@ -346,16 +397,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     }
 
     if (_loadError) {
-      return Scaffold(backgroundColor: ty.paper, body: TyStateScreen.error(onAction: _loadData));
+      return Scaffold(backgroundColor: ty.paper, body: TyStateScreen.error(context, onAction: _loadData));
     }
 
+    final l10n = AppLocalizations.of(context)!;
     final titles = [
-      ['What shall we celebrate?', 'Every milestone deserves to be held with care.'],
-      ['Choose your package', 'Hand-picked experiences, curated for families like yours.'],
-      ['Package items', 'Everything included, plus a few extras if you\'d like them.'],
-      ['Create an Invite', 'The little things help us shape your plan.'],
-      ['Who’s coming together?', 'Group by household — the way families really gather.'],
-      ['Order Summary', 'Review your celebration plan before we get started.'],
+      [l10n.planFlowOccasionStepTitle, l10n.planFlowOccasionStepSubtitle],
+      [l10n.planFlowPackageStepTitle, l10n.planFlowPackageStepSubtitle],
+      [l10n.planFlowItemsStepTitle, l10n.planFlowItemsStepSubtitle],
+      [l10n.planFlowDetailsStepTitle, l10n.planFlowDetailsStepSubtitle],
+      [l10n.planFlowGuestsStepTitle, l10n.planFlowGuestsStepSubtitle],
+      [l10n.planFlowSummaryStepTitle, l10n.planFlowSummaryStepSubtitle],
     ];
 
     return Scaffold(
@@ -374,7 +426,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                         onTap: _back,
                       ),
                       const Spacer(),
-                      Text('Step ${_step + 1} of $_stepCount',
+                      Text(l10n.planFlowStepIndicator(_step + 1, _stepCount),
                           style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w700)),
                       const Spacer(),
                       const SizedBox(width: 42),
@@ -425,16 +477,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   Widget _footer(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (_step == _stepCount - 1) {
       return TyButton(
-        _isSubmitting ? 'Creating Booking...' : 'Proceed To Payment',
+        _isSubmitting ? l10n.planFlowCreatingBookingLabel : l10n.planFlowProceedToPaymentLabel,
         full: true,
         icon: Icons.payment_rounded,
         enabled: !_isSubmitting && _pkg != null,
         onTap: _finish,
       );
     }
-    return TyButton('Continue',
+    return TyButton(l10n.planFlowContinueButtonLabel,
         full: true,
         enabled: _step == 1 ? _pkg != null : true,
         icon: Icons.chevron_right_rounded,
@@ -480,22 +533,23 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       return !milestones.contains(o) && !memories.contains(o) && !growth.contains(o);
     }).toList();
 
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
         if (milestones.isNotEmpty) ...[
-          _occasionGroup(context, 'Milestones', milestones),
+          _occasionGroup(context, l10n.planFlowMilestonesGroupLabel, milestones),
           const SizedBox(height: 24),
         ],
         if (memories.isNotEmpty) ...[
-          _occasionGroup(context, 'Memories', memories),
+          _occasionGroup(context, l10n.planFlowMemoriesGroupLabel, memories),
           const SizedBox(height: 24),
         ],
         if (growth.isNotEmpty) ...[
-          _occasionGroup(context, 'Growth', growth),
+          _occasionGroup(context, l10n.planFlowGrowthGroupLabel, growth),
           const SizedBox(height: 24),
         ],
         if (others.isNotEmpty)
-          _occasionGroup(context, 'Other Moments', others),
+          _occasionGroup(context, l10n.planFlowOtherMomentsGroupLabel, others),
       ],
     );
   }
@@ -590,14 +644,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // ── Step 3: Details (Create an Invite) ──────────────────────────────────
 
   Widget _detailsStep(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final minDate = DateTime.now().add(const Duration(days: 15));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _field(context, 'What shall we call it?', _textInput(context, _nameCtrl)),
+        _field(context, l10n.planFlowCelebrationNameLabel, _textInput(context, _nameCtrl)),
         Row(
           children: [
-            Expanded(child: _field(context, 'When',
+            Expanded(child: _field(context, l10n.planFlowWhenLabel,
                 _staticInput(context, Icons.event, DateFormat('d MMMM yyyy').format(_eventDate),
                 onTap: () async {
                   final d = await showDatePicker(
@@ -608,17 +663,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   if (d != null) setState(() => _eventDate = d);
                 }))),
             const SizedBox(width: 12),
-            Expanded(child: _field(context, 'Time', _staticInput(context, null, '6:30 PM'))),
+            Expanded(child: _field(context, l10n.planFlowTimeLabel, _staticInput(context, null, l10n.planFlowDefaultEventTime))),
           ],
         ),
-        _field(context, 'Where', _addressPicker(context)),
+        _field(context, l10n.planFlowWhereLabel, _addressPicker(context)),
         _field(
           context,
-          'The mood',
+          l10n.planFlowMoodLabel,
           Wrap(
             spacing: 9,
             runSpacing: 9,
-            children: ['Intimate', 'Grand', 'Traditional', 'Modern']
+            children: [l10n.planFlowVibeIntimate, l10n.planFlowVibeGrand, l10n.planFlowVibeTraditional, l10n.planFlowVibeModern]
                 .map((v) => TyChip(
                       label: v,
                       active: _vibes.contains(v),
@@ -630,11 +685,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         ),
         _field(
           context,
-          'Color palette',
+          l10n.planFlowColorPaletteLabel,
           Wrap(
             spacing: 9,
             runSpacing: 9,
-            children: _colorPalettes
+            children: _colorPalettes(context)
                 .map((v) => TyChip(
                       label: v,
                       active: _colorPalette.contains(v),
@@ -646,7 +701,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         ),
         _field(
           context,
-          'Anything else we should know?',
+          l10n.planFlowAdditionalNotesLabel,
           _textInput(
             context,
             _notesCtrl,
@@ -706,7 +761,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               children: [
                 Icon(Icons.add_location_alt_outlined, size: 18, color: ty.saffron),
                 const SizedBox(width: 10),
-                Text('Add new address', style: TyType.sans(13.5, color: ty.saffron, weight: FontWeight.w700)),
+                Text(AppLocalizations.of(context)!.planFlowAddNewAddressLabel, style: TyType.sans(13.5, color: ty.saffron, weight: FontWeight.w700)),
               ],
             ),
           ),
@@ -733,6 +788,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _guestsStep(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -742,20 +798,20 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           child: Row(children: [
             Text('$_totalGuests', style: TyType.display(36, color: ty.ink)),
             const SizedBox(width: 8),
-            Text('guests added', style: TyType.sans(14, color: ty.ink2)),
+            Text(l10n.planFlowGuestsAddedLabel, style: TyType.sans(14, color: ty.ink2)),
           ]),
         ),
         const SizedBox(height: 16),
-        Text('INVITE VIA', style: TyType.eyebrow(11, color: ty.ink3)),
+        Text(l10n.planFlowInviteViaLabel, style: TyType.eyebrow(11, color: ty.ink3)),
         const SizedBox(height: 12),
         Row(
           children: [
-            _inviteMethod(context, Icons.person_add_outlined, 'Manual', _openAddGuestManually),
-            _inviteMethod(context, Icons.contacts_outlined, 'Contacts', _importFromContacts),
+            _inviteMethod(context, Icons.person_add_outlined, l10n.planFlowInviteMethodManualLabel, _openAddGuestManually),
+            _inviteMethod(context, Icons.contacts_outlined, l10n.planFlowInviteMethodContactsLabel, _importFromContacts),
           ],
         ),
         const SizedBox(height: 24),
-        if (_plannedGuests.isNotEmpty) Text('GUEST LIST', style: TyType.eyebrow(11, color: ty.ink3)),
+        if (_plannedGuests.isNotEmpty) Text(l10n.planFlowGuestListLabel, style: TyType.eyebrow(11, color: ty.ink3)),
         const SizedBox(height: 10),
         ..._plannedGuests.asMap().entries.map((e) {
           final g = e.value;
@@ -785,7 +841,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           );
         }),
         Text(
-          'Invitations are sent via WhatsApp once your booking and payment are confirmed.',
+          l10n.planFlowInvitationsWhatsAppNotice,
           style: TyType.sans(12, color: ty.ink3, height: 1.4),
         ),
       ],
@@ -807,13 +863,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Add Guest', style: TyType.display(22, color: ty.ink)),
+            Text(AppLocalizations.of(ctx)!.planFlowAddGuestTitle, style: TyType.display(22, color: ty.ink)),
             const SizedBox(height: 20),
             _textInput(context, nameCtrl),
             const SizedBox(height: 12),
             _textInput(context, phoneCtrl, icon: Icons.phone_outlined),
             const SizedBox(height: 24),
-            TyButton('Add', full: true, onTap: () => Navigator.pop(ctx, true)),
+            TyButton(AppLocalizations.of(ctx)!.planFlowAddGuestConfirmLabel, full: true, onTap: () => Navigator.pop(ctx, true)),
           ],
         ),
       ),
@@ -831,7 +887,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     if (!status.isGranted) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contacts permission is needed to import guests.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.planFlowContactsPermissionNeededMessage)),
         );
       }
       return;
@@ -859,7 +915,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       logDebug('Contact import failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read contacts. Please try again.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.planFlowContactsImportError)),
         );
       }
     }
@@ -901,17 +957,19 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: TyStateScreen.error(
+          context,
           onAction: () => _occasion != null ? _loadPackagesForOccasion(_occasion!.id) : null,
         ),
       );
     }
 
     if (_packages.isEmpty) {
+      final l10n = AppLocalizations.of(context)!;
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
           child: Text(
-            'No packages available for ${_occasion?.name ?? 'this occasion'} yet.',
+            l10n.planFlowNoPackagesAvailableMessage(_occasion?.name ?? l10n.planFlowThisOccasionFallback),
             textAlign: TextAlign.center,
             style: TyType.sans(14, color: ty.ink2),
           ),
@@ -1049,7 +1107,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               onTap: () => _openPackageDetail(context, p),
               child: Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text('Expand for details', style: TyType.sans(11.5, color: ty.saffron, weight: FontWeight.w700)),
+                child: Text(AppLocalizations.of(context)!.planFlowExpandForDetailsLabel, style: TyType.sans(11.5, color: ty.saffron, weight: FontWeight.w700)),
               ),
             ),
           ],
@@ -1098,7 +1156,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               Text(p.description ?? '', style: TyType.sans(14, color: ty.ink2, height: 1.5)),
               const SizedBox(height: 24),
               TyButton(
-                _pkg?.id == p.id ? 'Selected' : 'Select This Package',
+                _pkg?.id == p.id ? AppLocalizations.of(ctx)!.planFlowSelectedLabel : AppLocalizations.of(ctx)!.planFlowSelectThisPackageLabel,
                 full: true,
                 enabled: _pkg?.id != p.id,
                 onTap: () {
@@ -1130,14 +1188,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         ? _themes.where((t) => _pkg!.themeIds.contains(t.id)).toList()
         : const <CelebrationTheme>[];
     if (allowedThemes.isEmpty) return const SizedBox();
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('CHOOSE A COLOR THEME', style: TyType.eyebrow(11, color: ty.ink3)),
+          Text(l10n.planFlowChooseColorThemeLabel, style: TyType.eyebrow(11, color: ty.ink3)),
           const SizedBox(height: 4),
-          Text('This package is customizable — pick the palette for your celebration.',
+          Text(l10n.planFlowCustomizableThemeHint,
               style: TyType.sans(12.5, color: ty.ink2)),
           const SizedBox(height: 12),
           SizedBox(
@@ -1255,16 +1314,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _balloonColorStep(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final maxColors = _balloonColorMode == 'dual' ? 2 : 1;
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('BALLOON COLOURS', style: TyType.eyebrow(11, color: ty.ink3)),
+          Text(l10n.planFlowBalloonColoursLabel, style: TyType.eyebrow(11, color: ty.ink3)),
           const SizedBox(height: 4),
           Text(
-            'Pick a single accent colour, or a two-colour combination for your balloon décor.',
+            l10n.planFlowBalloonColoursHint,
             style: TyType.sans(12.5, color: ty.ink2),
           ),
           const SizedBox(height: 12),
@@ -1273,7 +1333,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             runSpacing: 9,
             children: ['single', 'dual'].map((mode) {
               return TyChip(
-                label: mode == 'single' ? 'Single Colour' : 'Dual Colour',
+                label: mode == 'single' ? l10n.planFlowSingleColourLabel : l10n.planFlowDualColourLabel,
                 active: _balloonColorMode == mode,
                 onTap: () => setState(() {
                   _balloonColorMode = _balloonColorMode == mode ? null : mode;
@@ -1328,7 +1388,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                       SizedBox(
                         width: 56,
                         child: Text(
-                          name,
+                          _balloonColorLabel(context, name),
                           textAlign: TextAlign.center,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1355,7 +1415,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     if (_itemsError) {
       return Padding(
         padding: const EdgeInsets.all(40),
-        child: TyStateScreen.error(onAction: _loadPackageItems),
+        child: TyStateScreen.error(context, onAction: _loadPackageItems),
       );
     }
     if (_packageItems.isEmpty) {
@@ -1365,25 +1425,26 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
     final mandatory = _packageItems.where((i) => i.isMandatory).toList();
     final optional = _packageItems.where((i) => !i.isMandatory).toList();
+    final l10n = AppLocalizations.of(context)!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (mandatory.isNotEmpty) ...[
-          Text('INCLUDED', style: TyType.eyebrow(11, color: ty.ink3)),
+          Text(l10n.planFlowIncludedLabel, style: TyType.eyebrow(11, color: ty.ink3)),
           const SizedBox(height: 10),
           ...mandatory.map((item) => _itemRow(context, item, locked: true)),
           const SizedBox(height: 20),
         ],
         if (optional.isNotEmpty) ...[
-          Text('OPTIONAL ADD-ONS', style: TyType.eyebrow(11, color: ty.ink3)),
+          Text(l10n.planFlowOptionalAddOnsLabel, style: TyType.eyebrow(11, color: ty.ink3)),
           const SizedBox(height: 10),
           ...optional.map((item) => _itemRow(context, item, locked: false)),
         ],
         if (mandatory.isEmpty && optional.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Text('This package has no configurable items.', style: TyType.sans(13, color: ty.ink3)),
+            child: Text(l10n.planFlowNoConfigurableItemsMessage, style: TyType.sans(13, color: ty.ink3)),
           ),
       ],
     );
@@ -1391,6 +1452,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _itemRow(BuildContext context, PackageItem item, {required bool locked}) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final selected = _itemQuantities.containsKey(item.id);
     final qty = _itemQuantities[item.id] ?? item.quantity;
     final thumbnail = item.imageUrls.isNotEmpty ? item.imageUrls.first : item.iconUrl;
@@ -1425,7 +1487,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     if (item.description != null)
                       Text(item.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
                     if (!locked)
-                      Text('+ ${formatPrice(item.unitPrice)} / ${item.unit ?? "unit"}', style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700)),
+                      Text(l10n.planFlowAddOnPriceLabel(formatPrice(item.unitPrice), item.unit ?? l10n.planFlowUnitFallback), style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -1450,7 +1512,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('Qty: ${item.unit ?? ""}', style: TyType.sans(12, color: ty.ink3)),
+                Text(l10n.planFlowQuantityLabel(item.unit ?? ''), style: TyType.sans(12, color: ty.ink3)),
                 const SizedBox(width: 10),
                 _qtyStepper(
                   context,
@@ -1509,6 +1571,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _summaryStep(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final selectedOptional = _packageItems.where((i) => !i.isMandatory && _itemQuantities.containsKey(i.id)).toList();
     final itemsTotal = selectedOptional.fold<double>(
       0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
@@ -1517,33 +1580,37 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _summaryCard(context, 'Celebration', '${_occasion?.name} - ${_nameCtrl.text}', onEdit: () => _jumpTo(0)),
-        _summaryCard(context, 'Package', _pkg?.name ?? '', onEdit: () => _jumpTo(1)),
+        _summaryCard(context, l10n.planFlowSummaryCelebrationLabel,
+            l10n.planFlowCelebrationSummaryValue('${_occasion?.name}', _nameCtrl.text), onEdit: () => _jumpTo(0)),
+        _summaryCard(context, l10n.planFlowSummaryPackageLabel, _pkg?.name ?? '', onEdit: () => _jumpTo(1)),
         if ((_pkg?.isCustomizable ?? false) && _theme != null)
-          _summaryCard(context, 'Theme', _theme!.name, onEdit: () => _jumpTo(1)),
+          _summaryCard(context, l10n.planFlowSummaryThemeLabel, _theme!.name, onEdit: () => _jumpTo(1)),
         if ((_pkg?.isCustomizable ?? false) && _balloonColorMode != null && _balloonColors.isNotEmpty)
           _summaryCard(
             context,
-            'Balloon Colours',
-            '${_balloonColorMode == 'dual' ? 'Dual' : 'Single'} · ${_balloonColors.join(', ')}',
+            l10n.planFlowSummaryBalloonColoursLabel,
+            '${_balloonColorMode == 'dual' ? l10n.planFlowDualLabel : l10n.planFlowSingleLabel} · '
+                '${_balloonColors.map((n) => _balloonColorLabel(context, n)).join(', ')}',
             onEdit: () => _jumpTo(1),
           ),
         if (selectedOptional.isNotEmpty)
-          _summaryCard(context, 'Add-ons', selectedOptional.map((i) {
+          _summaryCard(context, l10n.planFlowSummaryAddOnsLabel, selectedOptional.map((i) {
             final qty = _itemQuantities[i.id] ?? i.quantity;
-            return qty > 1 ? '${i.name} ×$qty' : i.name;
+            return qty > 1 ? l10n.planFlowAddOnQuantityLabel(i.name, qty) : i.name;
           }).join(', '), onEdit: () => _jumpTo(2)),
-        _summaryCard(context, 'Date & Time', '${DateFormat('d MMMM yyyy').format(_eventDate)} · 6:30 PM', onEdit: () => _jumpTo(3)),
-        _summaryCard(context, 'Guest Count', '$_totalGuests Guests', onEdit: () => _jumpTo(4)),
+        _summaryCard(context, l10n.planFlowSummaryDateTimeLabel,
+            l10n.planFlowDateTimeSummaryValue(DateFormat('d MMMM yyyy').format(_eventDate), l10n.planFlowDefaultEventTime),
+            onEdit: () => _jumpTo(3)),
+        _summaryCard(context, l10n.planFlowSummaryGuestCountLabel, l10n.planFlowGuestCountValue(_totalGuests), onEdit: () => _jumpTo(4)),
         const SizedBox(height: 16),
-        _sectionHeader('Address'),
+        _sectionHeader(l10n.planFlowAddressSectionHeader),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: _cardDeco(ty),
           child: Column(
             children: [
               if (_addresses.isEmpty)
-                TyButton('Add Address', kind: TyButtonKind.ghost, leadingIcon: Icons.add_location_alt_outlined, onTap: _openAddAddress)
+                TyButton(l10n.planFlowAddAddressButtonLabel, kind: TyButtonKind.ghost, leadingIcon: Icons.add_location_alt_outlined, onTap: _openAddAddress)
               else
                 RadioGroup<Address>(
                   groupValue: _address,
@@ -1562,7 +1629,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        _sectionHeader('Promo Code'),
+        _sectionHeader(l10n.planFlowPromoCodeSectionHeader),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: _cardDeco(ty),
@@ -1575,16 +1642,16 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     child: TextField(
                       controller: _couponCtrl,
                       textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                        hintText: 'Have a promo code?',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        hintText: l10n.planFlowPromoCodeHint,
+                        border: const OutlineInputBorder(),
                         isDense: true,
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   TyButton(
-                    _couponLoading ? 'Checking…' : 'Apply',
+                    _couponLoading ? l10n.planFlowCheckingLabel : l10n.planFlowApplyButtonLabel,
                     kind: TyButtonKind.soft,
                     onTap: _couponLoading ? null : _applyCoupon,
                   ),
@@ -1597,7 +1664,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               if (_discountPreview != null && _couponError == null && _discountPreview!.appliedDiscounts.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Applied: ${_discountPreview!.appliedDiscounts.map((d) => d.publicOfferTitle ?? d.title).join(', ')}',
+                  l10n.planFlowAppliedDiscountsLabel(
+                      _discountPreview!.appliedDiscounts.map((d) => d.publicOfferTitle ?? d.title).join(', ')),
                   style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
                 ),
               ],
@@ -1605,7 +1673,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        _sectionHeader('Price Breakdown'),
+        _sectionHeader(l10n.planFlowPriceBreakdownSectionHeader),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: _cardDeco(ty),
@@ -1614,6 +1682,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             // customer reaches this step (evaluated as soon as a coupon is
             // applied); the authoritative amount is always recomputed
             // server-side at booking creation regardless of what's shown here.
+            final l10n = AppLocalizations.of(context)!;
             final preview = _discountPreview;
             final hasDiscount = preview != null && _couponError == null && preview.totalDiscount > 0;
             final subtotal = (_pkg?.price ?? 0) + itemsTotal;
@@ -1621,12 +1690,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             final total = hasDiscount ? (subtotal - preview.totalDiscount) + tax : subtotal + tax;
             return Column(
               children: [
-                _priceRow('Package Base Price', _pkg?.price.toInt() ?? 0),
-                if (itemsTotal > 0) _priceRow('Add-ons', itemsTotal.toInt()),
-                if (hasDiscount) _priceRow('Discount', -preview.totalDiscount.toInt()),
-                _priceRow('GST (18%)', tax.toInt()),
+                _priceRow(l10n.planFlowPackageBasePriceLabel, _pkg?.price.toInt() ?? 0),
+                if (itemsTotal > 0) _priceRow(l10n.planFlowSummaryAddOnsLabel, itemsTotal.toInt()),
+                if (hasDiscount) _priceRow(l10n.planFlowDiscountLabel, -preview.totalDiscount.toInt()),
+                _priceRow(l10n.planFlowGstLabel, tax.toInt()),
                 const Divider(height: 24),
-                _priceRow('Total Amount', total.toInt(), bold: true),
+                _priceRow(l10n.planFlowTotalAmountLabel, total.toInt(), bold: true),
               ],
             );
           }),
@@ -1772,6 +1841,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final filtered = widget.contacts
         .where((c) => c.displayName.toLowerCase().contains(_query.toLowerCase()))
         .toList();
@@ -1792,13 +1862,13 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Select Guests', style: TyType.display(20, color: ty.ink)),
+            Text(l10n.planFlowSelectGuestsTitle, style: TyType.display(20, color: ty.ink)),
             const SizedBox(height: 12),
             TextField(
               onChanged: (v) => setState(() => _query = v),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: 'Search contacts',
+                hintText: l10n.planFlowSearchContactsHint,
                 prefixIcon: const Icon(Icons.search_rounded, size: 20),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 filled: true,
@@ -1833,7 +1903,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
             Padding(
               padding: EdgeInsets.fromLTRB(0, 12, 0, MediaQuery.of(context).padding.bottom + 16),
               child: TyButton(
-                _selected.isEmpty ? 'Select contacts' : 'Add ${_selected.length} guest${_selected.length == 1 ? '' : 's'}',
+                _selected.isEmpty ? l10n.planFlowSelectContactsLabel : l10n.planFlowAddGuestsCountLabel(_selected.length),
                 full: true,
                 enabled: _selected.isNotEmpty,
                 onTap: () => Navigator.pop(context, _selected.toList()),

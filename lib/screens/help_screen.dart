@@ -6,6 +6,7 @@ import '../theme/typography.dart';
 import '../data/services/common_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'feedback_screen.dart';
 import 'raise_ticket_screen.dart';
 
@@ -66,10 +67,11 @@ class _HelpScreenState extends State<HelpScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Help & Support'),
+      appBar: tyAppBar(context, title: l10n.helpTitle),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
@@ -88,7 +90,7 @@ class _HelpScreenState extends State<HelpScreen> {
                   child: TextField(
                     controller: _searchCtrl,
                     decoration: InputDecoration(
-                      hintText: 'Search help topics...',
+                      hintText: l10n.helpSearchHint,
                       hintStyle: TyType.sans(14, color: ty.ink3),
                       border: InputBorder.none,
                       isDense: true,
@@ -120,26 +122,26 @@ class _HelpScreenState extends State<HelpScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text('Could not load FAQs. Please try again.',
+                      child: Text(l10n.helpLoadFaqsError,
                           style: TyType.sans(13.5, color: ty.ink2)),
                     ),
-                    TextButton(onPressed: _loadFaqs, child: const Text('Retry')),
+                    TextButton(onPressed: _loadFaqs, child: Text(l10n.commonRetry)),
                   ],
                 ),
               ),
             ],
             if (_filtered.isEmpty && _searchCtrl.text.isEmpty) ...[
-              Text('POPULAR TOPICS', style: TyType.eyebrow(11, color: ty.ink3)),
+              Text(l10n.helpPopularTopicsLabel, style: TyType.eyebrow(11, color: ty.ink3)),
               const SizedBox(height: 16),
-              _topicCard(context, Icons.celebration_outlined, 'Planning your first event'),
-              _topicCard(context, Icons.card_membership_rounded, 'Membership benefits'),
-              _topicCard(context, Icons.account_balance_wallet_outlined, 'Payments & Refunds'),
-              _topicCard(context, Icons.security_rounded, 'Privacy & Safety'),
+              _topicCard(context, Icons.celebration_outlined, l10n.helpTopicPlanningFirstEvent),
+              _topicCard(context, Icons.card_membership_rounded, l10n.helpTopicMembershipBenefits),
+              _topicCard(context, Icons.account_balance_wallet_outlined, l10n.helpTopicPaymentsRefunds),
+              _topicCard(context, Icons.security_rounded, l10n.helpTopicPrivacySafety),
               const SizedBox(height: 32),
             ],
 
             if (_filtered.isNotEmpty) ...[
-              Text('FAQs', style: TyType.eyebrow(11, color: ty.ink3)),
+              Text(l10n.helpFaqsLabel, style: TyType.eyebrow(11, color: ty.ink3)),
               const SizedBox(height: 12),
               ..._filtered.asMap().entries.map((entry) {
                 final i = entry.key;
@@ -174,7 +176,7 @@ class _HelpScreenState extends State<HelpScreen> {
               Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 32),
-                  child: Text('No results for "${_searchCtrl.text}"', style: TyType.sans(14, color: ty.ink3)),
+                  child: Text(l10n.helpNoResultsMessage(_searchCtrl.text), style: TyType.sans(14, color: ty.ink3)),
                 ),
               ),
             ],
@@ -190,17 +192,17 @@ class _HelpScreenState extends State<HelpScreen> {
             ),
             child: Column(
               children: [
-                Text('Still need help?', style: TyType.display(20, color: ty.ink)),
+                Text(l10n.helpStillNeedHelpHeading, style: TyType.display(20, color: ty.ink)),
                 const SizedBox(height: 8),
-                Text('Our support team is available 24/7 to assist you.',
+                Text(l10n.helpSupportAvailableMessage,
                     textAlign: TextAlign.center,
                     style: TyType.sans(14, color: ty.ink2)),
                 const SizedBox(height: 24),
-                TyButton('Raise a Ticket', full: true, onTap: () {
+                TyButton(l10n.helpRaiseTicketButtonLabel, full: true, onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RaiseTicketScreen()));
                 }),
                 const SizedBox(height: 12),
-                TyButton('Share Feedback', kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.rate_review_outlined, onTap: () {
+                TyButton(l10n.helpShareFeedbackButtonLabel, kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.rate_review_outlined, onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
                 }),
               ],

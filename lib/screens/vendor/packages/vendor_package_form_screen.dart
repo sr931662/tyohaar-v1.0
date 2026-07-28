@@ -9,6 +9,7 @@ import '../../../data/models.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
 import '../../../data/services/package_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Create/edit a package — mirrors the web PackageFormModal.
 class VendorPackageFormScreen extends StatefulWidget {
@@ -110,20 +111,20 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
       if (mounted) {
         setState(() => _uploadingCover = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaPermissionNeededMessage)),
         );
       }
     } catch (_) {
       if (mounted) {
         setState(() => _uploadingCover = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaUploadFailedMessage)));
       }
     }
   }
 
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty || _priceCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name and base price are required.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorPackageFormNameAndPriceRequiredError)));
       return;
     }
     setState(() => _isSaving = true);
@@ -152,7 +153,7 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save package.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorPackageFormSaveError)));
       }
     }
   }
@@ -160,15 +161,16 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final isEdit = widget.existing != null;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: AppBar(title: Text(isEdit ? 'Edit Package' : 'New Package')),
+      appBar: AppBar(title: Text(isEdit ? l10n.vendorPackageFormEditTitle : l10n.vendorPackageFormNewTitle)),
       body: ListView(
         padding: EdgeInsets.fromLTRB(18, 18, 18, 18 + MediaQuery.of(context).padding.bottom),
         children: [
-          _labeled(ty, 'Cover Image', GestureDetector(
+          _labeled(ty, l10n.vendorPackageFormCoverImageLabel, GestureDetector(
             onTap: _uploadingCover ? null : _pickCoverImage,
             child: Container(
               height: 140,
@@ -185,25 +187,25 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
                       : null,
             ),
           )),
-          _textField(ty, 'Name *', _nameCtrl),
-          _textField(ty, 'Short Description', _shortDescCtrl),
-          _textField(ty, 'Description', _descCtrl, maxLines: 4),
-          _textField(ty, 'Base Price (₹) *', _priceCtrl, keyboardType: TextInputType.number),
+          _textField(ty, l10n.vendorPackageFormNameLabel, _nameCtrl),
+          _textField(ty, l10n.vendorPackageFormShortDescriptionLabel, _shortDescCtrl),
+          _textField(ty, l10n.vendorPackageFormDescriptionLabel, _descCtrl, maxLines: 4),
+          _textField(ty, l10n.vendorPackageFormBasePriceLabel, _priceCtrl, keyboardType: TextInputType.number),
           Row(children: [
-            Expanded(child: _textField(ty, 'Min Guests', _minGuestsCtrl, keyboardType: TextInputType.number)),
+            Expanded(child: _textField(ty, l10n.vendorPackageFormMinGuestsLabel, _minGuestsCtrl, keyboardType: TextInputType.number)),
             const SizedBox(width: 12),
-            Expanded(child: _textField(ty, 'Max Guests', _maxGuestsCtrl, keyboardType: TextInputType.number)),
+            Expanded(child: _textField(ty, l10n.vendorPackageFormMaxGuestsLabel, _maxGuestsCtrl, keyboardType: TextInputType.number)),
           ]),
-          _textField(ty, 'Duration (hours)', _durationCtrl, keyboardType: TextInputType.number),
-          _textField(ty, 'City Slug', _cityCtrl),
+          _textField(ty, l10n.vendorPackageFormDurationLabel, _durationCtrl, keyboardType: TextInputType.number),
+          _textField(ty, l10n.vendorPackageFormCitySlugLabel, _cityCtrl),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('Customizable', style: TyType.sans(14, color: ty.ink)),
+            title: Text(l10n.vendorPackageFormCustomizableLabel, style: TyType.sans(14, color: ty.ink)),
             value: _isCustomizable,
             onChanged: (v) => setState(() => _isCustomizable = v),
           ),
           const SizedBox(height: 8),
-          Text('Occasions', style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w600)),
+          Text(l10n.vendorPackageFormOccasionsLabel, style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w600)),
           const SizedBox(height: 8),
           _isLoadingOccasions
               ? const CircularProgressIndicator()
@@ -227,9 +229,9 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
                 ),
           if (_isCustomizable) ...[
             const SizedBox(height: 24),
-            Text('Theme', style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w600)),
+            Text(l10n.vendorPackageFormThemeLabel, style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w600)),
             const SizedBox(height: 8),
-            Text('Pick the one theme you\'ll actually deliver for this package — customers will see this exact theme when booking.', style: TyType.sans(12, color: ty.ink3)),
+            Text(l10n.vendorPackageFormThemeHelperText, style: TyType.sans(12, color: ty.ink3)),
             const SizedBox(height: 12),
             _isLoadingThemes
                 ? const Center(child: CircularProgressIndicator())
@@ -262,7 +264,7 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: _isSaving ? null : _save,
-            child: Text(_isSaving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Create Package')),
+            child: Text(_isSaving ? l10n.vendorAvailabilitySavingLabel : (isEdit ? l10n.vendorAvailabilitySaveChangesLabel : l10n.vendorPackageFormCreateButtonLabel)),
           ),
         ],
       ),

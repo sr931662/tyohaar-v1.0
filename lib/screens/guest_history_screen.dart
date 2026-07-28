@@ -7,13 +7,17 @@ import '../data/models.dart';
 import '../data/services/celebration_service.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
+import '../l10n/generated/app_localizations.dart';
 
-const _kEventTypeLabels = <String, String>{
-  'invited': 'Invited',
-  'invitation_opened': 'Opened the invite',
-  'rsvp_changed': 'RSVP updated',
-  'checked_in': 'Checked in',
-};
+Map<String, String> _kEventTypeLabels(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  return <String, String>{
+    'invited': l10n.guestHistoryEventInvited,
+    'invitation_opened': l10n.guestHistoryEventInvitationOpened,
+    'rsvp_changed': l10n.guestHistoryEventRsvpChanged,
+    'checked_in': l10n.guestHistoryEventCheckedIn,
+  };
+}
 
 const _kEventTypeIcons = <String, IconData>{
   'invited': Icons.mail_outline_rounded,
@@ -58,7 +62,9 @@ class _GuestHistoryScreenState extends State<GuestHistoryScreen> {
           : celebrations.first;
       await _loadForCelebration(selected, celebrations);
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load guest history.'; _isLoading = false; });
+      if (mounted) {
+        setState(() { _error = AppLocalizations.of(context)!.guestHistoryLoadError; _isLoading = false; });
+      }
     }
   }
 
@@ -78,19 +84,21 @@ class _GuestHistoryScreenState extends State<GuestHistoryScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load guest history.'; _isLoading = false; });
+      if (mounted) {
+        setState(() { _error = AppLocalizations.of(context)!.guestHistoryLoadError; _isLoading = false; });
+      }
     }
   }
 
-  String _guestName(String guestId) {
+  String _guestName(BuildContext context, String guestId) {
     final match = _guests.where((g) => g.id == guestId);
-    return match.isNotEmpty ? match.first.name : 'A guest';
+    return match.isNotEmpty ? match.first.name : AppLocalizations.of(context)!.guestHistoryUnknownGuestFallback;
   }
 
-  String _describeEvent(GuestHistoryEvent e) {
-    final label = _kEventTypeLabels[e.eventType] ?? e.eventType;
+  String _describeEvent(BuildContext context, GuestHistoryEvent e) {
+    final label = _kEventTypeLabels(context)[e.eventType] ?? e.eventType;
     if (e.eventType == 'rsvp_changed' && e.newStatus != null) {
-      return '$label to ${e.newStatus}';
+      return AppLocalizations.of(context)!.guestHistoryEventWithStatus(label, e.newStatus!);
     }
     return label;
   }
@@ -98,6 +106,7 @@ class _GuestHistoryScreenState extends State<GuestHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_isLoading && _celebrations.isEmpty) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
@@ -106,10 +115,10 @@ class _GuestHistoryScreenState extends State<GuestHistoryScreen> {
     if (_celebrations.isEmpty) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: 'Guest History'),
+        appBar: tyAppBar(context, title: l10n.guestHistoryTitle),
         body: TyStateScreen.empty(
-          title: 'No celebrations yet',
-          message: 'Once you start planning, guest activity will show up here.',
+          title: l10n.guestHistoryNoCelebrationsTitle,
+          message: l10n.guestHistoryNoCelebrationsMessage,
           icon: Icons.history_rounded,
         ),
       );
@@ -119,7 +128,7 @@ class _GuestHistoryScreenState extends State<GuestHistoryScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Guest History'),
+      appBar: tyAppBar(context, title: l10n.guestHistoryTitle),
       body: RefreshIndicator(
         onRefresh: _loadData,
         color: ty.saffron,
@@ -127,7 +136,7 @@ class _GuestHistoryScreenState extends State<GuestHistoryScreen> {
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
           children: [
             if (_celebrations.length > 1) ...[
-              Text('EVENT', style: TyType.eyebrow(11, color: ty.ink3)),
+              Text(l10n.guestHistorySelectorLabel, style: TyType.eyebrow(11, color: ty.ink3)),
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -163,7 +172,7 @@ class _GuestHistoryScreenState extends State<GuestHistoryScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 40),
                 child: Center(
-                  child: Text('No guest activity yet for this celebration.',
+                  child: Text(l10n.guestHistoryNoActivityMessage,
                       style: TyType.sans(14, color: ty.ink2)),
                 ),
               )
@@ -199,10 +208,10 @@ class _GuestHistoryScreenState extends State<GuestHistoryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_guestName(e.celebrationGuestId),
+                Text(_guestName(context, e.celebrationGuestId),
                     style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text(_describeEvent(e), style: TyType.sans(12.5, color: ty.ink2)),
+                Text(_describeEvent(context, e), style: TyType.sans(12.5, color: ty.ink2)),
               ],
             ),
           ),

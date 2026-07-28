@@ -9,6 +9,7 @@ import '../theme/responsive.dart';
 import '../data/api_client.dart';
 import '../data/models.dart';
 import '../data/services/celebration_service.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../widgets/avatar.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/ty_chip.dart';
@@ -68,7 +69,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
         if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load guests.'; _isLoading = false; });
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.guestsLoadError; _isLoading = false; });
     }
   }
 
@@ -80,19 +81,20 @@ class _GuestsScreenState extends State<GuestsScreen> {
     return '${ApiClient.baseUrl}public/rsvp/${g.rsvpToken}/page';
   }
 
-  Future<void> _shareInvite(Guest g) async {
+  Future<void> _shareInvite(BuildContext context, Guest g) async {
     final link = _rsvpPageUrl(g);
     if (link.isEmpty) return;
-    final message = 'Hi ${g.name}! You\'re invited 🎉\n\n'
-        'Please RSVP here: $link';
-    await Share.share(message, subject: 'You\'re invited!');
+    final l10n = AppLocalizations.of(context)!;
+    final message = l10n.guestsShareInviteMessage(g.name, link);
+    await Share.share(message, subject: l10n.guestsShareInviteSubject);
   }
 
   Future<void> _openAddGuestDialog() async {
+    final l10n = AppLocalizations.of(context)!;
     final celebrationId = _activeCelebrationId;
     if (celebrationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Create a celebration first to add guests.')),
+        SnackBar(content: Text(l10n.guestsCreateCelebrationFirstMessage)),
       );
       return;
     }
@@ -101,18 +103,18 @@ class _GuestsScreenState extends State<GuestsScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Add Guest'),
+        title: Text(l10n.guestsAddGuestDialogTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
+            TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.guestsNameFieldLabel)),
             const SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone (optional)'), keyboardType: TextInputType.phone),
+            TextField(controller: phoneCtrl, decoration: InputDecoration(labelText: l10n.guestsPhoneFieldLabel), keyboardType: TextInputType.phone),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.guestsAddButtonLabel)),
         ],
       ),
     );
@@ -129,7 +131,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not add guest. Please try again.')),
+          SnackBar(content: Text(l10n.guestsAddGuestError)),
         );
       }
     } finally {
@@ -138,16 +140,17 @@ class _GuestsScreenState extends State<GuestsScreen> {
   }
 
   Future<void> _removeGuest(Guest g) async {
+    final l10n = AppLocalizations.of(context)!;
     final celebrationId = _activeCelebrationId;
     if (celebrationId == null) return;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove guest?'),
-        content: Text('Remove ${g.name} from your guest list?'),
+        title: Text(l10n.guestsRemoveGuestDialogTitle),
+        content: Text(l10n.guestsRemoveGuestConfirmMessage(g.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.guestsRemoveButtonLabel, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -158,7 +161,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not remove guest.')),
+          SnackBar(content: Text(l10n.guestsRemoveGuestError)),
         );
       }
     }
@@ -168,6 +171,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_isLoading) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
@@ -176,7 +180,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
     if (_error != null) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: 'Guest list'),
+        appBar: tyAppBar(context, title: l10n.guestsTitle),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -187,7 +191,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
               SizedBox(height: resp.h(16)),
               TextButton(
                 onPressed: _loadGuests,
-                child: Text('Try Again', style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
+                child: Text(l10n.commonTryAgain, style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
               ),
             ],
           ),
@@ -207,7 +211,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
     }).toList();
 
     return Scaffold(
-      appBar: tyAppBar(context, title: 'Guest list', actions: [
+      appBar: tyAppBar(context, title: l10n.guestsTitle, actions: [
         Padding(
           padding: EdgeInsets.only(right: resp.w(16)),
           child: ChromeIconButton(
@@ -234,7 +238,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
                   if (_guests.isEmpty) {
                     return Center(child: Padding(
                       padding: EdgeInsets.only(top: resp.h(40)),
-                      child: Text('No guests in your list yet — tap + to add one', style: TyType.sans(resp.sp(14), color: ty.ink3)),
+                      child: Text(l10n.guestsEmptyMessage, style: TyType.sans(resp.sp(14), color: ty.ink3)),
                     ));
                   }
                   final i = index - 1;
@@ -250,6 +254,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
 
   Widget _guestsHeader(BuildContext context, TyColors ty, TyResponsive resp,
       {required int total, required int yes, required int maybe, required int pending}) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -266,7 +271,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
                 SizedBox(width: resp.w(6)),
                 Padding(
                   padding: EdgeInsets.only(bottom: resp.h(6)),
-                  child: Text('guests invited',
+                  child: Text(l10n.guestsInvitedLabel,
                       style: TyType.sans(resp.sp(13), color: ty.ink2)),
                 ),
               ],
@@ -289,9 +294,9 @@ class _GuestsScreenState extends State<GuestsScreen> {
             ),
             SizedBox(height: resp.h(11)),
             Wrap(spacing: resp.w(16), runSpacing: resp.h(6), children: [
-              _legend(context, ty.leaf, '$yes coming'),
-              _legend(context, ty.saffron, '$maybe maybe'),
-              _legend(context, ty.ink3, '$pending pending'),
+              _legend(context, ty.leaf, l10n.guestsComingCountLabel(yes)),
+              _legend(context, ty.saffron, l10n.guestsMaybeCountLabel(maybe)),
+              _legend(context, ty.ink3, l10n.guestsPendingCountLabel(pending)),
             ]),
           ],
         ),
@@ -316,7 +321,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
                     decoration: InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
-                      hintText: 'Search a guest…',
+                      hintText: l10n.guestsSearchHint,
                       hintStyle: TyType.sans(resp.sp(14), color: ty.ink3),
                     ),
                     style: TyType.sans(resp.sp(14), color: ty.ink),
@@ -335,7 +340,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
           Padding(
             padding: EdgeInsets.only(right: resp.w(8)),
             child: TyChip(
-                label: f,
+                label: _filterLabel(l10n, f),
                 active: _filter == f,
                 onTap: () => setState(() => _filter = f)),
           ),
@@ -345,17 +350,29 @@ class _GuestsScreenState extends State<GuestsScreen> {
     );
   }
 
+  String _filterLabel(AppLocalizations l10n, String filter) {
+    switch (filter) {
+      case 'Coming':
+        return l10n.guestsStatusComing;
+      case 'Pending':
+        return l10n.guestsStatusPending;
+      default:
+        return l10n.guestsFilterAllLabel;
+    }
+  }
+
   Widget _guestRow(BuildContext context, Guest g, int i, TyResponsive resp) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final map = {
-      'attending': [ty.leaf, 'Coming'],
-      'maybe': [ty.saffron, 'Maybe'],
-      'pending': [ty.ink3, 'Pending'],
-      'ignored': [ty.rose, 'Ignored'],
-      'declined': [ty.rose, "Can't come"],
+      'attending': [ty.leaf, l10n.guestsStatusComing],
+      'maybe': [ty.saffron, l10n.guestsStatusMaybe],
+      'pending': [ty.ink3, l10n.guestsStatusPending],
+      'ignored': [ty.rose, l10n.guestsStatusIgnored],
+      'declined': [ty.rose, l10n.guestsStatusDeclined],
     };
     final c = (map[g.displayStatus]?[0] ?? ty.ink3) as Color;
-    final lbl = (map[g.displayStatus]?[1] ?? 'Unknown') as String;
+    final lbl = (map[g.displayStatus]?[1] ?? l10n.guestsStatusUnknown) as String;
 
     return Dismissible(
       key: ValueKey(g.id),
@@ -403,8 +420,8 @@ class _GuestsScreenState extends State<GuestsScreen> {
             ),
             IconButton(
               icon: Icon(Icons.ios_share_rounded, size: resp.sp(20), color: ty.saffron),
-              tooltip: 'Share invite',
-              onPressed: () => _shareInvite(g),
+              tooltip: l10n.guestsShareInviteTooltip,
+              onPressed: () => _shareInvite(context, g),
             ),
           ],
         ),
@@ -415,6 +432,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
   void _showQRCheckin(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -432,10 +450,10 @@ class _GuestsScreenState extends State<GuestsScreen> {
               child: Icon(Icons.qr_code_2_rounded, size: resp.w(200), color: ty.ink),
             ),
             SizedBox(height: resp.h(24)),
-            Text('Digital Check-in', style: TyType.display(resp.sp(24), color: ty.ink)),
+            Text(l10n.guestsQrCheckinTitle, style: TyType.display(resp.sp(24), color: ty.ink)),
             SizedBox(height: resp.h(12)),
             Text(
-              'Share this QR with your guests for quick entry and live RSVP tracking at the venue.',
+              l10n.guestsQrCheckinMessage,
               textAlign: TextAlign.center,
               style: TyType.sans(resp.sp(14), color: ty.ink2, height: 1.5),
             ),
@@ -444,7 +462,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
+            child: Text(l10n.guestsCloseButtonLabel, style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
           ),
         ],
       ),

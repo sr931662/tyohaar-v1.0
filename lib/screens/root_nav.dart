@@ -25,6 +25,7 @@ import 'membership_plan_screen.dart';
 import 'manage_address_screen.dart';
 import 'help_screen.dart';
 import 'privacy_policy_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 /// The app's primary shell: five destinations + a raised central
 /// "Start a celebration" button that opens the planning flow.
@@ -137,8 +138,8 @@ class _RootNavState extends State<RootNav> {
 
   void _openCreate() {
     AuthManager.instance.checkAuth(
-      context, 
-      action: 'start a celebration',
+      context,
+      action: AppLocalizations.of(context)!.rootNavActionStartCelebration,
       onAuthenticated: () {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const PlanFlowScreen()),
@@ -166,7 +167,7 @@ class _RootNavState extends State<RootNav> {
           if (i == 1 || i == 3) {
              AuthManager.instance.checkAuth(
               context,
-              action: i == 1 ? 'view your plans' : 'access your account',
+              action: i == 1 ? AppLocalizations.of(context)!.rootNavActionViewPlans : AppLocalizations.of(context)!.rootNavActionAccessAccount,
               onAuthenticated: () => _setIndex(i),
             );
           } else {
@@ -222,7 +223,7 @@ class _RootNavState extends State<RootNav> {
           if (i == 1 || i == 3) {
             AuthManager.instance.checkAuth(
               context,
-              action: i == 1 ? 'view your plans' : 'access your account',
+              action: i == 1 ? AppLocalizations.of(context)!.rootNavActionViewPlans : AppLocalizations.of(context)!.rootNavActionAccessAccount,
               onAuthenticated: () => _setIndex(i),
             );
           } else {
@@ -262,6 +263,7 @@ class _StickyHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     final bool useBlur = isTransparent && isScrolled;
 
     // In transparent mode at the top, we want white text if the theme is dark 
@@ -338,7 +340,7 @@ class _StickyHeader extends StatelessWidget {
                           child: Text(
                             (currentCity?.trim().isNotEmpty ?? false)
                                 ? currentCity!.toUpperCase()
-                                : 'CURRENT LOCATION',
+                                : l10n.rootNavCurrentLocationLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TyType.eyebrow(resp.sp(10), color: subTextColor),
@@ -349,7 +351,7 @@ class _StickyHeader extends StatelessWidget {
                   ),
                   SizedBox(height: resp.h(2)),
                   Text(
-                    'Namaste, ${user?.firstName ?? user?.displayName.split(' ').first ?? 'there'}',
+                    l10n.rootNavGreetingLabel(user?.firstName ?? user?.displayName.split(' ').first ?? l10n.rootNavGreetingFallbackName),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TyType.display(
@@ -453,6 +455,7 @@ class _AppSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     return Drawer(
       backgroundColor: ty.paper,
       width: MediaQuery.of(context).size.width * 0.82,
@@ -463,18 +466,18 @@ class _AppSidebar extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 12),
               children: [
-                _drawerItem(context, Icons.home_outlined, 'Home', 0),
-                _drawerItem(context, Icons.event_note_outlined, 'My Plans', 1),
-                _drawerItem(context, Icons.storefront_outlined, 'Packages', 2),
-                _drawerItem(context, Icons.person_outline_rounded, 'Account', 3),
+                _drawerItem(context, Icons.home_outlined, l10n.rootNavHomeLabel, 0),
+                _drawerItem(context, Icons.event_note_outlined, l10n.rootNavMyPlansLabel, 1),
+                _drawerItem(context, Icons.storefront_outlined, l10n.rootNavPackagesLabel, 2),
+                _drawerItem(context, Icons.person_outline_rounded, l10n.rootNavAccountLabel, 3),
                 const Divider(height: 32, indent: 20, endIndent: 20, color: Colors.black12),
-                _drawerItem(context, Icons.card_membership_rounded, 'Membership', -1,
+                _drawerItem(context, Icons.card_membership_rounded, l10n.rootNavMembershipLabel, -1,
                     onTap: () => _push(context, const MembershipPlanScreen())),
-                _drawerItem(context, Icons.place_outlined, 'Manage Address', -1,
+                _drawerItem(context, Icons.place_outlined, l10n.rootNavManageAddressLabel, -1,
                     onTap: () => _push(context, const ManageAddressScreen())),
-                _drawerItem(context, Icons.help_outline_rounded, 'Help & Support', -1,
+                _drawerItem(context, Icons.help_outline_rounded, l10n.rootNavHelpSupportLabel, -1,
                     onTap: () => _push(context, const HelpScreen())),
-                _drawerItem(context, Icons.description_outlined, 'Privacy Policy', -1,
+                _drawerItem(context, Icons.description_outlined, l10n.rootNavPrivacyPolicyLabel, -1,
                     onTap: () => _push(context, const PrivacyPolicyScreen())),
               ],
             ),
@@ -487,9 +490,10 @@ class _AppSidebar extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final ty = context.ty;
-    final name = user?.displayName ?? 'Welcome';
+    final l10n = AppLocalizations.of(context)!;
+    final name = user?.displayName ?? l10n.rootNavWelcomeFallback;
     final sub = user?.email ?? user?.phone ?? '';
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'T';
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : l10n.rootNavAvatarInitialFallback;
 
     return Container(
       padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 20, 20, 24),
@@ -536,6 +540,7 @@ class _AppSidebar extends StatelessWidget {
 
   Widget _buildFooter(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       decoration: BoxDecoration(
@@ -549,7 +554,7 @@ class _AppSidebar extends StatelessWidget {
               Icon(themeController.isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
                   color: ty.ink3, size: 18),
               const SizedBox(width: 12),
-              Text(themeController.isDark ? 'Light Mode' : 'Dark Mode',
+              Text(themeController.isDark ? l10n.rootNavLightModeLabel : l10n.rootNavDarkModeLabel,
                   style: TyType.sans(13.5, color: ty.ink2, weight: FontWeight.w600)),
             ],
           ),
@@ -578,6 +583,7 @@ class _BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         resp.w(14),
@@ -605,14 +611,14 @@ class _BottomBar extends StatelessWidget {
                   selected: index == 0,
                   icon: Icons.home_outlined,
                   activeIcon: Icons.home_rounded,
-                  label: 'Home',
+                  label: l10n.rootNavHomeLabel,
                   onTap: () => onTap(0),
                 ),
                 _DockItem(
                   selected: index == 1,
                   icon: Icons.event_note_outlined,
                   activeIcon: Icons.event_note_rounded,
-                  label: 'Plans',
+                  label: l10n.rootNavPlansLabel,
                   onTap: () => onTap(1),
                 ),
                 SizedBox(
@@ -623,14 +629,14 @@ class _BottomBar extends StatelessWidget {
                   selected: index == 2,
                   icon: Icons.storefront_outlined,
                   activeIcon: Icons.storefront_rounded,
-                  label: 'Packages',
+                  label: l10n.rootNavPackagesLabel,
                   onTap: () => onTap(2),
                 ),
                 _DockItem(
                   selected: index == 3,
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
-                  label: 'Account',
+                  label: l10n.rootNavAccountLabel,
                   onTap: () => onTap(3),
                 ),
               ],

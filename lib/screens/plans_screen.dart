@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:intl/intl.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -10,6 +11,7 @@ import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
 import '../data/auth_manager.dart';
 import '../data/services/celebration_service.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'event_hub_screen.dart';
 import 'plan_flow/plan_flow_screen.dart';
 
@@ -41,7 +43,7 @@ class _PlansScreenState extends State<PlansScreen> {
       final list = await context.read<CelebrationService>().listCelebrations();
       if (mounted) setState(() { _celebrations = list; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load your plans.'; _loading = false; });
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.plansLoadError; _loading = false; });
     }
   }
 
@@ -55,8 +57,7 @@ class _PlansScreenState extends State<PlansScreen> {
   static String _dateLabel(DateTime? dt) {
     if (dt == null) return '';
     try {
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      return '${dt.day} ${months[dt.month - 1]}';
+      return DateFormat('d MMM').format(dt);
     } catch (_) {
       return '';
     }
@@ -66,6 +67,7 @@ class _PlansScreenState extends State<PlansScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     final topPadding = MediaQuery.of(context).padding.top + resp.h(85);
 
     return RefreshIndicator(
@@ -78,7 +80,7 @@ class _PlansScreenState extends State<PlansScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Your plans', style: TyType.display(resp.sp(26), color: ty.ink))),
+              Expanded(child: Text(l10n.plansHeading, style: TyType.display(resp.sp(26), color: ty.ink))),
               ChromeIconButton(
                 icon: Icons.add_rounded,
                 onTap: () => Navigator.of(context)
@@ -89,10 +91,10 @@ class _PlansScreenState extends State<PlansScreen> {
           ),
           SizedBox(height: resp.h(22)),
           if (_loading && _celebrations.isEmpty) ..._buildSkeletons(ty, resp),
-          if (!_loading && _error != null) _buildError(ty, resp),
+          if (!_loading && _error != null) _buildError(context, ty, resp),
           if (!_loading && _error == null && _celebrations.isEmpty) _buildEmpty(context, ty, resp),
           if (_celebrations.isNotEmpty) ...[
-            SectionHeader('In progress'),
+            SectionHeader(l10n.plansInProgressSectionLabel),
             ..._celebrations.map((c) => _celebrationCard(context, c)),
           ],
           SizedBox(height: resp.h(12)),
@@ -120,7 +122,8 @@ class _PlansScreenState extends State<PlansScreen> {
     );
   }
 
-  Widget _buildError(TyColors ty, TyResponsive resp) {
+  Widget _buildError(BuildContext context, TyColors ty, TyResponsive resp) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.symmetric(vertical: resp.h(32)),
       child: Column(
@@ -131,7 +134,7 @@ class _PlansScreenState extends State<PlansScreen> {
           SizedBox(height: resp.h(16)),
           TextButton(
             onPressed: _load,
-            child: Text('Try Again', style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
+            child: Text(l10n.commonTryAgain, style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
           ),
         ],
       ),
@@ -139,17 +142,18 @@ class _PlansScreenState extends State<PlansScreen> {
   }
 
   Widget _buildEmpty(BuildContext context, TyColors ty, TyResponsive resp) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.symmetric(vertical: resp.h(40)),
       child: Column(
         children: [
           Icon(Icons.event_note_outlined, size: resp.sp(56), color: ty.ink3),
           SizedBox(height: resp.h(16)),
-          Text('No celebrations yet',
+          Text(l10n.guestHistoryNoCelebrationsTitle,
               style: TyType.display(resp.sp(20), color: ty.ink), textAlign: TextAlign.center),
           SizedBox(height: resp.h(8)),
           Text(
-            'Start planning your first unforgettable event.',
+            l10n.plansEmptyMessage,
             style: TyType.sans(resp.sp(14), color: ty.ink2, height: 1.5),
             textAlign: TextAlign.center,
           ),
@@ -164,7 +168,7 @@ class _PlansScreenState extends State<PlansScreen> {
                 color: ty.saffron,
                 borderRadius: BorderRadius.circular(resp.w(16)),
               ),
-              child: Text('Start Planning',
+              child: Text(l10n.plansStartPlanningButtonLabel,
                   style: TyType.sans(resp.sp(15), color: Colors.white, weight: FontWeight.w700)),
             ),
           ),
@@ -176,6 +180,7 @@ class _PlansScreenState extends State<PlansScreen> {
   Widget _celebrationCard(BuildContext context, Celebration c) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     final title = c.title;
     final occasionName = c.occasionName ?? '';
     final tint = _tintFor(occasionName);
@@ -207,7 +212,7 @@ class _PlansScreenState extends State<PlansScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${occasionName.isNotEmpty ? occasionName : 'Celebration'}${dateStr.isNotEmpty ? ' · $dateStr' : ''}'.toUpperCase(),
+                    '${occasionName.isNotEmpty ? occasionName : l10n.plansCelebrationFallback}${dateStr.isNotEmpty ? ' · $dateStr' : ''}'.toUpperCase(),
                     style: TyType.eyebrow(resp.sp(11), color: ty.tint(tint)),
                   ),
                   SizedBox(height: resp.h(3)),
@@ -224,6 +229,7 @@ class _PlansScreenState extends State<PlansScreen> {
   }
 
   Widget _addNewCard(BuildContext context, TyColors ty, TyResponsive resp) {
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: () => Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const PlanFlowScreen()))
@@ -250,10 +256,10 @@ class _PlansScreenState extends State<PlansScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Plan a new celebration',
+                  Text(l10n.plansAddNewCelebrationLabel,
                       style: TyType.sans(resp.sp(15), color: ty.ink, weight: FontWeight.w700)),
                   SizedBox(height: resp.h(2)),
-                  Text('Start from any occasion', style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                  Text(l10n.plansStartFromAnyOccasionLabel, style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
                 ],
               ),
             ),

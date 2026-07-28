@@ -4,8 +4,20 @@ import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../data/vendor_models.dart';
 import '../../data/services/vendor_service.dart';
+import '../../l10n/generated/app_localizations.dart';
 
-const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+List<String> _dayLabels(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  return [
+    l10n.vendorAvailabilityDayMon,
+    l10n.vendorAvailabilityDayTue,
+    l10n.vendorAvailabilityDayWed,
+    l10n.vendorAvailabilityDayThu,
+    l10n.vendorAvailabilityDayFri,
+    l10n.vendorAvailabilityDaySat,
+    l10n.vendorAvailabilityDaySun,
+  ];
+}
 
 /// Weekly schedule editor — mirrors the web VendorAvailabilityPage as
 /// per-day expandable rows instead of a desktop 7-column grid.
@@ -91,11 +103,11 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
         return _vendorService.createAvailability(_vendorId!, day);
       }));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Availability saved.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorAvailabilitySavedMessage)));
         _load();
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save availability.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorAvailabilitySaveError)));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -114,6 +126,7 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_isLoading) {
       return const Scaffold(backgroundColor: Colors.transparent, body: Center(child: CircularProgressIndicator()));
@@ -121,7 +134,7 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
     if (_vendorId == null) {
       return Scaffold(
         backgroundColor: Colors.transparent,
-        body: Center(child: Text('Set up your vendor profile first.', style: TyType.sans(14, color: ty.ink2))),
+        body: Center(child: Text(l10n.vendorAvailabilitySetupProfileMessage, style: TyType.sans(14, color: ty.ink2))),
       );
     }
 
@@ -136,9 +149,9 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: OutlinedButton.icon(
-                onPressed: _copyMondayToWeekdays, 
+                onPressed: _copyMondayToWeekdays,
                 icon: const Icon(Icons.copy_rounded, size: 18),
-                label: const Text('Copy Monday to Weekdays'),
+                label: Text(l10n.vendorAvailabilityCopyMondayLabel),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -157,7 +170,7 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: Text(_isSaving ? 'Saving…' : 'Save Changes'),
+                child: Text(_isSaving ? l10n.vendorAvailabilitySavingLabel : l10n.vendorAvailabilitySaveChangesLabel),
               ),
             );
           }
@@ -171,7 +184,7 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(_dayLabels[i], style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+                    Text(_dayLabels(context)[i], style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
                     Switch(
                       value: day.isWorking,
                       onChanged: (v) => _updateDay(i, VendorAvailabilityDay(
@@ -184,24 +197,24 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
                 if (day.isWorking) ...[
                   const SizedBox(height: 8),
                   Row(children: [
-                    Expanded(child: _timeButton(ty, 'Open', day.openTime, () async {
+                    Expanded(child: _timeButton(ty, l10n.vendorAvailabilityOpenLabel, day.openTime, () async {
                       final t = await _pickTime(day.openTime);
                       _updateDay(i, VendorAvailabilityDay(id: day.id, dayOfWeek: i, isWorking: true, openTime: t, closeTime: day.closeTime, breakStart: day.breakStart, breakEnd: day.breakEnd, maxBookingsPerDay: day.maxBookingsPerDay));
                     })),
                     const SizedBox(width: 8),
-                    Expanded(child: _timeButton(ty, 'Close', day.closeTime, () async {
+                    Expanded(child: _timeButton(ty, l10n.vendorAvailabilityCloseLabel, day.closeTime, () async {
                       final t = await _pickTime(day.closeTime);
                       _updateDay(i, VendorAvailabilityDay(id: day.id, dayOfWeek: i, isWorking: true, openTime: day.openTime, closeTime: t, breakStart: day.breakStart, breakEnd: day.breakEnd, maxBookingsPerDay: day.maxBookingsPerDay));
                     })),
                   ]),
                   const SizedBox(height: 8),
                   Row(children: [
-                    Expanded(child: _timeButton(ty, 'Break Start', day.breakStart, () async {
+                    Expanded(child: _timeButton(ty, l10n.vendorAvailabilityBreakStartLabel, day.breakStart, () async {
                       final t = await _pickTime(day.breakStart);
                       _updateDay(i, VendorAvailabilityDay(id: day.id, dayOfWeek: i, isWorking: true, openTime: day.openTime, closeTime: day.closeTime, breakStart: t, breakEnd: day.breakEnd, maxBookingsPerDay: day.maxBookingsPerDay));
                     })),
                     const SizedBox(width: 8),
-                    Expanded(child: _timeButton(ty, 'Break End', day.breakEnd, () async {
+                    Expanded(child: _timeButton(ty, l10n.vendorAvailabilityBreakEndLabel, day.breakEnd, () async {
                       final t = await _pickTime(day.breakEnd);
                       _updateDay(i, VendorAvailabilityDay(id: day.id, dayOfWeek: i, isWorking: true, openTime: day.openTime, closeTime: day.closeTime, breakStart: day.breakStart, breakEnd: t, maxBookingsPerDay: day.maxBookingsPerDay));
                     })),
@@ -216,13 +229,14 @@ class _VendorAvailabilityScreenState extends State<VendorAvailabilityScreen> {
   }
 
   Widget _timeButton(TyColors ty, String label, String? value, VoidCallback onTap) {
+    final l10n = AppLocalizations.of(context)!;
     return OutlinedButton(
       onPressed: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label, style: TyType.sans(10.5, color: ty.ink3)),
-          Text(value?.substring(0, value.length >= 5 ? 5 : value.length) ?? '--:--', style: TyType.sans(13, color: ty.ink)),
+          Text(value?.substring(0, value.length >= 5 ? 5 : value.length) ?? l10n.vendorAvailabilityTimeUnsetLabel, style: TyType.sans(13, color: ty.ink)),
         ],
       ),
     );

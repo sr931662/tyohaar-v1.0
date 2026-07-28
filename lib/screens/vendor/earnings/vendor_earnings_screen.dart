@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
@@ -44,7 +45,8 @@ class _VendorEarningsScreenState extends State<VendorEarningsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _earnings == null
               ? TyStateScreen.error(
-                  message: 'Could not load earnings.',
+                  context,
+                  message: AppLocalizations.of(context)!.vendorEarningsLoadError,
                   onAction: _load,
                 )
               : RefreshIndicator(
@@ -54,18 +56,18 @@ class _VendorEarningsScreenState extends State<VendorEarningsScreen> {
                     children: [
                       Row(
                         children: [
-                          Expanded(child: _metricCard(ty, 'Total Collected', '₹${_earnings!.totalCollected.toStringAsFixed(0)}')),
+                          Expanded(child: _metricCard(ty, AppLocalizations.of(context)!.vendorEarningsTotalCollectedLabel, '₹${_earnings!.totalCollected.toStringAsFixed(0)}')),
                           const SizedBox(width: 10),
-                          Expanded(child: _metricCard(ty, 'Pending', '₹${_earnings!.pending.toStringAsFixed(0)}')),
+                          Expanded(child: _metricCard(ty, AppLocalizations.of(context)!.vendorEarningsPendingLabel, '₹${_earnings!.pending.toStringAsFixed(0)}')),
                         ],
                       ),
                       const SizedBox(height: 10),
-                      _metricCard(ty, 'Bookings Paid', '${_earnings!.bookingsPaid}'),
+                      _metricCard(ty, AppLocalizations.of(context)!.vendorEarningsBookingsPaidLabel, '${_earnings!.bookingsPaid}'),
                       const SizedBox(height: 20),
-                      Text('Payment History', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+                      Text(AppLocalizations.of(context)!.vendorEarningsPaymentHistoryLabel, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
                       const SizedBox(height: 10),
                       if (_earnings!.history.isEmpty)
-                        Text('No payments yet', style: TyType.sans(13, color: ty.ink2))
+                        Text(AppLocalizations.of(context)!.vendorEarningsNoPaymentsMessage, style: TyType.sans(13, color: ty.ink2))
                       else
                         ..._earnings!.history.map((p) => Container(
                               margin: const EdgeInsets.only(bottom: 10),

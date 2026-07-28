@@ -11,6 +11,7 @@ import '../data/services/user_service.dart';
 import '../data/services/auth_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
+import '../l10n/generated/app_localizations.dart';
 
 import 'my_bookings_screen.dart';
 import 'refer_earn_screen.dart';
@@ -43,11 +44,12 @@ class _AccountScreenState extends State<AccountScreen> {
     _loadUser();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       TutorialOverlay.show(context, screenKey: 'account', steps: [
         TutorialStep(
           targetKey: _quickActionsKey,
-          title: 'Everything about you, in one place',
-          description: 'Jump to your bookings, referrals, or help from here — and manage your profile and membership below.',
+          title: l10n.accountTutorialTitle,
+          description: l10n.accountTutorialDescription,
         ),
       ]);
     });
@@ -70,16 +72,17 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _handleLogout() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text('You will need to sign in again to access your account.'),
+        title: Text(l10n.accountSignOutConfirmTitle),
+        content: Text(l10n.accountSignOutConfirmMessage),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign out', style: TextStyle(color: Colors.red)),
+            child: Text(l10n.accountSignOutLabel, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -104,6 +107,7 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     final topPadding = MediaQuery.of(context).padding.top + resp.h(85);
 
     // Re-fetch user if AuthManager changed (auto-refresh when user updates)
@@ -120,43 +124,43 @@ class _AccountScreenState extends State<AccountScreen> {
         padding: EdgeInsets.fromLTRB(resp.w(18), topPadding, resp.w(18),
             resp.h(28) + MediaQuery.of(context).padding.bottom),
         children: [
-          Text('Account', style: TyType.display(resp.sp(26), color: ty.ink)),
+          Text(l10n.accountHeading, style: TyType.display(resp.sp(26), color: ty.ink)),
           SizedBox(height: resp.h(24)),
-          _buildIdentity(ty, resp),
+          _buildIdentity(context, ty, resp),
           SizedBox(height: resp.h(24)),
           _buildQuickActions(context),
           SizedBox(height: resp.h(24)),
-          _sectionHeader(resp, 'Personal'),
+          _sectionHeader(resp, l10n.accountSectionPersonalLabel),
           _menuGroup(context, resp, [
-            _menuItem(context, resp, Icons.person_outline_rounded, 'My Profile',
+            _menuItem(context, resp, Icons.person_outline_rounded, l10n.accountMyProfileLabel,
                 onTap: () => _push(context, const MyProfileScreen())),
-            _menuItem(context, resp, Icons.card_membership_rounded, 'My Membership Plan',
+            _menuItem(context, resp, Icons.card_membership_rounded, l10n.accountMyMembershipPlanLabel,
                 onTap: () => _push(context, const MembershipPlanScreen())),
-            _menuItem(context, resp, Icons.place_outlined, 'Manage Addresses',
+            _menuItem(context, resp, Icons.place_outlined, l10n.accountManageAddressesLabel,
                 onTap: () => _push(context, const ManageAddressScreen())),
           ]),
           SizedBox(height: resp.h(16)),
-          _sectionHeader(resp, 'Support & Legal'),
+          _sectionHeader(resp, l10n.accountSectionSupportLegalLabel),
           _menuGroup(context, resp, [
-            _menuItem(context, resp, Icons.info_outline_rounded, 'About App',
+            _menuItem(context, resp, Icons.info_outline_rounded, l10n.aboutAppTitle,
                 onTap: () => _push(context, const AboutAppScreen())),
-            _menuItem(context, resp, Icons.privacy_tip_outlined, 'Privacy Policy',
+            _menuItem(context, resp, Icons.privacy_tip_outlined, l10n.privacyPolicyTitle,
                 onTap: () => _push(context, const PrivacyPolicyScreen())),
-            _menuItem(context, resp, Icons.assignment_return_outlined, 'Cancellation & Refund Policy',
+            _menuItem(context, resp, Icons.assignment_return_outlined, l10n.cancellationPolicyTitle,
                 onTap: () => _push(context, const CancellationPolicyScreen())),
-            _menuItem(context, resp, Icons.description_outlined, 'Terms & Conditions',
+            _menuItem(context, resp, Icons.description_outlined, l10n.termsConditionsTitle,
                 onTap: () => _push(context, const TermsConditionsScreen())),
-            _menuItem(context, resp, Icons.confirmation_number_outlined, 'My Tickets',
+            _menuItem(context, resp, Icons.confirmation_number_outlined, l10n.accountMyTicketsLabel,
                 onTap: () => _push(context, const MyTicketsScreen())),
           ]),
           SizedBox(height: resp.h(16)),
           _menuGroup(context, resp, [
-            _menuItem(context, resp, Icons.delete_outline_rounded, 'Delete Account',
+            _menuItem(context, resp, Icons.delete_outline_rounded, l10n.accountDeleteAccountLabel,
                 color: ty.rose, onTap: () {}),
           ]),
           SizedBox(height: resp.h(24)),
           TyButton(
-            'Sign out',
+            l10n.accountSignOutLabel,
             kind: TyButtonKind.ghost,
             full: true,
             leadingIcon: Icons.logout_rounded,
@@ -167,7 +171,8 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  Widget _buildIdentity(TyColors ty, TyResponsive resp) {
+  Widget _buildIdentity(BuildContext context, TyColors ty, TyResponsive resp) {
+    final l10n = AppLocalizations.of(context)!;
     if (_loading && _user == null) {
       return Row(
         children: [
@@ -191,10 +196,10 @@ class _AccountScreenState extends State<AccountScreen> {
     }
 
     final user = _user;
-    final name = user?.displayName ?? 'Welcome';
+    final name = user?.displayName ?? l10n.accountWelcomeFallback;
     final sub = user?.phone ?? user?.email ?? '';
     final photoUrl = user?.profilePhotoUrl;
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'T';
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : l10n.accountAvatarInitialFallback;
 
     return Row(
       children: [
@@ -245,16 +250,17 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Widget _buildQuickActions(BuildContext context) {
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       key: _quickActionsKey,
       children: [
-        _quickAction(context, Icons.calendar_today_outlined, 'My Bookings',
+        _quickAction(context, Icons.calendar_today_outlined, l10n.accountMyBookingsLabel,
             () => _push(context, const MyBookingsScreen())),
         SizedBox(width: resp.w(12)),
-        _quickAction(context, Icons.card_giftcard_rounded, 'Refer & Earn',
+        _quickAction(context, Icons.card_giftcard_rounded, l10n.accountReferEarnLabel,
             () => _push(context, const ReferEarnScreen())),
         SizedBox(width: resp.w(12)),
-        _quickAction(context, Icons.help_outline_rounded, 'Help',
+        _quickAction(context, Icons.help_outline_rounded, l10n.accountHelpLabel,
             () => _push(context, const HelpScreen())),
       ],
     );

@@ -5,15 +5,35 @@ import '../theme/typography.dart';
 import '../data/services/feedback_service.dart';
 import '../widgets/common.dart';
 import '../widgets/ty_button.dart';
+import '../l10n/generated/app_localizations.dart';
 
-const Map<String, String> feedbackCategoryOptions = {
-  'General': 'general',
-  'Bug Report': 'bug_report',
-  'Feature Request': 'feature_request',
-  'Vendor Experience': 'vendor_experience',
-  'App Experience': 'app_experience',
-  'Other': 'other',
-};
+const List<String> feedbackCategorySlugs = [
+  'general',
+  'bug_report',
+  'feature_request',
+  'vendor_experience',
+  'app_experience',
+  'other',
+];
+
+String feedbackCategoryLabel(BuildContext context, String slug) {
+  final l10n = AppLocalizations.of(context)!;
+  switch (slug) {
+    case 'bug_report':
+      return l10n.feedbackCategoryBugReport;
+    case 'feature_request':
+      return l10n.feedbackCategoryFeatureRequest;
+    case 'vendor_experience':
+      return l10n.feedbackCategoryVendorExperience;
+    case 'app_experience':
+      return l10n.feedbackCategoryAppExperience;
+    case 'other':
+      return l10n.feedbackCategoryOther;
+    case 'general':
+    default:
+      return l10n.feedbackCategoryGeneral;
+  }
+}
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key});
@@ -26,7 +46,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   final FeedbackService _feedbackService = FeedbackService();
   final _commentsCtrl = TextEditingController();
   int _rating = 0;
-  String _category = 'General';
+  String _category = 'general';
   bool _isSubmitting = false;
   bool _submitted = false;
 
@@ -37,9 +57,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating.')),
+        SnackBar(content: Text(l10n.feedbackSelectRatingError)),
       );
       return;
     }
@@ -47,7 +68,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     try {
       await _feedbackService.submitFeedback(
         rating: _rating,
-        category: feedbackCategoryOptions[_category] ?? 'general',
+        category: _category,
         comments: _commentsCtrl.text,
       );
       if (mounted) setState(() { _isSubmitting = false; _submitted = true; });
@@ -55,7 +76,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       if (mounted) {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not submit feedback. Please try again.')),
+          SnackBar(content: Text(l10n.feedbackSubmitError)),
         );
       }
     }
@@ -64,11 +85,12 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_submitted) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: 'Feedback'),
+        appBar: tyAppBar(context, title: l10n.feedbackDoneAppBarTitle),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
@@ -77,15 +99,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               children: [
                 Icon(Icons.check_circle_rounded, size: 56, color: ty.leaf),
                 const SizedBox(height: 20),
-                Text('Thanks for your feedback!', style: TyType.display(20, color: ty.ink)),
+                Text(l10n.feedbackThanksHeading, style: TyType.display(20, color: ty.ink)),
                 const SizedBox(height: 8),
                 Text(
-                  'We read every submission and use it to improve Tyohaar.',
+                  l10n.feedbackThanksMessage,
                   textAlign: TextAlign.center,
                   style: TyType.sans(13.5, color: ty.ink3, height: 1.5),
                 ),
                 const SizedBox(height: 24),
-                TyButton('Done', onTap: () => Navigator.of(context).pop()),
+                TyButton(l10n.feedbackDoneButtonLabel, onTap: () => Navigator.of(context).pop()),
               ],
             ),
           ),
@@ -95,14 +117,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Share Feedback'),
+      appBar: tyAppBar(context, title: l10n.feedbackAppBarTitle),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
-          Text('How was your experience?', style: TyType.display(18, color: ty.ink)),
+          Text(l10n.feedbackHowWasExperienceHeading, style: TyType.display(18, color: ty.ink)),
           const SizedBox(height: 6),
           Text(
-            'Your feedback helps us make Tyohaar better for everyone.',
+            l10n.feedbackSubheading,
             style: TyType.sans(13.5, color: ty.ink3, height: 1.5),
           ),
           const SizedBox(height: 24),
@@ -127,7 +149,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          Text('Category', style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+          Text(l10n.feedbackCategoryFieldLabel, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -140,15 +162,17 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               child: DropdownButton<String>(
                 value: _category,
                 isExpanded: true,
-                items: feedbackCategoryOptions.keys
-                    .map((label) => DropdownMenuItem(value: label, child: Text(label, style: TyType.sans(14, color: ty.ink))))
+                items: feedbackCategorySlugs
+                    .map((slug) => DropdownMenuItem(
+                        value: slug,
+                        child: Text(feedbackCategoryLabel(context, slug), style: TyType.sans(14, color: ty.ink))))
                     .toList(),
                 onChanged: (v) => setState(() => _category = v ?? _category),
               ),
             ),
           ),
           const SizedBox(height: 20),
-          Text('Comments (optional)', style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+          Text(l10n.feedbackCommentsLabel, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
           const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(
@@ -162,7 +186,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               maxLength: 2000,
               style: TyType.sans(14, color: ty.ink),
               decoration: InputDecoration(
-                hintText: 'Tell us more...',
+                hintText: l10n.feedbackCommentsHint,
                 hintStyle: TyType.sans(14, color: ty.ink3),
                 contentPadding: const EdgeInsets.all(16),
                 border: InputBorder.none,
@@ -171,7 +195,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           ),
           const SizedBox(height: 24),
           TyButton(
-            _isSubmitting ? 'Submitting...' : 'Submit Feedback',
+            _isSubmitting ? l10n.feedbackSubmittingLabel : l10n.feedbackSubmitButtonLabel,
             full: true,
             enabled: !_isSubmitting,
             onTap: _submit,

@@ -9,6 +9,7 @@ import '../../../theme/typography.dart';
 import '../../../data/auth_manager.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 const _vendorTypes = [
   'decorator', 'caterer', 'photographer', 'videographer', 'baker', 'florist',
@@ -16,15 +17,15 @@ const _vendorTypes = [
   'multi_service', 'other',
 ];
 
-const _docTypes = {
-  'gst_certificate': 'GST Certificate',
-  'pan_card': 'PAN Card',
-  'aadhar': 'Aadhaar Card',
-  'cancelled_cheque': 'Cancelled Cheque',
-  'shop_act_license': 'Shop Act License',
-  'incorporation_certificate': 'Incorporation Certificate',
-  'other': 'Other',
-};
+Map<String, String> _docTypeLabels(AppLocalizations l) => {
+      'gst_certificate': l.vendorProfileDocTypeGstCertificate,
+      'pan_card': l.vendorProfileDocTypePanCard,
+      'aadhar': l.vendorProfileDocTypeAadhaarCard,
+      'cancelled_cheque': l.vendorProfileDocTypeCancelledCheque,
+      'shop_act_license': l.vendorProfileDocTypeShopActLicense,
+      'incorporation_certificate': l.vendorProfileDocTypeIncorporationCertificate,
+      'other': l.vendorProfileDocTypeOther,
+    };
 
 class VendorProfileScreen extends StatefulWidget {
   const VendorProfileScreen({super.key});
@@ -118,8 +119,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   }
 
   Future<void> _save() async {
+    final l = AppLocalizations.of(context)!;
     if (_businessNameCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Business name is required.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.vendorProfileBusinessNameRequiredError)));
       return;
     }
     setState(() => _isSaving = true);
@@ -138,7 +140,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           if (_radiusCtrl.text.trim().isNotEmpty) 'service_radius_km': double.tryParse(_radiusCtrl.text.trim()),
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vendor profile created!')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.vendorProfileCreatedMessage)));
           setState(() { _vendor = vendor; _isNew = false; });
         }
       } else {
@@ -158,10 +160,10 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
             'website_url': _websiteCtrl.text.trim().isEmpty ? null : _websiteCtrl.text.trim(),
           }),
         ]);
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated.')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.vendorProfileUpdatedMessage)));
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save profile.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.vendorProfileSaveError)));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -178,11 +180,11 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     } on PlatformException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaPermissionNeededMessage)),
         );
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaUploadFailedMessage)));
     }
   }
 
@@ -205,17 +207,19 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     } on PlatformException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaPermissionNeededMessage)),
         );
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaUploadFailedMessage)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l = AppLocalizations.of(context)!;
+    final docTypes = _docTypeLabels(l);
 
     if (_isLoading) {
       return const Scaffold(backgroundColor: Colors.transparent, body: Center(child: CircularProgressIndicator()));
@@ -226,47 +230,47 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          Text('Business Information', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+          Text(l.vendorProfileBusinessInfoHeading, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
           const SizedBox(height: 10),
-          _field(ty, 'Business Name *', _businessNameCtrl, enabled: _isNew),
-          _labeled(ty, 'Vendor Type', DropdownButtonFormField<String>(
+          _field(ty, l.vendorProfileBusinessNameLabel, _businessNameCtrl, enabled: _isNew),
+          _labeled(ty, l.vendorProfileVendorTypeLabel, DropdownButtonFormField<String>(
             initialValue: _vendorType,
             items: _vendorTypes.map((t) => DropdownMenuItem(value: t, child: Text(t.replaceAll('_', ' ')))).toList(),
             onChanged: _isNew ? (v) => setState(() => _vendorType = v ?? _vendorType) : null,
           )),
-          _field(ty, 'Legal Name', _legalNameCtrl),
-          _field(ty, 'GST Number', _gstCtrl),
-          _field(ty, 'PAN Number', _panCtrl),
+          _field(ty, l.vendorProfileLegalNameLabel, _legalNameCtrl),
+          _field(ty, l.vendorProfileGstNumberLabel, _gstCtrl),
+          _field(ty, l.vendorProfilePanNumberLabel, _panCtrl),
           Row(children: [
-            Expanded(child: _field(ty, 'Years of Experience', _yearsCtrl, keyboardType: TextInputType.number)),
+            Expanded(child: _field(ty, l.vendorProfileYearsOfExperienceLabel, _yearsCtrl, keyboardType: TextInputType.number)),
             const SizedBox(width: 12),
-            Expanded(child: _field(ty, 'Established Year', _establishedCtrl, keyboardType: TextInputType.number)),
+            Expanded(child: _field(ty, l.vendorProfileEstablishedYearLabel, _establishedCtrl, keyboardType: TextInputType.number)),
           ]),
-          _field(ty, 'Service Radius (km)', _radiusCtrl, keyboardType: TextInputType.number),
+          _field(ty, l.vendorProfileServiceRadiusLabel, _radiusCtrl, keyboardType: TextInputType.number),
           const SizedBox(height: 16),
-          Text('About Your Business', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+          Text(l.vendorProfileAboutBusinessHeading, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
           const SizedBox(height: 10),
-          _field(ty, 'Tagline', _taglineCtrl),
-          _field(ty, 'About', _aboutCtrl, maxLines: 4),
+          _field(ty, l.vendorProfileTaglineLabel, _taglineCtrl),
+          _field(ty, l.vendorProfileAboutLabel, _aboutCtrl, maxLines: 4),
           const SizedBox(height: 16),
-          Text('Location & Online Presence', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+          Text(l.vendorProfileLocationHeading, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
           const SizedBox(height: 10),
-          _field(ty, 'Operating Cities (comma-separated)', _citiesCtrl),
-          _field(ty, 'Website URL', _websiteCtrl),
+          _field(ty, l.vendorProfileOperatingCitiesLabel, _citiesCtrl),
+          _field(ty, l.vendorProfileWebsiteUrlLabel, _websiteCtrl),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: _isSaving ? null : _save,
-            child: Text(_isSaving ? 'Saving…' : (_isNew ? 'Create Profile' : 'Save Changes')),
+            child: Text(_isSaving ? l.vendorAvailabilitySavingLabel : (_isNew ? l.vendorDashboardCreateProfileButton : l.vendorAvailabilitySaveChangesLabel)),
           ),
           if (!_isNew) ...[
             const SizedBox(height: 28),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Business Gallery', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
-              TextButton(onPressed: _addGalleryPhoto, child: const Text('+ Add Photo')),
+              Text(l.vendorProfileBusinessGalleryHeading, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+              TextButton(onPressed: _addGalleryPhoto, child: Text(l.vendorPackageItemsAddPhotoButtonLabel)),
             ]),
             const SizedBox(height: 10),
             if (_gallery.isEmpty)
-              Text('No photos yet', style: TyType.sans(13, color: ty.ink2))
+              Text(l.vendorProfileNoPhotosMessage, style: TyType.sans(13, color: ty.ink2))
             else
               GridView.count(
                 shrinkWrap: true,
@@ -294,10 +298,10 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                     )).toList(),
               ),
             const SizedBox(height: 28),
-            Text('Business Documents', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+            Text(l.vendorProfileBusinessDocumentsHeading, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
             const SizedBox(height: 10),
             if (_documents.isEmpty)
-              Text('No documents uploaded yet', style: TyType.sans(13, color: ty.ink2))
+              Text(l.vendorProfileNoDocumentsMessage, style: TyType.sans(13, color: ty.ink2))
             else
               ..._documents.map((d) => Container(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -307,7 +311,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                       children: [
                         const Icon(Icons.description_outlined),
                         const SizedBox(width: 10),
-                        Expanded(child: Text(_docTypes[d.documentType] ?? d.documentType, style: TyType.sans(13, color: ty.ink))),
+                        Expanded(child: Text(docTypes[d.documentType] ?? d.documentType, style: TyType.sans(13, color: ty.ink))),
                         Text(d.verificationStatus, style: TyType.sans(11, color: ty.ink3)),
                       ],
                     ),
@@ -315,7 +319,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
             const SizedBox(height: 10),
             Wrap(
               spacing: 8, runSpacing: 8,
-              children: _docTypes.entries.map((e) => OutlinedButton(
+              children: docTypes.entries.map((e) => OutlinedButton(
                     onPressed: () => _addDocument(e.key),
                     child: Text('+ ${e.value}'),
                   )).toList(),

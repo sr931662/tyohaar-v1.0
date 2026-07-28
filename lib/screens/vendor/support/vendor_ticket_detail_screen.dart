@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/services/support_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class VendorTicketDetailScreen extends StatefulWidget {
   final String ticketId;
@@ -60,7 +61,7 @@ class _VendorTicketDetailScreenState extends State<VendorTicketDetailScreen> {
       _replyCtrl.clear();
       await _load();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not send message.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorTicketDetailSendError)));
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -74,7 +75,7 @@ class _VendorTicketDetailScreenState extends State<VendorTicketDetailScreen> {
       return Scaffold(backgroundColor: ty.paper, appBar: AppBar(), body: const Center(child: CircularProgressIndicator()));
     }
     if (_ticket == null) {
-      return Scaffold(backgroundColor: ty.paper, appBar: AppBar(), body: const Center(child: Text('Ticket not found')));
+      return Scaffold(backgroundColor: ty.paper, appBar: AppBar(), body: Center(child: Text(AppLocalizations.of(context)!.vendorTicketDetailNotFoundMessage)));
     }
 
     final closed = _ticket!.status == 'resolved' || _ticket!.status == 'closed';
@@ -121,7 +122,7 @@ class _VendorTicketDetailScreenState extends State<VendorTicketDetailScreen> {
                       child: TextField(
                         controller: _replyCtrl,
                         decoration: InputDecoration(
-                          hintText: 'Type a reply…',
+                          hintText: AppLocalizations.of(context)!.vendorTicketDetailReplyHint,
                           filled: true,
                           fillColor: ty.surface,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ty.line)),

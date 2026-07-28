@@ -4,6 +4,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import 'vendor_package_form_screen.dart';
 import 'vendor_package_items_screen.dart';
 import 'vendor_package_gallery_screen.dart';
@@ -39,50 +40,54 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
   }
 
   Future<void> _submitForReview(VendorPackage p) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       await _vendorService.submitPackageForReview(p.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submitted for review.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorPackagesSubmittedForReviewMessage)));
         _load();
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not submit.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorPackagesSubmitError)));
     }
   }
 
   Future<void> _unpublish(VendorPackage p) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       await _vendorService.unpublishPackage(p.id);
-      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unpublished.'))); _load(); }
+      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorPackagesUnpublishedMessage))); _load(); }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not unpublish.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorPackagesUnpublishError)));
     }
   }
 
   Future<void> _delete(VendorPackage p) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete package?'),
-        content: Text('This will permanently delete "${p.name}".'),
+        title: Text(l10n.vendorPackagesDeleteConfirmTitle),
+        content: Text(l10n.vendorPackagesDeleteConfirmMessage(p.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.commonCancel)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.vendorPackagesDeleteButtonLabel)),
         ],
       ),
     );
     if (confirmed != true) return;
     try {
       await _vendorService.deletePackage(p.id);
-      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted.'))); _load(); }
+      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorPackagesDeletedMessage))); _load(); }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not delete — only draft/inactive packages can be deleted.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorPackagesDeleteRestrictedError)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -91,12 +96,12 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
             .push(MaterialPageRoute(builder: (_) => const VendorPackageFormScreen()))
             .then((_) => _load()),
         icon: const Icon(Icons.add),
-        label: const Text('New Package'),
+        label: Text(l10n.vendorPackagesNewPackageButtonLabel),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _packages.isEmpty
-              ? Center(child: Text('No packages yet', style: TyType.sans(14, color: ty.ink2)))
+              ? Center(child: Text(l10n.vendorPackagesEmptyMessage, style: TyType.sans(14, color: ty.ink2)))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.separated(
@@ -110,6 +115,7 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
   }
 
   Widget _packageCard(TyColors ty, VendorPackage p) {
+    final l10n = AppLocalizations.of(context)!;
     final statusColor = {
       'draft': Colors.grey,
       'pending_review': Colors.orange,
@@ -151,27 +157,27 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
                 onPressed: () => Navigator.of(context)
                     .push(MaterialPageRoute(builder: (_) => VendorPackageFormScreen(existing: p)))
                     .then((_) => _load()),
-                child: const Text('Edit'),
+                child: Text(l10n.vendorPackagesEditButtonLabel),
               ),
               OutlinedButton(
                 onPressed: p.status == 'pending_review'
                     ? null
                     : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VendorPackageItemsScreen(package: p))),
-                child: const Text('Items'),
+                child: Text(l10n.vendorPackagesItemsButtonLabel),
               ),
               OutlinedButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VendorPackageGalleryScreen(package: p))),
-                child: const Text('Photos'),
+                child: Text(l10n.vendorPackagesPhotosButtonLabel),
               ),
               if (p.status == 'draft')
-                ElevatedButton(onPressed: () => _submitForReview(p), child: const Text('Submit')),
+                ElevatedButton(onPressed: () => _submitForReview(p), child: Text(l10n.vendorPackagesSubmitButtonLabel)),
               if (p.status == 'active')
-                OutlinedButton(onPressed: () => _unpublish(p), child: const Text('Unpublish')),
+                OutlinedButton(onPressed: () => _unpublish(p), child: Text(l10n.vendorPackagesUnpublishButtonLabel)),
               if (p.status == 'draft' || p.status == 'inactive' || p.status == 'archived')
                 TextButton(
                   onPressed: () => _delete(p),
                   style: TextButton.styleFrom(foregroundColor: Colors.red),
-                  child: const Text('Delete'),
+                  child: Text(l10n.vendorPackagesDeleteButtonLabel),
                 ),
             ],
           ),

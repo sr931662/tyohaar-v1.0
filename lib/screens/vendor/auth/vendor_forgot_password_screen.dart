@@ -7,6 +7,7 @@ import '../../../theme/responsive.dart';
 import '../../../widgets/ty_button.dart';
 import '../../../widgets/common.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Two-step OTP reset, mirroring the web vendor portal's
 /// VendorForgotPasswordPage (request OTP by email → confirm OTP + new password).
@@ -35,8 +36,9 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
   }
 
   Future<void> _requestOtp() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_emailCtrl.text.trim().isEmpty) {
-      setState(() => _error = 'Please enter your email.');
+      setState(() => _error = l10n.vendorForgotPasswordEnterEmailError);
       return;
     }
     setState(() { _isLoading = true; _error = ''; });
@@ -44,17 +46,18 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
       await AuthService().requestPasswordResetOtp(_emailCtrl.text.trim());
       if (mounted) setState(() { _otpSent = true; _isLoading = false; });
     } catch (_) {
-      if (mounted) setState(() { _isLoading = false; _error = 'Could not send the code. Please try again.'; });
+      if (mounted) setState(() { _isLoading = false; _error = l10n.vendorForgotPasswordSendCodeError; });
     }
   }
 
   Future<void> _confirmReset() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_otpCtrl.text.trim().isEmpty || _newPasswordCtrl.text.isEmpty) {
-      setState(() => _error = 'Please fill in all fields.');
+      setState(() => _error = l10n.vendorForgotPasswordFillAllFieldsError);
       return;
     }
     if (_newPasswordCtrl.text.length < 8) {
-      setState(() => _error = 'Password must be at least 8 characters.');
+      setState(() => _error = l10n.vendorForgotPasswordPasswordTooShortError);
       return;
     }
     setState(() { _isLoading = true; _error = ''; });
@@ -67,11 +70,11 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
       if (mounted) setState(() { _done = true; _isLoading = false; });
     } on DioException catch (e) {
       final detail = e.response?.data;
-      String msg = 'Reset failed. Please check the code and try again.';
+      String msg = l10n.vendorForgotPasswordResetFailedError;
       if (detail is Map) msg = detail['detail'] as String? ?? msg;
       if (mounted) setState(() { _isLoading = false; _error = msg; });
     } catch (_) {
-      if (mounted) setState(() { _isLoading = false; _error = 'An unexpected error occurred.'; });
+      if (mounted) setState(() { _isLoading = false; _error = l10n.vendorForgotPasswordUnexpectedError; });
     }
   }
 
@@ -79,10 +82,11 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
   Widget build(BuildContext context) {
     final ty = context.ty;
     final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Reset Password'),
+      appBar: tyAppBar(context, title: l10n.vendorForgotPasswordTitle),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(horizontal: resp.w(24), vertical: resp.h(24)),
@@ -92,29 +96,29 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
                   children: [
                     Icon(Icons.check_circle_rounded, color: ty.saffron, size: 48),
                     SizedBox(height: resp.h(16)),
-                    Text('Password reset', style: TyType.display(resp.sp(22), color: ty.ink)),
+                    Text(l10n.vendorForgotPasswordDoneHeading, style: TyType.display(resp.sp(22), color: ty.ink)),
                     SizedBox(height: resp.h(8)),
-                    Text('You can now sign in with your new password.', style: TyType.sans(resp.sp(14), color: ty.ink2)),
+                    Text(l10n.vendorForgotPasswordDoneMessage, style: TyType.sans(resp.sp(14), color: ty.ink2)),
                     SizedBox(height: resp.h(24)),
-                    TyButton('Back to Login', full: true, onTap: () => Navigator.of(context).pop()),
+                    TyButton(l10n.vendorForgotPasswordBackToLoginLabel, full: true, onTap: () => Navigator.of(context).pop()),
                   ],
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_otpSent ? 'Enter the code we sent you' : 'Forgot your password?',
+                    Text(_otpSent ? l10n.vendorForgotPasswordEnterCodeHeading : l10n.vendorForgotPasswordHeading,
                         style: TyType.display(resp.sp(22), color: ty.ink)),
                     SizedBox(height: resp.h(20)),
-                    _field(ty, resp, 'EMAIL', _emailCtrl, enabled: !_otpSent, type: TextInputType.emailAddress),
+                    _field(ty, resp, l10n.vendorForgotPasswordEmailLabel, _emailCtrl, enabled: !_otpSent, type: TextInputType.emailAddress),
                     if (_otpSent) ...[
                       SizedBox(height: resp.h(16)),
-                      _field(ty, resp, 'OTP CODE', _otpCtrl, type: TextInputType.number),
+                      _field(ty, resp, l10n.vendorForgotPasswordOtpCodeLabel, _otpCtrl, type: TextInputType.number),
                       SizedBox(height: resp.h(16)),
-                      _field(ty, resp, 'NEW PASSWORD', _newPasswordCtrl, obscure: true),
+                      _field(ty, resp, l10n.vendorForgotPasswordNewPasswordLabel, _newPasswordCtrl, obscure: true),
                       SizedBox(height: resp.h(8)),
                       TextButton(
                         onPressed: _isLoading ? null : () => setState(() => _otpSent = false),
-                        child: const Text('Change email'),
+                        child: Text(l10n.vendorForgotPasswordChangeEmailLabel),
                       ),
                     ],
                     if (_error.isNotEmpty) ...[
@@ -123,7 +127,7 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
                     ],
                     SizedBox(height: resp.h(24)),
                     TyButton(
-                      _isLoading ? 'Please wait...' : (_otpSent ? 'Reset Password' : 'Send Code'),
+                      _isLoading ? l10n.vendorForgotPasswordPleaseWaitLabel : (_otpSent ? l10n.vendorForgotPasswordResetPasswordLabel : l10n.vendorForgotPasswordSendCodeLabel),
                       full: true,
                       onTap: _otpSent ? _confirmReset : _requestOtp,
                       enabled: !_isLoading,

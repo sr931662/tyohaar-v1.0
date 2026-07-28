@@ -10,6 +10,7 @@ import '../widgets/invitation_card.dart';
 import '../widgets/state_screens.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class InvitationManagementScreen extends StatefulWidget {
   const InvitationManagementScreen({super.key});
@@ -72,20 +73,21 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
   }
 
   Future<void> _shareCard() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _isSharing = true);
     try {
       final bytes = await InvitationCard.captureCard(_cardKey);
       if (bytes == null) throw Exception('Could not render invitation card.');
-      final title = _selected?.title ?? 'our celebration';
+      final title = _selected?.title ?? l10n.invitationManagementCelebrationFallback;
       await Share.shareXFiles(
         [XFile.fromData(bytes, mimeType: 'image/png', name: 'invitation.png')],
-        text: "You're invited to $title! 🎉",
-        subject: "You're invited to $title",
+        text: l10n.invitationManagementShareTextMessage(title),
+        subject: l10n.invitationManagementShareSubject(title),
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not share the invitation. Please try again.')),
+          SnackBar(content: Text(l10n.invitationManagementShareError)),
         );
       }
     } finally {
@@ -96,6 +98,7 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_isLoading && _celebrations.isEmpty) {
       return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
@@ -104,15 +107,15 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
     if (_error && _celebrations.isEmpty) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: 'Manage Invitations'),
-        body: TyStateScreen.error(onAction: _loadData),
+        appBar: tyAppBar(context, title: l10n.invitationManagementAppBarTitle),
+        body: TyStateScreen.error(context, onAction: _loadData),
       );
     }
 
     if (_celebrations.isEmpty) {
       return Scaffold(
         backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: 'Manage Invitations'),
+        appBar: tyAppBar(context, title: l10n.invitationManagementAppBarTitle),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
@@ -121,10 +124,10 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
               children: [
                 Icon(Icons.celebration_outlined, size: 48, color: ty.ink3),
                 const SizedBox(height: 16),
-                Text('No events planned yet', style: TyType.display(18, color: ty.ink)),
+                Text(l10n.invitationManagementNoEventsTitle, style: TyType.display(18, color: ty.ink)),
                 const SizedBox(height: 8),
                 Text(
-                  'Book a package or start planning a celebration to send invitations.',
+                  l10n.invitationManagementNoEventsMessage,
                   textAlign: TextAlign.center,
                   style: TyType.sans(13.5, color: ty.ink3),
                 ),
@@ -142,12 +145,12 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Manage Invitations'),
+      appBar: tyAppBar(context, title: l10n.invitationManagementAppBarTitle),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
         children: [
           if (_celebrations.length > 1) ...[
-            Text('EVENT', style: TyType.eyebrow(11, color: ty.ink3)),
+            Text(l10n.invitationManagementEventLabel, style: TyType.eyebrow(11, color: ty.ink3)),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -174,20 +177,20 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
           ],
           Center(child: InvitationCard(celebration: selected, boundaryKey: _cardKey)),
           const SizedBox(height: 32),
-          Text('GUEST STATUS', style: TyType.eyebrow(11, color: ty.ink3)),
+          Text(l10n.invitationManagementGuestStatusLabel, style: TyType.eyebrow(11, color: ty.ink3)),
           const SizedBox(height: 16),
           Row(
             children: [
-              _stat(context, '$sent', 'Invited', ty.ink2),
+              _stat(context, '$sent', l10n.invitationManagementInvitedLabel, ty.ink2),
               const SizedBox(width: 12),
-              _stat(context, '$opened', 'Opened', ty.saffron),
+              _stat(context, '$opened', l10n.invitationManagementOpenedLabel, ty.saffron),
               const SizedBox(width: 12),
-              _stat(context, '$rsvpd', "RSVP'd", ty.leaf),
+              _stat(context, '$rsvpd', l10n.invitationManagementRsvpdLabel, ty.leaf),
             ],
           ),
           const SizedBox(height: 40),
           TyButton(
-            _isSharing ? 'Preparing…' : 'Share Invitation Card',
+            _isSharing ? l10n.invitationManagementPreparingLabel : l10n.invitationManagementShareButtonLabel,
             full: true,
             enabled: !_isSharing,
             leadingIcon: Icons.ios_share_rounded,
@@ -195,7 +198,7 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Opens your share sheet — pick WhatsApp, Email, or any app.',
+            l10n.invitationManagementShareHintMessage,
             textAlign: TextAlign.center,
             style: TyType.sans(12, color: ty.ink3),
           ),

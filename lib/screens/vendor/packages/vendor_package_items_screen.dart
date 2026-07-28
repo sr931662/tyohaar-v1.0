@@ -7,6 +7,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class VendorPackageItemsScreen extends StatefulWidget {
   final VendorPackage package;
@@ -54,6 +55,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
     final unitCtrl = TextEditingController(text: existing?.unit ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     bool isMandatory = existing?.isMandatory ?? true;
+    final l10n = AppLocalizations.of(context)!;
 
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -69,26 +71,26 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(existing == null ? 'Add Item' : 'Edit Item', style: TyType.display(20, color: context.ty.ink)),
+                Text(existing == null ? l10n.vendorPackageItemsAddItemTitle : l10n.vendorPackageItemsEditItemTitle, style: TyType.display(20, color: context.ty.ink)),
                 const SizedBox(height: 16),
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
-                TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Base Price')),
+                TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.vendorPackageItemsNameLabel)),
+                TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorPackageItemsBasePriceLabel)),
                 Row(children: [
-                  Expanded(child: TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity'))),
+                  Expanded(child: TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorPackageItemsQuantityLabel))),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: unitCtrl, decoration: const InputDecoration(labelText: 'Unit'))),
+                  Expanded(child: TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.vendorPackageItemsUnitLabel))),
                 ]),
-                TextField(controller: descCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Description')),
+                TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorPackageItemsDescriptionLabel)),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Mandatory'),
+                  title: Text(l10n.vendorPackageItemsMandatoryLabel),
                   value: isMandatory,
                   onChanged: (v) => setSheetState(() => isMandatory = v),
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Save'),
+                  child: Text(l10n.commonSave),
                 ),
               ],
             ),
@@ -114,7 +116,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
       }
       _load();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save item.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorPackageItemsSaveError)));
     } finally {
       nameCtrl.dispose();
       priceCtrl.dispose();
@@ -129,7 +131,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
       await _vendorService.deletePackageItem(widget.package.id, item.id);
       _load();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not delete item.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorPackageItemsDeleteError)));
     }
   }
 
@@ -141,7 +143,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
       await _vendorService.addItemImage(widget.package.id, item.id, url);
       _load();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaUploadFailedMessage)));
     }
   }
 
@@ -153,18 +155,19 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
       await _vendorService.addPackageGalleryItem(widget.package.id, url);
       _load();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaUploadFailedMessage)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final locked = widget.package.status == 'pending_review';
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: AppBar(title: Text('${widget.package.name} — Items')),
+      appBar: AppBar(title: Text(l10n.vendorPackageItemsTitle(widget.package.name))),
       floatingActionButton: locked
           ? null
           : FloatingActionButton(onPressed: () => _showItemForm(), child: const Icon(Icons.add)),
@@ -178,9 +181,9 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                    child: Text('Items are locked while this package is under review.', style: TyType.sans(12.5, color: Colors.orange.shade800)),
+                    child: Text(l10n.vendorPackageItemsLockedMessage, style: TyType.sans(12.5, color: Colors.orange.shade800)),
                   ),
-                Text('Items', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+                Text(l10n.vendorPackageItemsSectionLabel, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
                 const SizedBox(height: 10),
                 ..._items.map((item) => Container(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -196,7 +199,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
-                                    Text('${item.isCommon ? "Common · " : ""}Qty ${item.quantity} · ₹${item.basePrice.toStringAsFixed(0)}',
+                                    Text('${item.isCommon ? l10n.vendorPackageItemsCommonPrefixLabel : ""}${l10n.vendorPackageItemsQtyPriceLabel(item.quantity.toString(), item.basePrice.toStringAsFixed(0))}',
                                         style: TyType.sans(12, color: ty.ink2)),
                                   ],
                                 ),
@@ -206,13 +209,13 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                           if (!locked) ...[
                             const SizedBox(height: 8),
                             Wrap(spacing: 8, children: [
-                              TextButton(onPressed: () => _addItemPhoto(item), child: const Text('Photos')),
-                              if (!item.isCommon) TextButton(onPressed: () => _showItemForm(existing: item), child: const Text('Edit')),
+                              TextButton(onPressed: () => _addItemPhoto(item), child: Text(l10n.vendorPackageItemsPhotosButtonLabel)),
+                              if (!item.isCommon) TextButton(onPressed: () => _showItemForm(existing: item), child: Text(l10n.vendorPackageItemsEditButtonLabel)),
                               if (!item.isCommon)
                                 TextButton(
                                   onPressed: () => _deleteItem(item),
                                   style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                  child: const Text('Delete'),
+                                  child: Text(l10n.vendorPackageItemsDeleteButtonLabel),
                                 ),
                             ]),
                           ],
@@ -223,8 +226,8 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Gallery', style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
-                    if (!locked) TextButton(onPressed: _addGalleryPhoto, child: const Text('+ Add Photo')),
+                    Text(l10n.vendorPackageItemsGalleryLabel, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+                    if (!locked) TextButton(onPressed: _addGalleryPhoto, child: Text(l10n.vendorPackageItemsAddPhotoButtonLabel)),
                   ],
                 ),
                 const SizedBox(height: 10),

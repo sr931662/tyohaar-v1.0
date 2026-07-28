@@ -1,0 +1,1758 @@
+{
+  "@@locale": "en",
+
+  "commonTryAgain": "Try Again",
+  "commonCancel": "Cancel",
+  "commonSave": "Save",
+  "commonOk": "OK",
+  "commonLoading": "Loading…",
+  "commonRetry": "Retry",
+  "commonGoBack": "Go Back",
+  "commonSomethingWentWrong": "Something went wrong",
+  "commonUnexpectedErrorMessage": "We encountered an unexpected error. Please try again.",
+  "commonSomethingMissing": "Something's missing",
+  "commonNotFoundMessage": "The page or item you're looking for doesn't exist or has been moved.",
+  "commonNoConnection": "No connection",
+  "commonNoConnectionMessage": "Please check your internet settings and try again.",
+  "commonNoInternetConnection": "No internet connection",
+
+  "tutorialSkip": "Skip",
+  "tutorialGotIt": "Got it",
+  "tutorialNext": "Next",
+
+  "invitationCardCelebrationFallback": "CELEBRATION",
+  "invitationCardYoureInvitedTo": "You're Invited to",
+  "invitationCardPresentedBy": "Presented by Tyohaar",
+
+  "vendorEarningsLoadError": "Could not load earnings.",
+
+  "privacyPolicyTitle": "Privacy Policy",
+  "privacyPolicyLoadError": "Could not load Privacy Policy.",
+
+  "termsConditionsTitle": "Terms & Conditions",
+  "termsConditionsLoadError": "Could not load Terms & Conditions.",
+
+  "cancellationPolicyTitle": "Cancellation & Refund Policy",
+  "cancellationPolicyLoadError": "Could not load Cancellation & Refund Policy.",
+
+  "policyVersionEffective": "Version {version} · Effective {date}",
+  "@policyVersionEffective": {
+    "description": "Shown above legal document content in the policy screens",
+    "placeholders": {
+      "version": { "type": "String" },
+      "date": { "type": "String" }
+    }
+  },
+
+  "vendorAvailabilityDayMon": "Mon",
+  "vendorAvailabilityDayTue": "Tue",
+  "vendorAvailabilityDayWed": "Wed",
+  "vendorAvailabilityDayThu": "Thu",
+  "vendorAvailabilityDayFri": "Fri",
+  "vendorAvailabilityDaySat": "Sat",
+  "vendorAvailabilityDaySun": "Sun",
+  "vendorAvailabilitySetupProfileMessage": "Set up your vendor profile first.",
+  "vendorAvailabilitySavedMessage": "Availability saved.",
+  "vendorAvailabilitySaveError": "Could not save availability.",
+  "vendorAvailabilityCopyMondayLabel": "Copy Monday to Weekdays",
+  "vendorAvailabilitySavingLabel": "Saving…",
+  "vendorAvailabilitySaveChangesLabel": "Save Changes",
+  "vendorAvailabilityOpenLabel": "Open",
+  "vendorAvailabilityCloseLabel": "Close",
+  "vendorAvailabilityBreakStartLabel": "Break Start",
+  "vendorAvailabilityBreakEndLabel": "Break End",
+  "vendorAvailabilityTimeUnsetLabel": "--:--",
+
+  "vendorNavDashboardLabel": "Dashboard",
+  "vendorNavBookingsLabel": "Bookings",
+  "vendorNavPackagesLabel": "Packages",
+  "vendorNavEarningsLabel": "Earnings",
+  "vendorNavProfileLabel": "Profile",
+  "vendorNavAvailabilityLabel": "Availability",
+  "vendorNavMultimediaLabel": "Multimedia",
+  "vendorNavBankAccountsLabel": "Bank Accounts",
+  "vendorNavReviewsLabel": "Reviews",
+  "vendorNavNotificationsLabel": "Notifications",
+  "vendorNavSupportLabel": "Support",
+  "vendorNavDefaultAvatarName": "Vendor",
+  "vendorNavDefaultDisplayName": "Vendor Partner",
+  "vendorNavAccountLabel": "Vendor Account",
+  "vendorNavSectionMain": "MAIN",
+  "vendorNavSectionFinance": "FINANCE",
+  "vendorNavSectionAccount": "ACCOUNT",
+  "vendorNavDarkModeLabel": "Dark Mode",
+  "vendorNavLightModeLabel": "Light Mode",
+  "vendorNavLogoutLabel": "Logout",
+
+  "vendorRegisterTypeDecorator": "Decorator",
+  "vendorRegisterTypeCaterer": "Caterer",
+  "vendorRegisterTypePhotographer": "Photographer",
+  "vendorRegisterTypeVideographer": "Videographer",
+  "vendorRegisterTypeBaker": "Baker",
+  "vendorRegisterTypeFlorist": "Florist",
+  "vendorRegisterTypeEntertainer": "Entertainer",
+  "vendorRegisterTypeVenue": "Venue",
+  "vendorRegisterTypePlanner": "Event Planner",
+  "vendorRegisterTypeMakeupArtist": "Makeup Artist",
+  "vendorRegisterTypeMehndiArtist": "Mehndi Artist",
+  "vendorRegisterTypeMusic": "Music / DJ",
+  "vendorRegisterTypeMultiService": "Multi-Service",
+  "vendorRegisterTypeOther": "Other",
+  "vendorRegisterFillAllFieldsError": "Please fill in all fields.",
+  "vendorRegisterPasswordMismatchError": "Passwords do not match.",
+  "vendorRegisterPasswordTooShortError": "Password must be at least 8 characters.",
+  "vendorRegisterFailedError": "Registration failed. Please try again.",
+  "vendorRegisterUnexpectedError": "An unexpected error occurred.",
+  "vendorRegisterTitle": "Partner Registration",
+  "vendorRegisterHeading": "List your business on Tyohaar",
+  "vendorRegisterSubheading": "Your account will be reviewed before it goes live.",
+  "vendorRegisterFullNameLabel": "FULL NAME",
+  "vendorRegisterEmailLabel": "EMAIL",
+  "vendorRegisterPhoneLabel": "PHONE",
+  "vendorRegisterBusinessNameLabel": "BUSINESS NAME",
+  "vendorRegisterVendorTypeLabel": "VENDOR TYPE",
+  "vendorRegisterPasswordLabel": "PASSWORD",
+  "vendorRegisterConfirmPasswordLabel": "CONFIRM PASSWORD",
+  "vendorRegisterSubmittingLabel": "Submitting...",
+  "vendorRegisterSubmitLabel": "Register as Partner",
+
+  "vendorForgotPasswordEnterEmailError": "Please enter your email.",
+  "vendorForgotPasswordSendCodeError": "Could not send the code. Please try again.",
+  "vendorForgotPasswordFillAllFieldsError": "Please fill in all fields.",
+  "vendorForgotPasswordPasswordTooShortError": "Password must be at least 8 characters.",
+  "vendorForgotPasswordResetFailedError": "Reset failed. Please check the code and try again.",
+  "vendorForgotPasswordUnexpectedError": "An unexpected error occurred.",
+  "vendorForgotPasswordTitle": "Reset Password",
+  "vendorForgotPasswordDoneHeading": "Password reset",
+  "vendorForgotPasswordDoneMessage": "You can now sign in with your new password.",
+  "vendorForgotPasswordBackToLoginLabel": "Back to Login",
+  "vendorForgotPasswordEnterCodeHeading": "Enter the code we sent you",
+  "vendorForgotPasswordHeading": "Forgot your password?",
+  "vendorForgotPasswordEmailLabel": "EMAIL",
+  "vendorForgotPasswordOtpCodeLabel": "OTP CODE",
+  "vendorForgotPasswordNewPasswordLabel": "NEW PASSWORD",
+  "vendorForgotPasswordChangeEmailLabel": "Change email",
+  "vendorForgotPasswordPleaseWaitLabel": "Please wait...",
+  "vendorForgotPasswordResetPasswordLabel": "Reset Password",
+  "vendorForgotPasswordSendCodeLabel": "Send Code",
+
+  "vendorBankAddAccountTitle": "Add Bank Account",
+  "vendorBankAccountHolderNameLabel": "Account Holder Name",
+  "vendorBankAccountNumberLabel": "Account Number",
+  "vendorBankIfscCodeLabel": "IFSC Code",
+  "vendorBankBankNameLabel": "Bank Name",
+  "vendorBankBranchNameLabel": "Branch Name (optional)",
+  "vendorBankSetAsPrimaryLabel": "Set as primary",
+  "vendorBankHolderAndBankRequiredError": "Account holder name and bank name are required.",
+  "vendorBankInvalidAccountNumberError": "Enter a valid account number (9-18 digits).",
+  "vendorBankInvalidIfscError": "Enter a valid IFSC code (e.g. ABCD0123456).",
+  "vendorBankAddAccountButtonLabel": "Add Account",
+  "vendorBankAddedMessage": "Bank account added.",
+  "vendorBankAddError": "Could not add account.",
+  "vendorBankRemoveConfirmTitle": "Remove bank account?",
+  "vendorBankRemoveLabel": "Remove",
+  "vendorBankRemoveError": "Could not remove account.",
+  "vendorBankEmptyMessage": "No bank accounts added yet",
+  "vendorBankPrimaryBadgeLabel": "Primary",
+
+  "vendorBookingDetailNotFound": "Booking not found",
+  "vendorBookingDetailTabOverview": "Overview",
+  "vendorBookingDetailTabItems": "Items",
+  "vendorBookingDetailTabHistory": "History",
+  "vendorBookingDetailStartServiceError": "Could not start service.",
+  "vendorBookingDetailMarkCompleteError": "Could not mark complete.",
+  "vendorBookingDetailUpdatePrepTimeError": "Could not update prep time.",
+  "vendorBookingDetailCelebrationLabel": "Celebration",
+  "vendorBookingDetailPackageLabel": "Package",
+  "vendorBookingDetailCustomizationThemeLabel": "Customization Theme",
+  "vendorBookingDetailStatusLabel": "Status",
+  "vendorBookingDetailPaymentLabel": "Payment",
+  "vendorBookingDetailScheduledLabel": "Scheduled",
+  "vendorBookingDetailTotalLabel": "Total",
+  "vendorBookingDetailPaidLabel": "Paid",
+  "vendorBookingDetailDueLabel": "Due",
+  "vendorBookingDetailInstructionsLabel": "Instructions",
+  "vendorBookingDetailPrepStartLabel": "Prep Start",
+  "vendorBookingDetailStartServiceButton": "Start Service",
+  "vendorBookingDetailSetPrepStartTimeButton": "Set Preparation Start Time",
+  "vendorBookingDetailMarkCompleteButton": "Mark Complete",
+  "vendorBookingDetailUpdatePrepStartTimeButton": "Update Preparation Start Time",
+  "vendorBookingDetailNoItemsMessage": "No items",
+  "vendorBookingDetailItemQtyPrice": "Qty {quantity} · {price} each",
+  "@vendorBookingDetailItemQtyPrice": {
+    "description": "Line item row in the booking detail Items tab",
+    "placeholders": {
+      "quantity": { "type": "String" },
+      "price": { "type": "String" }
+    }
+  },
+  "vendorBookingDetailNoHistoryMessage": "No history yet",
+  "vendorBookingDetailStatusChangesLabel": "Status Changes",
+  "vendorBookingDetailEventLogLabel": "Event Log",
+  "vendorBookingDetailEventFallback": "Event",
+
+  "vendorBookingsSearchHint": "Search by booking # or customer…",
+  "vendorBookingsAllStatusesLabel": "All Statuses",
+  "vendorBookingsPendingLabel": "Pending",
+  "vendorBookingsConfirmedLabel": "Confirmed",
+  "vendorBookingsInProgressLabel": "In Progress",
+  "vendorBookingsCompletedLabel": "Completed",
+  "vendorBookingsCancelledLabel": "Cancelled",
+  "vendorBookingsEmptyMessage": "No bookings found",
+  "vendorBookingsPackageFallback": "Package",
+
+  "vendorEarningsTotalCollectedLabel": "Total Collected",
+  "vendorEarningsPendingLabel": "Pending",
+  "vendorEarningsBookingsPaidLabel": "Bookings Paid",
+  "vendorEarningsPaymentHistoryLabel": "Payment History",
+  "vendorEarningsNoPaymentsMessage": "No payments yet",
+
+  "vendorNotificationsEmptyMessage": "No notifications",
+
+  "vendorDashboardSetupProfileHeading": "Set up your business profile",
+  "vendorDashboardSetupProfileMessage": "Create your vendor profile to start listing packages and receiving bookings.",
+  "vendorDashboardCreateProfileButton": "Create Profile",
+  "vendorDashboardReviewsCountLabel": "{count} reviews",
+  "@vendorDashboardReviewsCountLabel": {
+    "description": "Review count under the star rating stat card on the vendor dashboard",
+    "placeholders": {
+      "count": { "type": "String" }
+    }
+  },
+  "vendorDashboardActivePackagesLabel": "Active Packages",
+  "vendorDashboardPendingReviewLabel": "Pending Review",
+  "vendorDashboardDraftsLabel": "Drafts",
+  "vendorDashboardQuickActionsLabel": "Quick Actions",
+  "vendorDashboardAddPackageButton": "Add Package",
+  "vendorDashboardEditProfileButton": "Edit Profile",
+  "vendorDashboardBusinessInfoLabel": "Business Info",
+  "vendorDashboardTypeLabel": "Type",
+  "vendorDashboardExperienceLabel": "Experience",
+  "vendorDashboardYearsValue": "{years} yrs",
+  "@vendorDashboardYearsValue": {
+    "description": "Years of experience value in the vendor dashboard business info card",
+    "placeholders": {
+      "years": { "type": "String" }
+    }
+  },
+  "vendorDashboardServiceRadiusLabel": "Service Radius",
+  "vendorDashboardRadiusValue": "{radius} km",
+  "@vendorDashboardRadiusValue": {
+    "description": "Service radius value in the vendor dashboard business info card",
+    "placeholders": {
+      "radius": { "type": "String" }
+    }
+  },
+  "vendorDashboardAcceptanceRateLabel": "Acceptance Rate",
+  "vendorDashboardCompletedBookingsLabel": "Completed Bookings",
+
+  "vendorMultimediaPhotoUploadedMessage": "Photo uploaded.",
+  "vendorMultimediaVideoUploadedMessage": "Video uploaded.",
+  "vendorMultimediaPermissionNeededMessage": "Permission needed — enable photo access in Settings.",
+  "vendorMultimediaUploadFailedMessage": "Upload failed.",
+  "vendorMultimediaEmptyMessage": "No assigned bookings yet",
+  "vendorMultimediaEventFallback": "Event",
+  "vendorMultimediaUploadingLabel": "Uploading…",
+  "vendorMultimediaUploadPhotoButton": "📷 Upload Photo",
+  "vendorMultimediaUploadVideoButton": "🎞️ Upload Video",
+  "vendorMultimediaLockedMessage": "Media upload unlocks once this booking is confirmed.",
+
+  "vendorReviewsSetupProfileMessage": "Set up your vendor profile first.",
+  "vendorReviewsEmptyMessage": "No reviews yet",
+  "vendorReviewsVerifiedCountLabel": "{count} verified reviews",
+  "@vendorReviewsVerifiedCountLabel": {
+    "description": "Verified review count shown in the rating summary on the vendor reviews screen",
+    "placeholders": {
+      "count": { "type": "String" }
+    }
+  },
+
+  "vendorPackagesSubmittedForReviewMessage": "Submitted for review.",
+  "vendorPackagesSubmitError": "Could not submit.",
+  "vendorPackagesUnpublishedMessage": "Unpublished.",
+  "vendorPackagesUnpublishError": "Could not unpublish.",
+  "vendorPackagesDeleteConfirmTitle": "Delete package?",
+  "vendorPackagesDeleteConfirmMessage": "This will permanently delete \"{name}\".",
+  "@vendorPackagesDeleteConfirmMessage": {
+    "description": "Confirmation dialog message when deleting a vendor package",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "vendorPackagesDeletedMessage": "Deleted.",
+  "vendorPackagesDeleteRestrictedError": "Could not delete — only draft/inactive packages can be deleted.",
+  "vendorPackagesNewPackageButtonLabel": "New Package",
+  "vendorPackagesEmptyMessage": "No packages yet",
+  "vendorPackagesEditButtonLabel": "Edit",
+  "vendorPackagesItemsButtonLabel": "Items",
+  "vendorPackagesPhotosButtonLabel": "Photos",
+  "vendorPackagesSubmitButtonLabel": "Submit",
+  "vendorPackagesUnpublishButtonLabel": "Unpublish",
+  "vendorPackagesDeleteButtonLabel": "Delete",
+
+  "vendorPackageFormNameAndPriceRequiredError": "Name and base price are required.",
+  "vendorPackageFormSaveError": "Could not save package.",
+  "vendorPackageFormEditTitle": "Edit Package",
+  "vendorPackageFormNewTitle": "New Package",
+  "vendorPackageFormCoverImageLabel": "Cover Image",
+  "vendorPackageFormNameLabel": "Name *",
+  "vendorPackageFormShortDescriptionLabel": "Short Description",
+  "vendorPackageFormDescriptionLabel": "Description",
+  "vendorPackageFormBasePriceLabel": "Base Price (₹) *",
+  "vendorPackageFormMinGuestsLabel": "Min Guests",
+  "vendorPackageFormMaxGuestsLabel": "Max Guests",
+  "vendorPackageFormDurationLabel": "Duration (hours)",
+  "vendorPackageFormCitySlugLabel": "City Slug",
+  "vendorPackageFormCustomizableLabel": "Customizable",
+  "vendorPackageFormOccasionsLabel": "Occasions",
+  "vendorPackageFormThemeLabel": "Theme",
+  "vendorPackageFormThemeHelperText": "Pick the one theme you'll actually deliver for this package — customers will see this exact theme when booking.",
+  "vendorPackageFormCreateButtonLabel": "Create Package",
+
+  "vendorPackageGalleryDeleteConfirmTitle": "Delete photo?",
+  "vendorPackageGalleryDeleteConfirmMessage": "This photo will be permanently removed from the package gallery.",
+  "vendorPackageGalleryDeleteButtonLabel": "Delete",
+  "vendorPackageGalleryDeleteError": "Could not delete photo.",
+  "vendorPackageGalleryTitle": "{packageName} Gallery",
+  "@vendorPackageGalleryTitle": {
+    "description": "AppBar title on the vendor package gallery screen",
+    "placeholders": {
+      "packageName": { "type": "String" }
+    }
+  },
+  "vendorPackageGalleryUploadingLabel": "Uploading...",
+  "vendorPackageGalleryAddPhotoButtonLabel": "Add Photo",
+  "vendorPackageGalleryEmptyMessage": "No gallery photos yet",
+  "vendorPackageGalleryEmptyHint": "Add photos to showcase this package.",
+
+  "vendorCommonItemsNewItemTitle": "New Common Item",
+  "vendorCommonItemsNameLabel": "Name",
+  "vendorCommonItemsBasePriceLabel": "Base Price",
+  "vendorCommonItemsQuantityLabel": "Quantity",
+  "vendorCommonItemsUnitLabel": "Unit",
+  "vendorCommonItemsDescriptionLabel": "Description",
+  "vendorCommonItemsCreateButtonLabel": "Create",
+  "vendorCommonItemsCreateError": "Could not create item.",
+  "vendorCommonItemsDeleteConfirmTitle": "Delete common item?",
+  "vendorCommonItemsDeleteConfirmMessage": "This removes \"{name}\" from all packages it's attached to.",
+  "@vendorCommonItemsDeleteConfirmMessage": {
+    "description": "Confirmation dialog message when deleting a vendor common item",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "vendorCommonItemsDeleteButtonLabel": "Delete",
+  "vendorCommonItemsDeleteError": "Could not delete item.",
+  "vendorCommonItemsTitle": "Common Items",
+  "vendorCommonItemsEmptyMessage": "No common items yet",
+  "vendorCommonItemsQtyPriceLabel": "Qty {quantity} · ₹{price}",
+  "@vendorCommonItemsQtyPriceLabel": {
+    "description": "Quantity and price line on a vendor common item card",
+    "placeholders": {
+      "quantity": { "type": "String" },
+      "price": { "type": "String" }
+    }
+  },
+
+  "vendorPackageItemsAddItemTitle": "Add Item",
+  "vendorPackageItemsEditItemTitle": "Edit Item",
+  "vendorPackageItemsNameLabel": "Name",
+  "vendorPackageItemsBasePriceLabel": "Base Price",
+  "vendorPackageItemsQuantityLabel": "Quantity",
+  "vendorPackageItemsUnitLabel": "Unit",
+  "vendorPackageItemsDescriptionLabel": "Description",
+  "vendorPackageItemsMandatoryLabel": "Mandatory",
+  "vendorPackageItemsSaveError": "Could not save item.",
+  "vendorPackageItemsDeleteError": "Could not delete item.",
+  "vendorPackageItemsTitle": "{packageName} — Items",
+  "@vendorPackageItemsTitle": {
+    "description": "AppBar title on the vendor package items screen",
+    "placeholders": {
+      "packageName": { "type": "String" }
+    }
+  },
+  "vendorPackageItemsLockedMessage": "Items are locked while this package is under review.",
+  "vendorPackageItemsSectionLabel": "Items",
+  "vendorPackageItemsCommonPrefixLabel": "Common · ",
+  "vendorPackageItemsQtyPriceLabel": "Qty {quantity} · ₹{price}",
+  "@vendorPackageItemsQtyPriceLabel": {
+    "description": "Quantity and price line on a vendor package item card",
+    "placeholders": {
+      "quantity": { "type": "String" },
+      "price": { "type": "String" }
+    }
+  },
+  "vendorPackageItemsPhotosButtonLabel": "Photos",
+  "vendorPackageItemsEditButtonLabel": "Edit",
+  "vendorPackageItemsDeleteButtonLabel": "Delete",
+  "vendorPackageItemsGalleryLabel": "Gallery",
+  "vendorPackageItemsAddPhotoButtonLabel": "+ Add Photo",
+
+  "vendorProfileBusinessNameRequiredError": "Business name is required.",
+  "vendorProfileCreatedMessage": "Vendor profile created!",
+  "vendorProfileUpdatedMessage": "Profile updated.",
+  "vendorProfileSaveError": "Could not save profile.",
+  "vendorProfileBusinessInfoHeading": "Business Information",
+  "vendorProfileBusinessNameLabel": "Business Name *",
+  "vendorProfileVendorTypeLabel": "Vendor Type",
+  "vendorProfileLegalNameLabel": "Legal Name",
+  "vendorProfileGstNumberLabel": "GST Number",
+  "vendorProfilePanNumberLabel": "PAN Number",
+  "vendorProfileYearsOfExperienceLabel": "Years of Experience",
+  "vendorProfileEstablishedYearLabel": "Established Year",
+  "vendorProfileServiceRadiusLabel": "Service Radius (km)",
+  "vendorProfileAboutBusinessHeading": "About Your Business",
+  "vendorProfileTaglineLabel": "Tagline",
+  "vendorProfileAboutLabel": "About",
+  "vendorProfileLocationHeading": "Location & Online Presence",
+  "vendorProfileOperatingCitiesLabel": "Operating Cities (comma-separated)",
+  "vendorProfileWebsiteUrlLabel": "Website URL",
+  "vendorProfileBusinessGalleryHeading": "Business Gallery",
+  "vendorProfileNoPhotosMessage": "No photos yet",
+  "vendorProfileBusinessDocumentsHeading": "Business Documents",
+  "vendorProfileNoDocumentsMessage": "No documents uploaded yet",
+  "vendorProfileDocTypeGstCertificate": "GST Certificate",
+  "vendorProfileDocTypePanCard": "PAN Card",
+  "vendorProfileDocTypeAadhaarCard": "Aadhaar Card",
+  "vendorProfileDocTypeCancelledCheque": "Cancelled Cheque",
+  "vendorProfileDocTypeShopActLicense": "Shop Act License",
+  "vendorProfileDocTypeIncorporationCertificate": "Incorporation Certificate",
+  "vendorProfileDocTypeOther": "Other",
+
+  "vendorTicketDetailSendError": "Could not send message.",
+  "vendorTicketDetailNotFoundMessage": "Ticket not found",
+  "vendorTicketDetailReplyHint": "Type a reply…",
+
+  "vendorSupportNewTicketSheetTitle": "New Support Ticket",
+  "vendorSupportCategoryLabel": "Category",
+  "vendorSupportSubjectLabel": "Subject",
+  "vendorSupportDescriptionMinCharsLabel": "Description (min 20 characters)",
+  "vendorSupportDescriptionTooShortError": "Description must be at least 20 characters.",
+  "vendorSupportCreateTicketError": "Could not create ticket.",
+  "vendorSupportNewTicketButtonLabel": "New Ticket",
+  "vendorSupportEmptyMessage": "No support tickets yet",
+
+  "planFlowOccasionStepTitle": "What shall we celebrate?",
+  "planFlowOccasionStepSubtitle": "Every milestone deserves to be held with care.",
+  "planFlowPackageStepTitle": "Choose your package",
+  "planFlowPackageStepSubtitle": "Hand-picked experiences, curated for families like yours.",
+  "planFlowItemsStepTitle": "Package items",
+  "planFlowItemsStepSubtitle": "Everything included, plus a few extras if you'd like them.",
+  "planFlowDetailsStepTitle": "Create an Invite",
+  "planFlowDetailsStepSubtitle": "The little things help us shape your plan.",
+  "planFlowGuestsStepTitle": "Who’s coming together?",
+  "planFlowGuestsStepSubtitle": "Group by household — the way families really gather.",
+  "planFlowSummaryStepTitle": "Order Summary",
+  "planFlowSummaryStepSubtitle": "Review your celebration plan before we get started.",
+  "planFlowStepIndicator": "Step {current} of {total}",
+  "@planFlowStepIndicator": {
+    "description": "Progress indicator at the top of the plan-a-celebration flow",
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "planFlowCreatingBookingLabel": "Creating Booking...",
+  "planFlowProceedToPaymentLabel": "Proceed To Payment",
+  "planFlowContinueButtonLabel": "Continue",
+
+  "planFlowMilestonesGroupLabel": "Milestones",
+  "planFlowMemoriesGroupLabel": "Memories",
+  "planFlowGrowthGroupLabel": "Growth",
+  "planFlowOtherMomentsGroupLabel": "Other Moments",
+  "planFlowNoPackagesAvailableMessage": "No packages available for {occasionName} yet.",
+  "@planFlowNoPackagesAvailableMessage": {
+    "description": "Empty state on the plan flow package step when the chosen occasion has no packages",
+    "placeholders": {
+      "occasionName": { "type": "String" }
+    }
+  },
+  "planFlowThisOccasionFallback": "this occasion",
+  "planFlowExpandForDetailsLabel": "Expand for details",
+  "planFlowSelectedLabel": "Selected",
+  "planFlowSelectThisPackageLabel": "Select This Package",
+  "planFlowChooseColorThemeLabel": "CHOOSE A COLOR THEME",
+  "planFlowCustomizableThemeHint": "This package is customizable — pick the palette for your celebration.",
+  "planFlowDefaultPackageName": "Celebration Package",
+
+  "planFlowBalloonColoursLabel": "BALLOON COLOURS",
+  "planFlowBalloonColoursHint": "Pick a single accent colour, or a two-colour combination for your balloon décor.",
+  "planFlowSingleColourLabel": "Single Colour",
+  "planFlowDualColourLabel": "Dual Colour",
+  "planFlowBalloonColorRed": "Red",
+  "planFlowBalloonColorGold": "Gold",
+  "planFlowBalloonColorRoseGold": "Rose Gold",
+  "planFlowBalloonColorPink": "Pink",
+  "planFlowBalloonColorSkyBlue": "Sky Blue",
+  "planFlowBalloonColorNavyBlue": "Navy Blue",
+  "planFlowBalloonColorWhite": "White",
+  "planFlowBalloonColorBlack": "Black",
+  "planFlowBalloonColorSilver": "Silver",
+  "planFlowBalloonColorPurple": "Purple",
+  "planFlowBalloonColorGreen": "Green",
+  "planFlowBalloonColorOrange": "Orange",
+  "planFlowBalloonColorYellow": "Yellow",
+
+  "planFlowIncludedLabel": "INCLUDED",
+  "planFlowOptionalAddOnsLabel": "OPTIONAL ADD-ONS",
+  "planFlowNoConfigurableItemsMessage": "This package has no configurable items.",
+  "planFlowUnitFallback": "unit",
+  "planFlowAddOnPriceLabel": "+ {price} / {unit}",
+  "@planFlowAddOnPriceLabel": {
+    "description": "Add-on unit price line on a package item row in the plan flow items step",
+    "placeholders": {
+      "price": { "type": "String" },
+      "unit": { "type": "String" }
+    }
+  },
+  "planFlowQuantityLabel": "Qty: {unit}",
+  "@planFlowQuantityLabel": {
+    "description": "Quantity unit label next to the item quantity stepper in the plan flow items step",
+    "placeholders": {
+      "unit": { "type": "String" }
+    }
+  },
+
+  "planFlowCelebrationNameLabel": "What shall we call it?",
+  "planFlowWhenLabel": "When",
+  "planFlowTimeLabel": "Time",
+  "planFlowDefaultEventTime": "6:30 PM",
+  "planFlowWhereLabel": "Where",
+  "planFlowMoodLabel": "The mood",
+  "planFlowVibeIntimate": "Intimate",
+  "planFlowVibeGrand": "Grand",
+  "planFlowVibeTraditional": "Traditional",
+  "planFlowVibeModern": "Modern",
+  "planFlowColorPaletteLabel": "Color palette",
+  "planFlowColorGold": "Gold",
+  "planFlowColorBlushPink": "Blush Pink",
+  "planFlowColorSkyBlue": "Sky Blue",
+  "planFlowColorSageGreen": "Sage Green",
+  "planFlowColorLavender": "Lavender",
+  "planFlowColorMulticolor": "Multicolor",
+  "planFlowAdditionalNotesLabel": "Anything else we should know?",
+  "planFlowAddNewAddressLabel": "Add new address",
+
+  "planFlowGuestsAddedLabel": "guests added",
+  "planFlowInviteViaLabel": "INVITE VIA",
+  "planFlowInviteMethodManualLabel": "Manual",
+  "planFlowInviteMethodContactsLabel": "Contacts",
+  "planFlowGuestListLabel": "GUEST LIST",
+  "planFlowInvitationsWhatsAppNotice": "Invitations are sent via WhatsApp once your booking and payment are confirmed.",
+  "planFlowAddGuestTitle": "Add Guest",
+  "planFlowAddGuestConfirmLabel": "Add",
+  "planFlowContactsPermissionNeededMessage": "Contacts permission is needed to import guests.",
+  "planFlowContactsImportError": "Could not read contacts. Please try again.",
+  "planFlowSelectGuestsTitle": "Select Guests",
+  "planFlowSearchContactsHint": "Search contacts",
+  "planFlowSelectContactsLabel": "Select contacts",
+  "planFlowAddGuestsCountLabel": "{count, plural, one{Add {count} guest} other{Add {count} guests}}",
+  "@planFlowAddGuestsCountLabel": {
+    "description": "Confirm button in the contact picker sheet, shows how many guests are selected",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "planFlowSummaryCelebrationLabel": "Celebration",
+  "planFlowCelebrationSummaryValue": "{occasionName} - {celebrationName}",
+  "@planFlowCelebrationSummaryValue": {
+    "description": "Celebration summary card value on the plan flow order summary step",
+    "placeholders": {
+      "occasionName": { "type": "String" },
+      "celebrationName": { "type": "String" }
+    }
+  },
+  "planFlowSummaryPackageLabel": "Package",
+  "planFlowSummaryThemeLabel": "Theme",
+  "planFlowSummaryBalloonColoursLabel": "Balloon Colours",
+  "planFlowDualLabel": "Dual",
+  "planFlowSingleLabel": "Single",
+  "planFlowSummaryAddOnsLabel": "Add-ons",
+  "planFlowAddOnQuantityLabel": "{name} ×{qty}",
+  "@planFlowAddOnQuantityLabel": {
+    "description": "Add-on name with quantity in the plan flow order summary add-ons card",
+    "placeholders": {
+      "name": { "type": "String" },
+      "qty": { "type": "int" }
+    }
+  },
+  "planFlowSummaryDateTimeLabel": "Date & Time",
+  "planFlowDateTimeSummaryValue": "{date} · {time}",
+  "@planFlowDateTimeSummaryValue": {
+    "description": "Date and time summary card value on the plan flow order summary step",
+    "placeholders": {
+      "date": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  },
+  "planFlowSummaryGuestCountLabel": "Guest Count",
+  "planFlowGuestCountValue": "{count} Guests",
+  "@planFlowGuestCountValue": {
+    "description": "Guest count summary card value on the plan flow order summary step",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "planFlowAddressSectionHeader": "Address",
+  "planFlowAddAddressButtonLabel": "Add Address",
+  "planFlowPromoCodeSectionHeader": "Promo Code",
+  "planFlowPromoCodeHint": "Have a promo code?",
+  "planFlowCheckingLabel": "Checking…",
+  "planFlowApplyButtonLabel": "Apply",
+  "planFlowCouponValidationError": "Could not validate this code. Please try again.",
+  "planFlowAppliedDiscountsLabel": "Applied: {discounts}",
+  "@planFlowAppliedDiscountsLabel": {
+    "description": "Applied discounts line under the promo code field on the plan flow order summary step",
+    "placeholders": {
+      "discounts": { "type": "String" }
+    }
+  },
+  "planFlowPriceBreakdownSectionHeader": "Price Breakdown",
+  "planFlowPackageBasePriceLabel": "Package Base Price",
+  "planFlowDiscountLabel": "Discount",
+  "planFlowGstLabel": "GST (18%)",
+  "planFlowTotalAmountLabel": "Total Amount",
+
+  "planFlowCreateBookingError": "Could not create booking. Please try again.",
+
+  "catalogueTitle": "{category} Catalogue",
+  "@catalogueTitle": {
+    "description": "AppBar title on the catalogue screen",
+    "placeholders": {
+      "category": { "type": "String" }
+    }
+  },
+  "catalogueEmptyMessage": "No items available",
+  "catalogueDefaultUnitFallback": "service",
+
+  "feedbackCategoryGeneral": "General",
+  "feedbackCategoryBugReport": "Bug Report",
+  "feedbackCategoryFeatureRequest": "Feature Request",
+  "feedbackCategoryVendorExperience": "Vendor Experience",
+  "feedbackCategoryAppExperience": "App Experience",
+  "feedbackCategoryOther": "Other",
+  "feedbackSelectRatingError": "Please select a rating.",
+  "feedbackSubmitError": "Could not submit feedback. Please try again.",
+  "feedbackDoneAppBarTitle": "Feedback",
+  "feedbackThanksHeading": "Thanks for your feedback!",
+  "feedbackThanksMessage": "We read every submission and use it to improve Tyohaar.",
+  "feedbackDoneButtonLabel": "Done",
+  "feedbackAppBarTitle": "Share Feedback",
+  "feedbackHowWasExperienceHeading": "How was your experience?",
+  "feedbackSubheading": "Your feedback helps us make Tyohaar better for everyone.",
+  "feedbackCategoryFieldLabel": "Category",
+  "feedbackCommentsLabel": "Comments (optional)",
+  "feedbackCommentsHint": "Tell us more...",
+  "feedbackSubmittingLabel": "Submitting...",
+  "feedbackSubmitButtonLabel": "Submit Feedback",
+
+  "profileYouHeading": "You",
+  "profileAvatarInitialLabel": "A",
+  "profileMockUserName": "Aarav Sharma",
+  "profileMockUserEmailLocation": "aarav.sharma@gmail.com · Jaipur",
+  "profileMemberSinceBadge": "✦ Member since 2024",
+  "profileStatCelebrationsLabel": "Celebrations",
+  "profileStatPhotosLabel": "Photos",
+  "profileStatSavedPartnersLabel": "Saved partners",
+  "profileMenuHouseholdsFamilyLabel": "Households & family",
+  "profileMenuHouseholdsFamilySubtitle": "3 groups",
+  "profileMenuPaymentMethodsLabel": "Payment methods",
+  "profileMenuPaymentMethodsSubtitle": "2 cards",
+  "profileMenuNotificationsLabel": "Notifications",
+  "profileMenuPrivacySecurityLabel": "Privacy & security",
+  "profileMenuHelpSupportLabel": "Help & support",
+  "profileSignOutLabel": "Sign out",
+
+  "sendInvitationsTitle": "Send Invitations",
+  "sendInvitationsInviteMessage": "Hi {name}! You're invited to {packageName} on {date} 🎉",
+  "@sendInvitationsInviteMessage": {
+    "description": "WhatsApp/share invite message body sent to a guest",
+    "placeholders": {
+      "name": { "type": "String" },
+      "packageName": { "type": "String" },
+      "date": { "type": "String" }
+    }
+  },
+  "sendInvitationsRsvpSuffix": "\n\nPlease RSVP here: {link}",
+  "@sendInvitationsRsvpSuffix": {
+    "description": "Appended to the invite message when an RSVP link is available",
+    "placeholders": {
+      "link": { "type": "String" }
+    }
+  },
+  "sendInvitationsShareSubject": "You're invited!",
+  "sendInvitationsEmptyMessage": "No guests added yet — you can invite people anytime from the Guests tab.",
+  "sendInvitationsConfirmedMessage": "Your booking is confirmed! Tap a guest to send their invite on WhatsApp.",
+  "sendInvitationsSentLabel": "Sent ✓",
+  "sendInvitationsWhatsAppButtonLabel": "WhatsApp",
+  "sendInvitationsContinueButtonLabel": "Continue",
+
+  "aboutAppTitle": "About App",
+  "aboutAppBrandName": "Tyohaar",
+  "aboutAppVersionLabel": "Version 1.0.4 (Build 122)",
+  "aboutAppMissionHeading": "Our Mission",
+  "aboutAppMissionBody": "At Tyohaar, we believe that every milestone deserves to be celebrated with joy and zero stress. Our mission is to preserve tradition while embracing the convenience of the modern world, making family gatherings more meaningful and effortless.",
+  "aboutAppWebsiteLabel": "Website",
+  "aboutAppWebsiteValue": "www.tyohaar.co",
+  "aboutAppContactEmailLabel": "Contact Email",
+  "aboutAppContactEmailValue": "support@tyohaar.co",
+  "aboutAppDesignedByLabel": "Designed and Developed by MaviCode",
+
+  "guestHistoryTitle": "Guest History",
+  "guestHistoryLoadError": "Could not load guest history.",
+  "guestHistoryUnknownGuestFallback": "A guest",
+  "guestHistoryEventInvited": "Invited",
+  "guestHistoryEventInvitationOpened": "Opened the invite",
+  "guestHistoryEventRsvpChanged": "RSVP updated",
+  "guestHistoryEventCheckedIn": "Checked in",
+  "guestHistoryEventWithStatus": "{label} to {status}",
+  "@guestHistoryEventWithStatus": {
+    "description": "Guest history row description for an RSVP status change event",
+    "placeholders": {
+      "label": { "type": "String" },
+      "status": { "type": "String" }
+    }
+  },
+  "guestHistoryNoCelebrationsTitle": "No celebrations yet",
+  "guestHistoryNoCelebrationsMessage": "Once you start planning, guest activity will show up here.",
+  "guestHistorySelectorLabel": "EVENT",
+  "guestHistoryNoActivityMessage": "No guest activity yet for this celebration.",
+
+  "accountHeading": "Account",
+  "accountTutorialTitle": "Everything about you, in one place",
+  "accountTutorialDescription": "Jump to your bookings, referrals, or help from here — and manage your profile and membership below.",
+  "accountSignOutConfirmTitle": "Sign out?",
+  "accountSignOutConfirmMessage": "You will need to sign in again to access your account.",
+  "accountSignOutLabel": "Sign out",
+  "accountSectionPersonalLabel": "Personal",
+  "accountSectionSupportLegalLabel": "Support & Legal",
+  "accountMyProfileLabel": "My Profile",
+  "accountMyMembershipPlanLabel": "My Membership Plan",
+  "accountManageAddressesLabel": "Manage Addresses",
+  "accountMyTicketsLabel": "My Tickets",
+  "accountDeleteAccountLabel": "Delete Account",
+  "accountMyBookingsLabel": "My Bookings",
+  "accountReferEarnLabel": "Refer & Earn",
+  "accountHelpLabel": "Help",
+  "accountWelcomeFallback": "Welcome",
+  "accountAvatarInitialFallback": "T",
+
+  "plansHeading": "Your plans",
+  "plansLoadError": "Could not load your plans.",
+  "plansEmptyMessage": "Start planning your first unforgettable event.",
+  "plansStartPlanningButtonLabel": "Start Planning",
+  "plansInProgressSectionLabel": "In progress",
+  "plansCelebrationFallback": "Celebration",
+  "plansAddNewCelebrationLabel": "Plan a new celebration",
+  "plansStartFromAnyOccasionLabel": "Start from any occasion",
+
+  "submitReviewSelectRatingError": "Please select a star rating.",
+  "submitReviewSubmitError": "Could not submit your review. Please try again.",
+  "submitReviewTitleHint": "Give your review a title (optional)",
+  "submitReviewBodyHint": "Share details about your experience (optional)",
+  "submitReviewSubmitButtonLabel": "Submit Review",
+
+  "packageFilterTitle": "Filter Packages",
+  "packageFilterSortByLabel": "Sort By",
+  "packageFilterSortPopularity": "Popularity",
+  "packageFilterSortPriceLowToHigh": "Price: Low to High",
+  "packageFilterSortPriceHighToLow": "Price: High to Low",
+  "packageFilterPriceRangeLabel": "Price Range (₹)",
+  "packageFilterPriceKLabel": "₹{value}K",
+  "@packageFilterPriceKLabel": {
+    "description": "Price range slider label in thousands, e.g. ₹5K",
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "packageFilterPriceMinLabel": "₹0",
+  "packageFilterPriceMaxLabel": "₹100K+",
+  "packageFilterThemesLabel": "Themes",
+  "packageFilterResetButtonLabel": "Reset",
+  "packageFilterApplyButtonLabel": "Apply Filters",
+
+  "bookingConfirmationNotificationMessage": "Tyohaar: Celebration Confirmed for {packageName} on {date}!",
+  "@bookingConfirmationNotificationMessage": {
+    "description": "Simulated status bar SnackBar shown briefly after booking confirmation",
+    "placeholders": {
+      "packageName": { "type": "String" },
+      "date": { "type": "String" }
+    }
+  },
+  "bookingConfirmationHeading": "Celebration Confirmed!",
+  "bookingConfirmationBodyMessage": "We’ve received your booking for {packageName}. Our team will start prepping for your special day right away.",
+  "@bookingConfirmationBodyMessage": {
+    "description": "Body copy on the booking confirmation screen",
+    "placeholders": {
+      "packageName": { "type": "String" }
+    }
+  },
+  "bookingConfirmationBookingIdLabel": "Booking ID",
+  "bookingConfirmationDeliveryDateLabel": "Delivery Date",
+  "bookingConfirmationPackageLabel": "Package",
+  "bookingConfirmationDownloadInvoiceButtonLabel": "Download Invoice",
+  "bookingConfirmationDownloadingInvoiceMessage": "Downloading invoice...",
+  "bookingConfirmationGoToEventHubButtonLabel": "Go to Event Hub",
+
+  "guestsTitle": "Guest list",
+  "guestsLoadError": "Could not load guests.",
+  "guestsCreateCelebrationFirstMessage": "Create a celebration first to add guests.",
+  "guestsAddGuestDialogTitle": "Add Guest",
+  "guestsNameFieldLabel": "Name",
+  "guestsPhoneFieldLabel": "Phone (optional)",
+  "guestsAddButtonLabel": "Add",
+  "guestsAddGuestError": "Could not add guest. Please try again.",
+  "guestsRemoveGuestDialogTitle": "Remove guest?",
+  "guestsRemoveGuestConfirmMessage": "Remove {name} from your guest list?",
+  "@guestsRemoveGuestConfirmMessage": {
+    "description": "Confirmation dialog message when removing a guest",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "guestsRemoveButtonLabel": "Remove",
+  "guestsRemoveGuestError": "Could not remove guest.",
+  "guestsEmptyMessage": "No guests in your list yet — tap + to add one",
+  "guestsInvitedLabel": "guests invited",
+  "guestsComingCountLabel": "{count} coming",
+  "@guestsComingCountLabel": {
+    "description": "Legend under the guest RSVP progress bar",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "guestsMaybeCountLabel": "{count} maybe",
+  "@guestsMaybeCountLabel": {
+    "description": "Legend under the guest RSVP progress bar",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "guestsPendingCountLabel": "{count} pending",
+  "@guestsPendingCountLabel": {
+    "description": "Legend under the guest RSVP progress bar",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "guestsSearchHint": "Search a guest…",
+  "guestsFilterAllLabel": "All",
+  "guestsStatusComing": "Coming",
+  "guestsStatusMaybe": "Maybe",
+  "guestsStatusPending": "Pending",
+  "guestsStatusIgnored": "Ignored",
+  "guestsStatusDeclined": "Can't come",
+  "guestsStatusUnknown": "Unknown",
+  "guestsShareInviteTooltip": "Share invite",
+  "guestsShareInviteMessage": "Hi {name}! You're invited 🎉\n\nPlease RSVP here: {link}",
+  "@guestsShareInviteMessage": {
+    "description": "WhatsApp/share invite message body sent to a guest from the guest list screen",
+    "placeholders": {
+      "name": { "type": "String" },
+      "link": { "type": "String" }
+    }
+  },
+  "guestsShareInviteSubject": "You're invited!",
+  "guestsQrCheckinTitle": "Digital Check-in",
+  "guestsQrCheckinMessage": "Share this QR with your guests for quick entry and live RSVP tracking at the venue.",
+  "guestsCloseButtonLabel": "Close",
+
+  "helpTitle": "Help & Support",
+  "helpSearchHint": "Search help topics...",
+  "helpLoadFaqsError": "Could not load FAQs. Please try again.",
+  "helpPopularTopicsLabel": "POPULAR TOPICS",
+  "helpTopicPlanningFirstEvent": "Planning your first event",
+  "helpTopicMembershipBenefits": "Membership benefits",
+  "helpTopicPaymentsRefunds": "Payments & Refunds",
+  "helpTopicPrivacySafety": "Privacy & Safety",
+  "helpFaqsLabel": "FAQs",
+  "helpNoResultsMessage": "No results for \"{query}\"",
+  "@helpNoResultsMessage": {
+    "description": "Empty search results message on the help screen",
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "helpStillNeedHelpHeading": "Still need help?",
+  "helpSupportAvailableMessage": "Our support team is available 24/7 to assist you.",
+  "helpRaiseTicketButtonLabel": "Raise a Ticket",
+  "helpShareFeedbackButtonLabel": "Share Feedback",
+
+  "manageAddressTitle": "Manage Addresses",
+  "manageAddressLoadError": "Could not load addresses.",
+  "manageAddressDeleteDialogTitle": "Delete address?",
+  "manageAddressDeleteConfirmMessage": "This address will be permanently removed.",
+  "manageAddressDeleteButtonLabel": "Delete",
+  "manageAddressRemovedMessage": "Address removed.",
+  "manageAddressDeleteError": "Could not delete. Please try again.",
+  "manageAddressAddButtonLabel": "Add New Address",
+  "manageAddressEmptyMessage": "No addresses saved",
+  "manageAddressDefaultBadgeLabel": "DEFAULT",
+  "manageAddressNearLandmarkLabel": "Near {landmark}",
+  "@manageAddressNearLandmarkLabel": {
+    "description": "Landmark line on an address card",
+    "placeholders": {
+      "landmark": { "type": "String" }
+    }
+  },
+  "manageAddressCityStateLine": "{city}, {state} - {postalCode}",
+  "@manageAddressCityStateLine": {
+    "description": "City/state/postal code line on an address card",
+    "placeholders": {
+      "city": { "type": "String" },
+      "state": { "type": "String" },
+      "postalCode": { "type": "String" }
+    }
+  },
+  "manageAddressEditButtonLabel": "Edit",
+  "manageAddressRemoveButtonLabel": "Remove",
+  "manageAddressFormValidationError": "Please fill in address line, city, state, and PIN code.",
+  "manageAddressSavedMessage": "Address saved!",
+  "manageAddressSaveError": "Could not save. Please try again.",
+  "manageAddressEditAddressTitle": "Edit Address",
+  "manageAddressAddAddressTitle": "Add Address",
+  "manageAddressLabelHome": "Home",
+  "manageAddressLabelWork": "Work",
+  "manageAddressLabelOther": "Other",
+  "manageAddressRecipientNameLabel": "RECIPIENT NAME",
+  "manageAddressRecipientNameHint": "Who receives at this address?",
+  "manageAddressRecipientPhoneLabel": "RECIPIENT PHONE",
+  "manageAddressRecipientPhoneHint": "10-digit mobile",
+  "manageAddressLine1Label": "ADDRESS LINE 1",
+  "manageAddressLine1Hint": "House/flat no., building, street",
+  "manageAddressLine2Label": "ADDRESS LINE 2 (OPTIONAL)",
+  "manageAddressLine2Hint": "Area, sector, colony",
+  "manageAddressLandmarkLabel": "LANDMARK (OPTIONAL)",
+  "manageAddressLandmarkHint": "e.g. Near City Park",
+  "manageAddressCityLabel": "CITY",
+  "manageAddressCityHint": "Jaipur",
+  "manageAddressStateLabel": "STATE",
+  "manageAddressStateHint": "Rajasthan",
+  "manageAddressPinCodeLabel": "PIN CODE",
+  "manageAddressPinCodeHint": "302001",
+  "manageAddressSavingLabel": "Saving...",
+  "manageAddressSaveButtonLabel": "Save Address",
+  "manageAddressRecipientNamePhoneLine": "{name} · {phone}",
+  "@manageAddressRecipientNamePhoneLine": {
+    "description": "Recipient name and phone line on an address card, shown when both are present",
+    "placeholders": {
+      "name": { "type": "String" },
+      "phone": { "type": "String" }
+    }
+  },
+
+  "membershipPlanLoadError": "Could not load membership plans.",
+  "membershipPlanTitle": "Membership Plans",
+  "membershipPlanActivatedMessage": "Membership activated!",
+  "membershipPlanSubscribeError": "Could not subscribe. Please try again.",
+  "membershipPlanPaidCheckoutComingSoonMessage": "Paid plan checkout is coming soon — contact support to subscribe for now.",
+  "membershipPlanRenewedMessage": "Membership renewed.",
+  "membershipPlanRenewError": "Could not renew. Please try again.",
+  "membershipPlanUpgradeConfirmTitle": "Upgrade to {planName}?",
+  "@membershipPlanUpgradeConfirmTitle": {
+    "description": "Confirmation dialog title when upgrading to another membership tier",
+    "placeholders": {
+      "planName": { "type": "String" }
+    }
+  },
+  "membershipPlanDowngradeConfirmTitle": "Downgrade to {planName}?",
+  "@membershipPlanDowngradeConfirmTitle": {
+    "description": "Confirmation dialog title when downgrading to another membership tier",
+    "placeholders": {
+      "planName": { "type": "String" }
+    }
+  },
+  "membershipPlanChangeTierConfirmMessage": "This takes effect immediately and starts a fresh billing period on the new plan.",
+  "membershipPlanConfirmButtonLabel": "Confirm",
+  "membershipPlanUpgradedMessage": "Upgraded to {planName}.",
+  "@membershipPlanUpgradedMessage": {
+    "description": "SnackBar shown after successfully upgrading the membership tier",
+    "placeholders": {
+      "planName": { "type": "String" }
+    }
+  },
+  "membershipPlanDowngradedMessage": "Downgraded to {planName}.",
+  "@membershipPlanDowngradedMessage": {
+    "description": "SnackBar shown after successfully downgrading the membership tier",
+    "placeholders": {
+      "planName": { "type": "String" }
+    }
+  },
+  "membershipPlanChangeTierError": "Could not change plan. Please try again.",
+  "membershipPlanCancelConfirmTitle": "Cancel membership?",
+  "membershipPlanCancelConfirmMessage": "Your membership benefits will end immediately.",
+  "membershipPlanKeepButtonLabel": "Keep",
+  "membershipPlanCancelledMessage": "Membership cancelled.",
+  "membershipPlanCancelError": "Could not cancel. Please try again.",
+  "membershipPlanAllPlansHeading": "ALL PLANS",
+  "membershipPlanMonthlyLabel": "Monthly",
+  "membershipPlanYearlyLabel": "Yearly",
+  "membershipPlanMemberFallback": "Member",
+  "membershipPlanValidTillLabel": "Valid till {date}",
+  "@membershipPlanValidTillLabel": {
+    "description": "Active membership expiry date on the membership card",
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "membershipPlanNoExpiryLabel": "No expiry",
+  "membershipPlanLapsedMessage": "Your membership has lapsed. Renew by {date} to keep your benefits.",
+  "@membershipPlanLapsedMessage": {
+    "description": "Grace period notice on the active membership card",
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "membershipPlanRenewNowButtonLabel": "Renew Now",
+  "membershipPlanUpgradeButtonLabel": "Upgrade",
+  "membershipPlanDowngradeButtonLabel": "Downgrade",
+  "membershipPlanOffPackagesBadge": "{percent}% off packages",
+  "@membershipPlanOffPackagesBadge": {
+    "description": "Plan benefit badge showing the package discount percentage",
+    "placeholders": {
+      "percent": { "type": "String" }
+    }
+  },
+  "membershipPlanCashbackBadge": "{percent}% cashback",
+  "@membershipPlanCashbackBadge": {
+    "description": "Plan benefit badge showing the cashback percentage",
+    "placeholders": {
+      "percent": { "type": "String" }
+    }
+  },
+  "membershipPlanWelcomeBonusBadge": "₹{amount} welcome bonus",
+  "@membershipPlanWelcomeBonusBadge": {
+    "description": "Plan benefit badge showing the wallet welcome bonus amount",
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "membershipPlanFreeInvitationsBadge": "{count} free invitations",
+  "@membershipPlanFreeInvitationsBadge": {
+    "description": "Plan benefit badge showing the number of free invitations included",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "membershipPlanPriorityBookingBadge": "Priority booking",
+  "membershipPlanExclusivePackagesBadge": "Exclusive packages",
+  "membershipPlanFreeCancellationBadge": "Free cancellation",
+  "membershipPlanFreeLabel": "Free",
+  "membershipPlanPriceValue": "₹{price}/{period}",
+  "@membershipPlanPriceValue": {
+    "description": "Plan price with billing period suffix on a plan card",
+    "placeholders": {
+      "price": { "type": "String" },
+      "period": { "type": "String" }
+    }
+  },
+  "membershipPlanYearSuffix": "yr",
+  "membershipPlanMonthSuffix": "mo",
+  "membershipPlanCurrentPlanLabel": "Current Plan",
+  "membershipPlanPleaseWaitLabel": "Please wait...",
+  "membershipPlanSubscribeButtonLabel": "Subscribe",
+  "membershipPlanContactSupportButtonLabel": "Contact Support",
+
+  "memoriesLoadError": "Could not load memories.",
+  "memoriesTitle": "Memories",
+  "memoriesSubtitle": "Your family’s story, year by year",
+  "memoriesEmptyTitle": "No memories yet",
+  "memoriesEmptyMessage": "Complete your first celebration to start your gallery.",
+  "memoriesPhotoCountLabel": "📷 {count}",
+  "@memoriesPhotoCountLabel": {
+    "description": "Photo count pill overlay on a memory tile",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "myTicketsLoadError": "Could not load your tickets.",
+  "myTicketsTitle": "My Tickets",
+  "myTicketsNewTicketButtonLabel": "New Ticket",
+  "myTicketsEmptyTitle": "No support tickets yet",
+  "myTicketsEmptyMessage": "Raised a ticket? It'll show up here so you can track replies.",
+  "myTicketsTicketNumberLabel": "#{number}",
+  "@myTicketsTicketNumberLabel": {
+    "description": "Ticket number shown on a ticket card",
+    "placeholders": {
+      "number": { "type": "String" }
+    }
+  },
+
+  "paymentInitiateError": "Could not initiate payment. Please try again.",
+  "paymentVerificationFailedError": "Payment received but verification failed. Contact support.",
+  "paymentFailedError": "Payment failed. Please try again.",
+  "paymentTitle": "Payment",
+  "paymentOrderSummaryLabel": "Order Summary",
+  "paymentBookingNumberLabel": "Booking #{number}",
+  "@paymentBookingNumberLabel": {
+    "description": "Shortened booking reference shown on the payment order summary card",
+    "placeholders": {
+      "number": { "type": "String" }
+    }
+  },
+  "paymentSecuredByRazorpayLabel": "Secured by Razorpay — 256-bit SSL encryption",
+  "paymentProcessingLabel": "Processing...",
+  "paymentPayButtonLabel": "Pay ₹{amount}",
+  "@paymentPayButtonLabel": {
+    "description": "Pay button label showing the amount to be charged",
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "paymentTermsAgreementLabel": "By proceeding you agree to Tyohaar's Terms & Conditions",
+
+  "productDetailReviewCountLabel": "({count} reviews)",
+  "@productDetailReviewCountLabel": {
+    "description": "Review count shown next to the rating stars on the product detail screen",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "productDetailPriceLabel": "₹{price}",
+  "@productDetailPriceLabel": {
+    "description": "Item price on the product detail screen",
+    "placeholders": {
+      "price": { "type": "String" }
+    }
+  },
+  "productDetailDefaultDescription": "A premium add-on for your celebration, crafted with attention to detail and quality.",
+  "productDetailReviewDialogTitle": "Review {itemName}",
+  "@productDetailReviewDialogTitle": {
+    "description": "Title of the submit-review sheet opened from the product detail screen",
+    "placeholders": {
+      "itemName": { "type": "String" }
+    }
+  },
+  "productDetailWriteReviewLabel": "Write a review",
+  "productDetailQuantityIncludedLabel": "Quantity included: {quantity}",
+  "@productDetailQuantityIncludedLabel": {
+    "description": "Shown when a package item includes more than one unit",
+    "placeholders": {
+      "quantity": { "type": "int" }
+    }
+  },
+  "productDetailAddToPlanButtonLabel": "Add to Plan",
+
+  "referEarnLoadError": "Could not load referral data.",
+  "referEarnTitle": "Refer & Earn",
+  "referEarnHowItWorksLabel": "HOW IT WORKS",
+  "referEarnStep1Title": "Share your code",
+  "referEarnStep1Subtitle": "Invite friends to Tyohaar using your unique referral code.",
+  "referEarnStep2Title": "They book a package",
+  "referEarnStep2Subtitle": "They get a discount on their first celebration booking.",
+  "referEarnStep3Title": "You earn rewards",
+  "referEarnStep3Subtitle": "Earn wallet credits for every successful referral.",
+  "referEarnYourCodeLabel": "YOUR REFERRAL CODE",
+  "referEarnApplyCodeLabel": "APPLY A CODE",
+  "referEarnShareButtonLabel": "Share with Friends",
+  "referEarnShareCopiedMessage": "Share text copied to clipboard!",
+  "referEarnShareMessage": "Join Tyohaar using my code {code}",
+  "@referEarnShareMessage": {
+    "description": "Clipboard text copied when sharing the referral code with friends",
+    "placeholders": {
+      "code": { "type": "String" }
+    }
+  },
+  "referEarnCodeAppliedMessage": "Referral code applied successfully!",
+  "referEarnInvalidCodeMessage": "Invalid or already used referral code.",
+  "referEarnCodeCopiedMessage": "Referral code copied!",
+  "referEarnHeroHeading": "Share the joy, earn rewards!",
+  "referEarnCopyButtonLabel": "Copy",
+  "referEarnStatTotalEarnedLabel": "Total Earned",
+  "referEarnStatTotalReferralsLabel": "Total Referrals",
+  "referEarnStatSuccessfulLabel": "Successful",
+  "referEarnApplyCodeHint": "Enter a friend's code",
+  "referEarnApplyingLabel": "...",
+  "referEarnApplyButtonLabel": "Apply",
+
+  "rootNavHomeLabel": "Home",
+  "rootNavMyPlansLabel": "My Plans",
+  "rootNavPlansLabel": "Plans",
+  "rootNavPackagesLabel": "Packages",
+  "rootNavAccountLabel": "Account",
+  "rootNavMembershipLabel": "Membership",
+  "rootNavManageAddressLabel": "Manage Address",
+  "rootNavHelpSupportLabel": "Help & Support",
+  "rootNavPrivacyPolicyLabel": "Privacy Policy",
+  "rootNavWelcomeFallback": "Welcome",
+  "rootNavAvatarInitialFallback": "T",
+  "rootNavCurrentLocationLabel": "CURRENT LOCATION",
+  "rootNavGreetingLabel": "Namaste, {name}",
+  "@rootNavGreetingLabel": {
+    "description": "Greeting shown in the home shell's sticky header",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "rootNavGreetingFallbackName": "there",
+  "rootNavDarkModeLabel": "Dark Mode",
+  "rootNavLightModeLabel": "Light Mode",
+  "rootNavActionStartCelebration": "start a celebration",
+  "rootNavActionViewPlans": "view your plans",
+  "rootNavActionAccessAccount": "access your account",
+
+  "authWelcomeTitle": "Welcome",
+  "authHeading": "Join Tyohaar",
+  "authSubheading": "Start your journey of creating unforgettable moments.",
+  "authTabLogin": "Login",
+  "authTabRegister": "Register",
+  "authEmailLabel": "EMAIL",
+  "authEmailHint": "you@example.com",
+  "authPasswordLabel": "PASSWORD",
+  "authPasswordHint": "••••••••",
+  "authForgotPasswordLabel": "Forgot password?",
+  "authSignInButtonLabel": "Sign In",
+  "authSigningInLabel": "Signing in...",
+  "authContinueAsGuestLabel": "Continue as Guest",
+  "authOrDividerLabel": "OR",
+  "authFullNameOptionalLabel": "FULL NAME (OPTIONAL)",
+  "authNameHint": "Rahul Sharma",
+  "authConfirmPasswordLabel": "CONFIRM PASSWORD",
+  "authCreateAccountButtonLabel": "Create Account",
+  "authCreatingAccountLabel": "Creating account...",
+  "authBusinessRegisterPromptLabel": "Are you a business? Register as a Partner",
+  "authLoginFillAllFieldsError": "Please fill in all fields.",
+  "authLoginFailedError": "Login failed. Please try again.",
+  "authUnexpectedError": "An unexpected error occurred.",
+  "authRegisterFillAllFieldsError": "Please fill in all required fields.",
+  "authPasswordMismatchError": "Passwords do not match.",
+  "authPasswordTooShortError": "Password must be at least 8 characters.",
+  "authRegisterFailedError": "Registration failed. Please try again.",
+
+  "emailVerificationInitialSendFailedError": "We couldn't send the verification code. Tap Resend to try again.",
+  "emailVerificationResendSuccessMessage": "A new code has been sent.",
+  "emailVerificationSendCodeError": "Could not send the code. Please try again.",
+  "emailVerificationUnexpectedError": "An unexpected error occurred.",
+  "emailVerificationEnterCodeError": "Enter the 6-digit code.",
+  "emailVerificationFailedError": "Verification failed. Please try again.",
+  "emailVerificationTitle": "Verify Your Email",
+  "emailVerificationHeading": "Check your email",
+  "emailVerificationBodyMessage": "We've sent a 6-digit verification code to {email}. Enter it below to verify your account.",
+  "@emailVerificationBodyMessage": {
+    "description": "Instruction body copy on the email verification screen",
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "emailVerificationCodeLabel": "VERIFICATION CODE",
+  "emailVerificationSendingLabel": "Sending...",
+  "emailVerificationResendCountdownLabel": "Resend code in {seconds}s",
+  "@emailVerificationResendCountdownLabel": {
+    "description": "Resend button label during the cooldown period",
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "emailVerificationResendButtonLabel": "Resend code",
+  "emailVerificationVerifyingLabel": "Verifying...",
+  "emailVerificationVerifyButtonLabel": "Verify",
+  "emailVerificationSkipButtonLabel": "Skip for now",
+  "emailVerificationLogoutButtonLabel": "Log out",
+
+  "cancelBookingReasonChangeOfPlans": "Change of plans",
+  "cancelBookingReasonFoundBetterOption": "Found a better option",
+  "cancelBookingReasonWeatherConcerns": "Weather concerns",
+  "cancelBookingReasonNoLongerNeeded": "No longer needed",
+  "cancelBookingReasonOther": "Other",
+  "cancelBookingSubmitError": "Could not submit cancellation. Please try again.",
+  "cancelBookingRequestedTitle": "Cancellation Requested",
+  "cancelBookingSubmittedHeading": "Your cancellation request has been submitted",
+  "cancelBookingReviewMessage": "Our team will review it shortly. Here's what to expect based on our cancellation policy:",
+  "cancelBookingFeeLabel": "Cancellation fee",
+  "cancelBookingRefundAmountLabel": "Refund amount",
+  "cancelBookingDoneButtonLabel": "Done",
+  "cancelBookingTitle": "Cancel Booking",
+  "cancelBookingPackageFallback": "Booking",
+  "cancelBookingNumberLabel": "Booking #{number}",
+  "@cancelBookingNumberLabel": {
+    "description": "Booking number shown under the package name on the cancel booking screen",
+    "placeholders": {
+      "number": { "type": "String" }
+    }
+  },
+  "cancelBookingFeeNoticeText": "A cancellation fee may apply depending on how close this is to your event date. ",
+  "cancelBookingReadPolicyLinkLabel": "Read our Cancellation & Refund Policy.",
+  "cancelBookingReasonQuestionLabel": "Why are you cancelling?",
+  "cancelBookingDetailsHint": "Additional details (optional)",
+  "cancelBookingSubmittingLabel": "Submitting…",
+  "cancelBookingRequestButtonLabel": "Request Cancellation",
+
+  "myProfileLoadError": "Could not load profile.",
+  "myProfileCropperToolbarTitle": "Edit Profile Picture",
+  "myProfilePictureUpdatedMessage": "Profile picture updated!",
+  "myProfileUploadImageError": "Failed to upload image.",
+  "myProfileNamePhoneRequiredError": "Name and Phone are required",
+  "myProfileUpdatedSuccessMessage": "Profile updated successfully!",
+  "myProfileUpdateError": "Failed to update profile. Please try again.",
+  "myProfileTitle": "My Profile",
+  "myProfileFullNameLabel": "Full Name",
+  "myProfileFullNameHint": "e.g. Rahul Sharma",
+  "myProfileEmailAddressLabel": "Email Address",
+  "myProfileEmailAddressHint": "you@example.com",
+  "myProfilePhoneNumberLabel": "Phone Number",
+  "myProfilePhoneNumberHint": "+91 9876543210",
+  "myProfileRoleLabel": "Role",
+  "myProfileCustomerFallback": "CUSTOMER",
+  "myProfileHistorySectionLabel": "History",
+  "myProfileGuestActivityLabel": "Guest Activity",
+  "myProfileGuestActivitySubtitle": "Invitations sent, opened, and RSVP changes",
+  "myProfileBusinessAvailabilitySectionLabel": "Business Availability",
+  "myProfileSavingLabel": "Saving...",
+  "myProfileSaveChangesButtonLabel": "Save Changes",
+  "myProfileWorkingHoursLabel": "Working Hours",
+  "myProfileManageAvailabilitySubtitle": "Manage your weekly availability",
+  "myProfileEditButtonLabel": "Edit",
+
+  "bookingFlowRecipientRequiredError": "Please enter recipient name and phone number.",
+  "bookingFlowInvalidPhoneError": "Please enter a valid 10-digit phone number.",
+  "bookingFlowCreateBookingError": "Failed to create booking. Please try again.",
+  "bookingFlowAddonsStepTitle": "Enhance your package",
+  "bookingFlowAddonsStepSubtitle": "Select optional add-ons to make it extra special.",
+  "bookingFlowDeliveryStepTitle": "Delivery Details",
+  "bookingFlowDeliveryStepSubtitle": "Where and who should receive the celebration package?",
+  "bookingFlowReviewStepTitle": "Review & Confirm",
+  "bookingFlowReviewStepSubtitle": "A transparent look at your celebration details.",
+  "bookingFlowAppBarTitle": "Booking",
+  "bookingFlowNoAddOnsHeading": "No extra add-ons needed",
+  "bookingFlowPackageCompleteMessage": "This package is already complete!",
+  "bookingFlowEventTimingLabel": "EVENT TIMING",
+  "bookingFlowReceiverDetailsLabel": "RECEIVER DETAILS",
+  "bookingFlowRecipientNameHint": "Recipient Name",
+  "bookingFlowPhoneNumberHint": "Phone Number",
+  "bookingFlowDeliveryAddressLabel": "DELIVERY ADDRESS",
+  "bookingFlowLandmarkHint": "Building / Floor / Landmark",
+  "bookingFlowSpecialInstructionsHint": "Special Instructions",
+  "bookingFlowPackageLabel": "Package",
+  "bookingFlowDateTimeLabel": "Date & Time",
+  "bookingFlowDeliveryToLabel": "Delivery To",
+  "bookingFlowMeFallback": "Me",
+  "bookingFlowPriceBreakdownLabel": "PRICE BREAKDOWN",
+  "bookingFlowPackageBasePriceLabel": "Package Base Price",
+  "bookingFlowSelectedAddOnsLabel": "Selected Add-ons",
+  "bookingFlowGstLabel": "GST (18%)",
+  "bookingFlowGrandTotalLabel": "Grand Total",
+  "bookingFlowTotalAmountLabel": "Total Amount",
+  "bookingFlowProcessingLabel": "Processing...",
+  "bookingFlowConfirmButtonLabel": "Confirm & Pay",
+  "bookingFlowContinueButtonLabel": "Continue",
+
+  "vendorDetailLoadError": "Could not load vendor details.",
+  "vendorDetailVendorFallback": "Vendor",
+  "vendorDetailNotFoundMessage": "Vendor not found",
+  "vendorDetailReviewsCountLabel": "{count} reviews",
+  "@vendorDetailReviewsCountLabel": {
+    "description": "Review count next to the star rating on the vendor detail screen",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "vendorDetailVerifiedLabel": "Verified",
+  "vendorDetailYearsValue": "{years} yrs",
+  "@vendorDetailYearsValue": {
+    "description": "Years in business trust badge on the vendor detail screen",
+    "placeholders": {
+      "years": { "type": "int" }
+    }
+  },
+  "vendorDetailAboutLabel": "About",
+  "vendorDetailPackagesLabel": "Packages",
+  "vendorDetailReviewsHeading": "What families say",
+  "vendorDetailAddToCelebrationLabel": "Add to celebration · {price}",
+  "@vendorDetailAddToCelebrationLabel": {
+    "description": "Bottom bar CTA button label showing the selected package's price",
+    "placeholders": {
+      "price": { "type": "String" }
+    }
+  },
+  "vendorDetailContactButtonLabel": "Contact Vendor",
+  "vendorDetailPackageFallback": "Package {index}",
+  "@vendorDetailPackageFallback": {
+    "description": "Fallback package name when a vendor package has no name",
+    "placeholders": {
+      "index": { "type": "int" }
+    }
+  },
+
+  "packageDetailPhotoAccessNeededMessage": "Photo library access is needed to save images.",
+  "packageDetailImageSavedMessage": "Image saved to your gallery.",
+  "packageDetailSaveImageError": "Could not save the image. Please try again.",
+  "packageDetailBasePriceLabel": "Base: {price}",
+  "@packageDetailBasePriceLabel": {
+    "description": "Base price pill on the package detail screen",
+    "placeholders": {
+      "price": { "type": "String" }
+    }
+  },
+  "packageDetailCoreInclusionsLabel": "Core Inclusions",
+  "packageDetailGuestCountLabel": "Guest Count",
+  "packageDetailOptionalAddOnsLabel": "Optional Add-ons",
+  "packageDetailEstimatedTotalLabel": "Estimated Total",
+  "packageDetailSelectContinueButtonLabel": "Select & Continue",
+  "packageDetailSaveButtonLabel": "Save",
+  "packageDetailQuantityItemNameLabel": "{quantity}x {name}",
+  "@packageDetailQuantityItemNameLabel": {
+    "description": "Core inclusion row label when an item has quantity greater than 1",
+    "placeholders": {
+      "quantity": { "type": "int" },
+      "name": { "type": "String" }
+    }
+  },
+  "packageDetailGuestsSuffixLabel": " Guests",
+  "packageDetailTyohaarVerifiedLabel": "Tyohaar Verified",
+  "packageDetailVerifiedInfoMessage": "Every vendor in this package is hand-picked and vetted for quality, ensuring your celebration is handled by true professionals.",
+  "packageDetailGotItLabel": "Got it",
+
+  "raiseTicketDescriptionTooShortError": "Please describe your issue in at least 20 characters.",
+  "raiseTicketSubjectLabel": "Ticket: {category}",
+  "@raiseTicketSubjectLabel": {
+    "description": "Support ticket subject built from the selected category label",
+    "placeholders": {
+      "category": { "type": "String" }
+    }
+  },
+  "raiseTicketSuccessMessage": "Ticket raised successfully!",
+  "raiseTicketSubmitError": "Failed to raise ticket. Please try again.",
+  "raiseTicketTitle": "Raise a Ticket",
+  "raiseTicketHeading": "Tell us what’s wrong",
+  "raiseTicketResponseTimeMessage": "We usually respond within 2-4 business hours.",
+  "raiseTicketCategoryLabel": "Category",
+  "raiseTicketDescriptionLabel": "Description",
+  "raiseTicketDescriptionHint": "Describe your issue in detail (at least 20 characters)...",
+  "raiseTicketAttachmentsLabel": "Attachments (Optional)",
+  "raiseTicketAddScreenshotsLabel": "Add screenshots",
+  "raiseTicketSubmittingLabel": "Submitting...",
+  "raiseTicketSubmitButtonLabel": "Submit Ticket",
+
+  "supportTicketCategoryPlanning": "Planning",
+  "supportTicketCategoryPackages": "Packages",
+  "supportTicketCategoryPayments": "Payments",
+  "supportTicketCategoryTechnicalIssue": "Technical Issue",
+  "supportTicketCategoryOthers": "Others",
+
+  "onboardingSlideOneTitle": "Moments That Matter",
+  "onboardingSlideOneSubtitle": "From a baby’s first steps to golden anniversaries, we turn milestones into memories.",
+  "onboardingSlideTwoTitle": "Curated Perfection",
+  "onboardingSlideTwoSubtitle": "Browse hand-picked packages designed by experts to fit your unique style and budget.",
+  "onboardingSlideThreeTitle": "Stress-Free Planning",
+  "onboardingSlideThreeSubtitle": "We handle the vendors, the timeline, and the details. You just enjoy the celebration.",
+  "onboardingSlideFourTitle": "Verified Excellence",
+  "onboardingSlideFourSubtitle": "Every vendor is Tyohaar-vetted for quality and reliability. Trust is our foundation.",
+  "onboardingStartCelebratingButtonLabel": "Start Celebrating",
+
+  "eventHubAppBarTitle": "Event Hub",
+  "eventHubNoActiveCelebrationMessage": "No active celebration",
+  "eventHubTutorialTitle": "Your celebration, at a glance",
+  "eventHubTutorialDescription": "Track the countdown and guest RSVPs for this event right here.",
+  "eventHubCelebrationFallback": "Celebration",
+  "eventHubDaysLabel": "days",
+  "eventHubHoursLabel": "hrs",
+  "eventHubGuestsLabel": "guests",
+  "eventHubPackageDetailsHeader": "Package details",
+  "eventHubGatheringHeader": "The gathering",
+  "eventHubManageActionLabel": "Manage",
+  "eventHubNoPackageSelectedMessage": "No package selected yet",
+  "eventHubPackagePriceLabel": "₹{price}",
+  "@eventHubPackagePriceLabel": {
+    "description": "Selected package price on the event hub package card",
+    "placeholders": {
+      "price": { "type": "String" }
+    }
+  },
+  "eventHubItemQuantityLabel": "{name} × {quantity}",
+  "@eventHubItemQuantityLabel": {
+    "description": "Package item row label when the item has quantity greater than 1, on the event hub package card",
+    "placeholders": {
+      "name": { "type": "String" },
+      "quantity": { "type": "int" }
+    }
+  },
+  "eventHubLovedOnesCountLabel": "{count} loved ones",
+  "@eventHubLovedOnesCountLabel": {
+    "description": "Guest count heading in the gathering card on the event hub screen",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "eventHubHouseholdsInvitedLabel": "{count} households invited",
+  "@eventHubHouseholdsInvitedLabel": {
+    "description": "Household count subtitle in the gathering card on the event hub screen",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "eventHubMultimediaHeader": "Multimedia",
+  "eventHubThemeLabel": "Theme: {themeName}",
+  "@eventHubThemeLabel": {
+    "description": "Selected customization theme name on the event hub package card",
+    "placeholders": {
+      "themeName": { "type": "String" }
+    }
+  },
+  "eventHubMoreItemsLabel": "+ {count} more",
+  "@eventHubMoreItemsLabel": {
+    "description": "Overflow count when a package has more items than fit in the preview list",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "eventHubRsvpAttendingLabel": "Attending",
+  "eventHubRsvpMaybeLabel": "Maybe",
+  "eventHubRsvpDeclinedLabel": "Declined",
+  "eventHubRsvpPendingLabel": "Pending",
+  "eventHubMultimediaEmptyMessage": "Your vendor will share event photos and videos here once the celebration is complete.",
+  "eventHubSelectedCountLabel": "{count} selected",
+  "@eventHubSelectedCountLabel": {
+    "description": "Selection count shown while picking multimedia items to download",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "eventHubDownloadButtonLabel": "Download",
+  "eventHubSelectButtonLabel": "Select",
+  "eventHubCouldNotOpenVideoMessage": "Could not open the video.",
+  "eventHubPhotoAccessNeededForMediaMessage": "Photo library access is needed to save media.",
+  "eventHubSavedItemsMessage": "{count, plural, one{Saved {count} item to your gallery.} other{Saved {count} items to your gallery.}}",
+  "@eventHubSavedItemsMessage": {
+    "description": "SnackBar shown after bulk-downloading selected event media with no failures",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "eventHubSavedItemsWithFailuresMessage": "{count, plural, one{Saved {count} item — {failed} failed.} other{Saved {count} items — {failed} failed.}}",
+  "@eventHubSavedItemsWithFailuresMessage": {
+    "description": "SnackBar shown after bulk-downloading selected event media when some downloads failed",
+    "placeholders": {
+      "count": { "type": "int" },
+      "failed": { "type": "int" }
+    }
+  },
+  "eventHubPhotoAccessNeededForImagesMessage": "Photo library access is needed to save images.",
+  "eventHubImageSavedMessage": "Image saved to your gallery.",
+  "eventHubSaveImageError": "Could not save the image. Please try again.",
+  "eventHubImageCounterLabel": "{current} / {total}",
+  "@eventHubImageCounterLabel": {
+    "description": "Page counter overlay in the full-screen event media image viewer",
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "exploreTutorialTitle": "Find the perfect package",
+  "exploreTutorialDescription": "Search by occasion, or use the filter and city picker above to narrow things down.",
+  "exploreSelectCityTitle": "Select Your City",
+  "exploreAllCitiesLabel": "All Cities",
+  "exploreDiscoverPackagesHeading": "Discover packages",
+  "exploreSearchHint": "Search birthdays, weddings, Diwali…",
+  "exploreAllCategoriesChipLabel": "All",
+  "exploreFeaturedForYouHeader": "Featured for you",
+  "exploreAvailablePackagesHeader": "Available Packages",
+  "explorePackagesInCityHeader": "Packages in {city}",
+  "@explorePackagesInCityHeader": {
+    "description": "Section header on the explore screen when a city filter is active",
+    "placeholders": {
+      "city": { "type": "String" }
+    }
+  },
+  "exploreNoPackagesFoundMessage": "No packages found",
+  "exploreNoPackagesInCityMessage": "No packages in {city}",
+  "@exploreNoPackagesInCityMessage": {
+    "description": "Empty state heading on the explore screen when a city filter is active",
+    "placeholders": {
+      "city": { "type": "String" }
+    }
+  },
+  "exploreTrySearchingElseMessage": "Try searching for something else or change categories.",
+  "exploreTryDifferentCityMessage": "Try a different city or browse all cities.",
+  "exploreBrowseAllCitiesLabel": "Browse all cities",
+  "exploreStartingFromLabel": "Starting from",
+  "exploreInclusionsCountLabel": "{count} Inclusions",
+  "@exploreInclusionsCountLabel": {
+    "description": "Inclusion count on a package row in the explore list",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "homeManageInvitationsLabel": "Manage Invitations",
+  "homeInvitationsMetaLabel": "{invited} invited · {rsvpd} RSVP'd",
+  "@homeInvitationsMetaLabel": {
+    "description": "Subtitle on the Manage Invitations task row on the home screen",
+    "placeholders": {
+      "invited": { "type": "int" },
+      "rsvpd": { "type": "int" }
+    }
+  },
+  "homeNoInvitationsYetMessage": "No invitations yet",
+  "homeBrowseByOccasionHeader": "Browse by Occasion",
+  "homePopularFestivalsHeader": "Popular Festivals",
+  "homeLifeMomentsHeader": "Life Moments",
+  "homeUpcomingCelebrationsHeader": "Upcoming Celebrations",
+  "homeStartPlanningFallback": "Start Planning",
+  "homeSelectLocationFallback": "Select Location",
+  "homeCelebrationFallback": "Celebration",
+  "homeStatusCompletedLabel": "Completed",
+  "homeStatusTodayLabel": "Today!",
+  "homeStatusTomorrowLabel": "Tomorrow",
+  "homeStatusDaysLeftLabel": "{days} days left",
+  "@homeStatusDaysLeftLabel": {
+    "description": "Countdown status pill on the home screen hero card",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "homeYourNextCelebrationLabel": "YOUR NEXT CELEBRATION",
+  "homeDateLocationLabel": "{date} · {location}",
+  "@homeDateLocationLabel": {
+    "description": "Date and venue line on the home screen hero card",
+    "placeholders": {
+      "date": { "type": "String" },
+      "location": { "type": "String" }
+    }
+  },
+  "homeMembershipBannerHeading": "Upgrade to Gold",
+  "homeMembershipBannerBody": "Get exclusive access to premium themes and early bird discounts.",
+  "homeMembershipBannerButtonLabel": "Join Now",
+  "homeMoreGuestsCountLabel": "+{count}",
+  "@homeMoreGuestsCountLabel": {
+    "description": "Overflow count badge on the stacked guest avatars on the home screen hero card",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "homePopularPackagesLabel": "Popular Packages",
+  "homeFeaturedPackagesLabel": "Featured Packages",
+  "homePackagesInCityHeader": "{label} in {city}",
+  "@homePackagesInCityHeader": {
+    "description": "Featured/Popular packages section header on the home screen when the customer's city is known",
+    "placeholders": {
+      "label": { "type": "String" },
+      "city": { "type": "String" }
+    }
+  },
+  "homePackagesNearYouHeader": "{label} near you",
+  "@homePackagesNearYouHeader": {
+    "description": "Featured/Popular packages section header on the home screen when the customer's city is unknown",
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
+  "homeSetCityActionLabel": "Set city",
+  "homeAuthActionManageInvitations": "manage invitations",
+  "homeAuthActionViewEventHub": "view your event hub",
+  "homeAuthActionViewMembershipPlans": "view membership plans",
+  "homeAuthActionManageAddress": "manage your address",
+
+  "invitationManagementAppBarTitle": "Manage Invitations",
+  "invitationManagementNoEventsTitle": "No events planned yet",
+  "invitationManagementNoEventsMessage": "Book a package or start planning a celebration to send invitations.",
+  "invitationManagementEventLabel": "EVENT",
+  "invitationManagementGuestStatusLabel": "GUEST STATUS",
+  "invitationManagementInvitedLabel": "Invited",
+  "invitationManagementOpenedLabel": "Opened",
+  "invitationManagementRsvpdLabel": "RSVP'd",
+  "invitationManagementCelebrationFallback": "our celebration",
+  "invitationManagementShareTextMessage": "You're invited to {title}! 🎉",
+  "@invitationManagementShareTextMessage": {
+    "description": "Body text of the invitation card share sheet",
+    "placeholders": {
+      "title": { "type": "String" }
+    }
+  },
+  "invitationManagementShareSubject": "You're invited to {title}",
+  "@invitationManagementShareSubject": {
+    "description": "Subject line of the invitation card share sheet",
+    "placeholders": {
+      "title": { "type": "String" }
+    }
+  },
+  "invitationManagementShareError": "Could not share the invitation. Please try again.",
+  "invitationManagementPreparingLabel": "Preparing…",
+  "invitationManagementShareButtonLabel": "Share Invitation Card",
+  "invitationManagementShareHintMessage": "Opens your share sheet — pick WhatsApp, Email, or any app.",
+
+  "myBookingsTitle": "My Bookings",
+  "myBookingsLoadError": "Could not load bookings.",
+  "myBookingsTutorialTitle": "All your bookings, in one place",
+  "myBookingsTutorialDescription": "Upcoming and past bookings are listed here — tap any booking to see full details.",
+  "myBookingsUpcomingSectionLabel": "UPCOMING",
+  "myBookingsPastSectionLabel": "PAST",
+  "myBookingsEmptyTitle": "No bookings yet",
+  "myBookingsEmptyMessage": "Your upcoming celebrations will appear here once you start planning.",
+  "myBookingsCustomBookingFallback": "Custom Booking",
+  "myBookingsPrepStartsLabel": "Prep starts {time}",
+  "@myBookingsPrepStartsLabel": {
+    "description": "Preparation start time shown on an upcoming booking card",
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+
+  "notificationsTitle": "Activity",
+  "notificationsLoadError": "Could not load notifications.",
+  "notificationsMarkAllReadButtonLabel": "Mark read",
+  "notificationsRecentSectionLabel": "RECENT",
+  "notificationsEmptyTitle": "No activity yet",
+  "notificationsEmptyMessage": "We'll notify you here about your bookings, payments, and upcoming celebrations.",
+  "notificationsTodayAtLabel": "Today · {time}",
+  "@notificationsTodayAtLabel": {
+    "description": "Relative timestamp for a notification received today",
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "notificationsYesterdayAtLabel": "Yesterday · {time}",
+  "@notificationsYesterdayAtLabel": {
+    "description": "Relative timestamp for a notification received yesterday",
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+
+  "occasionDetailCuratedPackagesLabel": "Curated Packages",
+  "occasionDetailNoPackagesMessage": "No packages available for this occasion yet.",
+  "occasionDetailBookButtonLabel": "Plan this celebration",
+
+  "ticketDetailSendError": "Failed to send. Please try again.",
+  "ticketDetailResolutionLabel": "Resolution: {summary}",
+  "@ticketDetailResolutionLabel": {
+    "description": "Resolution summary banner on the ticket detail screen",
+    "placeholders": {
+      "summary": { "type": "String" }
+    }
+  },
+  "ticketDetailNoRepliesMessage": "No replies yet.",
+  "ticketDetailClosedMessage": "This ticket is {status}. No further replies can be added.",
+  "@ticketDetailClosedMessage": {
+    "description": "Footer notice shown when a support ticket is closed or resolved",
+    "placeholders": {
+      "status": { "type": "String" }
+    }
+  },
+  "ticketDetailReplyHint": "Type a reply…",
+  "ticketDetailSendButtonLabel": "Send",
+  "ticketDetailSendingButtonLabel": "…",
+  "ticketDetailYouLabel": "You",
+  "ticketDetailSupportLabel": "Support",
+  "ticketDetailMessageSenderTimeLabel": "{sender} · {time}",
+  "@ticketDetailMessageSenderTimeLabel": {
+    "description": "Sender name and timestamp under a message bubble on the ticket detail screen",
+    "placeholders": {
+      "sender": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  },
+
+  "authGateSignInRequiredTitle": "Sign in required",
+  "authGateMessage": "To {action}, you'll need to create an account or sign in.",
+  "@authGateMessage": {
+    "description": "Shown in the bottom sheet prompting guests to sign in before a gated action",
+    "placeholders": {
+      "action": { "type": "String" }
+    }
+  },
+  "authGateSignInSignUpButtonLabel": "Sign In / Sign Up",
+  "authGateMaybeLaterButtonLabel": "Maybe Later"
+}

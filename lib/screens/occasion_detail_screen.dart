@@ -14,6 +14,7 @@ import '../widgets/state_screens.dart';
 import '../widgets/ty_button.dart';
 import 'plan_flow/plan_flow_screen.dart';
 import 'package_detail_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class OccasionDetailScreen extends StatefulWidget {
   final Occasion occasion;
@@ -52,6 +53,7 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final occasion = widget.occasion;
     final color = ty.tint(occasion.tint);
 
@@ -101,7 +103,7 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
                     style: TyType.sans(16, color: ty.ink2, height: 1.5),
                   ),
                   const SizedBox(height: 32),
-                  const SectionHeader('Curated Packages'),
+                  SectionHeader(l10n.occasionDetailCuratedPackagesLabel),
                   if (_isLoadingPackages)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
@@ -110,13 +112,13 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
                   else if (_packagesError)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: TyStateScreen.error(onAction: _loadPackages),
+                      child: TyStateScreen.error(context, onAction: _loadPackages),
                     )
                   else if (_packages.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Text(
-                        'No packages available for this occasion yet.',
+                        l10n.occasionDetailNoPackagesMessage,
                         style: TyType.sans(14, color: ty.ink2),
                       ),
                     )
@@ -124,7 +126,7 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
                     ..._packages.map((p) => _packageCard(context, p)),
                   const SizedBox(height: 40),
                   TyButton(
-                    'Plan this celebration',
+                    l10n.occasionDetailBookButtonLabel,
                     full: true,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const PlanFlowScreen()),

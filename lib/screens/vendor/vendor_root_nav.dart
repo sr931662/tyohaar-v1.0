@@ -19,6 +19,7 @@ import 'bank/vendor_bank_screen.dart';
 import 'reviews/vendor_reviews_screen.dart';
 import 'notifications/vendor_notifications_screen.dart';
 import 'support/vendor_support_screen.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class _VendorDestination {
   final String title;
@@ -28,19 +29,22 @@ class _VendorDestination {
   const _VendorDestination(this.title, this.icon, this.activeIcon, this.screen);
 }
 
-const List<_VendorDestination> _destinations = [
-  _VendorDestination('Dashboard', Icons.dashboard_outlined, Icons.dashboard_rounded, VendorDashboardScreen()),
-  _VendorDestination('Bookings', Icons.event_note_outlined, Icons.event_note_rounded, VendorBookingsScreen()),
-  _VendorDestination('Packages', Icons.add_box_outlined, Icons.add_box_rounded, VendorPackagesScreen()),
-  _VendorDestination('Earnings', Icons.payments_outlined, Icons.payments_rounded, VendorEarningsScreen()),
-  _VendorDestination('Profile', Icons.person_outline_rounded, Icons.person_rounded, VendorProfileScreen()),
-  _VendorDestination('Availability', Icons.calendar_today_outlined, Icons.calendar_today_rounded, VendorAvailabilityScreen()),
-  _VendorDestination('Multimedia', Icons.video_library_outlined, Icons.video_library_rounded, VendorMultimediaScreen()),
-  _VendorDestination('Bank Accounts', Icons.account_balance_outlined, Icons.account_balance_rounded, VendorBankScreen()),
-  _VendorDestination('Reviews', Icons.star_outline_rounded, Icons.star_rounded, VendorReviewsScreen()),
-  _VendorDestination('Notifications', Icons.notifications_outlined, Icons.notifications_rounded, VendorNotificationsScreen()),
-  _VendorDestination('Support', Icons.support_agent_outlined, Icons.support_agent_rounded, VendorSupportScreen()),
-];
+List<_VendorDestination> _destinations(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  return [
+    _VendorDestination(l10n.vendorNavDashboardLabel, Icons.dashboard_outlined, Icons.dashboard_rounded, const VendorDashboardScreen()),
+    _VendorDestination(l10n.vendorNavBookingsLabel, Icons.event_note_outlined, Icons.event_note_rounded, const VendorBookingsScreen()),
+    _VendorDestination(l10n.vendorNavPackagesLabel, Icons.add_box_outlined, Icons.add_box_rounded, const VendorPackagesScreen()),
+    _VendorDestination(l10n.vendorNavEarningsLabel, Icons.payments_outlined, Icons.payments_rounded, const VendorEarningsScreen()),
+    _VendorDestination(l10n.vendorNavProfileLabel, Icons.person_outline_rounded, Icons.person_rounded, const VendorProfileScreen()),
+    _VendorDestination(l10n.vendorNavAvailabilityLabel, Icons.calendar_today_outlined, Icons.calendar_today_rounded, const VendorAvailabilityScreen()),
+    _VendorDestination(l10n.vendorNavMultimediaLabel, Icons.video_library_outlined, Icons.video_library_rounded, const VendorMultimediaScreen()),
+    _VendorDestination(l10n.vendorNavBankAccountsLabel, Icons.account_balance_outlined, Icons.account_balance_rounded, const VendorBankScreen()),
+    _VendorDestination(l10n.vendorNavReviewsLabel, Icons.star_outline_rounded, Icons.star_rounded, const VendorReviewsScreen()),
+    _VendorDestination(l10n.vendorNavNotificationsLabel, Icons.notifications_outlined, Icons.notifications_rounded, const VendorNotificationsScreen()),
+    _VendorDestination(l10n.vendorNavSupportLabel, Icons.support_agent_outlined, Icons.support_agent_rounded, const VendorSupportScreen()),
+  ];
+}
 
 /// The vendor shell: bottom navbar [Dashboard, My Bookings, Add packages,
 /// Earnings, My Profile] + a drawer mirroring the web vendor portal's full
@@ -83,7 +87,8 @@ class _VendorRootNavState extends State<VendorRootNav> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final current = _destinations[_index];
+    final destinations = _destinations(context);
+    final current = destinations[_index];
 
     return Scaffold(
       key: _scaffoldKey,
@@ -106,7 +111,7 @@ class _VendorRootNavState extends State<VendorRootNav> {
         onNavigate: _navigate,
         onLogout: _handleLogout,
       ),
-      body: IndexedStack(index: _index, children: _destinations.map((e) => e.screen).toList()),
+      body: IndexedStack(index: _index, children: destinations.map((e) => e.screen).toList()),
       bottomNavigationBar: _VendorBottomBar(index: _index, onTap: _setIndex),
     );
   }
@@ -120,6 +125,7 @@ class _VendorBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final destinations = _destinations(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -138,13 +144,13 @@ class _VendorBottomBar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      index == i ? _destinations[i].activeIcon : _destinations[i].icon,
+                      index == i ? destinations[i].activeIcon : destinations[i].icon,
                       color: index == i ? ty.saffron : ty.ink3,
                       size: 24,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _destinations[i].title,
+                      destinations[i].title,
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: index == i ? FontWeight.w700 : FontWeight.w600,
@@ -170,6 +176,7 @@ class _VendorDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     final user = AuthManager.instance.currentUser;
 
     return Drawer(
@@ -182,16 +189,16 @@ class _VendorDrawer extends StatelessWidget {
             decoration: BoxDecoration(color: ty.surface, border: Border(bottom: BorderSide(color: ty.line2))),
             child: Row(
               children: [
-                TyAvatar(name: user?.displayName ?? 'Vendor', size: 54),
+                TyAvatar(name: user?.displayName ?? l10n.vendorNavDefaultAvatarName, size: 54),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(user?.displayName ?? 'Vendor Partner',
+                      Text(user?.displayName ?? l10n.vendorNavDefaultDisplayName,
                           style: TyType.sans(17, color: ty.ink, weight: FontWeight.w700),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
-                      Text('Vendor Account', style: TyType.sans(12.5, color: ty.ink3)),
+                      Text(l10n.vendorNavAccountLabel, style: TyType.sans(12.5, color: ty.ink3)),
                     ],
                   ),
                 ),
@@ -202,18 +209,18 @@ class _VendorDrawer extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                _sectionLabel(ty, 'MAIN'),
+                _sectionLabel(ty, l10n.vendorNavSectionMain),
                 _drawerItem(context, 0),
                 _drawerItem(context, 1),
                 _drawerItem(context, 2),
                 _drawerItem(context, 5),
                 _drawerItem(context, 6),
                 const Divider(height: 24, indent: 24, endIndent: 24),
-                _sectionLabel(ty, 'FINANCE'),
+                _sectionLabel(ty, l10n.vendorNavSectionFinance),
                 _drawerItem(context, 3),
                 _drawerItem(context, 7),
                 const Divider(height: 24, indent: 24, endIndent: 24),
-                _sectionLabel(ty, 'ACCOUNT'),
+                _sectionLabel(ty, l10n.vendorNavSectionAccount),
                 _drawerItem(context, 4),
                 _drawerItem(context, 8),
                 _drawerItem(context, 9),
@@ -227,7 +234,7 @@ class _VendorDrawer extends StatelessWidget {
             child: ListenableBuilder(
               listenable: themeController,
               builder: (context, _) => SwitchListTile(
-                title: Text(themeController.isDark ? 'Dark Mode' : 'Light Mode', 
+                title: Text(themeController.isDark ? l10n.vendorNavDarkModeLabel : l10n.vendorNavLightModeLabel,
                     style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
                 secondary: Icon(themeController.isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, 
                     color: themeController.isDark ? ty.gold : ty.saffron),
@@ -240,7 +247,7 @@ class _VendorDrawer extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 24),
             child: ListTile(
               leading: Icon(Icons.logout_rounded, color: ty.rose),
-              title: Text('Logout', style: TyType.sans(15, color: ty.rose, weight: FontWeight.w700)),
+              title: Text(l10n.vendorNavLogoutLabel, style: TyType.sans(15, color: ty.rose, weight: FontWeight.w700)),
               onTap: onLogout,
             ),
           ),
@@ -256,7 +263,7 @@ class _VendorDrawer extends StatelessWidget {
 
   Widget _drawerItem(BuildContext context, int index) {
     final ty = context.ty;
-    final dest = _destinations[index];
+    final dest = _destinations(context)[index];
     final isSelected = currentIndex == index;
 
     return ListTile(

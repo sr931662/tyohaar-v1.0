@@ -8,6 +8,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class VendorPackageGalleryScreen extends StatefulWidget {
   final VendorPackage package;
@@ -51,25 +52,26 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
     } on PlatformException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permission needed — enable photo access in Settings.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaPermissionNeededMessage)),
         );
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorMultimediaUploadFailedMessage)));
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
   }
 
   Future<void> _delete(VendorGalleryItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete photo?'),
-        content: const Text('This photo will be permanently removed from the package gallery.'),
+        title: Text(l10n.vendorPackageGalleryDeleteConfirmTitle),
+        content: Text(l10n.vendorPackageGalleryDeleteConfirmMessage),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.commonCancel)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.vendorPackageGalleryDeleteButtonLabel)),
         ],
       ),
     );
@@ -79,18 +81,19 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
       await _vendorService.deletePackageGalleryItem(widget.package.id, item.id);
       _load();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not delete photo.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorPackageGalleryDeleteError)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: AppBar(
-        title: Text('${widget.package.name} Gallery', style: TyType.display(18, color: ty.ink)),
+        title: Text(l10n.vendorPackageGalleryTitle(widget.package.name), style: TyType.display(18, color: ty.ink)),
         centerTitle: true,
         backgroundColor: ty.paper,
         elevation: 0,
@@ -100,10 +103,10 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
         onPressed: _isUploading ? null : _addPhoto,
         backgroundColor: ty.saffron,
         foregroundColor: ty.onPrimary,
-        icon: _isUploading 
+        icon: _isUploading
           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
           : const Icon(Icons.add_a_photo_outlined),
-        label: Text(_isUploading ? 'Uploading...' : 'Add Photo'),
+        label: Text(_isUploading ? l10n.vendorPackageGalleryUploadingLabel : l10n.vendorPackageGalleryAddPhotoButtonLabel),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -114,9 +117,9 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
                     children: [
                       Icon(Icons.photo_library_outlined, size: 64, color: ty.ink3.withValues(alpha: 0.5)),
                       const SizedBox(height: 16),
-                      Text('No gallery photos yet', style: TyType.sans(15, color: ty.ink2)),
+                      Text(l10n.vendorPackageGalleryEmptyMessage, style: TyType.sans(15, color: ty.ink2)),
                       const SizedBox(height: 8),
-                      Text('Add photos to showcase this package.', style: TyType.sans(13, color: ty.ink3)),
+                      Text(l10n.vendorPackageGalleryEmptyHint, style: TyType.sans(13, color: ty.ink3)),
                     ],
                   ),
                 )

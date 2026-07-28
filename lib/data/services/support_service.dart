@@ -1,14 +1,20 @@
+import 'package:flutter/material.dart';
+
+import '../../l10n/generated/app_localizations.dart';
 import '../api_client.dart';
 
 /// UI-facing category labels mapped to the backend's TicketCategory enum
 /// values (lowercase, must match exactly — these are Python str enums).
-const Map<String, String> ticketCategoryOptions = {
-  'Planning': 'general',
-  'Packages': 'booking',
-  'Payments': 'payment',
-  'Technical Issue': 'technical',
-  'Others': 'general',
-};
+Map<String, String> ticketCategoryOptions(BuildContext context) {
+  final l = AppLocalizations.of(context)!;
+  return {
+    l.supportTicketCategoryPlanning: 'general',
+    l.supportTicketCategoryPackages: 'booking',
+    l.supportTicketCategoryPayments: 'payment',
+    l.supportTicketCategoryTechnicalIssue: 'technical',
+    l.supportTicketCategoryOthers: 'general',
+  };
+}
 
 class SupportTicket {
   final String id;

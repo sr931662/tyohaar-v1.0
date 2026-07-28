@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/models.dart';
@@ -58,7 +59,7 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error
-              ? TyStateScreen.error(onAction: _load)
+              ? TyStateScreen.error(context, onAction: _load)
               : _items.isEmpty
               ? Center(
                   child: Column(
@@ -66,7 +67,7 @@ class _VendorNotificationsScreenState extends State<VendorNotificationsScreen> {
                     children: [
                       Icon(Icons.notifications_none_rounded, size: 48, color: ty.ink3.withValues(alpha: 0.5)),
                       const SizedBox(height: 16),
-                      Text('No notifications', style: TyType.sans(14, color: ty.ink2)),
+                      Text(AppLocalizations.of(context)!.vendorNotificationsEmptyMessage, style: TyType.sans(14, color: ty.ink2)),
                     ],
                   ),
                 )

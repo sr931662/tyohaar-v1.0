@@ -8,6 +8,7 @@ import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import '../data/services/membership_service.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class MembershipPlanScreen extends StatefulWidget {
   const MembershipPlanScreen({super.key});
@@ -47,7 +48,7 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() { _error = 'Could not load membership plans.'; _loading = false; });
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.membershipPlanLoadError; _loading = false; });
     }
   }
 
@@ -74,14 +75,14 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Membership activated!')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.membershipPlanActivatedMessage)),
         );
         await _load();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not subscribe. Please try again.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.membershipPlanSubscribeError)),
         );
       }
     } finally {
@@ -91,7 +92,7 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
 
   void _showPaymentRequiredNotice() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Paid plan checkout is coming soon — contact support to subscribe for now.')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.membershipPlanPaidCheckoutComingSoonMessage)),
     );
   }
 
@@ -107,12 +108,12 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
     try {
       await context.read<MembershipService>().renewMembership(active.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membership renewed.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.membershipPlanRenewedMessage)));
         await _load();
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not renew. Please try again.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.membershipPlanRenewError)));
       }
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -136,14 +137,15 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
       return;
     }
 
+    final l10n = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isUpgrade ? 'Upgrade to ${targetPlan!.name}?' : 'Downgrade to ${targetPlan!.name}?'),
-        content: const Text('This takes effect immediately and starts a fresh billing period on the new plan.'),
+        title: Text(isUpgrade ? l10n.membershipPlanUpgradeConfirmTitle(targetPlan!.name) : l10n.membershipPlanDowngradeConfirmTitle(targetPlan!.name)),
+        content: Text(l10n.membershipPlanChangeTierConfirmMessage),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.of(ctx)!.commonCancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(AppLocalizations.of(ctx)!.membershipPlanConfirmButtonLabel)),
         ],
       ),
     );
@@ -159,13 +161,13 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isUpgrade ? 'Upgraded to ${targetPlan.name}.' : 'Downgraded to ${targetPlan.name}.')),
+          SnackBar(content: Text(isUpgrade ? l10n.membershipPlanUpgradedMessage(targetPlan.name) : l10n.membershipPlanDowngradedMessage(targetPlan.name))),
         );
         await _load();
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not change plan. Please try again.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.membershipPlanChangeTierError)));
       }
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -178,13 +180,13 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cancel membership?'),
-        content: const Text('Your membership benefits will end immediately.'),
+        title: Text(AppLocalizations.of(ctx)!.membershipPlanCancelConfirmTitle),
+        content: Text(AppLocalizations.of(ctx)!.membershipPlanCancelConfirmMessage),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.of(ctx)!.membershipPlanKeepButtonLabel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+            child: Text(AppLocalizations.of(ctx)!.commonCancel, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -195,14 +197,14 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
       await context.read<MembershipService>().cancelMembership(id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Membership cancelled.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.membershipPlanCancelledMessage)),
         );
         await _load();
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not cancel. Please try again.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.membershipPlanCancelError)),
         );
       }
     } finally {
@@ -216,7 +218,7 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: 'Membership Plans'),
+      appBar: tyAppBar(context, title: AppLocalizations.of(context)!.membershipPlanTitle),
       body: _loading
           ? _buildSkeleton(ty)
           : _error != null
@@ -229,7 +231,7 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
                     _buildBillingToggle(ty),
                     if (_plans.isNotEmpty) ...[
                       const SizedBox(height: 20),
-                      Text('ALL PLANS', style: TyType.eyebrow(11, color: ty.ink3)),
+                      Text(AppLocalizations.of(context)!.membershipPlanAllPlansHeading, style: TyType.eyebrow(11, color: ty.ink3)),
                       const SizedBox(height: 16),
                       ..._plans.map((p) => _buildPlanCard(p, ty)),
                     ],
@@ -244,8 +246,8 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
       decoration: BoxDecoration(color: ty.surface2, borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
-          Expanded(child: _toggleTab(ty, 'Monthly', !_isYearly, () => setState(() => _isYearly = false))),
-          Expanded(child: _toggleTab(ty, 'Yearly', _isYearly, () => setState(() => _isYearly = true))),
+          Expanded(child: _toggleTab(ty, AppLocalizations.of(context)!.membershipPlanMonthlyLabel, !_isYearly, () => setState(() => _isYearly = false))),
+          Expanded(child: _toggleTab(ty, AppLocalizations.of(context)!.membershipPlanYearlyLabel, _isYearly, () => setState(() => _isYearly = true))),
         ],
       ),
     );
@@ -292,16 +294,17 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
           const SizedBox(height: 12),
           Text(_error!, style: TyType.sans(14, color: ty.ink2)),
           const SizedBox(height: 16),
-          TextButton(onPressed: _load, child: Text('Try Again', style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700))),
+          TextButton(onPressed: _load, child: Text(AppLocalizations.of(context)!.commonTryAgain, style: TyType.sans(14, color: ty.saffron, weight: FontWeight.w700))),
         ],
       ),
     );
   }
 
   Widget _buildActiveCard(TyColors ty) {
+    final l10n = AppLocalizations.of(context)!;
     final a = _active!;
     final plan = _activePlan;
-    final planLabel = plan?.name ?? (a.tier?.toUpperCase() ?? 'Member');
+    final planLabel = plan?.name ?? (a.tier?.toUpperCase() ?? l10n.membershipPlanMemberFallback);
     final inGrace = a.isInGracePeriod;
 
     return Container(
@@ -329,13 +332,13 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            a.expiresAt != null ? 'Valid till ${_formatDate(a.expiresAt!)}' : 'No expiry',
+            a.expiresAt != null ? l10n.membershipPlanValidTillLabel(_formatDate(a.expiresAt!)) : l10n.membershipPlanNoExpiryLabel,
             style: TyType.sans(14, color: Colors.white.withValues(alpha: 0.9)),
           ),
           if (inGrace && a.gracePeriodUntil != null) ...[
             const SizedBox(height: 6),
             Text(
-              'Your membership has lapsed. Renew by ${_formatDate(a.gracePeriodUntil!)} to keep your benefits.',
+              l10n.membershipPlanLapsedMessage(_formatDate(a.gracePeriodUntil!)),
               style: TyType.sans(12.5, color: Colors.white.withValues(alpha: 0.95), height: 1.4),
             ),
           ],
@@ -359,21 +362,21 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
                 TextButton(
                   onPressed: _isBusy ? null : _renew,
                   style: TextButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.15)),
-                  child: Text('Renew Now', style: TyType.sans(13, color: Colors.white, weight: FontWeight.w700)),
+                  child: Text(l10n.membershipPlanRenewNowButtonLabel, style: TyType.sans(13, color: Colors.white, weight: FontWeight.w700)),
                 ),
               if (plan?.canUpgradeToTier != null)
                 TextButton(
                   onPressed: _isBusy ? null : () => _changeTier(isUpgrade: true),
-                  child: Text('Upgrade', style: TyType.sans(13, color: Colors.white.withValues(alpha: 0.9))),
+                  child: Text(l10n.membershipPlanUpgradeButtonLabel, style: TyType.sans(13, color: Colors.white.withValues(alpha: 0.9))),
                 ),
               if (plan?.canDowngradeToTier != null)
                 TextButton(
                   onPressed: _isBusy ? null : () => _changeTier(isUpgrade: false),
-                  child: Text('Downgrade', style: TyType.sans(13, color: Colors.white.withValues(alpha: 0.9))),
+                  child: Text(l10n.membershipPlanDowngradeButtonLabel, style: TyType.sans(13, color: Colors.white.withValues(alpha: 0.9))),
                 ),
               TextButton(
                 onPressed: _isBusy ? null : _cancel,
-                child: Text('Cancel', style: TyType.sans(13, color: Colors.white.withValues(alpha: 0.8))),
+                child: Text(AppLocalizations.of(context)!.commonCancel, style: TyType.sans(13, color: Colors.white.withValues(alpha: 0.8))),
               ),
             ],
           ),
@@ -383,16 +386,17 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
   }
 
   Widget _buildPlanCard(MembershipPlan plan, TyColors ty) {
+    final l10n = AppLocalizations.of(context)!;
     final isCurrentPlan = _active != null && _active!.isActive && _active!.planId == plan.id;
     final price = _priceFor(plan);
     final badges = <String>[
-      if (plan.discountPercentage > 0) '${plan.discountPercentage.toStringAsFixed(0)}% off packages',
-      if (plan.cashbackPercentage > 0) '${plan.cashbackPercentage.toStringAsFixed(0)}% cashback',
-      if (plan.walletBonus > 0) '₹${plan.walletBonus.toStringAsFixed(0)} welcome bonus',
-      if (plan.freeInvitationsCount > 0) '${plan.freeInvitationsCount} free invitations',
-      if (plan.priorityBooking) 'Priority booking',
-      if (plan.hasExclusivePackages) 'Exclusive packages',
-      if (plan.cancellationProtection) 'Free cancellation',
+      if (plan.discountPercentage > 0) l10n.membershipPlanOffPackagesBadge(plan.discountPercentage.toStringAsFixed(0)),
+      if (plan.cashbackPercentage > 0) l10n.membershipPlanCashbackBadge(plan.cashbackPercentage.toStringAsFixed(0)),
+      if (plan.walletBonus > 0) l10n.membershipPlanWelcomeBonusBadge(plan.walletBonus.toStringAsFixed(0)),
+      if (plan.freeInvitationsCount > 0) l10n.membershipPlanFreeInvitationsBadge(plan.freeInvitationsCount),
+      if (plan.priorityBooking) l10n.membershipPlanPriorityBookingBadge,
+      if (plan.hasExclusivePackages) l10n.membershipPlanExclusivePackagesBadge,
+      if (plan.cancellationProtection) l10n.membershipPlanFreeCancellationBadge,
     ];
 
     return Container(
@@ -423,7 +427,7 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
                 ),
               ),
               Text(
-                price == 0 ? 'Free' : '₹${price.toStringAsFixed(0)}/${_isYearly ? 'yr' : 'mo'}',
+                price == 0 ? l10n.membershipPlanFreeLabel : l10n.membershipPlanPriceValue(price.toStringAsFixed(0), _isYearly ? l10n.membershipPlanYearSuffix : l10n.membershipPlanMonthSuffix),
                 style: TyType.sans(16, color: ty.saffron, weight: FontWeight.w700),
               ),
             ],
@@ -454,11 +458,11 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
                 color: ty.saffronSoft,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text('Current Plan', style: TyType.sans(13, color: ty.saffronDeep, weight: FontWeight.w700)),
+              child: Text(l10n.membershipPlanCurrentPlanLabel, style: TyType.sans(13, color: ty.saffronDeep, weight: FontWeight.w700)),
             )
           else
             TyButton(
-              _isBusy ? 'Please wait...' : (price == 0 ? 'Subscribe' : 'Contact Support'),
+              _isBusy ? l10n.membershipPlanPleaseWaitLabel : (price == 0 ? l10n.membershipPlanSubscribeButtonLabel : l10n.membershipPlanContactSupportButtonLabel),
               full: true,
               enabled: !_isBusy,
               onTap: () => _subscribe(plan),

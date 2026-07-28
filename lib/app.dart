@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
+import 'l10n/generated/app_localizations.dart';
 import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
 import 'theme/colors.dart';
@@ -55,6 +56,8 @@ class TyohaarApp extends StatelessWidget {
           return MaterialApp(
             title: 'Tyohaar',
             debugShowCheckedModeBanner: false,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             theme: buildTyTheme(Brightness.light),
             darkTheme: buildTyTheme(Brightness.dark),
             themeMode: themeController.mode,
@@ -62,7 +65,12 @@ class TyohaarApp extends StatelessWidget {
               FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
             ],
             builder: (context, child) {
-              return OfflineBanner(child: child ?? const SizedBox.shrink());
+              final mq = MediaQuery.of(context);
+              final clampedScaler = mq.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.3);
+              return MediaQuery(
+                data: mq.copyWith(textScaler: clampedScaler),
+                child: OfflineBanner(child: child ?? const SizedBox.shrink()),
+              );
             },
             home: pov == UserPOV.vendor
                 ? const VendorRootNav()

@@ -3,6 +3,7 @@ import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../widgets/ty_button.dart';
 import '../../widgets/ty_rating_stars.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// Reusable "write a review" bottom sheet — used for both package reviews
 /// and package item reviews. The caller supplies [onSubmit], which posts to
@@ -44,8 +45,9 @@ class _SubmitReviewSheetState extends State<_SubmitReviewSheet> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_rating == 0) {
-      setState(() => _error = 'Please select a star rating.');
+      setState(() => _error = l10n.submitReviewSelectRatingError);
       return;
     }
     setState(() { _submitting = true; _error = null; });
@@ -57,7 +59,7 @@ class _SubmitReviewSheetState extends State<_SubmitReviewSheet> {
       );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) setState(() => _error = 'Could not submit your review. Please try again.');
+      if (mounted) setState(() => _error = l10n.submitReviewSubmitError);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -66,6 +68,7 @@ class _SubmitReviewSheetState extends State<_SubmitReviewSheet> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
@@ -100,7 +103,7 @@ class _SubmitReviewSheetState extends State<_SubmitReviewSheet> {
               style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w500),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: 'Give your review a title (optional)',
+                hintText: l10n.submitReviewTitleHint,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 filled: true,
                 fillColor: ty.surface,
@@ -117,7 +120,7 @@ class _SubmitReviewSheetState extends State<_SubmitReviewSheet> {
               style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w500),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: 'Share details about your experience (optional)',
+                hintText: l10n.submitReviewBodyHint,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 filled: true,
                 fillColor: ty.surface,
@@ -133,7 +136,7 @@ class _SubmitReviewSheetState extends State<_SubmitReviewSheet> {
             ],
             const SizedBox(height: 18),
             TyButton(
-              _submitting ? 'Submitting...' : 'Submit Review',
+              _submitting ? l10n.feedbackSubmittingLabel : l10n.submitReviewSubmitButtonLabel,
               full: true,
               enabled: !_submitting,
               onTap: _submit,
