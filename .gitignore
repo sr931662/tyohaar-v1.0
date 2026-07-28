@@ -15,6 +15,10 @@
 app.*.symbols
 app.*.map.json
 
+# FlutterFire-generated config — contains live Firebase API keys.
+# Regenerate locally with `flutterfire configure`.
+lib/firebase_options.dart
+
 # ============================================================
 # Android
 # ============================================================
