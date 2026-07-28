@@ -71,7 +71,7 @@ _ITEM_IMPORT_REQUIRED_COLUMNS = ["name", "base_price"]
 
 _COMMON_ITEM_IMPORT_COLUMNS = [
     "name", "description", "quantity", "unit", "base_price", "max_quantity",
-    "is_customizable", "prep_time_minutes", "is_mandatory", "cover_image_url",
+    "is_customizable", "prep_time_minutes", "is_mandatory", "is_returnable", "cover_image_url",
 ]
 
 _PACKAGE_ITEM_IMPORT_COLUMNS = _COMMON_ITEM_IMPORT_COLUMNS + ["icon_url", "display_order"]
@@ -79,7 +79,7 @@ _PACKAGE_ITEM_IMPORT_COLUMNS = _COMMON_ITEM_IMPORT_COLUMNS + ["icon_url", "displ
 _ITEM_IMPORT_SAMPLE_ROW: dict[str, str] = {
     "name": "Balloon Arch", "description": "Full balloon arch setup", "quantity": "1",
     "unit": "pcs", "base_price": "2500", "max_quantity": "", "is_customizable": "false",
-    "prep_time_minutes": "60", "is_mandatory": "true",
+    "prep_time_minutes": "60", "is_mandatory": "true", "is_returnable": "false",
     "cover_image_url": "https://example.com/photos/balloon-arch.jpg",
     "icon_url": "", "display_order": "0",
 }
@@ -115,6 +115,7 @@ def _coerce_item_import_row(row: dict[str, Any], *, is_package_item: bool) -> di
         "is_customizable": _parse_bool_cell(row.get("is_customizable"), False),
         "prep_time_minutes": _parse_int_cell(row.get("prep_time_minutes")),
         "is_mandatory": _parse_bool_cell(row.get("is_mandatory"), True),
+        "is_returnable": _parse_bool_cell(row.get("is_returnable"), False),
         "cover_image_url": cell("cover_image_url"),
     }
     if is_package_item:
@@ -161,6 +162,7 @@ def _item_to_export_row(item: PackageItem, columns: list[str]) -> dict[str, Any]
         "is_customizable": "true" if item.is_customizable else "false",
         "prep_time_minutes": item.prep_time_minutes if item.prep_time_minutes is not None else "",
         "is_mandatory": "true" if item.is_mandatory else "false",
+        "is_returnable": "true" if item.is_returnable else "false",
         "cover_image_url": item.cover_image_url or "",
         "icon_url": item.icon_url or "",
         "display_order": item.display_order,

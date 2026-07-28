@@ -142,6 +142,9 @@ class PackageItemCreate(BaseSchema):
     is_mandatory: bool = Field(
         default=True, description="Whether item is always included vs. optional add-on"
     )
+    is_returnable: bool = Field(
+        default=False, description="True if the customer must return this item to the vendor after the event"
+    )
     is_customizable: bool = Field(
         default=False, description="True if the customer can configure options for this item"
     )
@@ -181,6 +184,9 @@ class CommonPackageItemCreate(BaseSchema):
     base_price: MoneyAmount = Field(description="Item base price")
     is_mandatory: bool = Field(
         default=True, description="Whether item is always included vs. optional add-on"
+    )
+    is_returnable: bool = Field(
+        default=False, description="True if the customer must return this item to the vendor after the event"
     )
     is_customizable: bool = Field(
         default=False, description="True if the customer can configure options for this item"

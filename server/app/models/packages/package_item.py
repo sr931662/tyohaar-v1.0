@@ -173,6 +173,13 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment="Mandatory items are always included; optional items can be toggled off",
     )
 
+    is_returnable: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="True if the customer must return this item to the vendor after the event.",
+    )
+
     is_customizable: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

@@ -269,7 +269,7 @@ function CommonItemsModal({ onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' });
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const { data: items = [], isLoading } = useQuery({
@@ -281,7 +281,7 @@ function CommonItemsModal({ onClose }) {
 
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.createCommonItem(body),
-    onSuccess: () => { toast.success('Common item created.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' }); },
+    onSuccess: () => { toast.success('Common item created.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' }); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to create item.'),
   });
 
@@ -299,7 +299,7 @@ function CommonItemsModal({ onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, cover_image_url: item.cover_image_url ?? '' });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '' });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -371,6 +371,10 @@ function CommonItemsModal({ onClose }) {
                       <input type="checkbox" checked={editForm.is_mandatory} onChange={(e) => setEF('is_mandatory', e.target.checked)} />
                       Mandatory
                     </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={editForm.is_returnable} onChange={(e) => setEF('is_returnable', e.target.checked)} />
+                      Returnable
+                    </label>
                   </div>
                   <input className="admin-input" type="number" min={editForm.quantity || 1} value={editForm.max_quantity} onChange={(e) => setEF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
                   <input className="admin-input" value={editForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
@@ -400,6 +404,7 @@ function CommonItemsModal({ onClose }) {
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>
                       {item.name}
                       {!item.is_mandatory && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>optional</span>}
+                      {item.is_returnable && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-primary,#6366f1)', fontWeight: 400 }}>returnable</span>}
                     </div>
                     {item.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{item.description}</div>}
                   </div>
@@ -428,6 +433,10 @@ function CommonItemsModal({ onClose }) {
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                 <input type="checkbox" checked={newItem.is_mandatory} onChange={(e) => setNF('is_mandatory', e.target.checked)} />
                 Mandatory
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={newItem.is_returnable} onChange={(e) => setNF('is_returnable', e.target.checked)} />
+                Returnable
               </label>
             </div>
             <input className="admin-input" type="number" min={newItem.quantity || 1} value={newItem.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
@@ -466,7 +475,7 @@ function PackageItemsModal({ pkg, onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' });
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [managingImagesFor, setManagingImagesFor] = useState(null);
   const [attachingId, setAttachingId] = useState('');
@@ -485,7 +494,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.addItem(pkg.id, { ...body, package_id: pkg.id }),
-    onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' }); },
+    onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' }); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add item.'),
   });
 
@@ -515,7 +524,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, cover_image_url: item.cover_image_url ?? '' });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '' });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -595,6 +604,10 @@ function PackageItemsModal({ pkg, onClose }) {
                       <input type="checkbox" checked={editForm.is_mandatory} onChange={(e) => setEF('is_mandatory', e.target.checked)} />
                       Mandatory
                     </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={editForm.is_returnable} onChange={(e) => setEF('is_returnable', e.target.checked)} />
+                      Returnable
+                    </label>
                   </div>
                   <div>
                     <input className="admin-input" type="number" min={editForm.quantity || 1} value={editForm.max_quantity} onChange={(e) => setEF('max_quantity', e.target.value)} placeholder="Max customer can pick (optional)" />
@@ -628,6 +641,7 @@ function PackageItemsModal({ pkg, onClose }) {
                       {item.name}
                       {item.is_common && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-primary,#6366f1)', fontWeight: 400 }}>common</span>}
                       {!item.is_mandatory && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>optional</span>}
+                      {item.is_returnable && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-primary,#6366f1)', fontWeight: 400 }}>returnable</span>}
                     </div>
                     {item.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{item.description}</div>}
                   </div>
@@ -704,6 +718,10 @@ function PackageItemsModal({ pkg, onClose }) {
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                     <input type="checkbox" checked={newItem.is_mandatory} onChange={(e) => setNF('is_mandatory', e.target.checked)} />
                     Mandatory
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={newItem.is_returnable} onChange={(e) => setNF('is_returnable', e.target.checked)} />
+                    Returnable
                   </label>
                 </div>
                 <div>

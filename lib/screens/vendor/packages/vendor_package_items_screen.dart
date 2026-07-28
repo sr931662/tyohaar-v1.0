@@ -56,6 +56,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
     final unitCtrl = TextEditingController(text: existing?.unit ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     bool isMandatory = existing?.isMandatory ?? true;
+    bool isReturnable = existing?.isReturnable ?? false;
     final l10n = AppLocalizations.of(context)!;
 
     final saved = await showModalBottomSheet<bool>(
@@ -88,6 +89,12 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                   value: isMandatory,
                   onChanged: (v) => setSheetState(() => isMandatory = v),
                 ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.vendorPackageItemsReturnableLabel),
+                  value: isReturnable,
+                  onChanged: (v) => setSheetState(() => isReturnable = v),
+                ),
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
@@ -109,6 +116,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
         'unit': unitCtrl.text.trim().isEmpty ? null : unitCtrl.text.trim(),
         'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'is_mandatory': isMandatory,
+        'is_returnable': isReturnable,
       };
       if (existing == null) {
         await _vendorService.addPackageItem(widget.package.id, body);
@@ -223,7 +231,13 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                    Row(children: [
+                                      Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                      if (item.isReturnable) ...[
+                                        const SizedBox(width: 6),
+                                        Text(l10n.vendorPackageItemsReturnableBadgeLabel, style: TyType.sans(11, color: ty.saffron)),
+                                      ],
+                                    ]),
                                     Text('${item.isCommon ? l10n.vendorPackageItemsCommonPrefixLabel : ""}${l10n.vendorPackageItemsQtyPriceLabel(item.quantity.toString(), item.basePrice.toStringAsFixed(0))}',
                                         style: TyType.sans(12, color: ty.ink2)),
                                   ],

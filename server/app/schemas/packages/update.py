@@ -113,6 +113,7 @@ class PackageItemUpdate(BaseSchema):
     unit: str | None = Field(default=None, max_length=50)
     base_price: MoneyAmount | None = None
     is_mandatory: bool | None = None
+    is_returnable: bool | None = None
     is_customizable: bool | None = None
     max_quantity: int | None = Field(default=None, ge=1)
     icon_url: str | None = Field(default=None, max_length=500)

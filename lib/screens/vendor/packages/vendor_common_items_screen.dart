@@ -47,6 +47,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
     final unitCtrl = TextEditingController(text: existing?.unit ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     bool isMandatory = existing?.isMandatory ?? true;
+    bool isReturnable = existing?.isReturnable ?? false;
     String? coverImageUrl = existing?.coverImageUrl;
     bool isUploadingCover = false;
 
@@ -77,6 +78,12 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                   title: Text(l10n.vendorCommonItemsMandatoryLabel),
                   value: isMandatory,
                   onChanged: (v) => setSheetState(() => isMandatory = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.vendorCommonItemsReturnableLabel),
+                  value: isReturnable,
+                  onChanged: (v) => setSheetState(() => isReturnable = v),
                 ),
                 const SizedBox(height: 8),
                 Row(children: [
@@ -132,6 +139,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
         'unit': unitCtrl.text.trim().isEmpty ? null : unitCtrl.text.trim(),
         'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'is_mandatory': isMandatory,
+        'is_returnable': isReturnable,
         'cover_image_url': coverImageUrl,
       };
       if (existing == null) {
@@ -235,6 +243,10 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                                   if (!item.isMandatory) ...[
                                     const SizedBox(width: 6),
                                     Text(l10n.vendorCommonItemsOptionalLabel, style: TyType.sans(11, color: ty.ink3)),
+                                  ],
+                                  if (item.isReturnable) ...[
+                                    const SizedBox(width: 6),
+                                    Text(l10n.vendorCommonItemsReturnableBadgeLabel, style: TyType.sans(11, color: ty.saffron)),
                                   ],
                                 ]),
                                 Text(l10n.vendorCommonItemsQtyPriceLabel(item.quantity.toString(), item.basePrice.toStringAsFixed(0)), style: TyType.sans(12, color: ty.ink2)),

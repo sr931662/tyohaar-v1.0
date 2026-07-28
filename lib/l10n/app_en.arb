@@ -378,6 +378,8 @@
   },
   "vendorCommonItemsImportError": "Import failed. Please check the file and try again.",
   "vendorCommonItemsExportError": "Export failed.",
+  "vendorCommonItemsReturnableLabel": "Returnable",
+  "vendorCommonItemsReturnableBadgeLabel": "returnable",
 
   "vendorPackageItemsAddItemTitle": "Add Item",
   "vendorPackageItemsEditItemTitle": "Edit Item",
@@ -428,6 +430,8 @@
   },
   "vendorPackageItemsImportError": "Import failed. Please check the file and try again.",
   "vendorPackageItemsExportError": "Export failed.",
+  "vendorPackageItemsReturnableLabel": "Returnable",
+  "vendorPackageItemsReturnableBadgeLabel": "returnable",
 
   "vendorProfileBusinessNameRequiredError": "Business name is required.",
   "vendorProfileCreatedMessage": "Vendor profile created!",

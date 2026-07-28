@@ -145,6 +145,7 @@ class PackageItemResponse(BaseSchema):
     unit: str | None
     base_price: MoneyAmount
     is_mandatory: bool
+    is_returnable: bool = False
     is_customizable: bool = False
     icon_url: str | None = None
     cover_image_url: str | None = None

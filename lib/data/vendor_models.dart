@@ -414,6 +414,7 @@ class VendorPackageItem {
   final int quantity;
   final String? unit;
   final bool isMandatory;
+  final bool isReturnable;
   final bool isOptional;
   final bool isCommon;
   final int? maxQuantity;
@@ -428,6 +429,7 @@ class VendorPackageItem {
     this.quantity = 1,
     this.unit,
     this.isMandatory = true,
+    this.isReturnable = false,
     this.isOptional = false,
     this.isCommon = false,
     this.maxQuantity,
@@ -444,6 +446,7 @@ class VendorPackageItem {
       quantity: json['quantity'] as int? ?? 1,
       unit: json['unit'] as String?,
       isMandatory: json['is_mandatory'] as bool? ?? true,
+      isReturnable: json['is_returnable'] as bool? ?? false,
       isOptional: json['is_optional'] as bool? ?? false,
       isCommon: json['is_common'] as bool? ?? false,
       maxQuantity: json['max_quantity'] as int?,
@@ -465,6 +468,7 @@ class VendorCommonItem {
   final String? unit;
   final int? maxQuantity;
   final bool isMandatory;
+  final bool isReturnable;
   final String? coverImageUrl;
 
   VendorCommonItem({
@@ -476,6 +480,7 @@ class VendorCommonItem {
     this.unit,
     this.maxQuantity,
     this.isMandatory = true,
+    this.isReturnable = false,
     this.coverImageUrl,
   });
 
@@ -489,6 +494,7 @@ class VendorCommonItem {
       unit: json['unit'] as String?,
       maxQuantity: json['max_quantity'] as int?,
       isMandatory: json['is_mandatory'] as bool? ?? true,
+      isReturnable: json['is_returnable'] as bool? ?? false,
       coverImageUrl: asUrl(json['cover_image_url']),
     );
   }
