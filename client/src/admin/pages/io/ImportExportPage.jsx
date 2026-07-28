@@ -5,6 +5,7 @@ import { ioApi } from '../../api';
 import { formatDateTime } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { SkeletonTable } from '../../components/ui/Skeleton';
+import { downloadBlob } from '../../../lib/downloadBlob';
 
 // Must match the backend's actual column definitions (_ENTITY_COLUMNS in
 // io_service.py) — entity types not recognized there would silently
@@ -41,13 +42,6 @@ const ENTITY_HINTS = {
 
 function entityLabel(entityType) {
   return entityType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-}
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
 }
 
 function ImportTab() {

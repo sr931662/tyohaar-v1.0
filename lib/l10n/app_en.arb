@@ -353,6 +353,31 @@
       "price": { "type": "String" }
     }
   },
+  "vendorCommonItemsEditItemTitle": "Edit Common Item",
+  "vendorCommonItemsMandatoryLabel": "Mandatory",
+  "vendorCommonItemsUpdateButtonLabel": "Save",
+  "vendorCommonItemsUpdateError": "Could not update item.",
+  "vendorCommonItemsEditButtonLabel": "Edit",
+  "vendorCommonItemsAddCoverPhotoButtonLabel": "Add cover photo",
+  "vendorCommonItemsChangeCoverPhotoButtonLabel": "Change cover photo",
+  "vendorCommonItemsUploadingLabel": "Uploading…",
+  "vendorCommonItemsOptionalLabel": "optional",
+  "vendorCommonItemsImportMenuLabel": "Import",
+  "vendorCommonItemsExportMenuLabel": "Export",
+  "vendorCommonItemsTemplateMenuLabel": "Download template",
+  "vendorCommonItemsChooseFormatTitle": "Choose a file format",
+  "vendorCommonItemsImportResultTitle": "Import complete",
+  "vendorCommonItemsImportResultSummary": "{created} created, {updated} updated, {errors} errors.",
+  "@vendorCommonItemsImportResultSummary": {
+    "description": "Summary shown after a bulk common-items import completes",
+    "placeholders": {
+      "created": { "type": "int" },
+      "updated": { "type": "int" },
+      "errors": { "type": "int" }
+    }
+  },
+  "vendorCommonItemsImportError": "Import failed. Please check the file and try again.",
+  "vendorCommonItemsExportError": "Export failed.",
 
   "vendorPackageItemsAddItemTitle": "Add Item",
   "vendorPackageItemsEditItemTitle": "Edit Item",
@@ -387,6 +412,22 @@
   "vendorPackageItemsDeleteButtonLabel": "Delete",
   "vendorPackageItemsGalleryLabel": "Gallery",
   "vendorPackageItemsAddPhotoButtonLabel": "+ Add Photo",
+  "vendorPackageItemsImportMenuLabel": "Import",
+  "vendorPackageItemsExportMenuLabel": "Export",
+  "vendorPackageItemsTemplateMenuLabel": "Download template",
+  "vendorPackageItemsChooseFormatTitle": "Choose a file format",
+  "vendorPackageItemsImportResultTitle": "Import complete",
+  "vendorPackageItemsImportResultSummary": "{created} created, {updated} updated, {errors} errors.",
+  "@vendorPackageItemsImportResultSummary": {
+    "description": "Summary shown after a bulk package-items import completes",
+    "placeholders": {
+      "created": { "type": "int" },
+      "updated": { "type": "int" },
+      "errors": { "type": "int" }
+    }
+  },
+  "vendorPackageItemsImportError": "Import failed. Please check the file and try again.",
+  "vendorPackageItemsExportError": "Export failed.",
 
   "vendorProfileBusinessNameRequiredError": "Business name is required.",
   "vendorProfileCreatedMessage": "Vendor profile created!",

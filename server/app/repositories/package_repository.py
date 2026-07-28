@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -179,6 +179,21 @@ class PackageItemRepository(BaseRepository[PackageItem]):
             PackageItem.vendor_id == vendor_id,
             PackageItem.is_common == True,  # noqa: E712
             order_by=PackageItem.display_order.asc(),
+        )
+
+    async def find_common_by_name(self, vendor_id: uuid.UUID, name: str) -> PackageItem | None:
+        """Case-insensitive lookup used by bulk import's upsert-by-name logic."""
+        return await self.find_one(
+            PackageItem.vendor_id == vendor_id,
+            PackageItem.is_common == True,  # noqa: E712
+            func.lower(PackageItem.name) == name.strip().lower(),
+        )
+
+    async def find_package_item_by_name(self, package_id: uuid.UUID, name: str) -> PackageItem | None:
+        """Case-insensitive lookup used by bulk import's upsert-by-name logic."""
+        return await self.find_one(
+            PackageItem.package_id == package_id,
+            func.lower(PackageItem.name) == name.strip().lower(),
         )
 
     async def link_to_package(self, package_id: uuid.UUID, item_id: uuid.UUID) -> None:

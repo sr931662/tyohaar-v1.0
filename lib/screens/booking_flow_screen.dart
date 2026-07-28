@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../theme/colors.dart';
+import '../theme/responsive.dart';
 import '../theme/typography.dart';
 import '../data/models.dart';
 import '../data/auth_manager.dart';
@@ -327,7 +328,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         Row(
           children: [
             Expanded(child: _staticField(context, Icons.event, DateFormat('dd MMM yyyy').format(_eventDate), onTap: _pickDate)),
-            const SizedBox(width: 12),
+            SizedBox(width: context.resp.w(12)),
             Expanded(child: _staticField(context, Icons.schedule, _eventTime.format(context), onTap: _pickTime)),
           ],
         ),
@@ -468,35 +469,42 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   }
 
   Widget _textField(BuildContext context, String hint, TextEditingController ctrl, {IconData? icon, TextInputType type = TextInputType.text, int lines = 1}) {
+    final resp = context.resp;
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: resp.h(12)),
       decoration: BoxDecoration(color: context.ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: context.ty.line)),
       child: TextField(
         controller: ctrl,
         keyboardType: type,
         maxLines: lines,
-        style: TyType.sans(15, weight: FontWeight.w600),
+        style: TyType.sans(resp.sp(15), weight: FontWeight.w600),
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: icon != null ? Icon(icon, size: 18, color: context.ty.ink3) : null,
+          prefixIcon: icon != null ? Icon(icon, size: resp.sp(18), color: context.ty.ink3) : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(14),
+          contentPadding: EdgeInsets.all(resp.w(14)),
         ),
       ),
     );
   }
 
   Widget _staticField(BuildContext context, IconData icon, String value, {VoidCallback? onTap}) {
+    final resp = context.resp;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(resp.w(14)),
         decoration: BoxDecoration(color: context.ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: context.ty.line)),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: context.ty.saffron),
-            const SizedBox(width: 10),
-            Text(value, style: TyType.sans(15, weight: FontWeight.w700)),
+            Icon(icon, size: resp.sp(18), color: context.ty.saffron),
+            SizedBox(width: resp.w(10)),
+            Expanded(
+              child: Text(value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TyType.sans(resp.sp(15), weight: FontWeight.w700)),
+            ),
           ],
         ),
       ),

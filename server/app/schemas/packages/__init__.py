@@ -83,6 +83,12 @@ from app.schemas.packages.internal import (
     PackageAdminStats,
 )
 
+# ── item_io ────────────────────────────────────────────────────────────────────
+from app.schemas.packages.item_io import (
+    ItemImportRowResult,
+    ItemImportResult,
+)
+
 __all__ = [
     # common
     "PriceTierSchema",
@@ -139,4 +145,7 @@ __all__ = [
     # internal
     "PackageInternal",
     "PackageAdminStats",
+    # item_io
+    "ItemImportRowResult",
+    "ItemImportResult",
 ]

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import csv
+import io
 from datetime import date, datetime, timezone
+from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from app.db.session import AsyncSessionLocal
@@ -26,6 +30,8 @@ from app.schemas.packages import (
     PackageCategoryResponse,
     PackageCategoryUpdate,
     CommonPackageItemCreate,
+    ItemImportResult,
+    ItemImportRowResult,
     PackageCreate,
     PackageDetailResponse,
     PackageDiscountResponse,
@@ -55,6 +61,148 @@ from app.services.packages.validators import (
     validate_package_ownership,
     validate_review_not_duplicate,
 )
+
+# ── Bulk import/export column schema (vendor-scoped, upsert-by-name) ───────────
+# Deliberately separate from app.services.cms.io_service's admin-scoped
+# _ENTITY_COLUMNS — this is a smaller, synchronous engine with no
+# dry-run/preview/rollback workflow, sized for these two entity types only.
+
+_ITEM_IMPORT_REQUIRED_COLUMNS = ["name", "base_price"]
+
+_COMMON_ITEM_IMPORT_COLUMNS = [
+    "name", "description", "quantity", "unit", "base_price", "max_quantity",
+    "is_customizable", "prep_time_minutes", "is_mandatory", "cover_image_url",
+]
+
+_PACKAGE_ITEM_IMPORT_COLUMNS = _COMMON_ITEM_IMPORT_COLUMNS + ["icon_url", "display_order"]
+
+_ITEM_IMPORT_SAMPLE_ROW: dict[str, str] = {
+    "name": "Balloon Arch", "description": "Full balloon arch setup", "quantity": "1",
+    "unit": "pcs", "base_price": "2500", "max_quantity": "", "is_customizable": "false",
+    "prep_time_minutes": "60", "is_mandatory": "true",
+    "cover_image_url": "https://example.com/photos/balloon-arch.jpg",
+    "icon_url": "", "display_order": "0",
+}
+
+
+def _parse_bool_cell(value: Any, default: bool) -> bool:
+    if value is None or str(value).strip() == "":
+        return default
+    return str(value).strip().lower() in ("true", "1", "yes", "y")
+
+
+def _parse_int_cell(value: Any) -> int | None:
+    text = str(value).strip() if value is not None else ""
+    return int(text) if text else None
+
+
+def _coerce_item_import_row(row: dict[str, Any], *, is_package_item: bool) -> dict[str, Any]:
+    """Convert raw (string-valued) spreadsheet cells into a PackageItem field dict."""
+    def cell(key: str) -> str | None:
+        value = row.get(key)
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
+
+    payload: dict[str, Any] = {
+        "name": cell("name"),
+        "description": cell("description"),
+        "quantity": _parse_int_cell(row.get("quantity")) or 1,
+        "unit": cell("unit"),
+        "base_price": Decimal(cell("base_price") or "0"),
+        "max_quantity": _parse_int_cell(row.get("max_quantity")),
+        "is_customizable": _parse_bool_cell(row.get("is_customizable"), False),
+        "prep_time_minutes": _parse_int_cell(row.get("prep_time_minutes")),
+        "is_mandatory": _parse_bool_cell(row.get("is_mandatory"), True),
+        "cover_image_url": cell("cover_image_url"),
+    }
+    if is_package_item:
+        payload["icon_url"] = cell("icon_url")
+        payload["display_order"] = _parse_int_cell(row.get("display_order")) or 0
+    return payload
+
+
+def _parse_item_spreadsheet(content: bytes, filename: str) -> list[dict[str, Any]]:
+    """Parse an uploaded CSV or XLSX file into a list of row dicts."""
+    ext = filename.lower().rsplit(".", 1)[-1]
+    if ext == "csv":
+        reader = csv.DictReader(io.StringIO(content.decode("utf-8", errors="replace")))
+        return list(reader)
+    if ext in ("xlsx", "xls"):
+        try:
+            import openpyxl
+        except ImportError as exc:
+            raise RuntimeError(
+                "Server is missing the openpyxl dependency required to read .xlsx files. "
+                "Please upload a .csv file instead, or contact support."
+            ) from exc
+        wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            return []
+        headers = [str(h).strip() if h else "" for h in rows[0]]
+        return [
+            {headers[i]: ("" if cell is None else str(cell)) for i, cell in enumerate(row)}
+            for row in rows[1:]
+        ]
+    raise ValueError(f"Unsupported file type '.{ext}' — upload a .csv or .xlsx file.")
+
+
+def _item_to_export_row(item: PackageItem, columns: list[str]) -> dict[str, Any]:
+    values = {
+        "name": item.name,
+        "description": item.description or "",
+        "quantity": item.quantity,
+        "unit": item.unit or "",
+        "base_price": str(item.base_price),
+        "max_quantity": item.max_quantity if item.max_quantity is not None else "",
+        "is_customizable": "true" if item.is_customizable else "false",
+        "prep_time_minutes": item.prep_time_minutes if item.prep_time_minutes is not None else "",
+        "is_mandatory": "true" if item.is_mandatory else "false",
+        "cover_image_url": item.cover_image_url or "",
+        "icon_url": item.icon_url or "",
+        "display_order": item.display_order,
+    }
+    return {col: values.get(col, "") for col in columns}
+
+
+def _rows_to_csv_bytes(columns: list[str], rows: list[dict[str, Any]]) -> bytes:
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=columns)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(row)
+    return buf.getvalue().encode("utf-8")
+
+
+def _rows_to_xlsx_bytes(columns: list[str], rows: list[dict[str, Any]], sheet_title: str) -> bytes:
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = sheet_title[:31] or "Items"
+
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    required_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    required = set(_ITEM_IMPORT_REQUIRED_COLUMNS)
+
+    for col_idx, col_name in enumerate(columns, start=1):
+        c = ws.cell(row=1, column=col_idx, value=col_name)
+        c.font = header_font
+        c.fill = required_fill if col_name in required else header_fill
+        ws.column_dimensions[chr(64 + col_idx)].width = 20
+
+    for row_idx, row in enumerate(rows, start=2):
+        for col_idx, col_name in enumerate(columns, start=1):
+            ws.cell(row=row_idx, column=col_idx, value=row.get(col_name, ""))
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
 
 class PackageService(BaseService):
@@ -669,6 +817,135 @@ class PackageService(BaseService):
             await validate_package_ownership(package_id, vendor_id, uow)
             await uow.packages.items.unlink_from_package(package_id, item_id)
             await uow.commit()
+
+    # ── Bulk import/export (vendor-scoped, upsert-by-name) ─────────────────────
+
+    @staticmethod
+    async def _process_item_import_rows(
+        uow,
+        rows: list[dict[str, Any]],
+        *,
+        vendor_id: UUID,
+        package_id: UUID | None,
+    ) -> ItemImportResult:
+        """
+        Upsert one row at a time, isolating each row in its own SAVEPOINT so a
+        single bad row (bad price format, DB constraint violation, ...) can be
+        rolled back without poisoning the rest of the batch's transaction.
+        """
+        created = updated = errors = 0
+        row_results: list[ItemImportRowResult] = []
+
+        for idx, raw_row in enumerate(rows, start=2):  # row 1 is the header
+            name = str(raw_row.get("name") or "").strip()
+            action: str | None = None
+            try:
+                async with uow.session.begin_nested():
+                    if not name:
+                        raise ValueError("'name' is required")
+                    if not str(raw_row.get("base_price") or "").strip():
+                        raise ValueError("'base_price' is required")
+                    payload = _coerce_item_import_row(raw_row, is_package_item=package_id is not None)
+                    if package_id is not None:
+                        existing = await uow.packages.items.find_package_item_by_name(package_id, name)
+                    else:
+                        existing = await uow.packages.items.find_common_by_name(vendor_id, name)
+                    if existing is not None:
+                        await uow.packages.items.update(existing, payload)
+                        action = "updated"
+                    else:
+                        if package_id is not None:
+                            payload["package_id"] = package_id
+                        else:
+                            payload["vendor_id"] = vendor_id
+                            payload["is_common"] = True
+                            payload["package_id"] = None
+                        await uow.packages.items.create_from_dict(payload)
+                        action = "created"
+            except Exception as exc:
+                errors += 1
+                row_results.append(
+                    ItemImportRowResult(row=idx, action="error", name=name or None, error=str(exc))
+                )
+                continue
+            if action == "updated":
+                updated += 1
+            else:
+                created += 1
+            row_results.append(ItemImportRowResult(row=idx, action=action, name=name))
+
+        return ItemImportResult(
+            total_rows=len(rows), created=created, updated=updated, errors=errors, row_results=row_results,
+        )
+
+    async def import_common_items(
+        self,
+        vendor_id: UUID,
+        content: bytes,
+        filename: str,
+    ) -> ItemImportResult:
+        rows = _parse_item_spreadsheet(content, filename)
+        async with self._uow() as uow:
+            result = await self._process_item_import_rows(uow, rows, vendor_id=vendor_id, package_id=None)
+            await uow.commit()
+            return result
+
+    async def import_package_items(
+        self,
+        vendor_id: UUID,
+        package_id: UUID,
+        content: bytes,
+        filename: str,
+    ) -> ItemImportResult:
+        rows = _parse_item_spreadsheet(content, filename)
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            result = await self._process_item_import_rows(uow, rows, vendor_id=vendor_id, package_id=package_id)
+            await uow.commit()
+            return result
+
+    async def export_common_items(self, vendor_id: UUID, fmt: str) -> tuple[bytes, str, str]:
+        async with self._uow() as uow:
+            items = await uow.packages.items.find_common_for_vendor(vendor_id)
+        rows = [_item_to_export_row(i, _COMMON_ITEM_IMPORT_COLUMNS) for i in items]
+        return self._render_export(rows, _COMMON_ITEM_IMPORT_COLUMNS, fmt, "common_items", "Common Items")
+
+    async def export_package_items(self, vendor_id: UUID, package_id: UUID, fmt: str) -> tuple[bytes, str, str]:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            items = await uow.packages.items.find_by_package(package_id)
+        rows = [_item_to_export_row(i, _PACKAGE_ITEM_IMPORT_COLUMNS) for i in items]
+        return self._render_export(rows, _PACKAGE_ITEM_IMPORT_COLUMNS, fmt, "package_items", "Package Items")
+
+    def get_common_items_import_template(self, fmt: str) -> tuple[bytes, str, str]:
+        rows = [{col: _ITEM_IMPORT_SAMPLE_ROW.get(col, "") for col in _COMMON_ITEM_IMPORT_COLUMNS}]
+        return self._render_export(rows, _COMMON_ITEM_IMPORT_COLUMNS, fmt, "common_items_template", "Common Items")
+
+    def get_package_items_import_template(self, fmt: str) -> tuple[bytes, str, str]:
+        rows = [{col: _ITEM_IMPORT_SAMPLE_ROW.get(col, "") for col in _PACKAGE_ITEM_IMPORT_COLUMNS}]
+        return self._render_export(rows, _PACKAGE_ITEM_IMPORT_COLUMNS, fmt, "package_items_template", "Package Items")
+
+    @staticmethod
+    def _render_export(
+        rows: list[dict[str, Any]],
+        columns: list[str],
+        fmt: str,
+        filename_stem: str,
+        sheet_title: str,
+    ) -> tuple[bytes, str, str]:
+        if fmt == "csv":
+            return (
+                _rows_to_csv_bytes(columns, rows),
+                "text/csv",
+                f"{filename_stem}.csv",
+            )
+        if fmt == "xlsx":
+            return (
+                _rows_to_xlsx_bytes(columns, rows, sheet_title),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                f"{filename_stem}.xlsx",
+            )
+        raise ValueError(f"Unsupported export format '{fmt}' — use 'csv' or 'xlsx'.")
 
     @staticmethod
     async def _batch_item_images(

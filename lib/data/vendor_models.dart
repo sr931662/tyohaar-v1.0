@@ -464,6 +464,8 @@ class VendorCommonItem {
   final int quantity;
   final String? unit;
   final int? maxQuantity;
+  final bool isMandatory;
+  final String? coverImageUrl;
 
   VendorCommonItem({
     required this.id,
@@ -473,6 +475,8 @@ class VendorCommonItem {
     this.quantity = 1,
     this.unit,
     this.maxQuantity,
+    this.isMandatory = true,
+    this.coverImageUrl,
   });
 
   factory VendorCommonItem.fromJson(Map<String, dynamic> json) {
@@ -484,6 +488,8 @@ class VendorCommonItem {
       quantity: json['quantity'] as int? ?? 1,
       unit: json['unit'] as String?,
       maxQuantity: json['max_quantity'] as int?,
+      isMandatory: json['is_mandatory'] as bool? ?? true,
+      coverImageUrl: asUrl(json['cover_image_url']),
     );
   }
 }

@@ -194,7 +194,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(b.packageName ?? l10n.myBookingsCustomBookingFallback, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
+                      Text(b.packageName ?? l10n.myBookingsCustomBookingFallback,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
                       const SizedBox(height: 2),
                       Text(dateStr, style: TyType.sans(12, color: ty.ink2)),
                       if (b.preparationStartAt != null) ...[

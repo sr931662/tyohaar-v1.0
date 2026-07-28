@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { vendorProfileApi, vendorPackagesApi, vendorOccasionsApi, vendorThemesApi } from '../../api';
 import { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import ImageUploadField from '../../components/ImageUploadField';
+import ItemImportExportBar from '../../components/ItemImportExportBar';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -266,7 +267,9 @@ function PackageFormModal({ initial, occasions, themes, onClose, onSave, saving 
 
 function CommonItemsModal({ onClose }) {
   const qc = useQueryClient();
-  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '' });
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const { data: items = [], isLoading } = useQuery({
@@ -278,8 +281,14 @@ function CommonItemsModal({ onClose }) {
 
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.createCommonItem(body),
-    onSuccess: () => { toast.success('Common item created.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '' }); },
+    onSuccess: () => { toast.success('Common item created.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' }); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to create item.'),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ itemId, body }) => vendorPackagesApi.updateCommonItem(itemId, body),
+    onSuccess: () => { toast.success('Common item updated.'); invalidate(); setEditingId(null); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to update item.'),
   });
 
   const deleteMutation = useMutation({
@@ -288,7 +297,13 @@ function CommonItemsModal({ onClose }) {
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to delete item.'),
   });
 
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, cover_image_url: item.cover_image_url ?? '' });
+  };
+
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
+  const setEF = (k, v) => setEditForm((f) => ({ ...f, [k]: v }));
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -301,6 +316,23 @@ function CommonItemsModal({ onClose }) {
       base_price: Number(newItem.base_price),
       unit: newItem.unit || undefined,
       description: newItem.description || undefined,
+      cover_image_url: newItem.cover_image_url || undefined,
+    });
+  };
+
+  const handleUpdate = (itemId) => {
+    if (!editForm.name.trim()) return toast.error('Item name is required.');
+    updateMutation.mutate({
+      itemId,
+      body: {
+        ...editForm,
+        quantity: Number(editForm.quantity),
+        max_quantity: editForm.max_quantity !== '' ? Number(editForm.max_quantity) : null,
+        base_price: Number(editForm.base_price),
+        unit: editForm.unit || undefined,
+        description: editForm.description || undefined,
+        cover_image_url: editForm.cover_image_url || null,
+      },
     });
   };
 
@@ -317,6 +349,7 @@ function CommonItemsModal({ onClose }) {
           <button className="admin-modal-close" onClick={onClose}>×</button>
         </div>
         <div style={{ padding: '20px 24px 24px' }}>
+          <ItemImportExportBar scope="common" invalidateKey={['vendor-common-items']} />
           {isLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
               {[0, 1].map((i) => <div key={i} className="skeleton skeleton-card" style={{ height: 56 }} />)}
@@ -325,17 +358,59 @@ function CommonItemsModal({ onClose }) {
             <p style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: '16px 0', marginBottom: 4 }}>No common items yet. Add one below.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-              {items.map((item) => (
+              {items.map((item) => editingId === item.id ? (
+                <div key={item.id} className="admin-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="form-row-2-1" style={{ gap: 10 }}>
+                    <input className="admin-input" value={editForm.name} onChange={(e) => setEF('name', e.target.value)} placeholder="Item name" />
+                    <input className="admin-input" type="number" min="0" value={editForm.base_price} onChange={(e) => setEF('base_price', e.target.value)} placeholder="Price (₹)" />
+                  </div>
+                  <div className="form-row-3" style={{ gap: 10 }}>
+                    <input className="admin-input" type="number" min="1" value={editForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
+                    <input className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={editForm.is_mandatory} onChange={(e) => setEF('is_mandatory', e.target.checked)} />
+                      Mandatory
+                    </label>
+                  </div>
+                  <input className="admin-input" type="number" min={editForm.quantity || 1} value={editForm.max_quantity} onChange={(e) => setEF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
+                  <input className="admin-input" value={editForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
+                  <ImageUploadField
+                    label="Cover image"
+                    value={editForm.cover_image_url}
+                    onChange={(url) => setEF('cover_image_url', url)}
+                    usage="package_image"
+                    placeholder="Cover image URL (https://...)"
+                  />
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setEditingId(null)}>Cancel</button>
+                    <button className="btn btn-primary btn-sm" onClick={() => handleUpdate(item.id)} disabled={updateMutation.isPending}>Save</button>
+                  </div>
+                </div>
+              ) : (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                  {item.cover_image_url && (
+                    <img
+                      src={item.cover_image_url}
+                      alt=""
+                      style={{ width: 42, height: 42, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border-subtle)', flexShrink: 0 }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {item.name}
+                      {!item.is_mandatory && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>optional</span>}
+                    </div>
                     {item.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{item.description}</div>}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                     {item.quantity > 1 && `${item.quantity}${item.unit ? ' ' + item.unit : 'x'} · `}
                     ₹{Number(item.base_price).toLocaleString('en-IN')}
                   </div>
-                  <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(item)}>✕</button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => startEdit(item)}>Edit</button>
+                    <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(item)}>✕</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -350,9 +425,20 @@ function CommonItemsModal({ onClose }) {
             <div className="form-row-3" style={{ gap: 10 }}>
               <input className="admin-input" type="number" min="1" value={newItem.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
               <input className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
-              <input className="admin-input" type="number" min={newItem.quantity || 1} value={newItem.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={newItem.is_mandatory} onChange={(e) => setNF('is_mandatory', e.target.checked)} />
+                Mandatory
+              </label>
             </div>
+            <input className="admin-input" type="number" min={newItem.quantity || 1} value={newItem.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
             <input className="admin-input" value={newItem.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />
+            <ImageUploadField
+              label="Cover image (optional)"
+              value={newItem.cover_image_url}
+              onChange={(url) => setNF('cover_image_url', url)}
+              usage="package_image"
+              placeholder="Cover image URL (https://...)"
+            />
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button type="submit" className="btn btn-primary" disabled={addMutation.isPending}>
                 {addMutation.isPending ? 'Adding…' : '+ Add Common Item'}
@@ -484,6 +570,8 @@ function PackageItemsModal({ pkg, onClose }) {
               This package is under review. Items cannot be edited.
             </div>
           )}
+
+          <ItemImportExportBar scope="package" packageId={pkg.id} disabled={isLocked} invalidateKey={['pkg-items', pkg.id]} />
 
           {/* Existing items */}
           {isLoading ? (

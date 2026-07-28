@@ -219,9 +219,15 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
         ),
         child: Column(
           children: [
-            Text(value, style: TyType.display(24, color: color)),
+            Text(value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TyType.display(24, color: color)),
             const SizedBox(height: 4),
-            Text(label, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
           ],
         ),
       ),

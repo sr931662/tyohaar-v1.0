@@ -9,6 +9,7 @@ from fastapi import APIRouter, status
 from app.controllers.packages import controller as ctrl
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
 from app.schemas.packages import (
+    ItemImportResult,
     LikeToggleResponse,
     PackageAvailabilityResponse,
     PackageCategoryResponse,
@@ -211,6 +212,36 @@ router.add_api_route(
 )
 
 router.add_api_route(
+    "/{package_id}/items/import",
+    ctrl.import_package_items,
+    methods=["POST"],
+    response_model=SuccessResponse[ItemImportResult],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Import Package Items (Vendor)",
+    description="Upload a CSV/XLSX file to bulk create/update this package's items "
+                "(upserted by item name). Vendor ownership required.",
+    operation_id="packages_import_items",
+)
+
+router.add_api_route(
+    "/{package_id}/items/export",
+    ctrl.export_package_items,
+    methods=["GET"],
+    summary="Bulk Export Package Items (Vendor)",
+    description="Download this package's items as a CSV/XLSX file. Vendor ownership required.",
+    operation_id="packages_export_items",
+)
+
+router.add_api_route(
+    "/{package_id}/items/import-template",
+    ctrl.get_package_items_import_template,
+    methods=["GET"],
+    summary="Package Items Import Template (Vendor)",
+    description="Download a blank CSV/XLSX template for bulk-importing package items.",
+    operation_id="packages_items_import_template",
+)
+
+router.add_api_route(
     "/{package_id}/items/{item_id}",
     ctrl.update_item,
     methods=["PUT"],
@@ -255,6 +286,36 @@ router.add_api_route(
     description="Create a reusable item template owned by the current vendor, "
                 "attachable to any of that vendor's own packages.",
     operation_id="packages_create_common_item",
+)
+
+router.add_api_route(
+    "/vendor/common-items/import",
+    ctrl.import_common_items,
+    methods=["POST"],
+    response_model=SuccessResponse[ItemImportResult],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Import Common Items (Vendor)",
+    description="Upload a CSV/XLSX file to bulk create/update the current vendor's "
+                "reusable item templates (upserted by item name).",
+    operation_id="packages_import_common_items",
+)
+
+router.add_api_route(
+    "/vendor/common-items/export",
+    ctrl.export_common_items,
+    methods=["GET"],
+    summary="Bulk Export Common Items (Vendor)",
+    description="Download the current vendor's common items as a CSV/XLSX file.",
+    operation_id="packages_export_common_items",
+)
+
+router.add_api_route(
+    "/vendor/common-items/import-template",
+    ctrl.get_common_items_import_template,
+    methods=["GET"],
+    summary="Common Items Import Template (Vendor)",
+    description="Download a blank CSV/XLSX template for bulk-importing common items.",
+    operation_id="packages_common_items_import_template",
 )
 
 router.add_api_route(

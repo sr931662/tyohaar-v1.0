@@ -8,7 +8,8 @@ import uuid
 from datetime import date
 from typing import Annotated
 
-from fastapi import Depends, Query
+from fastapi import Depends, File, Query, UploadFile
+from fastapi.responses import Response
 
 from app.core.current_user import CurrentUserDep, OptionalUserDep
 from app.core.dependencies import PackageServiceDep
@@ -31,6 +32,7 @@ from app.schemas.packages import (
     PackageCategoryResponse,
     PackageCategoryUpdate,
     CommonPackageItemCreate,
+    ItemImportResult,
     PackageCreate,
     PackageDetailResponse,
     PackageFilters,
@@ -280,6 +282,91 @@ async def detach_common_item(
     vendor_id = await resolve_vendor_id_for_user(current_user)
     await service.detach_common_item(vendor_id=vendor_id, package_id=package_id, item_id=item_id)
     return SuccessResponse(data=None, message="Common item detached.")
+
+
+# ── Bulk import/export (vendor-scoped) ──────────────────────────────────────────
+
+
+async def import_common_items(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    file: UploadFile = File(...),
+) -> SuccessResponse[ItemImportResult]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    content = await file.read()
+    result = await service.import_common_items(vendor_id, content, file.filename or "upload.csv")
+    return SuccessResponse(data=result, message="Import complete.")
+
+
+async def export_common_items(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    format: str = Query(default="xlsx", pattern="^(csv|xlsx)$"),
+) -> Response:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    content, mime_type, filename = await service.export_common_items(vendor_id, format)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def get_common_items_import_template(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    format: str = Query(default="xlsx", pattern="^(csv|xlsx)$"),
+) -> Response:
+    await resolve_vendor_id_for_user(current_user)
+    content, mime_type, filename = service.get_common_items_import_template(format)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def import_package_items(
+    package_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    file: UploadFile = File(...),
+) -> SuccessResponse[ItemImportResult]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    content = await file.read()
+    result = await service.import_package_items(
+        vendor_id, package_id, content, file.filename or "upload.csv"
+    )
+    return SuccessResponse(data=result, message="Import complete.")
+
+
+async def export_package_items(
+    package_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    format: str = Query(default="xlsx", pattern="^(csv|xlsx)$"),
+) -> Response:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    content, mime_type, filename = await service.export_package_items(vendor_id, package_id, format)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def get_package_items_import_template(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    format: str = Query(default="xlsx", pattern="^(csv|xlsx)$"),
+) -> Response:
+    await resolve_vendor_id_for_user(current_user)
+    content, mime_type, filename = service.get_package_items_import_template(format)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 async def add_gallery_item(

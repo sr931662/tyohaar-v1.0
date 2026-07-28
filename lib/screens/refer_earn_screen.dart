@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../theme/colors.dart';
+import '../theme/responsive.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
@@ -274,16 +275,17 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
 
   Widget _step(BuildContext context, int n, String title, String sub) {
     final ty = context.ty;
+    final resp = context.resp;
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 28, height: 28,
+            width: resp.w(28), height: resp.w(28),
             alignment: Alignment.center,
             decoration: BoxDecoration(color: ty.saffronDeep, shape: BoxShape.circle),
-            child: Text('$n', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+            child: Text('$n', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: resp.sp(13))),
           ),
           const SizedBox(width: 16),
           Expanded(

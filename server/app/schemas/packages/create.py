@@ -179,6 +179,9 @@ class CommonPackageItemCreate(BaseSchema):
         default=None, max_length=50, description="Unit label, e.g. 'hours', 'pieces'"
     )
     base_price: MoneyAmount = Field(description="Item base price")
+    is_mandatory: bool = Field(
+        default=True, description="Whether item is always included vs. optional add-on"
+    )
     is_customizable: bool = Field(
         default=False, description="True if the customer can configure options for this item"
     )
@@ -189,6 +192,10 @@ class CommonPackageItemCreate(BaseSchema):
                     "NULL means uncapped.",
     )
     icon_url: str | None = Field(default=None, max_length=500, description="Small icon/thumbnail URL")
+    cover_image_url: str | None = Field(
+        default=None, max_length=500,
+        description="Item's cover/thumbnail image, shown on item rows and as the first gallery slide",
+    )
     prep_time_minutes: int | None = Field(
         default=None, ge=0, le=1440,
         description="Vendor-suggested setup/prep time (minutes) required before the event's scheduled start",

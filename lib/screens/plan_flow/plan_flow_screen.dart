@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'package:tyohaar/theme/assets.dart';
 import '../../theme/colors.dart';
+import '../../theme/responsive.dart';
 import '../../theme/typography.dart';
 import '../../data/models.dart';
 import '../../data/auth_manager.dart';
@@ -662,7 +663,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     lastDate: DateTime.now().add(const Duration(days: 365)));
                   if (d != null) setState(() => _eventDate = d);
                 }))),
-            const SizedBox(width: 12),
+            SizedBox(width: context.resp.w(12)),
             Expanded(child: _field(context, l10n.planFlowTimeLabel, _staticInput(context, null, l10n.planFlowDefaultEventTime))),
           ],
         ),
@@ -1754,14 +1755,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _field(BuildContext context, String label, Widget child) {
     final ty = context.ty;
+    final resp = context.resp;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: EdgeInsets.only(bottom: resp.h(18)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w700)),
-          const SizedBox(height: 8),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TyType.sans(resp.sp(12.5), color: ty.ink2, weight: FontWeight.w700)),
+          SizedBox(height: resp.h(8)),
           child,
         ],
       ),
@@ -1770,14 +1774,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _textInput(BuildContext context, TextEditingController ctrl, {IconData? icon, int maxLines = 1}) {
     final ty = context.ty;
+    final resp = context.resp;
     return TextField(
       controller: ctrl,
       maxLines: maxLines,
-      style: TyType.sans(15.5, color: ty.ink, weight: FontWeight.w500),
+      style: TyType.sans(resp.sp(15.5), color: ty.ink, weight: FontWeight.w500),
       decoration: InputDecoration(
         isDense: true,
-        prefixIcon: icon == null ? null : Icon(icon, size: 18, color: ty.ink2),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        prefixIcon: icon == null ? null : Icon(icon, size: resp.sp(18), color: ty.ink2),
+        contentPadding: EdgeInsets.symmetric(horizontal: resp.w(16), vertical: resp.h(14)),
         filled: true,
         fillColor: ty.surface,
         enabledBorder: OutlineInputBorder(
@@ -1794,10 +1799,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _staticInput(BuildContext context, IconData? icon, String value, {VoidCallback? onTap}) {
     final ty = context.ty;
+    final resp = context.resp;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        padding: EdgeInsets.symmetric(horizontal: resp.w(16), vertical: resp.h(15)),
         decoration: BoxDecoration(
           color: ty.surface,
           borderRadius: BorderRadius.circular(14),
@@ -1806,10 +1812,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         child: Row(
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 17, color: ty.ink2),
-              const SizedBox(width: 8),
+              Icon(icon, size: resp.sp(17), color: ty.ink2),
+              SizedBox(width: resp.w(8)),
             ],
-            Text(value, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w500)),
+            Expanded(
+              child: Text(value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TyType.sans(resp.sp(15), color: ty.ink, weight: FontWeight.w500)),
+            ),
           ],
         ),
       ),

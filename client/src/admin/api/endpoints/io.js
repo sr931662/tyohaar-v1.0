@@ -1,4 +1,5 @@
 import { apiClient, extractData, extractList, extractPaginated } from '../client';
+import { filenameFromContentDisposition } from '../../../lib/downloadBlob';
 
 const BASE = '/admin/cms/io';
 
@@ -36,6 +37,6 @@ export const ioApi = {
   downloadExport: (logId) =>
     apiClient.get(`${BASE}/export/logs/${logId}/download`, { responseType: 'blob' }).then((res) => ({
       blob: res.data,
-      filename: /filename="([^"]+)"/.exec(res.headers['content-disposition'] ?? '')?.[1] ?? 'export',
+      filename: filenameFromContentDisposition(res.headers['content-disposition'], 'export'),
     })),
 };

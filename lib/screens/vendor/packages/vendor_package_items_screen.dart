@@ -8,6 +8,7 @@ import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
 import '../../../data/services/vendor_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import 'item_import_export_menu.dart';
 
 class VendorPackageItemsScreen extends StatefulWidget {
   final VendorPackage package;
@@ -167,7 +168,31 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
 
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: AppBar(title: Text(l10n.vendorPackageItemsTitle(widget.package.name))),
+      appBar: AppBar(
+        title: Text(l10n.vendorPackageItemsTitle(widget.package.name)),
+        actions: locked
+            ? null
+            : [
+                ItemImportExportMenu(
+                  getTemplate: (format) =>
+                      _vendorService.getPackageItemsImportTemplate(widget.package.id, format: format),
+                  exportItems: (format) =>
+                      _vendorService.exportPackageItems(widget.package.id, format: format),
+                  importItems: (file) => _vendorService.importPackageItems(widget.package.id, file),
+                  onImported: _load,
+                  importLabel: l10n.vendorPackageItemsImportMenuLabel,
+                  exportLabel: l10n.vendorPackageItemsExportMenuLabel,
+                  templateLabel: l10n.vendorPackageItemsTemplateMenuLabel,
+                  chooseFormatTitle: l10n.vendorPackageItemsChooseFormatTitle,
+                  importResultTitle: l10n.vendorPackageItemsImportResultTitle,
+                  resultSummary: (created, updated, errors) =>
+                      l10n.vendorPackageItemsImportResultSummary(created, updated, errors),
+                  closeLabel: l10n.commonOk,
+                  importFailedMessage: l10n.vendorPackageItemsImportError,
+                  exportFailedMessage: l10n.vendorPackageItemsExportError,
+                ),
+              ],
+      ),
       floatingActionButton: locked
           ? null
           : FloatingActionButton(onPressed: () => _showItemForm(), child: const Icon(Icons.add)),

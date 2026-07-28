@@ -306,11 +306,11 @@ class _StickyHeader extends StatelessWidget {
             backgroundColor: buttonBgColor,
             borderColor: borderColor,
           ),
-          SizedBox(width: resp.w(12)),
+          SizedBox(width: resp.w(8)),
           Expanded(
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: resp.w(12),
+                horizontal: resp.w(8),
                 vertical: resp.h(8),
               ),
               decoration: BoxDecoration(
@@ -350,20 +350,25 @@ class _StickyHeader extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: resp.h(2)),
-                  Text(
-                    l10n.rootNavGreetingLabel(user?.firstName ?? user?.displayName.split(' ').first ?? l10n.rootNavGreetingFallbackName),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TyType.display(
-                      resp.sp(22),
-                      color: foregroundColor,
+                  MediaQuery(
+                    data: MediaQuery.of(context).copyWith(
+                      textScaler: MediaQuery.of(context).textScaler.clamp(maxScaleFactor: 1.15),
+                    ),
+                    child: Text(
+                      l10n.rootNavGreetingLabel(user?.firstName ?? user?.displayName.split(' ').first ?? l10n.rootNavGreetingFallbackName),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TyType.display(
+                        resp.sp(22),
+                        color: foregroundColor,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          SizedBox(width: resp.w(10)),
+          SizedBox(width: resp.w(8)),
           _circleButton(
             context,
             themeController.isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
@@ -372,7 +377,7 @@ class _StickyHeader extends StatelessWidget {
             backgroundColor: buttonBgColor,
             borderColor: borderColor,
           ),
-          SizedBox(width: resp.w(10)),
+          SizedBox(width: resp.w(8)),
           Stack(
             children: [
               _circleButton(
@@ -430,14 +435,14 @@ class _StickyHeader extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: resp.w(42),
-        height: resp.w(42),
+        width: resp.w(38),
+        height: resp.w(38),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(resp.w(14)),
           border: Border.all(color: borderColor),
         ),
-        child: Icon(icon, size: resp.sp(21), color: foregroundColor),
+        child: Icon(icon, size: resp.sp(19), color: foregroundColor),
       ),
     );
   }
@@ -490,6 +495,7 @@ class _AppSidebar extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     final l10n = AppLocalizations.of(context)!;
     final name = user?.displayName ?? l10n.rootNavWelcomeFallback;
     final sub = user?.email ?? user?.phone ?? '';
@@ -504,15 +510,15 @@ class _AppSidebar extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 54,
-            height: 54,
+            width: resp.w(54),
+            height: resp.w(54),
             alignment: Alignment.center,
             decoration: BoxDecoration(color: ty.saffron, shape: BoxShape.circle),
             child: Text(initial,
                 style: TextStyle(
-                    color: ty.onPrimary, fontWeight: FontWeight.w800, fontSize: 22)),
+                    color: ty.onPrimary, fontWeight: FontWeight.w800, fontSize: resp.sp(22))),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: resp.w(16)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../api_client.dart';
 import '../vendor_models.dart';
@@ -227,6 +228,10 @@ class VendorService {
     await _api.dio.post('packages/vendor/common-items', data: body);
   }
 
+  Future<void> updateCommonItem(String itemId, Map<String, dynamic> body) async {
+    await _api.dio.put('packages/vendor/common-items/$itemId', data: body);
+  }
+
   Future<void> deleteCommonItem(String itemId) async {
     await _api.dio.delete('packages/vendor/common-items/$itemId');
   }
@@ -238,6 +243,45 @@ class VendorService {
   Future<void> detachCommonItem(String packageId, String itemId) async {
     await _api.dio.delete('packages/$packageId/common-items/$itemId');
   }
+
+  // ── Bulk import/export (common items + package items) ──────────────────
+
+  Future<List<int>> _downloadBytes(String path, {required String format}) async {
+    final response = await _api.dio.get(
+      path,
+      queryParameters: {'format': format},
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data as List<int>;
+  }
+
+  Future<Map<String, dynamic>> _uploadForImport(String path, PlatformFile file) async {
+    final formData = FormData.fromMap({
+      'file': file.path != null
+          ? await MultipartFile.fromFile(file.path!, filename: file.name)
+          : MultipartFile.fromBytes(file.bytes!, filename: file.name),
+    });
+    final response = await _api.dio.post(path, data: formData);
+    return (response.data['data'] as Map).cast<String, dynamic>();
+  }
+
+  Future<List<int>> getCommonItemsImportTemplate({String format = 'xlsx'}) =>
+      _downloadBytes('packages/vendor/common-items/import-template', format: format);
+
+  Future<List<int>> exportCommonItems({String format = 'xlsx'}) =>
+      _downloadBytes('packages/vendor/common-items/export', format: format);
+
+  Future<Map<String, dynamic>> importCommonItems(PlatformFile file) =>
+      _uploadForImport('packages/vendor/common-items/import', file);
+
+  Future<List<int>> getPackageItemsImportTemplate(String packageId, {String format = 'xlsx'}) =>
+      _downloadBytes('packages/$packageId/items/import-template', format: format);
+
+  Future<List<int>> exportPackageItems(String packageId, {String format = 'xlsx'}) =>
+      _downloadBytes('packages/$packageId/items/export', format: format);
+
+  Future<Map<String, dynamic>> importPackageItems(String packageId, PlatformFile file) =>
+      _uploadForImport('packages/$packageId/items/import', file);
 
   // ── Earnings ─────────────────────────────────────────────────────────────
 

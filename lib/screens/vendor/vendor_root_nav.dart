@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/colors.dart';
+import '../../theme/responsive.dart';
 import '../../theme/typography.dart';
 import '../../theme/theme_controller.dart';
 import '../../data/app_state.dart';
@@ -125,6 +126,7 @@ class _VendorBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     final destinations = _destinations(context);
 
     return Container(
@@ -149,12 +151,17 @@ class _VendorBottomBar extends StatelessWidget {
                       size: 24,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      destinations[i].title,
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: index == i ? FontWeight.w700 : FontWeight.w600,
-                        color: index == i ? ty.saffron : ty.ink3,
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: resp.w(2)),
+                      child: Text(
+                        destinations[i].title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: resp.sp(10.5),
+                          fontWeight: index == i ? FontWeight.w700 : FontWeight.w600,
+                          color: index == i ? ty.saffron : ty.ink3,
+                        ),
                       ),
                     ),
                   ],

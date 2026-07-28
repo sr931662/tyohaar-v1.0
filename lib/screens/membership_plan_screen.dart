@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../theme/colors.dart';
+import '../theme/responsive.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
@@ -348,14 +349,14 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
             runSpacing: 10,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: context.resp.w(16), vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   a.status.replaceAll('_', ' ').toUpperCase(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: context.resp.sp(12)),
                 ),
               ),
               if (inGrace)

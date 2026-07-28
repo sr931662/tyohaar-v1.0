@@ -1,4 +1,5 @@
 import { vendorClient, extractData, extractList, extractPaginated } from './client';
+import { filenameFromContentDisposition } from '../../lib/downloadBlob';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -173,6 +174,30 @@ export const vendorPackagesApi = {
     vendorClient.get(`/packages/${packageId}/reviews`, { params }).then(extractPaginated),
   listItemReviews: (packageId, itemId, params) =>
     vendorClient.get(`/packages/${packageId}/items/${itemId}/reviews`, { params }).then(extractPaginated),
+};
+
+// ── Bulk import/export (common items + package items) ──────────────────────────
+
+export const vendorItemIoApi = {
+  getCommonItemsTemplate: (format) =>
+    vendorClient.get('/packages/vendor/common-items/import-template', { params: { format }, responseType: 'blob' }).then((res) => res.data),
+  importCommonItems: (formData) =>
+    vendorClient.post('/packages/vendor/common-items/import', formData).then(extractData),
+  exportCommonItems: (format) =>
+    vendorClient.get('/packages/vendor/common-items/export', { params: { format }, responseType: 'blob' }).then((res) => ({
+      blob: res.data,
+      filename: filenameFromContentDisposition(res.headers['content-disposition'], `common_items.${format}`),
+    })),
+
+  getPackageItemsTemplate: (packageId, format) =>
+    vendorClient.get(`/packages/${packageId}/items/import-template`, { params: { format }, responseType: 'blob' }).then((res) => res.data),
+  importPackageItems: (packageId, formData) =>
+    vendorClient.post(`/packages/${packageId}/items/import`, formData).then(extractData),
+  exportPackageItems: (packageId, format) =>
+    vendorClient.get(`/packages/${packageId}/items/export`, { params: { format }, responseType: 'blob' }).then((res) => ({
+      blob: res.data,
+      filename: filenameFromContentDisposition(res.headers['content-disposition'], `package_items.${format}`),
+    })),
 };
 
 // ── Occasions (reference data for package linking) ─────────────────────────────

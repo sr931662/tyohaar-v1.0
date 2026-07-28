@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../theme/colors.dart';
+import '../theme/responsive.dart';
 import '../theme/typography.dart';
 import '../data/services/vendor_service.dart';
 import '../data/vendor_models.dart';
@@ -67,6 +68,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
+    final resp = context.resp;
     final l = AppLocalizations.of(context)!;
 
     if (_isLoading) {
@@ -168,15 +170,15 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                             ),
                           if (v.galleryUrls.length > 4)
                             Container(
-                              width: 46,
-                              height: 46,
+                              width: resp.w(46),
+                              height: resp.w(46),
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.22),
                                 borderRadius: BorderRadius.circular(11),
                               ),
                               child: Text('+${v.galleryUrls.length - 4}',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: resp.sp(12))),
                             ),
                         ],
                       ),
@@ -194,7 +196,11 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: Text(v.businessName, style: TyType.display(30, color: ty.ink))),
+                        Expanded(
+                          child: Text(v.businessName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TyType.display(30, color: ty.ink))),
                         if (v.rating != null)
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
@@ -215,7 +221,12 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                       Row(children: [
                         Icon(Icons.place_outlined, size: 15, color: ty.ink2),
                         const SizedBox(width: 6),
-                        Text(v.location!, style: TyType.sans(13, color: ty.ink2)),
+                        Expanded(
+                          child: Text(v.location!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TyType.sans(13, color: ty.ink2)),
+                        ),
                       ]),
                     ],
                     const SizedBox(height: 18),
