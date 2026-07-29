@@ -8,6 +8,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import 'vendor_package_form_screen.dart';
 import 'vendor_package_items_screen.dart';
 import 'vendor_package_gallery_screen.dart';
+import 'vendor_common_items_screen.dart';
 
 /// Mirrors the web VendorPackagesPage: table/list of the vendor's own
 /// packages with status, + create/edit/items/common-items/delete/publish.
@@ -91,12 +92,27 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => const VendorPackageFormScreen()))
-            .then((_) => _load()),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.vendorPackagesNewPackageButtonLabel),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'vendorPackagesCommonItems',
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const VendorCommonItemsScreen())),
+            icon: const Icon(Icons.inventory_2_outlined),
+            label: Text(l10n.vendorPackagesCommonItemsButtonLabel),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'vendorPackagesNewPackage',
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const VendorPackageFormScreen()))
+                .then((_) => _load()),
+            icon: const Icon(Icons.add),
+            label: Text(l10n.vendorPackagesNewPackageButtonLabel),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

@@ -239,8 +239,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
             onChanged: _isNew ? (v) => setState(() => _vendorType = v ?? _vendorType) : null,
           )),
           _field(ty, l.vendorProfileLegalNameLabel, _legalNameCtrl),
-          _field(ty, l.vendorProfileGstNumberLabel, _gstCtrl),
-          _field(ty, l.vendorProfilePanNumberLabel, _panCtrl),
+          _field(ty, l.vendorProfileGstNumberLabel, _gstCtrl, helperText: l.vendorProfileGstNumberFormatHelperText),
+          _field(ty, l.vendorProfilePanNumberLabel, _panCtrl, helperText: l.vendorProfilePanNumberFormatHelperText),
           Row(children: [
             Expanded(child: _field(ty, l.vendorProfileYearsOfExperienceLabel, _yearsCtrl, keyboardType: TextInputType.number)),
             const SizedBox(width: 12),
@@ -255,8 +255,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           const SizedBox(height: 16),
           Text(l.vendorProfileLocationHeading, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
           const SizedBox(height: 10),
-          _field(ty, l.vendorProfileOperatingCitiesLabel, _citiesCtrl),
-          _field(ty, l.vendorProfileWebsiteUrlLabel, _websiteCtrl),
+          _field(ty, l.vendorProfileOperatingCitiesLabel, _citiesCtrl, helperText: l.vendorProfileOperatingCitiesFormatHelperText),
+          _field(ty, l.vendorProfileWebsiteUrlLabel, _websiteCtrl, helperText: l.vendorProfileWebsiteUrlFormatHelperText),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: _isSaving ? null : _save,
@@ -342,20 +342,29 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         ),
       );
 
-  Widget _field(TyColors ty, String label, TextEditingController ctrl, {int maxLines = 1, TextInputType? keyboardType, bool enabled = true}) {
+  Widget _field(TyColors ty, String label, TextEditingController ctrl, {int maxLines = 1, TextInputType? keyboardType, bool enabled = true, String? helperText}) {
     return _labeled(
       ty, label,
-      TextField(
-        controller: ctrl,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        enabled: enabled,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: ty.surface,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ty.line)),
-          isDense: true,
-        ),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: ctrl,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            enabled: enabled,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: ty.surface,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ty.line)),
+              isDense: true,
+            ),
+          ),
+          if (helperText != null) ...[
+            const SizedBox(height: 4),
+            Text(helperText, style: TyType.sans(11.5, color: ty.ink3)),
+          ],
+        ],
       ),
     );
   }

@@ -117,6 +117,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
             decoration: InputDecoration(
               hintText: l.raiseTicketDescriptionHint,
               hintStyle: TyType.sans(14, color: ty.ink3),
+              helperText: l.raiseTicketDescriptionFormatHelperText,
               filled: true,
               fillColor: ty.surface,
               enabledBorder: OutlineInputBorder(

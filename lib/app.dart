@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
-import 'theme/colors.dart';
 import 'data/app_state.dart';
 import 'data/auth_manager.dart';
 import 'data/services/user_service.dart';
@@ -122,6 +122,10 @@ class _AppStartupState extends State<_AppStartup> {
       }
     }
     if (mounted) setState(() => _roleResolved = true);
+    // Releases the deferred first frame (see main.dart's `preserve` call) —
+    // the native splash hands off directly to whichever real screen build()
+    // resolves to below, with no intermediate in-app splash widget.
+    FlutterNativeSplash.remove();
   }
 
   @override
@@ -130,13 +134,13 @@ class _AppStartupState extends State<_AppStartup> {
       listenable: AuthManager.instance,
       builder: (context, _) {
         if (AuthManager.instance.isInitializing) {
-          // Splash screen while restoring session
-          return const _SplashScreen();
+          // Nothing is ever painted here — the native splash stays up
+          // (first frame deferred) until _init() finishes and calls
+          // FlutterNativeSplash.remove().
+          return const SizedBox.shrink();
         }
         if (AuthManager.instance.isAuthenticated && !_roleResolved) {
-          // Tokens are restored but we don't know the role yet — stay on
-          // the splash rather than guessing which shell to show.
-          return const _SplashScreen();
+          return const SizedBox.shrink();
         }
         if (AuthManager.instance.isAuthenticated) {
           return const RootNav();
@@ -146,35 +150,6 @@ class _AppStartupState extends State<_AppStartup> {
         }
         return const OnboardingScreen();
       },
-    );
-  }
-}
-
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final ty = context.ty;
-    return Scaffold(
-      backgroundColor: ty.paper,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset('assets/images/tyohaar-mark.png', width: 64, height: 64),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: ty.saffron,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

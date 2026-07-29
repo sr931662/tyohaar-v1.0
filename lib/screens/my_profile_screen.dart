@@ -253,8 +253,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           ),
           const SizedBox(height: 32),
           _editableField(context, l.myProfileFullNameLabel, _nameController, hint: l.myProfileFullNameHint),
-          _editableField(context, l.myProfileEmailAddressLabel, _emailController, hint: l.myProfileEmailAddressHint, keyboardType: TextInputType.emailAddress),
-          _editableField(context, l.myProfilePhoneNumberLabel, _phoneController, hint: l.myProfilePhoneNumberHint, keyboardType: TextInputType.phone),
+          _editableField(context, l.myProfileEmailAddressLabel, _emailController, hint: l.myProfileEmailAddressHint, keyboardType: TextInputType.emailAddress, helperText: l.myProfileEmailFormatHelperText),
+          _editableField(context, l.myProfilePhoneNumberLabel, _phoneController, hint: l.myProfilePhoneNumberHint, keyboardType: TextInputType.phone, helperText: l.myProfilePhoneFormatHelperText),
           _field(context, l.myProfileRoleLabel, _user?.role.toUpperCase() ?? l.myProfileCustomerFallback),
 
           const SizedBox(height: 32),
@@ -396,6 +396,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     TextEditingController controller, {
     String? hint,
     TextInputType keyboardType = TextInputType.text,
+    String? helperText,
   }) {
     final ty = context.ty;
     return Padding(
@@ -423,6 +424,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
             ),
           ),
+          if (helperText != null) ...[
+            const SizedBox(height: 4),
+            Text(helperText, style: TyType.sans(11.5, color: ty.ink3)),
+          ],
         ],
       ),
     );

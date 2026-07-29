@@ -404,7 +404,7 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
               children: [
                 Expanded(child: _field(ty, l10n.manageAddressRecipientNameLabel, l10n.manageAddressRecipientNameHint, _recipientNameCtrl)),
                 const SizedBox(width: 12),
-                Expanded(child: _field(ty, l10n.manageAddressRecipientPhoneLabel, l10n.manageAddressRecipientPhoneHint, _recipientPhoneCtrl, type: TextInputType.phone)),
+                Expanded(child: _field(ty, l10n.manageAddressRecipientPhoneLabel, l10n.manageAddressRecipientPhoneHint, _recipientPhoneCtrl, type: TextInputType.phone, helperText: l10n.manageAddressPhoneFormatHelperText)),
               ],
             ),
             const SizedBox(height: 12),
@@ -422,7 +422,7 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
               ],
             ),
             const SizedBox(height: 12),
-            _field(ty, l10n.manageAddressPinCodeLabel, l10n.manageAddressPinCodeHint, _pinCtrl, type: TextInputType.number),
+            _field(ty, l10n.manageAddressPinCodeLabel, l10n.manageAddressPinCodeHint, _pinCtrl, type: TextInputType.number, helperText: l10n.manageAddressPinCodeFormatHelperText),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: TyType.sans(13, color: ty.rose)),
@@ -436,7 +436,7 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
   }
 
   Widget _field(TyColors ty, String label, String hint, TextEditingController ctrl,
-      {TextInputType type = TextInputType.text}) {
+      {TextInputType type = TextInputType.text, String? helperText}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -460,6 +460,10 @@ class _AddressFormSheetState extends State<AddressFormSheet> {
             ),
           ),
         ),
+        if (helperText != null) ...[
+          const SizedBox(height: 4),
+          Text(helperText, style: TyType.sans(10.5, color: ty.ink3)),
+        ],
       ],
     );
   }

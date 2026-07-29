@@ -66,11 +66,11 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                 Text(existing == null ? l10n.vendorCommonItemsNewItemTitle : l10n.vendorCommonItemsEditItemTitle, style: TyType.display(20, color: context.ty.ink)),
                 const SizedBox(height: 16),
                 TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.vendorCommonItemsNameLabel)),
-                TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorCommonItemsBasePriceLabel)),
+                TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorCommonItemsBasePriceLabel, helperText: l10n.vendorCommonItemsBasePriceFormatHelperText)),
                 Row(children: [
                   Expanded(child: TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorCommonItemsQuantityLabel))),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.vendorCommonItemsUnitLabel))),
+                  Expanded(child: TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.vendorCommonItemsUnitLabel, helperText: l10n.vendorCommonItemsUnitFormatHelperText))),
                 ]),
                 TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorCommonItemsDescriptionLabel)),
                 SwitchListTile(

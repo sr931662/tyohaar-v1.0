@@ -215,6 +215,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                   ),
                 ),
               ),
+              SizedBox(height: resp.h(4)),
+              Text(l10n.emailVerificationCodeFormatHelperText, style: TyType.sans(resp.sp(11.5), color: ty.ink3)),
               SizedBox(height: resp.h(12)),
               Align(
                 alignment: Alignment.centerLeft,

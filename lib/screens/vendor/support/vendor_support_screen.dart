@@ -68,7 +68,7 @@ class _VendorSupportScreenState extends State<VendorSupportScreen> {
                     onChanged: (v) => setSheetState(() => category = v ?? category),
                   ),
                   TextField(controller: subjectCtrl, decoration: InputDecoration(labelText: l.vendorSupportSubjectLabel)),
-                  TextField(controller: descCtrl, maxLines: 4, decoration: InputDecoration(labelText: l.vendorSupportDescriptionMinCharsLabel)),
+                  TextField(controller: descCtrl, maxLines: 4, decoration: InputDecoration(labelText: l.vendorSupportDescriptionMinCharsLabel, helperText: l.vendorSupportDescriptionFormatHelperText)),
                   const SizedBox(height: 12),
                   ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(l.vendorPackagesSubmitButtonLabel)),
                 ],

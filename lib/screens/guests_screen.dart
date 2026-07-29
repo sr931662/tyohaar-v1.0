@@ -109,7 +109,14 @@ class _GuestsScreenState extends State<GuestsScreen> {
           children: [
             TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.guestsNameFieldLabel)),
             const SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: InputDecoration(labelText: l10n.guestsPhoneFieldLabel), keyboardType: TextInputType.phone),
+            TextField(
+              controller: phoneCtrl,
+              decoration: InputDecoration(
+                labelText: l10n.guestsPhoneFieldLabel,
+                helperText: l10n.guestsPhoneFormatHelperText,
+              ),
+              keyboardType: TextInputType.phone,
+            ),
           ],
         ),
         actions: [

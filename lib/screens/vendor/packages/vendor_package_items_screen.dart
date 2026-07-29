@@ -76,11 +76,11 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                 Text(existing == null ? l10n.vendorPackageItemsAddItemTitle : l10n.vendorPackageItemsEditItemTitle, style: TyType.display(20, color: context.ty.ink)),
                 const SizedBox(height: 16),
                 TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.vendorPackageItemsNameLabel)),
-                TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorPackageItemsBasePriceLabel)),
+                TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorPackageItemsBasePriceLabel, helperText: l10n.vendorPackageItemsBasePriceFormatHelperText)),
                 Row(children: [
                   Expanded(child: TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorPackageItemsQuantityLabel))),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.vendorPackageItemsUnitLabel))),
+                  Expanded(child: TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.vendorPackageItemsUnitLabel, helperText: l10n.vendorPackageItemsUnitFormatHelperText))),
                 ]),
                 TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorPackageItemsDescriptionLabel)),
                 SwitchListTile(

@@ -65,8 +65,22 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
                 Text(l10n.vendorBankAddAccountTitle, style: TyType.display(20, color: context.ty.ink)),
                 const SizedBox(height: 16),
                 TextField(controller: holderCtrl, decoration: InputDecoration(labelText: l10n.vendorBankAccountHolderNameLabel)),
-                TextField(controller: numberCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorBankAccountNumberLabel)),
-                TextField(controller: ifscCtrl, decoration: InputDecoration(labelText: l10n.vendorBankIfscCodeLabel)),
+                TextField(
+                  controller: numberCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: l10n.vendorBankAccountNumberLabel,
+                    helperText: l10n.vendorBankAccountNumberFormatHelperText,
+                  ),
+                ),
+                TextField(
+                  controller: ifscCtrl,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    labelText: l10n.vendorBankIfscCodeLabel,
+                    helperText: l10n.vendorBankIfscFormatHelperText,
+                  ),
+                ),
                 TextField(controller: bankCtrl, decoration: InputDecoration(labelText: l10n.vendorBankBankNameLabel)),
                 TextField(controller: branchCtrl, decoration: InputDecoration(labelText: l10n.vendorBankBranchNameLabel)),
                 CheckboxListTile(

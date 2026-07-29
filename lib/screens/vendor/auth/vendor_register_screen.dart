@@ -173,9 +173,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
               SizedBox(height: resp.h(28)),
               _field(ty, resp, l10n.vendorRegisterFullNameLabel, _nameCtrl),
               SizedBox(height: resp.h(16)),
-              _field(ty, resp, l10n.vendorRegisterEmailLabel, _emailCtrl, type: TextInputType.emailAddress),
+              _field(ty, resp, l10n.vendorRegisterEmailLabel, _emailCtrl, type: TextInputType.emailAddress, helperText: l10n.vendorRegisterEmailFormatHelperText),
               SizedBox(height: resp.h(16)),
-              _field(ty, resp, l10n.vendorRegisterPhoneLabel, _phoneCtrl, type: TextInputType.phone),
+              _field(ty, resp, l10n.vendorRegisterPhoneLabel, _phoneCtrl, type: TextInputType.phone, helperText: l10n.vendorRegisterPhoneFormatHelperText),
               SizedBox(height: resp.h(16)),
               _field(ty, resp, l10n.vendorRegisterBusinessNameLabel, _businessCtrl),
               SizedBox(height: resp.h(16)),
@@ -224,7 +224,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   }
 
   Widget _field(TyColors ty, TyResponsive resp, String label, TextEditingController ctrl,
-      {TextInputType type = TextInputType.text, bool? obscure, VoidCallback? onToggle}) {
+      {TextInputType type = TextInputType.text, bool? obscure, VoidCallback? onToggle, String? helperText}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -256,6 +256,10 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             ],
           ),
         ),
+        if (helperText != null) ...[
+          SizedBox(height: resp.h(4)),
+          Text(helperText, style: TyType.sans(resp.sp(11), color: ty.ink3)),
+        ],
       ],
     );
   }

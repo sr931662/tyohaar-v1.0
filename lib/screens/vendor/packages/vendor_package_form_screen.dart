@@ -190,14 +190,14 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
           _textField(ty, l10n.vendorPackageFormNameLabel, _nameCtrl),
           _textField(ty, l10n.vendorPackageFormShortDescriptionLabel, _shortDescCtrl),
           _textField(ty, l10n.vendorPackageFormDescriptionLabel, _descCtrl, maxLines: 4),
-          _textField(ty, l10n.vendorPackageFormBasePriceLabel, _priceCtrl, keyboardType: TextInputType.number),
+          _textField(ty, l10n.vendorPackageFormBasePriceLabel, _priceCtrl, keyboardType: TextInputType.number, helperText: l10n.vendorPackageFormBasePriceFormatHelperText),
           Row(children: [
             Expanded(child: _textField(ty, l10n.vendorPackageFormMinGuestsLabel, _minGuestsCtrl, keyboardType: TextInputType.number)),
             const SizedBox(width: 12),
             Expanded(child: _textField(ty, l10n.vendorPackageFormMaxGuestsLabel, _maxGuestsCtrl, keyboardType: TextInputType.number)),
           ]),
-          _textField(ty, l10n.vendorPackageFormDurationLabel, _durationCtrl, keyboardType: TextInputType.number),
-          _textField(ty, l10n.vendorPackageFormCitySlugLabel, _cityCtrl),
+          _textField(ty, l10n.vendorPackageFormDurationLabel, _durationCtrl, keyboardType: TextInputType.number, helperText: l10n.vendorPackageFormDurationFormatHelperText),
+          _textField(ty, l10n.vendorPackageFormCitySlugLabel, _cityCtrl, helperText: l10n.vendorPackageFormCitySlugFormatHelperText),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(l10n.vendorPackageFormCustomizableLabel, style: TyType.sans(14, color: ty.ink)),
@@ -283,20 +283,29 @@ class _VendorPackageFormScreenState extends State<VendorPackageFormScreen> {
         ),
       );
 
-  Widget _textField(TyColors ty, String label, TextEditingController ctrl, {int maxLines = 1, TextInputType? keyboardType}) {
+  Widget _textField(TyColors ty, String label, TextEditingController ctrl, {int maxLines = 1, TextInputType? keyboardType, String? helperText}) {
     return _labeled(
       ty,
       label,
-      TextField(
-        controller: ctrl,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: ty.surface,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ty.line)),
-          isDense: true,
-        ),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: ctrl,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: ty.surface,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ty.line)),
+              isDense: true,
+            ),
+          ),
+          if (helperText != null) ...[
+            const SizedBox(height: 4),
+            Text(helperText, style: TyType.sans(11.5, color: ty.ink3)),
+          ],
+        ],
       ),
     );
   }

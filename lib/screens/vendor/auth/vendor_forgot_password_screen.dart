@@ -109,10 +109,10 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
                     Text(_otpSent ? l10n.vendorForgotPasswordEnterCodeHeading : l10n.vendorForgotPasswordHeading,
                         style: TyType.display(resp.sp(22), color: ty.ink)),
                     SizedBox(height: resp.h(20)),
-                    _field(ty, resp, l10n.vendorForgotPasswordEmailLabel, _emailCtrl, enabled: !_otpSent, type: TextInputType.emailAddress),
+                    _field(ty, resp, l10n.vendorForgotPasswordEmailLabel, _emailCtrl, enabled: !_otpSent, type: TextInputType.emailAddress, helperText: l10n.vendorForgotPasswordEmailFormatHelperText),
                     if (_otpSent) ...[
                       SizedBox(height: resp.h(16)),
-                      _field(ty, resp, l10n.vendorForgotPasswordOtpCodeLabel, _otpCtrl, type: TextInputType.number),
+                      _field(ty, resp, l10n.vendorForgotPasswordOtpCodeLabel, _otpCtrl, type: TextInputType.number, helperText: l10n.vendorForgotPasswordOtpFormatHelperText),
                       SizedBox(height: resp.h(16)),
                       _field(ty, resp, l10n.vendorForgotPasswordNewPasswordLabel, _newPasswordCtrl, obscure: true),
                       SizedBox(height: resp.h(8)),
@@ -140,7 +140,7 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
   }
 
   Widget _field(TyColors ty, TyResponsive resp, String label, TextEditingController ctrl,
-      {TextInputType type = TextInputType.text, bool obscure = false, bool enabled = true}) {
+      {TextInputType type = TextInputType.text, bool obscure = false, bool enabled = true, String? helperText}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -162,6 +162,10 @@ class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen>
             decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 14)),
           ),
         ),
+        if (helperText != null) ...[
+          SizedBox(height: resp.h(4)),
+          Text(helperText, style: TyType.sans(resp.sp(11), color: ty.ink3)),
+        ],
       ],
     );
   }

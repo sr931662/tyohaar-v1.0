@@ -263,7 +263,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         children: [
           SizedBox(height: resp.h(28)),
           _buildField(ty, resp, l10n.authEmailLabel, l10n.authEmailHint, _loginEmailCtrl,
-              icon: Icons.email_outlined, type: TextInputType.emailAddress),
+              icon: Icons.email_outlined, type: TextInputType.emailAddress,
+              helperText: l10n.authEmailFormatHelperText),
           SizedBox(height: resp.h(20)),
           _buildField(ty, resp, l10n.authPasswordLabel, l10n.authPasswordHint, _loginPasswordCtrl,
               icon: Icons.lock_outline_rounded,
@@ -320,12 +321,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               icon: Icons.person_outline_rounded),
           SizedBox(height: resp.h(20)),
           _buildField(ty, resp, l10n.authEmailLabel, l10n.authEmailHint, _regEmailCtrl,
-              icon: Icons.email_outlined, type: TextInputType.emailAddress),
+              icon: Icons.email_outlined, type: TextInputType.emailAddress,
+              helperText: l10n.authEmailFormatHelperText),
           SizedBox(height: resp.h(20)),
           _buildField(ty, resp, l10n.authPasswordLabel, l10n.authPasswordHint, _regPasswordCtrl,
               icon: Icons.lock_outline_rounded,
               obscure: _regObscure,
-              onToggleObscure: () => setState(() => _regObscure = !_regObscure)),
+              onToggleObscure: () => setState(() => _regObscure = !_regObscure),
+              helperText: l10n.authPasswordFormatHelperText),
           SizedBox(height: resp.h(20)),
           _buildField(ty, resp, l10n.authConfirmPasswordLabel, l10n.authPasswordHint, _regConfirmCtrl,
               icon: Icons.lock_outline_rounded,
@@ -382,6 +385,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     TextInputType type = TextInputType.text,
     bool? obscure,
     VoidCallback? onToggleObscure,
+    String? helperText,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,6 +432,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             ],
           ),
         ),
+        if (helperText != null) ...[
+          SizedBox(height: resp.h(4)),
+          Text(helperText, style: TyType.sans(resp.sp(11.5), color: ty.ink3)),
+        ],
       ],
     );
   }

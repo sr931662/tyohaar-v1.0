@@ -866,9 +866,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           children: [
             Text(AppLocalizations.of(ctx)!.planFlowAddGuestTitle, style: TyType.display(22, color: ty.ink)),
             const SizedBox(height: 20),
-            _textInput(context, nameCtrl),
+            _textInput(context, nameCtrl, hintText: AppLocalizations.of(ctx)!.planFlowAddGuestNameHint),
             const SizedBox(height: 12),
-            _textInput(context, phoneCtrl, icon: Icons.phone_outlined),
+            _textInput(context, phoneCtrl,
+                icon: Icons.phone_outlined,
+                hintText: AppLocalizations.of(ctx)!.planFlowAddGuestPhoneHint,
+                helperText: AppLocalizations.of(ctx)!.planFlowAddGuestPhoneFormatHelperText),
             const SizedBox(height: 24),
             TyButton(AppLocalizations.of(ctx)!.planFlowAddGuestConfirmLabel, full: true, onTap: () => Navigator.pop(ctx, true)),
           ],
@@ -1772,7 +1775,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  Widget _textInput(BuildContext context, TextEditingController ctrl, {IconData? icon, int maxLines = 1}) {
+  Widget _textInput(BuildContext context, TextEditingController ctrl,
+      {IconData? icon, int maxLines = 1, String? hintText, String? helperText}) {
     final ty = context.ty;
     final resp = context.resp;
     return TextField(
@@ -1782,6 +1786,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       decoration: InputDecoration(
         isDense: true,
         prefixIcon: icon == null ? null : Icon(icon, size: resp.sp(18), color: ty.ink2),
+        hintText: hintText,
+        helperText: helperText,
         contentPadding: EdgeInsets.symmetric(horizontal: resp.w(16), vertical: resp.h(14)),
         filled: true,
         fillColor: ty.surface,

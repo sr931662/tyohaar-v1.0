@@ -335,7 +335,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         const SizedBox(height: 24),
         _sectionLabel(l.bookingFlowReceiverDetailsLabel),
         _textField(context, l.bookingFlowRecipientNameHint, _recipientNameCtrl, icon: Icons.person_outline),
-        _textField(context, l.bookingFlowPhoneNumberHint, _recipientPhoneCtrl, icon: Icons.phone_android_outlined, type: TextInputType.phone),
+        _textField(context, l.bookingFlowPhoneNumberHint, _recipientPhoneCtrl, icon: Icons.phone_android_outlined, type: TextInputType.phone, helperText: l.bookingFlowPhoneFormatHelperText),
         const SizedBox(height: 24),
         _sectionLabel(l.bookingFlowDeliveryAddressLabel),
         if (_savedAddresses.isNotEmpty) ...[
@@ -468,22 +468,36 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     if (t != null) setState(() => _eventTime = t);
   }
 
-  Widget _textField(BuildContext context, String hint, TextEditingController ctrl, {IconData? icon, TextInputType type = TextInputType.text, int lines = 1}) {
+  Widget _textField(BuildContext context, String hint, TextEditingController ctrl, {IconData? icon, TextInputType type = TextInputType.text, int lines = 1, String? helperText}) {
     final resp = context.resp;
-    return Container(
-      margin: EdgeInsets.only(bottom: resp.h(12)),
-      decoration: BoxDecoration(color: context.ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: context.ty.line)),
-      child: TextField(
-        controller: ctrl,
-        keyboardType: type,
-        maxLines: lines,
-        style: TyType.sans(resp.sp(15), weight: FontWeight.w600),
-        decoration: InputDecoration(
-          hintText: hint,
-          prefixIcon: icon != null ? Icon(icon, size: resp.sp(18), color: context.ty.ink3) : null,
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.all(resp.w(14)),
-        ),
+    return Padding(
+      padding: EdgeInsets.only(bottom: resp.h(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(color: context.ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: context.ty.line)),
+            child: TextField(
+              controller: ctrl,
+              keyboardType: type,
+              maxLines: lines,
+              style: TyType.sans(resp.sp(15), weight: FontWeight.w600),
+              decoration: InputDecoration(
+                hintText: hint,
+                prefixIcon: icon != null ? Icon(icon, size: resp.sp(18), color: context.ty.ink3) : null,
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.all(resp.w(14)),
+              ),
+            ),
+          ),
+          if (helperText != null) ...[
+            SizedBox(height: resp.h(4)),
+            Padding(
+              padding: EdgeInsets.only(left: resp.w(4)),
+              child: Text(helperText, style: TyType.sans(resp.sp(11), color: context.ty.ink3)),
+            ),
+          ],
+        ],
       ),
     );
   }
