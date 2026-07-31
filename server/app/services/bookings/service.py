@@ -12,6 +12,7 @@ from app.models.bookings.booking_cancellation import BookingCancellation
 from app.models.bookings.booking_history import BookingActorType, BookingEventType, BookingHistory
 from app.models.bookings.booking_invoice import BookingInvoice
 from app.models.bookings.booking_item import BookingItem
+from app.models.bookings.booking_service_item import BookingServiceItem
 from app.models.bookings.booking_reschedule import BookingReschedule, RescheduleStatus
 from app.models.bookings.booking_status_history import BookingStatusHistory
 from app.models.enums import AssignmentStatus, BookingStatus, InvoiceStatus, PaymentStatus
@@ -220,13 +221,34 @@ class BookingService(BaseService):
                     qty = min(qty, pi.max_quantity)
                 return qty
 
-            # 4. Calculate financials — package base price + selected items.
-            # Package.base_price is the package's own starting price; item
-            # rows are line-item add-ons/inclusions on top of it, not a
-            # replacement for it (previously this only summed items, so a
-            # package with no items priced the booking at ₹0 subtotal).
+            # 1b. Fetch mandatory services from package, plus any selected
+            # optional services (add-ons) — mirrors items 1-3 above.
+            package_services = await uow.packages.services.find_by_package_including_common(data.package_id)
+            selected_services = [s for s in package_services if s.is_mandatory]
+            if data.service_ids:
+                optional_services = [s for s in package_services if not s.is_mandatory and s.id in data.service_ids]
+                selected_services.extend(optional_services)
+
+            service_quantities = data.service_quantities or {}
+
+            def _resolve_service_qty(ps) -> int:
+                requested = service_quantities.get(str(ps.id))
+                if requested is None:
+                    return ps.quantity
+                qty = max(int(requested), ps.quantity)
+                if ps.max_quantity is not None:
+                    qty = min(qty, ps.max_quantity)
+                return qty
+
+            # 4. Calculate financials — package base price + selected items
+            # + selected services. Package.base_price is the package's own
+            # starting price; item/service rows are line-item add-ons/
+            # inclusions on top of it, not a replacement for it (previously
+            # this only summed items, so a package with no items priced the
+            # booking at ₹0 subtotal).
             items_total = sum((i.base_price * _resolve_qty(i)) for i in selected_items)
-            subtotal = (package.base_price or Decimal("0.00")) + items_total
+            services_total = sum((s.base_price * _resolve_service_qty(s)) for s in selected_services)
+            subtotal = (package.base_price or Decimal("0.00")) + items_total + services_total
             platform_fee = Decimal("0.00")  # Platform fee removed project-wide.
 
             # 4b. Discount engine — evaluates automatic discounts plus the
@@ -302,6 +324,25 @@ class BookingService(BaseService):
                     prep_time_minutes=pi.prep_time_minutes,
                 )
                 await uow.bookings.items.create(item)
+
+            # 5b. Create BookingServiceItem records
+            for idx, ps in enumerate(selected_services):
+                qty = _resolve_service_qty(ps)
+                service_item = BookingServiceItem(
+                    booking_id=booking.id,
+                    package_service_id=ps.id,
+                    name=ps.name,
+                    description=ps.description,
+                    quantity=qty,
+                    unit=ps.unit,
+                    unit_price=ps.base_price,
+                    final_price=ps.base_price * qty,
+                    is_mandatory=ps.is_mandatory,
+                    is_addon=not ps.is_mandatory,
+                    display_order=idx,
+                    prep_time_minutes=ps.prep_time_minutes,
+                )
+                await uow.bookings.service_items.create(service_item)
 
             # Write status and history
             await self._write_status_history(

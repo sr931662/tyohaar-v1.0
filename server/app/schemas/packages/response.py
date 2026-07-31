@@ -109,10 +109,6 @@ class PackageResponse(BaseSchema):
     city_slug: str | None = None
     inclusions_count: int = 0
     occasion_ids: list[uuid.UUID] = Field(default_factory=list)
-    theme_ids: list[uuid.UUID] = Field(
-        default_factory=list,
-        description="Celebration themes the vendor offers as a customization option on this package.",
-    )
     created_at: datetime
     updated_at: datetime
 
@@ -156,6 +152,44 @@ class PackageItemResponse(BaseSchema):
     like_count: int = 0
     is_liked: bool = False
     images: list[PackageItemImageResponse] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class PackageServiceImageResponse(BaseSchema):
+    """Public response shape for a PackageServiceImage."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    service_id: uuid.UUID
+    image_url: str
+    sort_order: int = 0
+    created_at: datetime
+
+
+class PackageServiceResponse(BaseSchema):
+    """Public response shape for a PackageService."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    package_id: uuid.UUID | None = None
+    vendor_id: uuid.UUID | None = None
+    is_common: bool = False
+    name: str
+    description: str | None
+    quantity: int
+    max_quantity: int | None = None
+    unit: str | None
+    base_price: MoneyAmount
+    is_mandatory: bool
+    is_customizable: bool = False
+    icon_url: str | None = None
+    cover_image_url: str | None = None
+    display_order: int
+    prep_time_minutes: int | None = None
+    images: list[PackageServiceImageResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

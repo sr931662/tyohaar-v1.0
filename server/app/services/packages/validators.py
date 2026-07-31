@@ -4,8 +4,9 @@ from uuid import UUID
 
 from app.models.packages.package import Package
 from app.models.packages.package_item import PackageItem
+from app.models.packages.package_service import PackageServiceLine
 from app.repositories.unit_of_work import UnitOfWork
-from app.services.packages.constants import MAX_ITEMS_PER_PACKAGE
+from app.services.packages.constants import MAX_ITEMS_PER_PACKAGE, MAX_SERVICES_PER_PACKAGE
 from app.services.packages.exceptions import (
     DuplicatePackageItemReviewError,
     DuplicatePackageReviewError,
@@ -13,6 +14,8 @@ from app.services.packages.exceptions import (
     PackageItemNotFoundError,
     PackageNotFoundError,
     PackageOwnershipError,
+    PackageServiceLimitError,
+    PackageServiceNotFoundError,
 )
 
 
@@ -94,4 +97,30 @@ async def validate_item_limit(
         raise PackageItemLimitError(
             f"Package {package_id} already has {count} items "
             f"(maximum is {MAX_ITEMS_PER_PACKAGE})."
+        )
+
+
+async def validate_package_service_exists(
+    package_service_id: UUID,
+    uow: UnitOfWork,
+) -> PackageServiceLine:
+    """Return the PackageServiceLine or raise PackageServiceNotFoundError."""
+    service = await uow.packages.services.get_by_id(package_service_id)
+    if service is None:
+        raise PackageServiceNotFoundError(str(package_service_id))
+    return service
+
+
+async def validate_service_limit(
+    package_id: UUID,
+    uow: UnitOfWork,
+) -> None:
+    """Raise PackageServiceLimitError if the package already has the maximum services."""
+    count = await uow.packages.services.count(
+        uow.packages.services._model.package_id == package_id,
+    )
+    if count >= MAX_SERVICES_PER_PACKAGE:
+        raise PackageServiceLimitError(
+            f"Package {package_id} already has {count} services "
+            f"(maximum is {MAX_SERVICES_PER_PACKAGE})."
         )

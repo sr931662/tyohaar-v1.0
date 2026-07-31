@@ -495,6 +495,136 @@ OCCASIONS = [
 ]
 
 
+# Named colors used across the Themes.pdf catalogue below, mapped to hex.
+_COLOR_HEX = {
+    "Black": "#000000", "Gold": "#D4AF37", "White": "#FFFFFF",
+    "Baby Pink": "#F4C2C2", "Mint Green": "#98D8C8", "Lavender": "#B57EDC",
+    "Pink": "#FFC0CB", "Coral": "#FF7F50", "Peach": "#FFDAB9",
+    "Red": "#E53935", "Orange": "#FF8C42", "Yellow": "#FFD700",
+    "Green": "#4CAF50", "Blue": "#2979FF", "Purple": "#8E24AA",
+    "Navy Blue": "#1A2B5C", "Silver": "#C0C0C0", "Olive Green": "#708238",
+    "Brown": "#8B5E3C", "Rose Pink": "#E8A0BF", "Sky Blue": "#87CEEB",
+    "Sage Green": "#9CAF88", "Ivory": "#FFFFF0", "Nude": "#E3BC9A",
+    "Champagne": "#F7E7CE", "Rose Gold": "#B76E79", "Burgundy": "#800020",
+}
+
+# (name, collection, [color names in display order]) — transcribed from
+# Themes.pdf. "Rainbow Pop" lists 6 colors in the source PDF; trimmed to the
+# first 4 since themes here only support 2-4 color pairs.
+PDF_THEMES = [
+    # Birthday Collection
+    ("Royal Gold", "Birthday Collection", ["Black", "Gold", "White"]),
+    ("Pastel Dreams", "Birthday Collection", ["Baby Pink", "Mint Green", "Lavender"]),
+    ("Candy Crush", "Birthday Collection", ["Pink", "Coral", "Peach"]),
+    ("Rainbow Pop", "Birthday Collection", ["Red", "Orange", "Yellow", "Green"]),
+    ("Midnight Galaxy", "Birthday Collection", ["Navy Blue", "Purple", "Silver"]),
+    ("Dino World", "Birthday Collection", ["Olive Green", "Green", "Brown"]),
+    ("Jungle Adventure", "Birthday Collection", ["Green", "Brown", "Gold"]),
+    ("Little Princess", "Birthday Collection", ["Rose Pink", "Gold", "Lavender"]),
+    ("Little Prince", "Birthday Collection", ["Blue", "Gold", "White"]),
+    ("Frozen Kingdom", "Birthday Collection", ["White", "Sky Blue", "Silver"]),
+    ("Mermaid Lagoon", "Birthday Collection", ["Mint Green", "Lavender", "Coral"]),
+    ("Unicorn Magic", "Birthday Collection", ["Pink", "Lavender", "Mint Green", "Gold"]),
+    ("Sunshine Party", "Birthday Collection", ["Yellow", "Orange", "White"]),
+    ("Balloon Fiesta", "Birthday Collection", ["Blue", "Yellow", "Red", "White"]),
+    # Baby Shower Collection
+    ("Little Blessings", "Baby Shower Collection", ["Sage Green", "Ivory", "Nude"]),
+    ("Twinkle Baby", "Baby Shower Collection", ["White", "Gold", "Silver"]),
+    ("Tiny Princess", "Baby Shower Collection", ["Baby Pink", "White"]),
+    ("Little Prince", "Baby Shower Collection", ["Sky Blue", "White"]),
+    ("Teddy Tales", "Baby Shower Collection", ["Brown", "Nude", "Ivory"]),
+    ("Boho Baby", "Baby Shower Collection", ["Champagne", "Ivory", "Nude"]),
+    ("Cloud Nine", "Baby Shower Collection", ["White", "Sky Blue", "Silver"]),
+    ("Sweet Beginnings", "Baby Shower Collection", ["Peach", "Mint Green", "Lavender"]),
+    # Gender Reveal Collection
+    ("Team Pink or Blue", "Gender Reveal Collection", ["Pink", "Blue", "White"]),
+    ("Oh Baby!", "Gender Reveal Collection", ["Sage Green", "Ivory"]),
+    ("Little Secret", "Gender Reveal Collection", ["Gold", "White"]),
+    ("Surprise Pop", "Gender Reveal Collection", ["Black", "White"]),
+    # Engagement Collection
+    ("Forever Begins", "Engagement Collection", ["White", "Gold"]),
+    ("Golden Promise", "Engagement Collection", ["Champagne", "Gold"]),
+    ("Rosé Romance", "Engagement Collection", ["Rose Gold", "White"]),
+    ("Love Story", "Engagement Collection", ["Rose Pink", "Ivory"]),
+    ("Modern Elegance", "Engagement Collection", ["Black", "Gold"]),
+    ("Blooming Love", "Engagement Collection", ["Peach", "Coral", "Ivory"]),
+    # Anniversary Collection
+    ("Endless Love", "Anniversary Collection", ["Red", "White"]),
+    ("Golden Years", "Anniversary Collection", ["Gold", "White"]),
+    ("Silver Moments", "Anniversary Collection", ["Silver", "White"]),
+    ("Rosé Forever", "Anniversary Collection", ["Rose Gold", "Ivory"]),
+    ("Vintage Romance", "Anniversary Collection", ["Burgundy", "Champagne"]),
+    ("Midnight Romance", "Anniversary Collection", ["Black", "Gold"]),
+    # Proposal Collection
+    ("Forever Yours", "Proposal Collection", ["Red", "White"]),
+    ("Will You Marry Me", "Proposal Collection", ["White", "Gold"]),
+    ("Rosé Romance", "Proposal Collection", ["Rose Gold", "White"]),
+    ("Under the Stars", "Proposal Collection", ["Navy Blue", "Silver"]),
+    ("Candlelight Love", "Proposal Collection", ["Burgundy", "Gold"]),
+    ("Paris Romance", "Proposal Collection", ["Champagne", "Ivory"]),
+    ("Secret Garden", "Proposal Collection", ["Sage Green", "White"]),
+    # Bachelor Collection
+    ("Midnight Bash", "Bachelor Collection", ["Black", "Gold"]),
+    ("Vegas Night", "Bachelor Collection", ["Red", "Black", "Gold"]),
+    ("Gentleman Club", "Bachelor Collection", ["Navy Blue", "Gold"]),
+    ("Casino Royale", "Bachelor Collection", ["Black", "Red", "Gold"]),
+    ("Neon Party", "Bachelor Collection", ["Purple", "Blue", "Pink"]),
+    # Bachelorette Collection
+    ("Bride Tribe", "Bachelorette Collection", ["Rose Pink", "White"]),
+    ("Rosé All Day", "Bachelorette Collection", ["Rose Gold", "White"]),
+    ("Barbie Night", "Bachelorette Collection", ["Pink", "Rose Pink"]),
+    ("Disco Diva", "Bachelorette Collection", ["Silver", "Pink"]),
+    ("Glam Night", "Bachelorette Collection", ["Black", "Rose Gold"]),
+    ("Pretty in Pink", "Bachelorette Collection", ["Baby Pink", "Lavender"]),
+    # Retirement Collection
+    ("Golden Journey", "Retirement Collection", ["Gold", "White"]),
+    ("Cheers to New Beginnings", "Retirement Collection", ["Navy Blue", "Gold"]),
+    ("Elegant Farewell", "Retirement Collection", ["Silver", "White"]),
+    ("Timeless Memories", "Retirement Collection", ["Champagne", "Ivory"]),
+    ("Retirement Royale", "Retirement Collection", ["Black", "Gold"]),
+    ("Vintage Celebration", "Retirement Collection", ["Burgundy", "Gold"]),
+]
+
+
+def _slugify(name: str) -> str:
+    import re
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+async def seed_pdf_themes(session) -> None:
+    """Upsert the ~60 real themes from Themes.pdf, using the 2/3/4-color
+    palette format. Re-running is safe: matches by slug and updates colors
+    in place rather than duplicating (e.g. the placeholder "Pastel Dreams"
+    already in THEMES gets its real palette filled in here)."""
+    color_keys = ["primary", "secondary", "accent", "background"]
+    used_slugs: set[str] = set()
+    created, updated = 0, 0
+
+    for name, collection, color_names in PDF_THEMES:
+        base_slug = _slugify(name)
+        slug = base_slug
+        if slug in used_slugs:
+            slug = f"{base_slug}-{_slugify(collection)}"
+        used_slugs.add(slug)
+
+        colors = {color_keys[i]: _COLOR_HEX[c] for i, c in enumerate(color_names)}
+        description = f"{collection} theme."
+
+        res = await session.execute(select(OccasionTheme).where(OccasionTheme.slug == slug))
+        obj = res.scalar_one_or_none()
+        if obj is None:
+            session.add(OccasionTheme(name=name, slug=slug, description=description, colors=colors, is_active=True))
+            created += 1
+        else:
+            obj.colors = colors
+            if not obj.description:
+                obj.description = description
+            updated += 1
+
+    await session.flush()
+    print(f"  [+] PDF themes seeded ({created} created, {updated} updated)")
+
+
 async def seed_occasion_taxonomy(session) -> dict[str, Occasion]:
     # Categories
     cat_map: dict[str, OccasionCategory] = {}
@@ -991,6 +1121,9 @@ async def main() -> None:
 
             print("\n>> Occasion taxonomy")
             occ_map = await seed_occasion_taxonomy(session)
+
+            print("\n>> PDF theme catalogue")
+            await seed_pdf_themes(session)
 
             print("\n>> Vendor categories")
             vc_map = await seed_vendor_categories(session)

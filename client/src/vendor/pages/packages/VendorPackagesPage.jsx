@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { vendorProfileApi, vendorPackagesApi, vendorOccasionsApi, vendorThemesApi } from '../../api';
+import { vendorProfileApi, vendorPackagesApi, vendorOccasionsApi } from '../../api';
 import { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
@@ -37,14 +37,13 @@ function StatusBadge({ status }) {
 
 // ── Create Package Modal ───────────────────────────────────────────────────────
 
-function PackageFormModal({ initial, occasions, themes, onClose, onSave, saving }) {
+function PackageFormModal({ initial, occasions, onClose, onSave, saving }) {
   const isEdit = !!initial;
   const [form, setForm] = useState({
     name: initial?.name ?? '',
     description: initial?.description ?? '',
     short_description: initial?.short_description ?? '',
     occasion_ids: initial?.occasion_ids ?? [],
-    theme_ids: initial?.theme_ids ?? [],
     base_price: initial?.base_price ?? '',
     min_guests: initial?.min_guests ?? '',
     max_guests: initial?.max_guests ?? '',
@@ -66,16 +65,6 @@ function PackageFormModal({ initial, occasions, themes, onClose, onSave, saving 
     }));
   };
 
-  // Single-select: a package is delivered in exactly one theme, not a
-  // customer-facing shortlist — tapping the active theme deselects it,
-  // tapping a different one replaces the selection entirely.
-  const selectTheme = (id) => {
-    setForm((f) => ({
-      ...f,
-      theme_ids: f.theme_ids.includes(id) ? [] : [id],
-    }));
-  };
-
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = 'Package name is required.';
@@ -92,9 +81,6 @@ function PackageFormModal({ initial, occasions, themes, onClose, onSave, saving 
       description: form.description.trim() || undefined,
       short_description: form.short_description.trim() || undefined,
       occasion_ids: form.occasion_ids,
-      // Themes only mean anything once customization is enabled — don't
-      // silently carry over a stale selection if the vendor unchecks it.
-      theme_ids: form.is_customizable ? form.theme_ids : [],
       base_price: Number(form.base_price),
       pricing_type: 'fixed',
       min_guests: form.min_guests !== '' ? Number(form.min_guests) : undefined,
@@ -208,46 +194,9 @@ function PackageFormModal({ initial, occasions, themes, onClose, onSave, saving 
             Allow customers to customise this package
           </label>
           {form.is_customizable && (
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Theme</label>
-              {!themes.length ? (
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No themes available yet.</p>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-                  {themes.map((t) => {
-                    const active = form.theme_ids.includes(t.id);
-                    const swatches = [t.colors?.primary, t.colors?.secondary, t.colors?.accent, t.colors?.background].filter(Boolean);
-                    return (
-                      <button
-                        type="button"
-                        key={t.id}
-                        onClick={() => selectTheme(t.id)}
-                        className="btn btn-sm"
-                        style={{
-                          display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
-                          padding: '10px 12px', height: 'auto', textAlign: 'left',
-                          borderRadius: 10,
-                          border: active ? '1px solid var(--color-primary,#6366f1)' : '1px solid var(--border-subtle)',
-                          background: active ? 'rgba(99,102,241,0.1)' : 'transparent',
-                        }}
-                      >
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          {swatches.map((c, i) => (
-                            <span key={i} style={{ width: 16, height: 16, borderRadius: '50%', background: c, border: '1px solid rgba(0,0,0,0.15)' }} />
-                          ))}
-                        </div>
-                        <span style={{ fontSize: 12.5, fontWeight: 600, color: active ? 'var(--color-primary,#6366f1)' : 'var(--text-primary)' }}>
-                          {t.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                Pick the one theme you'll actually deliver for this package — customers will see this exact theme when booking.
-              </p>
-            </div>
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)' }}>
+              Customers will be able to pick from the platform's full theme catalog when booking this package.
+            </p>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -997,11 +946,6 @@ export default function VendorPackagesPage() {
   });
   const occasions = occasionsPage?.items ?? [];
 
-  const { data: themes = [] } = useQuery({
-    queryKey: ['vendor-themes'],
-    queryFn: () => vendorThemesApi.list(),
-  });
-
   const { data, isLoading } = useQuery({
     queryKey: ['vendor-packages'],
     queryFn: () => vendorPackagesApi.list({ per_page: 100 }),
@@ -1152,7 +1096,6 @@ export default function VendorPackagesPage() {
       {showCreate && (
         <PackageFormModal
           occasions={occasions}
-          themes={themes}
           onClose={() => setShowCreate(false)}
           onSave={(body) => createMutation.mutate(body)}
           saving={createMutation.isPending}
@@ -1162,7 +1105,6 @@ export default function VendorPackagesPage() {
         <PackageFormModal
           initial={editingPkg}
           occasions={occasions}
-          themes={themes}
           onClose={() => setEditingPkg(null)}
           onSave={(body) => updateMutation.mutate({ id: editingPkg.id, body })}
           saving={updateMutation.isPending}

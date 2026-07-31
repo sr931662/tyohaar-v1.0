@@ -337,10 +337,6 @@ class Package {
   final int displayOrder;
   // City slug where this package is offered (e.g. 'noida', 'mumbai').
   final String? citySlug;
-  // OccasionTheme ids the vendor has enabled as customization options for
-  // this specific package — not every theme suits every package, so this is
-  // a vendor-curated subset, not the full platform theme catalog.
-  final List<String> themeIds;
 
   const Package({
     required this.id,
@@ -370,7 +366,6 @@ class Package {
     this.currency = 'INR',
     this.displayOrder = 0,
     this.citySlug,
-    this.themeIds = const [],
   });
 
   Package copyWith({int? likeCount, bool? isLiked}) => Package(
@@ -401,7 +396,6 @@ class Package {
         currency: currency,
         displayOrder: displayOrder,
         citySlug: citySlug,
-        themeIds: themeIds,
       );
 
   factory Package.fromJson(Map<String, dynamic> json) {
@@ -448,10 +442,6 @@ class Package {
       currency: json['currency'] as String? ?? 'INR',
       displayOrder: json['display_order'] as int? ?? 0,
       citySlug: json['city_slug'] as String?,
-      themeIds: (json['theme_ids'] as List?)
-              ?.map((id) => id.toString())
-              .toList() ??
-          const [],
     );
   }
 
@@ -479,6 +469,9 @@ class PackageItem {
   final bool isOptional;
   final bool isMandatory;
   final bool isCustomizable;
+  // True for a vendor-wide reusable item attached to the package rather than
+  // one defined specifically for it — see VendorCommonItemsScreen.
+  final bool isCommon;
   final String? iconUrl;
   // Item's cover/thumbnail image (mirrors Package.coverImageUrl).
   final String? coverImageUrl;
@@ -500,6 +493,7 @@ class PackageItem {
     required this.isOptional,
     required this.isMandatory,
     this.isCustomizable = false,
+    this.isCommon = false,
     this.iconUrl,
     this.coverImageUrl,
     this.imageUrls = const [],
@@ -521,6 +515,7 @@ class PackageItem {
         isOptional: isOptional,
         isMandatory: isMandatory,
         isCustomizable: isCustomizable,
+        isCommon: isCommon,
         iconUrl: iconUrl,
         coverImageUrl: coverImageUrl,
         imageUrls: imageUrls,
@@ -558,6 +553,7 @@ class PackageItem {
       // Was: json['is_optional'] — backend sends is_mandatory (inverted).
       isOptional: !isMandatory,
       isCustomizable: json['is_customizable'] as bool? ?? false,
+      isCommon: json['is_common'] as bool? ?? false,
       iconUrl: asUrl(json['icon_url']),
       coverImageUrl: asUrl(json['cover_image_url']),
       imageUrls: (json['images'] as List?)

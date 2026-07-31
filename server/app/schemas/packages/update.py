@@ -67,11 +67,6 @@ class PackageUpdate(BaseSchema):
         default=None,
         description="Replaces the full set of linked occasions when provided.",
     )
-    theme_ids: list[uuid.UUID] | None = Field(
-        default=None,
-        max_length=1,
-        description="Replaces the package's single customization theme (at most one) when provided.",
-    )
     description: str | None = None
     short_description: str | None = Field(default=None, max_length=500)
     cover_image_url: str | None = Field(default=None, max_length=2048)
@@ -114,6 +109,23 @@ class PackageItemUpdate(BaseSchema):
     base_price: MoneyAmount | None = None
     is_mandatory: bool | None = None
     is_returnable: bool | None = None
+    is_customizable: bool | None = None
+    max_quantity: int | None = Field(default=None, ge=1)
+    icon_url: str | None = Field(default=None, max_length=500)
+    cover_image_url: str | None = Field(default=None, max_length=500)
+    display_order: int | None = Field(default=None, ge=0)
+    prep_time_minutes: int | None = Field(default=None, ge=0, le=1440)
+
+
+class PackageServiceUpdate(BaseSchema):
+    """Partial update payload for a PackageService (shared by both package-specific and common services)."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=300)
+    description: str | None = None
+    quantity: int | None = Field(default=None, ge=1)
+    unit: str | None = Field(default=None, max_length=50)
+    base_price: MoneyAmount | None = None
+    is_mandatory: bool | None = None
     is_customizable: bool | None = None
     max_quantity: int | None = Field(default=None, ge=1)
     icon_url: str | None = Field(default=None, max_length=500)

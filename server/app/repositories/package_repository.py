@@ -25,6 +25,8 @@ from app.models.packages.package_item_image import PackageItemImage
 from app.models.packages.package_item_like import PackageItemLike
 from app.models.packages.package_item_review import PackageItemReview
 from app.models.packages.package_item_vendor import PackageItemVendor
+from app.models.packages.package_service import PackageServiceLine, package_service_links
+from app.models.packages.package_service_image import PackageServiceImage
 from app.models.packages.package_like import PackageLike
 from app.models.packages.package_pricing import PackagePricing
 from app.models.packages.package_review import PackageReview
@@ -237,6 +239,93 @@ class PackageItemImageRepository(BaseRepository[PackageItemImage]):
         )
 
 
+class PackageServiceRepository(BaseRepository[PackageServiceLine]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, PackageServiceLine)
+
+    async def find_by_package(self, package_id: uuid.UUID) -> list[PackageServiceLine]:
+        return await self.find_many(
+            PackageServiceLine.package_id == package_id,
+            order_by=PackageServiceLine.display_order.asc(),
+        )
+
+    async def find_by_package_including_common(self, package_id: uuid.UUID) -> list[PackageServiceLine]:
+        """Package-specific services plus any common services linked via package_service_links."""
+        direct_stmt = select(PackageServiceLine).where(PackageServiceLine.package_id == package_id)
+        linked_stmt = (
+            select(PackageServiceLine)
+            .join(package_service_links, package_service_links.c.package_service_id == PackageServiceLine.id)
+            .where(package_service_links.c.package_id == package_id)
+        )
+        direct = (await self._session.execute(direct_stmt)).scalars().all()
+        linked = (await self._session.execute(linked_stmt)).scalars().all()
+        combined = list(direct) + [s for s in linked if s.id not in {d.id for d in direct}]
+        combined.sort(key=lambda s: s.display_order)
+        return combined
+
+    async def find_common_for_vendor(self, vendor_id: uuid.UUID) -> list[PackageServiceLine]:
+        return await self.find_many(
+            PackageServiceLine.vendor_id == vendor_id,
+            PackageServiceLine.is_common == True,  # noqa: E712
+            order_by=PackageServiceLine.display_order.asc(),
+        )
+
+    async def find_common_by_name(self, vendor_id: uuid.UUID, name: str) -> PackageServiceLine | None:
+        """Case-insensitive lookup used by bulk import's upsert-by-name logic."""
+        return await self.find_one(
+            PackageServiceLine.vendor_id == vendor_id,
+            PackageServiceLine.is_common == True,  # noqa: E712
+            func.lower(PackageServiceLine.name) == name.strip().lower(),
+        )
+
+    async def find_package_service_by_name(self, package_id: uuid.UUID, name: str) -> PackageServiceLine | None:
+        """Case-insensitive lookup used by bulk import's upsert-by-name logic."""
+        return await self.find_one(
+            PackageServiceLine.package_id == package_id,
+            func.lower(PackageServiceLine.name) == name.strip().lower(),
+        )
+
+    async def link_to_package(self, package_id: uuid.UUID, service_id: uuid.UUID) -> None:
+        stmt = (
+            postgresql.insert(package_service_links)
+            .values(package_id=package_id, package_service_id=service_id)
+            .on_conflict_do_nothing()
+        )
+        await self._session.execute(stmt)
+
+    async def unlink_from_package(self, package_id: uuid.UUID, service_id: uuid.UUID) -> None:
+        stmt = package_service_links.delete().where(
+            package_service_links.c.package_id == package_id,
+            package_service_links.c.package_service_id == service_id,
+        )
+        await self._session.execute(stmt)
+
+    async def is_linked_to_package(self, package_id: uuid.UUID, service_id: uuid.UUID) -> bool:
+        stmt = select(package_service_links.c.package_id).where(
+            package_service_links.c.package_id == package_id,
+            package_service_links.c.package_service_id == service_id,
+        )
+        result = await self._session.execute(stmt)
+        return result.first() is not None
+
+
+class PackageServiceImageRepository(BaseRepository[PackageServiceImage]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, PackageServiceImage)
+
+    async def find_by_service(self, service_id: uuid.UUID) -> list[PackageServiceImage]:
+        return await self.find_many(
+            PackageServiceImage.service_id == service_id,
+            order_by=PackageServiceImage.sort_order.asc(),
+        )
+
+    async def find_by_services(self, service_ids: list[uuid.UUID]) -> list[PackageServiceImage]:
+        return await self.find_many(
+            PackageServiceImage.service_id.in_(service_ids),
+            order_by=PackageServiceImage.sort_order.asc(),
+        )
+
+
 class PackageItemVendorRepository(BaseRepository[PackageItemVendor]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, PackageItemVendor)
@@ -405,6 +494,8 @@ class PackageRepositoryAggregate:
         self.items = PackageItemRepository(session)
         self.item_images = PackageItemImageRepository(session)
         self.item_vendors = PackageItemVendorRepository(session)
+        self.services = PackageServiceRepository(session)
+        self.service_images = PackageServiceImageRepository(session)
         self.addons = PackageAddonRepository(session)
         self.pricings = PackagePricingRepository(session)
         self.discounts = PackageDiscountRepository(session)

@@ -36,3 +36,12 @@ class PackageItemNotFoundError(NotFoundError):
 
 class DuplicatePackageItemReviewError(ConflictError):
     default_message = "You have already reviewed this package item."
+
+
+class PackageServiceLimitError(BusinessRuleError):
+    default_message = "Package has reached the maximum number of services."
+
+
+class PackageServiceNotFoundError(NotFoundError):
+    def __init__(self, package_service_id: str | None = None) -> None:
+        super().__init__("PackageService", package_service_id)

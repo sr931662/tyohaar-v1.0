@@ -34,6 +34,7 @@ from app.models.mixins import NotesMixin, SoftDeleteMixin, TimestampMixin, UUIDP
 if TYPE_CHECKING:
     from app.models.packages.package_category import PackageCategory
     from app.models.packages.package_item import PackageItem
+    from app.models.packages.package_service import PackageServiceLine
     from app.models.packages.package_addon import PackageAddon
     from app.models.packages.package_customization import PackageCustomization
     from app.models.packages.package_gallery import PackageGallery
@@ -44,7 +45,6 @@ if TYPE_CHECKING:
     from app.models.packages.package_like import PackageLike
     from app.models.packages.package_faq import PackageFAQ
     from app.models.occasions.occasion import Occasion
-    from app.models.occasions.occasion_theme import OccasionTheme
 
 
 # ── Occasion ↔ Package M:N Association ────────────────────────────────────────
@@ -68,29 +68,6 @@ package_occasions = Table(
     ),
 )
 
-
-# ── Theme ↔ Package M:N Association ───────────────────────────────────────────
-# Not every celebration theme suits every package, so a vendor explicitly picks
-# which of the platform's themes are offered as a customization option on a
-# given (is_customizable=True) package, rather than every theme applying
-# everywhere by default.
-
-package_themes = Table(
-    "package_themes",
-    Base.metadata,
-    Column(
-        "package_id",
-        PGUUID(as_uuid=True),
-        ForeignKey("packages.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Column(
-        "theme_id",
-        PGUUID(as_uuid=True),
-        ForeignKey("occasion_themes.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-)
 
 
 # ── Model ─────────────────────────────────────────────────────────────────────
@@ -260,15 +237,15 @@ class Package(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         lazy="noload",
     )
 
-    themes: Mapped[list[OccasionTheme]] = relationship(
-        "OccasionTheme",
-        secondary="package_themes",
-        back_populates="packages",
-        lazy="noload",
-    )
-
     items: Mapped[list[PackageItem]] = relationship(
         "PackageItem",
+        back_populates="package",
+        lazy="noload",
+        cascade="all, delete-orphan",
+    )
+
+    services: Mapped[list[PackageServiceLine]] = relationship(
+        "PackageServiceLine",
         back_populates="package",
         lazy="noload",
         cascade="all, delete-orphan",

@@ -12,6 +12,7 @@ from app.models.packages.package import Package
 from app.models.packages.package_availability import PackageAvailability
 from app.models.packages.package_category import PackageCategory
 from app.models.packages.package_item import PackageItem
+from app.models.packages.package_service import PackageServiceLine
 from app.models.packages.package_review import PackageReview
 from app.models.enums import (
     MediaStatus,
@@ -51,6 +52,12 @@ from app.schemas.packages import (
     PackageReviewModerateRequest,
     PackageReviewResponse,
     PackageUpdate,
+    CommonPackageServiceCreate,
+    PackageServiceCreate,
+    PackageServiceImageCreate,
+    PackageServiceImageResponse,
+    PackageServiceResponse,
+    PackageServiceUpdate,
 )
 from app.services.base import BaseService
 from app.services.packages.validators import (
@@ -60,6 +67,7 @@ from app.services.packages.validators import (
     validate_package_item_exists,
     validate_package_ownership,
     validate_review_not_duplicate,
+    validate_service_limit,
 )
 
 # ── Bulk import/export column schema (vendor-scoped, upsert-by-name) ───────────
@@ -179,7 +187,12 @@ def _rows_to_csv_bytes(columns: list[str], rows: list[dict[str, Any]]) -> bytes:
     return buf.getvalue().encode("utf-8")
 
 
-def _rows_to_xlsx_bytes(columns: list[str], rows: list[dict[str, Any]], sheet_title: str) -> bytes:
+def _rows_to_xlsx_bytes(
+    columns: list[str],
+    rows: list[dict[str, Any]],
+    sheet_title: str,
+    required_columns: list[str] = _ITEM_IMPORT_REQUIRED_COLUMNS,
+) -> bytes:
     import openpyxl
     from openpyxl.styles import Font, PatternFill
 
@@ -190,7 +203,7 @@ def _rows_to_xlsx_bytes(columns: list[str], rows: list[dict[str, Any]], sheet_ti
     header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
     required_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
-    required = set(_ITEM_IMPORT_REQUIRED_COLUMNS)
+    required = set(required_columns)
 
     for col_idx, col_name in enumerate(columns, start=1):
         c = ws.cell(row=1, column=col_idx, value=col_name)
@@ -205,6 +218,71 @@ def _rows_to_xlsx_bytes(columns: list[str], rows: list[dict[str, Any]], sheet_ti
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+# ── Bulk import/export column schema for services (vendor-scoped, upsert-by-name) ──
+
+_SERVICE_IMPORT_REQUIRED_COLUMNS = ["name", "base_price"]
+
+_COMMON_SERVICE_IMPORT_COLUMNS = [
+    "name", "description", "quantity", "unit", "base_price", "max_quantity",
+    "is_customizable", "prep_time_minutes", "is_mandatory", "cover_image_url",
+]
+
+_PACKAGE_SERVICE_IMPORT_COLUMNS = _COMMON_SERVICE_IMPORT_COLUMNS + ["icon_url", "display_order"]
+
+_SERVICE_IMPORT_SAMPLE_ROW: dict[str, str] = {
+    "name": "Photography 6 Hours", "description": "Full event coverage with edited photos", "quantity": "1",
+    "unit": "hours", "base_price": "15000", "max_quantity": "", "is_customizable": "false",
+    "prep_time_minutes": "30", "is_mandatory": "true",
+    "cover_image_url": "https://example.com/photos/photography.jpg",
+    "icon_url": "", "display_order": "0",
+}
+
+
+def _coerce_service_import_row(row: dict[str, Any], *, is_package_service: bool) -> dict[str, Any]:
+    """Convert raw (string-valued) spreadsheet cells into a PackageServiceLine field dict."""
+    def cell(key: str) -> str | None:
+        value = row.get(key)
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
+
+    payload: dict[str, Any] = {
+        "name": cell("name"),
+        "description": cell("description"),
+        "quantity": _parse_int_cell(row.get("quantity")) or 1,
+        "unit": cell("unit"),
+        "base_price": Decimal(cell("base_price") or "0"),
+        "max_quantity": _parse_int_cell(row.get("max_quantity")),
+        "is_customizable": _parse_bool_cell(row.get("is_customizable"), False),
+        "prep_time_minutes": _parse_int_cell(row.get("prep_time_minutes")),
+        "is_mandatory": _parse_bool_cell(row.get("is_mandatory"), True),
+        "cover_image_url": cell("cover_image_url"),
+    }
+    if is_package_service:
+        payload["icon_url"] = cell("icon_url")
+        payload["display_order"] = _parse_int_cell(row.get("display_order")) or 0
+    return payload
+
+
+def _service_to_export_row(service: PackageServiceLine, columns: list[str]) -> dict[str, Any]:
+    values = {
+        "name": service.name,
+        "description": service.description or "",
+        "quantity": service.quantity,
+        "unit": service.unit or "",
+        "base_price": str(service.base_price),
+        "max_quantity": service.max_quantity if service.max_quantity is not None else "",
+        "is_customizable": "true" if service.is_customizable else "false",
+        "prep_time_minutes": service.prep_time_minutes if service.prep_time_minutes is not None else "",
+        "is_mandatory": "true" if service.is_mandatory else "false",
+        "cover_image_url": service.cover_image_url or "",
+        "icon_url": service.icon_url or "",
+        "display_order": service.display_order,
+    }
+    return {col: values.get(col, "") for col in columns}
 
 
 class PackageService(BaseService):
@@ -224,10 +302,9 @@ class PackageService(BaseService):
         async with self._uow() as uow:
             payload = data.model_dump(exclude_unset=True)
 
-            # occasion_ids/theme_ids have no backing column on Package —
-            # they're written separately into their association tables below.
+            # occasion_ids has no backing column on Package — it's written
+            # separately into its association table below.
             occasion_ids = payload.pop("occasion_ids", None) or []
-            theme_ids = payload.pop("theme_ids", None) or []
 
             # Remap schema field names → model column names
             if "min_guests" in payload:
@@ -248,14 +325,10 @@ class PackageService(BaseService):
 
             if occasion_ids:
                 await self._replace_package_occasions(uow, package.id, occasion_ids)
-            if theme_ids:
-                await self._replace_package_themes(uow, package.id, theme_ids)
 
             await uow.commit()
             response = PackageResponse.model_validate(package)
-            return response.model_copy(
-                update={"occasion_ids": occasion_ids, "theme_ids": theme_ids}
-            )
+            return response.model_copy(update={"occasion_ids": occasion_ids})
 
     @staticmethod
     async def _replace_package_occasions(
@@ -281,34 +354,6 @@ class PackageService(BaseService):
         result = await uow.session.execute(
             select(package_occasions.c.occasion_id).where(
                 package_occasions.c.package_id == package_id
-            )
-        )
-        return [row[0] for row in result.all()]
-
-    @staticmethod
-    async def _replace_package_themes(
-        uow, package_id: UUID, theme_ids: list[UUID]
-    ) -> None:
-        from sqlalchemy import delete, insert
-        from app.models.packages.package import package_themes
-
-        await uow.session.execute(
-            delete(package_themes).where(package_themes.c.package_id == package_id)
-        )
-        if theme_ids:
-            await uow.session.execute(
-                insert(package_themes),
-                [{"package_id": package_id, "theme_id": tid} for tid in theme_ids],
-            )
-
-    @staticmethod
-    async def _get_package_theme_ids(uow, package_id: UUID) -> list[UUID]:
-        from sqlalchemy import select
-        from app.models.packages.package import package_themes
-
-        result = await uow.session.execute(
-            select(package_themes.c.theme_id).where(
-                package_themes.c.package_id == package_id
             )
         )
         return [row[0] for row in result.all()]
@@ -354,9 +399,8 @@ class PackageService(BaseService):
             # list-valued `package.pricing` attribute is never auto-read against
             # the singular `pricing` field on PackageDetailResponse.
             occasion_ids = await self._get_package_occasion_ids(uow, package_id)
-            theme_ids = await self._get_package_theme_ids(uow, package_id)
             base = PackageResponse.model_validate(package).model_copy(
-                update={"occasion_ids": occasion_ids, "theme_ids": theme_ids}
+                update={"occasion_ids": occasion_ids}
             )
             response = PackageDetailResponse(
                 **base.model_dump(), pricing=pricing_response, vendor=vendor_info
@@ -431,7 +475,6 @@ class PackageService(BaseService):
             # Batch-load item counts — one query for the whole page, avoids N+1
             package_ids = [p.id for p in page.items]
             counts: dict = {}
-            themes_by_package: dict = {}
             if package_ids:
                 item_rows = await uow.packages.items.find_many(
                     uow.packages.items._model.package_id.in_(package_ids)
@@ -439,25 +482,9 @@ class PackageService(BaseService):
                 for row in item_rows:
                     pid = row.package_id
                     counts[pid] = counts.get(pid, 0) + 1
-
-                # theme_ids must be populated here (not just on the vendor/detail
-                # endpoints) — the customer app's "Choose your package" step reads
-                # this straight off the public list response to decide which
-                # themes are selectable for the package the customer just picked.
-                from app.models.packages.package import package_themes
-                theme_link_rows = await uow.session.execute(
-                    select(
-                        package_themes.c.package_id, package_themes.c.theme_id
-                    ).where(package_themes.c.package_id.in_(package_ids))
-                )
-                for pid, tid in theme_link_rows.all():
-                    themes_by_package.setdefault(pid, []).append(tid)
             responses = [
                 PackageResponse.model_validate(p).model_copy(
-                    update={
-                        "inclusions_count": counts.get(p.id, 0),
-                        "theme_ids": themes_by_package.get(p.id, []),
-                    }
+                    update={"inclusions_count": counts.get(p.id, 0)}
                 )
                 for p in page.items
             ]
@@ -503,7 +530,6 @@ class PackageService(BaseService):
             package_ids = [p.id for p in page.items]
             counts: dict = {}
             occasions_by_package: dict = {}
-            themes_by_package: dict = {}
             if package_ids:
                 item_rows = await uow.packages.items.find_many(
                     uow.packages.items._model.package_id.in_(package_ids)
@@ -513,7 +539,7 @@ class PackageService(BaseService):
                     counts[pid] = counts.get(pid, 0) + 1
 
                 from sqlalchemy import select
-                from app.models.packages.package import package_occasions, package_themes
+                from app.models.packages.package import package_occasions
                 link_rows = await uow.session.execute(
                     select(
                         package_occasions.c.package_id, package_occasions.c.occasion_id
@@ -521,20 +547,11 @@ class PackageService(BaseService):
                 )
                 for pid, oid in link_rows.all():
                     occasions_by_package.setdefault(pid, []).append(oid)
-
-                theme_link_rows = await uow.session.execute(
-                    select(
-                        package_themes.c.package_id, package_themes.c.theme_id
-                    ).where(package_themes.c.package_id.in_(package_ids))
-                )
-                for pid, tid in theme_link_rows.all():
-                    themes_by_package.setdefault(pid, []).append(tid)
             responses = [
                 PackageResponse.model_validate(p).model_copy(
                     update={
                         "inclusions_count": counts.get(p.id, 0),
                         "occasion_ids": occasions_by_package.get(p.id, []),
-                        "theme_ids": themes_by_package.get(p.id, []),
                     }
                 )
                 for p in page.items
@@ -555,7 +572,6 @@ class PackageService(BaseService):
             package = await validate_package_ownership(package_id, vendor_id, uow)
             changes = data.model_dump(exclude_unset=True)
             occasion_ids = changes.pop("occasion_ids", None)
-            theme_ids = changes.pop("theme_ids", None)
             if "min_guests" in changes:
                 changes["min_guest_count"] = changes.pop("min_guests")
             if "max_guests" in changes:
@@ -566,16 +582,9 @@ class PackageService(BaseService):
                 final_occasion_ids = occasion_ids
             else:
                 final_occasion_ids = await self._get_package_occasion_ids(uow, package_id)
-            if theme_ids is not None:
-                await self._replace_package_themes(uow, package_id, theme_ids)
-                final_theme_ids = theme_ids
-            else:
-                final_theme_ids = await self._get_package_theme_ids(uow, package_id)
             await uow.commit()
             response = PackageResponse.model_validate(updated)
-            return response.model_copy(
-                update={"occasion_ids": final_occasion_ids, "theme_ids": final_theme_ids}
-            )
+            return response.model_copy(update={"occasion_ids": final_occasion_ids})
 
     async def delete_package(
         self,
@@ -934,6 +943,7 @@ class PackageService(BaseService):
         fmt: str,
         filename_stem: str,
         sheet_title: str,
+        required_columns: list[str] = _ITEM_IMPORT_REQUIRED_COLUMNS,
     ) -> tuple[bytes, str, str]:
         if fmt == "csv":
             return (
@@ -943,7 +953,7 @@ class PackageService(BaseService):
             )
         if fmt == "xlsx":
             return (
-                _rows_to_xlsx_bytes(columns, rows, sheet_title),
+                _rows_to_xlsx_bytes(columns, rows, sheet_title, required_columns),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 f"{filename_stem}.xlsx",
             )
@@ -1032,6 +1042,396 @@ class PackageService(BaseService):
                 from app.services.exceptions import NotFoundError
                 raise NotFoundError("PackageItemImage", str(image_id))
             await uow.packages.item_images.delete(img)
+            await uow.commit()
+
+    # ── Package Services ──────────────────────────────────────────────────────
+
+    async def add_service(
+        self,
+        package_id: UUID,
+        vendor_id: UUID,
+        data: PackageServiceCreate,
+    ) -> PackageServiceResponse:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            await validate_service_limit(package_id, uow)
+            payload = data.model_dump(exclude_unset=True)
+            payload["package_id"] = package_id
+            service = await uow.packages.services.create_from_dict(payload)
+            await uow.commit()
+            return PackageServiceResponse.model_validate(service)
+
+    async def update_service(
+        self,
+        package_id: UUID,
+        service_id: UUID,
+        vendor_id: UUID,
+        data: PackageServiceUpdate,
+    ) -> PackageServiceResponse:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or service.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            updated = await uow.packages.services.update(
+                service, data.model_dump(exclude_unset=True)
+            )
+            await uow.commit()
+            return PackageServiceResponse.model_validate(updated)
+
+    async def delete_service(
+        self,
+        package_id: UUID,
+        service_id: UUID,
+        vendor_id: UUID,
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or service.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            await uow.packages.services.delete(service)
+            await uow.commit()
+
+    # ── Package Services (Admin — manages any vendor's package) ───────────────
+
+    async def admin_add_service(
+        self,
+        package_id: UUID,
+        data: PackageServiceCreate,
+    ) -> PackageServiceResponse:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            await validate_service_limit(package_id, uow)
+            payload = data.model_dump(exclude_unset=True)
+            payload["package_id"] = package_id
+            service = await uow.packages.services.create_from_dict(payload)
+            await uow.commit()
+            return PackageServiceResponse.model_validate(service)
+
+    async def admin_update_service(
+        self,
+        package_id: UUID,
+        service_id: UUID,
+        data: PackageServiceUpdate,
+    ) -> PackageServiceResponse:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or service.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            updated = await uow.packages.services.update(
+                service, data.model_dump(exclude_unset=True)
+            )
+            await uow.commit()
+            return PackageServiceResponse.model_validate(updated)
+
+    async def admin_delete_service(self, package_id: UUID, service_id: UUID) -> None:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or service.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            await uow.packages.services.delete(service)
+            await uow.commit()
+
+    async def list_services(self, package_id: UUID) -> list[PackageServiceResponse]:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            services = await uow.packages.services.find_by_package_including_common(package_id)
+            images_by_service = await self._batch_service_images(uow, [s.id for s in services])
+            return [
+                PackageServiceResponse.model_validate(s).model_copy(
+                    update={"images": images_by_service.get(s.id, [])}
+                )
+                for s in services
+            ]
+
+    # ── Common (vendor-owned, reusable) Package Services ──────────────────────
+
+    async def create_common_service(
+        self,
+        vendor_id: UUID,
+        data: CommonPackageServiceCreate,
+    ) -> PackageServiceResponse:
+        async with self._uow() as uow:
+            payload = data.model_dump(exclude_unset=True)
+            payload["vendor_id"] = vendor_id
+            payload["is_common"] = True
+            payload["package_id"] = None
+            service = await uow.packages.services.create_from_dict(payload)
+            await uow.commit()
+            return PackageServiceResponse.model_validate(service)
+
+    async def list_common_services(self, vendor_id: UUID) -> list[PackageServiceResponse]:
+        async with self._uow() as uow:
+            services = await uow.packages.services.find_common_for_vendor(vendor_id)
+            images_by_service = await self._batch_service_images(uow, [s.id for s in services])
+            return [
+                PackageServiceResponse.model_validate(s).model_copy(
+                    update={"images": images_by_service.get(s.id, [])}
+                )
+                for s in services
+            ]
+
+    async def update_common_service(
+        self,
+        vendor_id: UUID,
+        service_id: UUID,
+        data: PackageServiceUpdate,
+    ) -> PackageServiceResponse:
+        async with self._uow() as uow:
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or not service.is_common or service.vendor_id != vendor_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            updated = await uow.packages.services.update(
+                service, data.model_dump(exclude_unset=True)
+            )
+            await uow.commit()
+            return PackageServiceResponse.model_validate(updated)
+
+    async def delete_common_service(self, vendor_id: UUID, service_id: UUID) -> None:
+        async with self._uow() as uow:
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or not service.is_common or service.vendor_id != vendor_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            await uow.packages.services.delete(service)
+            await uow.commit()
+
+    async def attach_common_service(
+        self,
+        vendor_id: UUID,
+        package_id: UUID,
+        service_id: UUID,
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or not service.is_common or service.vendor_id != vendor_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            await uow.packages.services.link_to_package(package_id, service_id)
+            await uow.commit()
+
+    async def detach_common_service(
+        self,
+        vendor_id: UUID,
+        package_id: UUID,
+        service_id: UUID,
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            await uow.packages.services.unlink_from_package(package_id, service_id)
+            await uow.commit()
+
+    # ── Bulk import/export for services (vendor-scoped, upsert-by-name) ───────
+
+    @staticmethod
+    async def _process_service_import_rows(
+        uow,
+        rows: list[dict[str, Any]],
+        *,
+        vendor_id: UUID,
+        package_id: UUID | None,
+    ) -> ItemImportResult:
+        """
+        Upsert one row at a time, isolating each row in its own SAVEPOINT so a
+        single bad row (bad price format, DB constraint violation, ...) can be
+        rolled back without poisoning the rest of the batch's transaction.
+        """
+        created = updated = errors = 0
+        row_results: list[ItemImportRowResult] = []
+
+        for idx, raw_row in enumerate(rows, start=2):  # row 1 is the header
+            name = str(raw_row.get("name") or "").strip()
+            action: str | None = None
+            try:
+                async with uow.session.begin_nested():
+                    if not name:
+                        raise ValueError("'name' is required")
+                    if not str(raw_row.get("base_price") or "").strip():
+                        raise ValueError("'base_price' is required")
+                    payload = _coerce_service_import_row(raw_row, is_package_service=package_id is not None)
+                    if package_id is not None:
+                        existing = await uow.packages.services.find_package_service_by_name(package_id, name)
+                    else:
+                        existing = await uow.packages.services.find_common_by_name(vendor_id, name)
+                    if existing is not None:
+                        await uow.packages.services.update(existing, payload)
+                        action = "updated"
+                    else:
+                        if package_id is not None:
+                            payload["package_id"] = package_id
+                        else:
+                            payload["vendor_id"] = vendor_id
+                            payload["is_common"] = True
+                            payload["package_id"] = None
+                        await uow.packages.services.create_from_dict(payload)
+                        action = "created"
+            except Exception as exc:
+                errors += 1
+                row_results.append(
+                    ItemImportRowResult(row=idx, action="error", name=name or None, error=str(exc))
+                )
+                continue
+            if action == "updated":
+                updated += 1
+            else:
+                created += 1
+            row_results.append(ItemImportRowResult(row=idx, action=action, name=name))
+
+        return ItemImportResult(
+            total_rows=len(rows), created=created, updated=updated, errors=errors, row_results=row_results,
+        )
+
+    async def import_common_services(
+        self,
+        vendor_id: UUID,
+        content: bytes,
+        filename: str,
+    ) -> ItemImportResult:
+        rows = _parse_item_spreadsheet(content, filename)
+        async with self._uow() as uow:
+            result = await self._process_service_import_rows(uow, rows, vendor_id=vendor_id, package_id=None)
+            await uow.commit()
+            return result
+
+    async def import_package_services(
+        self,
+        vendor_id: UUID,
+        package_id: UUID,
+        content: bytes,
+        filename: str,
+    ) -> ItemImportResult:
+        rows = _parse_item_spreadsheet(content, filename)
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            result = await self._process_service_import_rows(uow, rows, vendor_id=vendor_id, package_id=package_id)
+            await uow.commit()
+            return result
+
+    async def export_common_services(self, vendor_id: UUID, fmt: str) -> tuple[bytes, str, str]:
+        async with self._uow() as uow:
+            services = await uow.packages.services.find_common_for_vendor(vendor_id)
+        rows = [_service_to_export_row(s, _COMMON_SERVICE_IMPORT_COLUMNS) for s in services]
+        return self._render_export(
+            rows, _COMMON_SERVICE_IMPORT_COLUMNS, fmt, "common_services", "Common Services",
+            _SERVICE_IMPORT_REQUIRED_COLUMNS,
+        )
+
+    async def export_package_services(self, vendor_id: UUID, package_id: UUID, fmt: str) -> tuple[bytes, str, str]:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            services = await uow.packages.services.find_by_package(package_id)
+        rows = [_service_to_export_row(s, _PACKAGE_SERVICE_IMPORT_COLUMNS) for s in services]
+        return self._render_export(
+            rows, _PACKAGE_SERVICE_IMPORT_COLUMNS, fmt, "package_services", "Package Services",
+            _SERVICE_IMPORT_REQUIRED_COLUMNS,
+        )
+
+    def get_common_services_import_template(self, fmt: str) -> tuple[bytes, str, str]:
+        rows = [{col: _SERVICE_IMPORT_SAMPLE_ROW.get(col, "") for col in _COMMON_SERVICE_IMPORT_COLUMNS}]
+        return self._render_export(
+            rows, _COMMON_SERVICE_IMPORT_COLUMNS, fmt, "common_services_template", "Common Services",
+            _SERVICE_IMPORT_REQUIRED_COLUMNS,
+        )
+
+    def get_package_services_import_template(self, fmt: str) -> tuple[bytes, str, str]:
+        rows = [{col: _SERVICE_IMPORT_SAMPLE_ROW.get(col, "") for col in _PACKAGE_SERVICE_IMPORT_COLUMNS}]
+        return self._render_export(
+            rows, _PACKAGE_SERVICE_IMPORT_COLUMNS, fmt, "package_services_template", "Package Services",
+            _SERVICE_IMPORT_REQUIRED_COLUMNS,
+        )
+
+    @staticmethod
+    async def _batch_service_images(
+        uow, service_ids: list[UUID]
+    ) -> dict[UUID, list[PackageServiceImageResponse]]:
+        if not service_ids:
+            return {}
+        images = await uow.packages.service_images.find_by_services(service_ids)
+        result: dict[UUID, list[PackageServiceImageResponse]] = {}
+        for img in images:
+            result.setdefault(img.service_id, []).append(
+                PackageServiceImageResponse.model_validate(img)
+            )
+        return result
+
+    # ── Package Service Images ────────────────────────────────────────────────
+
+    async def add_service_image(
+        self,
+        package_id: UUID,
+        service_id: UUID,
+        vendor_id: UUID,
+        data: PackageServiceImageCreate,
+    ) -> PackageServiceImageResponse:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or service.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            existing = await uow.packages.service_images.find_by_service(service_id)
+            payload = data.model_dump(exclude_unset=True)
+            payload["service_id"] = service_id
+            payload["sort_order"] = len(existing)
+            img = await uow.packages.service_images.create_from_dict(payload)
+            await uow.commit()
+            return PackageServiceImageResponse.model_validate(img)
+
+    async def delete_service_image(
+        self,
+        package_id: UUID,
+        service_id: UUID,
+        image_id: UUID,
+        vendor_id: UUID,
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_ownership(package_id, vendor_id, uow)
+            img = await uow.packages.service_images.get_by_id(image_id)
+            if img is None or img.service_id != service_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageServiceImage", str(image_id))
+            await uow.packages.service_images.delete(img)
+            await uow.commit()
+
+    async def admin_add_service_image(
+        self,
+        package_id: UUID,
+        service_id: UUID,
+        data: PackageServiceImageCreate,
+    ) -> PackageServiceImageResponse:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or service.package_id != package_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            existing = await uow.packages.service_images.find_by_service(service_id)
+            payload = data.model_dump(exclude_unset=True)
+            payload["service_id"] = service_id
+            payload["sort_order"] = len(existing)
+            img = await uow.packages.service_images.create_from_dict(payload)
+            await uow.commit()
+            return PackageServiceImageResponse.model_validate(img)
+
+    async def admin_delete_service_image(
+        self, package_id: UUID, service_id: UUID, image_id: UUID
+    ) -> None:
+        async with self._uow() as uow:
+            await validate_package_exists(package_id, uow)
+            img = await uow.packages.service_images.get_by_id(image_id)
+            if img is None or img.service_id != service_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageServiceImage", str(image_id))
+            await uow.packages.service_images.delete(img)
             await uow.commit()
 
     # ── Package Gallery ────────────────────────────────────────────────────────

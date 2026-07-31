@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 MAX_ITEMS_PER_PACKAGE = 50
+MAX_SERVICES_PER_PACKAGE = 50
 MAX_REVIEWS_PER_USER_PER_PACKAGE = 1
 MIN_PACKAGE_PRICE = Decimal("100.00")
 MAX_PACKAGE_PRICE = Decimal("10000000.00")

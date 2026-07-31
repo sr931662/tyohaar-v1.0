@@ -315,8 +315,7 @@
   "vendorPackageFormCitySlugFormatHelperText": "e.g. jaipur (lowercase)",
   "vendorPackageFormCustomizableLabel": "Customizable",
   "vendorPackageFormOccasionsLabel": "Occasions",
-  "vendorPackageFormThemeLabel": "Theme",
-  "vendorPackageFormThemeHelperText": "Pick the one theme you'll actually deliver for this package — customers will see this exact theme when booking.",
+  "vendorPackageFormThemeHelperText": "Customers will be able to pick from the platform's full theme catalog when booking this package.",
   "vendorPackageFormCreateButtonLabel": "Create Package",
 
   "vendorPackageGalleryDeleteConfirmTitle": "Delete photo?",
@@ -557,6 +556,8 @@
   "planFlowBalloonColorOrange": "Orange",
   "planFlowBalloonColorYellow": "Yellow",
 
+  "planFlowPackageSpecificItemsHeading": "Package Items",
+  "planFlowCommonItemsHeading": "Common Items",
   "planFlowIncludedLabel": "INCLUDED",
   "planFlowOptionalAddOnsLabel": "OPTIONAL ADD-ONS",
   "planFlowNoConfigurableItemsMessage": "This package has no configurable items.",
@@ -635,6 +636,7 @@
   "planFlowSummaryBalloonColoursLabel": "Balloon Colours",
   "planFlowDualLabel": "Dual",
   "planFlowSingleLabel": "Single",
+  "planFlowSummaryIncludedItemsLabel": "Included Services",
   "planFlowSummaryAddOnsLabel": "Add-ons",
   "planFlowAddOnQuantityLabel": "{name} ×{qty}",
   "@planFlowAddOnQuantityLabel": {
@@ -835,7 +837,6 @@
   },
   "packageFilterPriceMinLabel": "₹0",
   "packageFilterPriceMaxLabel": "₹100K+",
-  "packageFilterThemesLabel": "Themes",
   "packageFilterResetButtonLabel": "Reset",
   "packageFilterApplyButtonLabel": "Apply Filters",
 

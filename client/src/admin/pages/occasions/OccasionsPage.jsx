@@ -31,8 +31,19 @@ const EMPTY_OCCASION_FORM = {
 const EMPTY_THEME_FORM = {
   name: '', description: '', cover_image_url: '', thumbnail_url: '',
   primary_color: '#C8A96E', secondary_color: '', accent_color: '', background_color: '',
+  color_count: 4,
   is_active: true, is_featured: false,
 };
+
+// A theme has 2, 3, or 4 colors — strip whichever named slots fall outside
+// the chosen count so a reduced-then-increased count never resurrects a
+// stale value the admin meant to remove.
+function themeFormToBody(form) {
+  const { color_count, ...body } = form;
+  if (color_count < 3) body.accent_color = '';
+  if (color_count < 4) body.background_color = '';
+  return body;
+}
 
 function ThemesTab() {
   const qc = useQueryClient();
@@ -65,6 +76,9 @@ function ThemesTab() {
   const openCreate = () => { setEditItem(null); setForm(EMPTY_THEME_FORM); setOpen(true); };
   const openEdit = (theme) => {
     setEditItem(theme);
+    let colorCount = 2;
+    if (theme.colors?.accent) colorCount = 3;
+    if (theme.colors?.background) colorCount = 4;
     setForm({
       name: theme.name,
       description: theme.description ?? '',
@@ -74,6 +88,7 @@ function ThemesTab() {
       secondary_color: theme.colors?.secondary ?? '',
       accent_color: theme.colors?.accent ?? '',
       background_color: theme.colors?.background ?? '',
+      color_count: colorCount,
       is_active: theme.is_active ?? true,
       is_featured: theme.is_featured ?? false,
     });
@@ -128,7 +143,7 @@ function ThemesTab() {
         footer={
           <>
             <button className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={() => saveMutation.mutate(form)} disabled={!form.name || saveMutation.isPending}>
+            <button className="btn btn-primary" onClick={() => saveMutation.mutate(themeFormToBody(form))} disabled={!form.name || saveMutation.isPending}>
               {saveMutation.isPending ? 'Saving…' : 'Save'}
             </button>
           </>
@@ -151,6 +166,21 @@ function ThemesTab() {
           <ImageUploadField value={form.thumbnail_url} onChange={(url) => setForm(f => ({ ...f, thumbnail_url: url }))} usage="occasion_cover" label="Upload" />
         </div>
         <div className="form-group">
+          <label className="form-label">Number of Colors</label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[2, 3, 4].map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={`btn btn-sm ${form.color_count === n ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setForm(f => ({ ...f, color_count: n }))}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="form-group">
           <label className="form-label required">Primary Color</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input type="color" value={form.primary_color || '#C8A96E'} onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))} style={{ width: 44, height: 36, padding: 2 }} />
@@ -158,26 +188,30 @@ function ThemesTab() {
           </div>
         </div>
         <div className="form-group">
-          <label className="form-label">Secondary Color</label>
+          <label className="form-label required">Secondary Color</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input type="color" value={form.secondary_color || '#F5F0E8'} onChange={e => setForm(f => ({ ...f, secondary_color: e.target.value }))} style={{ width: 44, height: 36, padding: 2 }} />
-            <input className="form-control" value={form.secondary_color} onChange={e => setForm(f => ({ ...f, secondary_color: e.target.value }))} placeholder="Optional" />
+            <input className="form-control" value={form.secondary_color} onChange={e => setForm(f => ({ ...f, secondary_color: e.target.value }))} placeholder="#F5F0E8" />
           </div>
         </div>
-        <div className="form-group">
-          <label className="form-label">Accent Color</label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="color" value={form.accent_color || '#8B1A1A'} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} style={{ width: 44, height: 36, padding: 2 }} />
-            <input className="form-control" value={form.accent_color} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} placeholder="Optional" />
+        {form.color_count >= 3 && (
+          <div className="form-group">
+            <label className="form-label required">Accent Color</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" value={form.accent_color || '#8B1A1A'} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} style={{ width: 44, height: 36, padding: 2 }} />
+              <input className="form-control" value={form.accent_color} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} placeholder="#8B1A1A" />
+            </div>
           </div>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Background Color</label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="color" value={form.background_color || '#FFF8F0'} onChange={e => setForm(f => ({ ...f, background_color: e.target.value }))} style={{ width: 44, height: 36, padding: 2 }} />
-            <input className="form-control" value={form.background_color} onChange={e => setForm(f => ({ ...f, background_color: e.target.value }))} placeholder="Optional" />
+        )}
+        {form.color_count >= 4 && (
+          <div className="form-group">
+            <label className="form-label required">Background Color</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" value={form.background_color || '#FFF8F0'} onChange={e => setForm(f => ({ ...f, background_color: e.target.value }))} style={{ width: 44, height: 36, padding: 2 }} />
+              <input className="form-control" value={form.background_color} onChange={e => setForm(f => ({ ...f, background_color: e.target.value }))} placeholder="#FFF8F0" />
+            </div>
           </div>
-        </div>
+        )}
         <div className="form-check">
           <input type="checkbox" id="theme_featured" checked={form.is_featured} onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))} />
           <label htmlFor="theme_featured">Featured (promoted in the theme picker)</label>

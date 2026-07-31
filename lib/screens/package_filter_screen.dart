@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../data/models.dart';
-import '../data/services/package_service.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -13,12 +11,10 @@ class PackageFilterScreen extends StatefulWidget {
     super.key,
     this.initialSort,
     this.initialPriceRange,
-    this.initialThemes,
   });
 
   final String? initialSort;
   final RangeValues? initialPriceRange;
-  final List<String>? initialThemes;
 
   @override
   State<PackageFilterScreen> createState() => _PackageFilterScreenState();
@@ -27,30 +23,6 @@ class PackageFilterScreen extends StatefulWidget {
 class _PackageFilterScreenState extends State<PackageFilterScreen> {
   late RangeValues _priceRange = widget.initialPriceRange ?? const RangeValues(5000, 50000);
   late String _selectedSort = widget.initialSort ?? 'Popularity';
-  late final List<String> _selectedThemes = List<String>.from(widget.initialThemes ?? []);
-
-  // Themes are fetched from the same backend entity (OccasionTheme, via
-  // PackageService.listThemes()) that Package.themeIds correlates to — the
-  // chip's underlying id is what's actually matched against packages.
-  final PackageService _packageService = PackageService();
-  List<CelebrationTheme> _themes = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadThemes();
-  }
-
-  Future<void> _loadThemes() async {
-    try {
-      final themes = await _packageService.listThemes();
-      if (mounted) setState(() => _themes = themes);
-    } catch (_) {
-      // Non-fatal — the Themes section simply renders no chips if the
-      // catalog fails to load, matching this screen's other filters still
-      // being usable.
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,30 +77,6 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
                     Text(l10n.packageFilterPriceMaxLabel, style: TyType.sans(12, color: ty.ink3)),
                   ],
                 ),
-                const SizedBox(height: 32),
-                if (_themes.isNotEmpty) ...[
-                  _sectionTitle(context, l10n.packageFilterThemesLabel),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: _themes.map((t) {
-                      final selected = _selectedThemes.contains(t.id);
-                      return TyChip(
-                        label: t.name,
-                        active: selected,
-                        onTap: () {
-                          setState(() {
-                            if (selected) {
-                              _selectedThemes.remove(t.id);
-                            } else {
-                              _selectedThemes.add(t.id);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ],
               ],
             ),
           ),
@@ -141,7 +89,6 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
                     setState(() {
                       _priceRange = const RangeValues(5000, 50000);
                       _selectedSort = 'Popularity';
-                      _selectedThemes.clear();
                     });
                   }),
                 ),
@@ -150,7 +97,6 @@ class _PackageFilterScreenState extends State<PackageFilterScreen> {
                   child: TyButton(l10n.packageFilterApplyButtonLabel, onTap: () => Navigator.pop(context, {
                     'sort': _selectedSort,
                     'priceRange': _priceRange,
-                    'themes': List<String>.from(_selectedThemes),
                   })),
                 ),
               ],

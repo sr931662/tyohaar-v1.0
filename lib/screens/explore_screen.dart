@@ -69,7 +69,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   // for these yet).
   String _filterSort = 'Popularity';
   RangeValues? _filterPriceRange;
-  List<String> _filterThemes = [];
   final GlobalKey _searchKey = GlobalKey();
   Timer? _searchDebounce;
 
@@ -246,8 +245,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           (p.slug ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
       final range = _filterPriceRange;
       final matchesPrice = range == null || (p.price >= range.start && p.price <= range.end);
-      final matchesThemes = _filterThemes.isEmpty || p.themeIds.any(_filterThemes.contains);
-      return matchesSearch && matchesPrice && matchesThemes;
+      return matchesSearch && matchesPrice;
     }).toList();
 
     switch (_filterSort) {
@@ -317,7 +315,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             builder: (_) => PackageFilterScreen(
                               initialSort: _filterSort,
                               initialPriceRange: _filterPriceRange,
-                              initialThemes: _filterThemes,
                             ),
                           ),
                         );
@@ -325,7 +322,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           setState(() {
                             _filterSort = result['sort'] as String? ?? _filterSort;
                             _filterPriceRange = result['priceRange'] as RangeValues? ?? _filterPriceRange;
-                            _filterThemes = List<String>.from(result['themes'] as List? ?? _filterThemes);
                           });
                         }
                       },

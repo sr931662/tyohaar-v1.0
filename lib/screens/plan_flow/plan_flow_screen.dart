@@ -156,6 +156,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   List<PackageItem> _packageItems = [];
   bool _loadingItems = false;
+  // Guards against re-triggering a fetch every frame when a package
+  // genuinely has zero items — without this, the empty-list check in
+  // _packageItemsStep would loop forever instead of settling on the
+  // "no configurable items" message.
+  bool _itemsLoadAttempted = false;
   // item.id -> chosen quantity. Presence in this map means the item is
   // included in the booking (mandatory items are always present).
   final Map<String, int> _itemQuantities = {};
@@ -230,7 +235,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Future<void> _loadPackageItems() async {
     if (_pkg == null) return;
-    setState(() { _loadingItems = true; _itemsError = false; });
+    setState(() { _loadingItems = true; _itemsError = false; _itemsLoadAttempted = true; });
     try {
       final items = await _packageService.listPackageItems(_pkg!.id);
       setState(() {
@@ -283,7 +288,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   void _next() {
-    if (_step == 1 && _pkg != null && _packageItems.isEmpty && !_loadingItems) {
+    if (_step == 1 && _pkg != null && !_itemsLoadAttempted && !_loadingItems) {
       _loadPackageItems();
     }
     if (_step < _stepCount - 1) {
@@ -587,6 +592,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   // forward a stale, possibly-mismatched selection.
                   _pkg = null;
                   _packageItems = [];
+                  _itemsLoadAttempted = false;
                   _itemQuantities.clear();
                 });
                 _loadPackagesForOccasion(o.id);
@@ -1035,8 +1041,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       onTap: () => setState(() {
         _pkg = p;
         _packageItems = [];
-        // See the other package-selection handler for why: a previously
-        // chosen theme may not be offered on this package.
+        _itemsLoadAttempted = false;
+        // A previously-picked theme is meaningless if the newly-selected
+        // package isn't customizable, so always start fresh on reselection.
         _theme = null;
       }),
       child: Container(
@@ -1167,9 +1174,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   setState(() {
                     _pkg = p;
                     _packageItems = [];
-                    // A theme chosen for a previously-selected package may
-                    // not even be offered on this one — clear it so an
-                    // invalid theme_id can never be submitted with the booking.
+                    _itemsLoadAttempted = false;
+                    // A previously-picked theme is meaningless if the newly-selected
+                    // package isn't customizable, so always start fresh on reselection.
                     _theme = null;
                   });
                   Navigator.pop(ctx);
@@ -1184,13 +1191,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _themeStep(BuildContext context) {
     final ty = context.ty;
-    // Not every theme suits every package — the vendor curates which of the
-    // platform's themes are actually offered on this specific package
-    // (Package.themeIds), so only those are selectable here rather than the
-    // entire theme catalog.
-    final allowedThemes = (_pkg?.themeIds.isNotEmpty ?? false)
-        ? _themes.where((t) => _pkg!.themeIds.contains(t.id)).toList()
-        : const <CelebrationTheme>[];
+    // Every theme in the catalog is available on every customizable package.
+    final allowedThemes = _themes;
     if (allowedThemes.isEmpty) return const SizedBox();
     final l10n = AppLocalizations.of(context)!;
     return Padding(
@@ -1414,38 +1416,59 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _packageItemsStep(BuildContext context) {
     final ty = context.ty;
-    if (_loadingItems) return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
     if (_pkg == null) return const SizedBox();
+    // Only ever schedule one fetch per package selection — _itemsLoadAttempted
+    // flips true as soon as the request starts, so a package with genuinely
+    // zero items settles on the "no configurable items" message below instead
+    // of re-triggering a fetch on every rebuild forever.
+    if (!_itemsLoadAttempted && !_loadingItems) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadPackageItems());
+    }
+    if (_loadingItems) return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
     if (_itemsError) {
       return Padding(
         padding: const EdgeInsets.all(40),
         child: TyStateScreen.error(context, onAction: _loadPackageItems),
       );
     }
-    if (_packageItems.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadPackageItems());
-      return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
-    }
 
-    final mandatory = _packageItems.where((i) => i.isMandatory).toList();
-    final optional = _packageItems.where((i) => !i.isMandatory).toList();
     final l10n = AppLocalizations.of(context)!;
+    final specificItems = _packageItems.where((i) => !i.isCommon).toList();
+    final commonItems = _packageItems.where((i) => i.isCommon).toList();
+
+    Widget section(String heading, List<PackageItem> items) {
+      if (items.isEmpty) return const SizedBox();
+      final mandatory = items.where((i) => i.isMandatory).toList();
+      final optional = items.where((i) => !i.isMandatory).toList();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(heading, style: TyType.sans(13, color: ty.ink, weight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            if (mandatory.isNotEmpty) ...[
+              Text(l10n.planFlowIncludedLabel, style: TyType.eyebrow(11, color: ty.ink3)),
+              const SizedBox(height: 10),
+              ...mandatory.map((item) => _itemRow(context, item, locked: true)),
+              const SizedBox(height: 20),
+            ],
+            if (optional.isNotEmpty) ...[
+              Text(l10n.planFlowOptionalAddOnsLabel, style: TyType.eyebrow(11, color: ty.ink3)),
+              const SizedBox(height: 10),
+              ...optional.map((item) => _itemRow(context, item, locked: false)),
+            ],
+          ],
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (mandatory.isNotEmpty) ...[
-          Text(l10n.planFlowIncludedLabel, style: TyType.eyebrow(11, color: ty.ink3)),
-          const SizedBox(height: 10),
-          ...mandatory.map((item) => _itemRow(context, item, locked: true)),
-          const SizedBox(height: 20),
-        ],
-        if (optional.isNotEmpty) ...[
-          Text(l10n.planFlowOptionalAddOnsLabel, style: TyType.eyebrow(11, color: ty.ink3)),
-          const SizedBox(height: 10),
-          ...optional.map((item) => _itemRow(context, item, locked: false)),
-        ],
-        if (mandatory.isEmpty && optional.isEmpty)
+        section(l10n.planFlowPackageSpecificItemsHeading, specificItems),
+        section(l10n.planFlowCommonItemsHeading, commonItems),
+        if (_packageItems.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(l10n.planFlowNoConfigurableItemsMessage, style: TyType.sans(13, color: ty.ink3)),
@@ -1576,6 +1599,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   Widget _summaryStep(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
+    final mandatoryItems = _packageItems.where((i) => i.isMandatory).toList();
     final selectedOptional = _packageItems.where((i) => !i.isMandatory && _itemQuantities.containsKey(i.id)).toList();
     final itemsTotal = selectedOptional.fold<double>(
       0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
@@ -1597,6 +1621,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 '${_balloonColors.map((n) => _balloonColorLabel(context, n)).join(', ')}',
             onEdit: () => _jumpTo(1),
           ),
+        if (mandatoryItems.isNotEmpty)
+          _summaryCard(context, l10n.planFlowSummaryIncludedItemsLabel,
+              mandatoryItems.map((i) => i.name).join(', '), onEdit: () => _jumpTo(2)),
         if (selectedOptional.isNotEmpty)
           _summaryCard(context, l10n.planFlowSummaryAddOnsLabel, selectedOptional.map((i) {
             final qty = _itemQuantities[i.id] ?? i.quantity;

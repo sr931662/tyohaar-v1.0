@@ -18,6 +18,7 @@ from app.models.bookings.booking_cancellation import BookingCancellation
 from app.models.bookings.booking_history import BookingHistory, BookingEventType, BookingActorType
 from app.models.bookings.booking_invoice import BookingInvoice
 from app.models.bookings.booking_item import BookingItem
+from app.models.bookings.booking_service_item import BookingServiceItem
 from app.models.bookings.booking_reschedule import BookingReschedule
 from app.models.bookings.booking_status import BookingStatusRecord
 from app.models.bookings.booking_status_history import BookingStatusHistory
@@ -172,6 +173,17 @@ class BookingItemRepository(BaseRepository[BookingItem]):
 
     async def find_by_package_item(self, package_item_id: uuid.UUID) -> list[BookingItem]:
         return await self.find_many(BookingItem.package_item_id == package_item_id)
+
+
+class BookingServiceItemRepository(BaseRepository[BookingServiceItem]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, BookingServiceItem)
+
+    async def find_by_booking(self, booking_id: uuid.UUID) -> list[BookingServiceItem]:
+        return await self.find_many(BookingServiceItem.booking_id == booking_id)
+
+    async def find_by_package_service(self, package_service_id: uuid.UUID) -> list[BookingServiceItem]:
+        return await self.find_many(BookingServiceItem.package_service_id == package_service_id)
 
 
 class BookingAssignmentRepository(BaseRepository[BookingAssignment]):
@@ -464,6 +476,7 @@ class BookingRepositoryAggregate:
         self._session = session
         self.bookings = BookingRepository(session)
         self.items = BookingItemRepository(session)
+        self.service_items = BookingServiceItemRepository(session)
         self.assignments = BookingAssignmentRepository(session)
         self.status_history = BookingStatusHistoryRepository(session)
         self.history = BookingHistoryRepository(session)

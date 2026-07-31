@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     from app.models.occasions.celebration import Celebration
     from app.models.packages.package import Package
     from app.models.bookings.booking_item import BookingItem
+    from app.models.bookings.booking_service_item import BookingServiceItem
     from app.models.bookings.booking_assignment import BookingAssignment
     from app.models.bookings.booking_status_history import BookingStatusHistory
     from app.models.bookings.booking_cancellation import BookingCancellation
@@ -336,6 +337,13 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
 
     items: Mapped[list[BookingItem]] = relationship(
         "BookingItem",
+        back_populates="booking",
+        lazy="noload",
+        cascade="all, delete-orphan",
+    )
+
+    service_items: Mapped[list[BookingServiceItem]] = relationship(
+        "BookingServiceItem",
         back_populates="booking",
         lazy="noload",
         cascade="all, delete-orphan",

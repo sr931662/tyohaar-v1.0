@@ -116,6 +116,15 @@ class BookingCreate(BaseSchema):
                     "quantity. Clamped server-side to [item.quantity, "
                     "item.max_quantity or unlimited].",
     )
+    service_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description="IDs of optional PackageServices (add-ons) selected by the user",
+    )
+    service_quantities: dict[str, int] | None = Field(
+        default=None,
+        description="Optional per-service quantity override, keyed by PackageService "
+                    "id (as string), mirroring item_quantities.",
+    )
     balloon_color_mode: BalloonColorMode | None = Field(
         default=None,
         description="Whether the customer wants a single accent balloon colour or a two-colour combination.",

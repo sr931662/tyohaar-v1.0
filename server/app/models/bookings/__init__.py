@@ -1,4 +1,5 @@
 from app.models.bookings.booking_item import BookingItem, BookingItemStatus
+from app.models.bookings.booking_service_item import BookingServiceItem
 from app.models.bookings.booking_assignment import BookingAssignment, BookingAssignmentType
 from app.models.bookings.booking_status_history import BookingStatusHistory
 from app.models.bookings.booking_history import BookingHistory, BookingEventType, BookingActorType
@@ -12,6 +13,7 @@ __all__ = [
     # Models
     "Booking",
     "BookingItem",
+    "BookingServiceItem",
     "BookingAssignment",
     "BookingStatusHistory",
     "BookingHistory",

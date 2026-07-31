@@ -32,6 +32,7 @@ from app.schemas.packages import (
     PackageCategoryResponse,
     PackageCategoryUpdate,
     CommonPackageItemCreate,
+    CommonPackageServiceCreate,
     ItemImportResult,
     PackageCreate,
     PackageDetailResponse,
@@ -50,6 +51,11 @@ from app.schemas.packages import (
     PackageReviewModerateRequest,
     PackageReviewResponse,
     PackageUpdate,
+    PackageServiceCreate,
+    PackageServiceImageCreate,
+    PackageServiceImageResponse,
+    PackageServiceResponse,
+    PackageServiceUpdate,
 )
 
 
@@ -439,6 +445,249 @@ async def delete_item_image(
         vendor_id = await resolve_vendor_id_for_user(current_user)
         await service.delete_item_image(
             package_id=package_id, item_id=item_id, image_id=image_id, vendor_id=vendor_id
+        )
+    return SuccessResponse(data=None, message="Image deleted.")
+
+
+# ── Package Services ─────────────────────────────────────────────────────────
+
+
+async def add_service(
+    package_id: uuid.UUID,
+    body: PackageServiceCreate,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageServiceResponse]:
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        result = await service.admin_add_service(package_id=package_id, data=body)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        result = await service.add_service(
+            package_id=package_id, vendor_id=vendor_id, data=body
+        )
+    return SuccessResponse(data=result, message="Service added.")
+
+
+async def update_service(
+    package_id: uuid.UUID,
+    service_id: uuid.UUID,
+    body: PackageServiceUpdate,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageServiceResponse]:
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        result = await service.admin_update_service(
+            package_id=package_id, service_id=service_id, data=body
+        )
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        result = await service.update_service(
+            package_id=package_id, service_id=service_id, vendor_id=vendor_id, data=body
+        )
+    return SuccessResponse(data=result, message="Service updated.")
+
+
+async def delete_service(
+    package_id: uuid.UUID,
+    service_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        await service.admin_delete_service(package_id=package_id, service_id=service_id)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        await service.delete_service(
+            package_id=package_id, service_id=service_id, vendor_id=vendor_id
+        )
+    return SuccessResponse(data=None, message="Service deleted.")
+
+
+async def list_services(
+    package_id: uuid.UUID,
+    service: PackageServiceDep,
+) -> SuccessResponse[list[PackageServiceResponse]]:
+    services = await service.list_services(package_id=package_id)
+    return SuccessResponse(data=services, message="Services retrieved.")
+
+
+async def create_common_service(
+    body: CommonPackageServiceCreate,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageServiceResponse]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    result = await service.create_common_service(vendor_id=vendor_id, data=body)
+    return SuccessResponse(data=result, message="Common service created.")
+
+
+async def list_common_services(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[list[PackageServiceResponse]]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    services = await service.list_common_services(vendor_id=vendor_id)
+    return SuccessResponse(data=services, message="Common services retrieved.")
+
+
+async def update_common_service(
+    service_id: uuid.UUID,
+    body: PackageServiceUpdate,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageServiceResponse]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    result = await service.update_common_service(vendor_id=vendor_id, service_id=service_id, data=body)
+    return SuccessResponse(data=result, message="Common service updated.")
+
+
+async def delete_common_service(
+    service_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    await service.delete_common_service(vendor_id=vendor_id, service_id=service_id)
+    return SuccessResponse(data=None, message="Common service deleted.")
+
+
+async def attach_common_service(
+    package_id: uuid.UUID,
+    service_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    await service.attach_common_service(vendor_id=vendor_id, package_id=package_id, service_id=service_id)
+    return SuccessResponse(data=None, message="Common service attached.")
+
+
+async def detach_common_service(
+    package_id: uuid.UUID,
+    service_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    await service.detach_common_service(vendor_id=vendor_id, package_id=package_id, service_id=service_id)
+    return SuccessResponse(data=None, message="Common service detached.")
+
+
+# ── Bulk import/export for services (vendor-scoped) ─────────────────────────
+
+
+async def import_common_services(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    file: UploadFile = File(...),
+) -> SuccessResponse[ItemImportResult]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    content = await file.read()
+    result = await service.import_common_services(vendor_id, content, file.filename or "upload.csv")
+    return SuccessResponse(data=result, message="Import complete.")
+
+
+async def export_common_services(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    format: str = Query(default="xlsx", pattern="^(csv|xlsx)$"),
+) -> Response:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    content, mime_type, filename = await service.export_common_services(vendor_id, format)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def get_common_services_import_template(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    format: str = Query(default="xlsx", pattern="^(csv|xlsx)$"),
+) -> Response:
+    await resolve_vendor_id_for_user(current_user)
+    content, mime_type, filename = service.get_common_services_import_template(format)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def import_package_services(
+    package_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    file: UploadFile = File(...),
+) -> SuccessResponse[ItemImportResult]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    content = await file.read()
+    result = await service.import_package_services(
+        vendor_id, package_id, content, file.filename or "upload.csv"
+    )
+    return SuccessResponse(data=result, message="Import complete.")
+
+
+async def export_package_services(
+    package_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    format: str = Query(default="xlsx", pattern="^(csv|xlsx)$"),
+) -> Response:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    content, mime_type, filename = await service.export_package_services(vendor_id, package_id, format)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def get_package_services_import_template(
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+    format: str = Query(default="xlsx", pattern="^(csv|xlsx)$"),
+) -> Response:
+    await resolve_vendor_id_for_user(current_user)
+    content, mime_type, filename = service.get_package_services_import_template(format)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def add_service_image(
+    package_id: uuid.UUID,
+    service_id: uuid.UUID,
+    body: PackageServiceImageCreate,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[PackageServiceImageResponse]:
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        result = await service.admin_add_service_image(package_id=package_id, service_id=service_id, data=body)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        result = await service.add_service_image(
+            package_id=package_id, service_id=service_id, vendor_id=vendor_id, data=body
+        )
+    return SuccessResponse(data=result, message="Image added.")
+
+
+async def delete_service_image(
+    package_id: uuid.UUID,
+    service_id: uuid.UUID,
+    image_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[None]:
+    if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        await service.admin_delete_service_image(package_id=package_id, service_id=service_id, image_id=image_id)
+    else:
+        vendor_id = await resolve_vendor_id_for_user(current_user)
+        await service.delete_service_image(
+            package_id=package_id, service_id=service_id, image_id=image_id, vendor_id=vendor_id
         )
     return SuccessResponse(data=None, message="Image deleted.")
 

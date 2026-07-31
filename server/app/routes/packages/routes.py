@@ -20,6 +20,8 @@ from app.schemas.packages import (
     PackageItemReviewResponse,
     PackageResponse,
     PackageReviewResponse,
+    PackageServiceImageResponse,
+    PackageServiceResponse,
 )
 
 router = APIRouter(prefix="/packages", tags=["Packages"])
@@ -360,6 +362,205 @@ router.add_api_route(
     summary="Detach Common Item",
     description="Detach a common item template from this package (does not delete the template).",
     operation_id="packages_detach_common_item",
+)
+
+# ── Package services ───────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/{package_id}/services",
+    ctrl.list_services,
+    methods=["GET"],
+    response_model=SuccessResponse[list[PackageServiceResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="List Package Services",
+    description="Return all services included in the package.",
+    operation_id="packages_list_services",
+)
+
+router.add_api_route(
+    "/{package_id}/services",
+    ctrl.add_service,
+    methods=["POST"],
+    response_model=SuccessResponse[PackageServiceResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Add Package Service",
+    description="Add a new service to the package. Vendor ownership or admin access required.",
+    operation_id="packages_add_service",
+)
+
+router.add_api_route(
+    "/{package_id}/services/import",
+    ctrl.import_package_services,
+    methods=["POST"],
+    response_model=SuccessResponse[ItemImportResult],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Import Package Services (Vendor)",
+    description="Upload a CSV/XLSX file to bulk create/update this package's services "
+                "(upserted by service name). Vendor ownership required.",
+    operation_id="packages_import_services",
+)
+
+router.add_api_route(
+    "/{package_id}/services/export",
+    ctrl.export_package_services,
+    methods=["GET"],
+    summary="Bulk Export Package Services (Vendor)",
+    description="Download this package's services as a CSV/XLSX file. Vendor ownership required.",
+    operation_id="packages_export_services",
+)
+
+router.add_api_route(
+    "/{package_id}/services/import-template",
+    ctrl.get_package_services_import_template,
+    methods=["GET"],
+    summary="Package Services Import Template (Vendor)",
+    description="Download a blank CSV/XLSX template for bulk-importing package services.",
+    operation_id="packages_services_import_template",
+)
+
+router.add_api_route(
+    "/{package_id}/services/{service_id}",
+    ctrl.update_service,
+    methods=["PUT"],
+    response_model=SuccessResponse[PackageServiceResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Package Service",
+    description="Update details on an existing package service. Vendor ownership or admin access required.",
+    operation_id="packages_update_service",
+)
+
+router.add_api_route(
+    "/{package_id}/services/{service_id}",
+    ctrl.delete_service,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Delete Package Service",
+    description="Remove a service from the package. Vendor ownership or admin access required.",
+    operation_id="packages_delete_service",
+)
+
+# ── Common (vendor-owned, reusable) package services ────────────────────────────
+
+router.add_api_route(
+    "/vendor/common-services",
+    ctrl.list_common_services,
+    methods=["GET"],
+    response_model=SuccessResponse[list[PackageServiceResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="List My Common Services",
+    description="Return the current vendor's reusable service templates.",
+    operation_id="packages_list_common_services",
+)
+
+router.add_api_route(
+    "/vendor/common-services",
+    ctrl.create_common_service,
+    methods=["POST"],
+    response_model=SuccessResponse[PackageServiceResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Create Common Service",
+    description="Create a reusable service template owned by the current vendor, "
+                "attachable to any of that vendor's own packages.",
+    operation_id="packages_create_common_service",
+)
+
+router.add_api_route(
+    "/vendor/common-services/import",
+    ctrl.import_common_services,
+    methods=["POST"],
+    response_model=SuccessResponse[ItemImportResult],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Import Common Services (Vendor)",
+    description="Upload a CSV/XLSX file to bulk create/update the current vendor's "
+                "reusable service templates (upserted by service name).",
+    operation_id="packages_import_common_services",
+)
+
+router.add_api_route(
+    "/vendor/common-services/export",
+    ctrl.export_common_services,
+    methods=["GET"],
+    summary="Bulk Export Common Services (Vendor)",
+    description="Download the current vendor's common services as a CSV/XLSX file.",
+    operation_id="packages_export_common_services",
+)
+
+router.add_api_route(
+    "/vendor/common-services/import-template",
+    ctrl.get_common_services_import_template,
+    methods=["GET"],
+    summary="Common Services Import Template (Vendor)",
+    description="Download a blank CSV/XLSX template for bulk-importing common services.",
+    operation_id="packages_common_services_import_template",
+)
+
+router.add_api_route(
+    "/vendor/common-services/{service_id}",
+    ctrl.update_common_service,
+    methods=["PUT"],
+    response_model=SuccessResponse[PackageServiceResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Common Service",
+    description="Update a common service template owned by the current vendor.",
+    operation_id="packages_update_common_service",
+)
+
+router.add_api_route(
+    "/vendor/common-services/{service_id}",
+    ctrl.delete_common_service,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Delete Common Service",
+    description="Delete a common service template owned by the current vendor.",
+    operation_id="packages_delete_common_service",
+)
+
+router.add_api_route(
+    "/{package_id}/common-services/{service_id}",
+    ctrl.attach_common_service,
+    methods=["POST"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Attach Common Service",
+    description="Attach one of the vendor's common service templates to this package.",
+    operation_id="packages_attach_common_service",
+)
+
+router.add_api_route(
+    "/{package_id}/common-services/{service_id}",
+    ctrl.detach_common_service,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Detach Common Service",
+    description="Detach a common service template from this package (does not delete the template).",
+    operation_id="packages_detach_common_service",
+)
+
+# ── Package service images ───────────────────────────────────────────────────
+
+router.add_api_route(
+    "/{package_id}/services/{service_id}/images",
+    ctrl.add_service_image,
+    methods=["POST"],
+    response_model=SuccessResponse[PackageServiceImageResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Add Package Service Image",
+    description="Add a photo to a package service. Vendor ownership or admin access required.",
+    operation_id="packages_add_service_image",
+)
+
+router.add_api_route(
+    "/{package_id}/services/{service_id}/images/{image_id}",
+    ctrl.delete_service_image,
+    methods=["DELETE"],
+    response_model=SuccessResponse[None],
+    status_code=status.HTTP_200_OK,
+    summary="Delete Package Service Image",
+    description="Remove a photo from a package service. Vendor ownership or admin access required.",
+    operation_id="packages_delete_service_image",
 )
 
 # ── Package gallery (additional images beyond the cover) ──────────────────────

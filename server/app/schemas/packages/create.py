@@ -69,15 +69,6 @@ class PackageCreate(BaseSchema):
         default_factory=list,
         description="Occasions this package applies to (e.g. Birthday, Baby Shower).",
     )
-    theme_ids: list[uuid.UUID] = Field(
-        default_factory=list,
-        max_length=1,
-        description=(
-            "The single celebration theme the vendor is offering on this "
-            "package (at most one — customers do not choose among multiple "
-            "themes). Only meaningful when is_customizable=True."
-        ),
-    )
     description: str | None = Field(default=None, description="Long-form description (Markdown)")
     short_description: str | None = Field(
         default=None, max_length=500, description="One-liner shown in listing cards"
@@ -208,6 +199,80 @@ class CommonPackageItemCreate(BaseSchema):
     )
 
 
+class PackageServiceCreate(BaseSchema):
+    """Payload required to add a service to an existing package."""
+
+    package_id: uuid.UUID = Field(description="Parent package UUID")
+    name: str = Field(min_length=1, max_length=300, description="Service name")
+    description: str | None = Field(default=None, description="Service description")
+    quantity: int = Field(default=1, ge=1, description="Default quantity included")
+    unit: str | None = Field(
+        default=None, max_length=50, description="Unit label, e.g. 'hours', 'persons'"
+    )
+    base_price: MoneyAmount = Field(description="Service base price")
+    is_mandatory: bool = Field(
+        default=True, description="Whether service is always included vs. optional add-on"
+    )
+    is_customizable: bool = Field(
+        default=False, description="True if the customer can configure options for this service"
+    )
+    max_quantity: int | None = Field(
+        default=None,
+        ge=1,
+        description="Highest quantity a customer may select at booking time. "
+                    "NULL means uncapped.",
+    )
+    icon_url: str | None = Field(default=None, max_length=500, description="Small icon/thumbnail URL")
+    cover_image_url: str | None = Field(
+        default=None, max_length=500,
+        description="Service's cover/thumbnail image, shown on service rows and as the first gallery slide",
+    )
+    display_order: int = Field(default=0, ge=0, description="Sort order within the package")
+    prep_time_minutes: int | None = Field(
+        default=None, ge=0, le=1440,
+        description="Vendor-suggested setup/prep time (minutes) required before the event's scheduled start",
+    )
+
+
+class CommonPackageServiceCreate(BaseSchema):
+    """
+    Payload to create a vendor-owned reusable service template.
+
+    Unlike PackageServiceCreate, this has no package_id — a common service is
+    created once per vendor and attached to any number of that vendor's
+    packages afterward via the attach/detach endpoints.
+    """
+
+    name: str = Field(min_length=1, max_length=300, description="Service name")
+    description: str | None = Field(default=None, description="Service description")
+    quantity: int = Field(default=1, ge=1, description="Default quantity included")
+    unit: str | None = Field(
+        default=None, max_length=50, description="Unit label, e.g. 'hours', 'persons'"
+    )
+    base_price: MoneyAmount = Field(description="Service base price")
+    is_mandatory: bool = Field(
+        default=True, description="Whether service is always included vs. optional add-on"
+    )
+    is_customizable: bool = Field(
+        default=False, description="True if the customer can configure options for this service"
+    )
+    max_quantity: int | None = Field(
+        default=None,
+        ge=1,
+        description="Highest quantity a customer may select at booking time. "
+                    "NULL means uncapped.",
+    )
+    icon_url: str | None = Field(default=None, max_length=500, description="Small icon/thumbnail URL")
+    cover_image_url: str | None = Field(
+        default=None, max_length=500,
+        description="Service's cover/thumbnail image, shown on service rows and as the first gallery slide",
+    )
+    prep_time_minutes: int | None = Field(
+        default=None, ge=0, le=1440,
+        description="Vendor-suggested setup/prep time (minutes) required before the event's scheduled start",
+    )
+
+
 class PackageGalleryCreate(BaseSchema):
     """Payload required to add an additional image to a package's gallery."""
 
@@ -217,6 +282,12 @@ class PackageGalleryCreate(BaseSchema):
 
 class PackageItemImageCreate(BaseSchema):
     """Payload required to add a photo to a PackageItem."""
+
+    image_url: str = Field(min_length=1, max_length=500, description="CDN URL of the uploaded image")
+
+
+class PackageServiceImageCreate(BaseSchema):
+    """Payload required to add a photo to a PackageService."""
 
     image_url: str = Field(min_length=1, max_length=500, description="CDN URL of the uploaded image")
 
