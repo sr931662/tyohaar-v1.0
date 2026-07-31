@@ -29,13 +29,17 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
   }
 
   Future<void> _load() async {
-    final l10n = AppLocalizations.of(context)!;
     setState(() { _loading = true; _error = null; });
     try {
       final addresses = await context.read<UserService>().getAddresses();
       if (mounted) setState(() { _addresses = addresses; _loading = false; });
     } catch (_) {
-      if (mounted) setState(() { _error = l10n.manageAddressLoadError; _loading = false; });
+      // Looked up here (after the await), not at the top of this method —
+      // when _load() is invoked from initState(), fetching this before any
+      // await runs synchronously inside initState's call stack, which
+      // throws ("dependOnInheritedWidgetOfExactType... called before
+      // initState() completed") because Localizations isn't attached yet.
+      if (mounted) setState(() { _error = AppLocalizations.of(context)!.manageAddressLoadError; _loading = false; });
     }
   }
 

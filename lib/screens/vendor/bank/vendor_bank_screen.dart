@@ -138,11 +138,17 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorBankAddError)));
     } finally {
-      holderCtrl.dispose();
-      numberCtrl.dispose();
-      ifscCtrl.dispose();
-      bankCtrl.dispose();
-      branchCtrl.dispose();
+      // Deferred a frame: showModalBottomSheet's returned Future can resolve
+      // while the sheet's closing transition is still rendering, so disposing
+      // these immediately races that still-mounted TextField tree and throws
+      // "A TextEditingController was used after being disposed."
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        holderCtrl.dispose();
+        numberCtrl.dispose();
+        ifscCtrl.dispose();
+        bankCtrl.dispose();
+        branchCtrl.dispose();
+      });
     }
   }
 

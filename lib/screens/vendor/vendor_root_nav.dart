@@ -7,6 +7,7 @@ import '../../theme/theme_controller.dart';
 import '../../data/app_state.dart';
 import '../../data/auth_manager.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/push_service.dart';
 import '../../widgets/avatar.dart';
 import '../auth_screen.dart';
 import 'dashboard/vendor_dashboard_screen.dart';
@@ -61,6 +62,15 @@ class VendorRootNav extends StatefulWidget {
 class _VendorRootNavState extends State<VendorRootNav> {
   int _index = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Mirrors root_nav.dart (customer shell) — without this, vendors never
+    // register an FCM device token and so never receive push notifications,
+    // even though the backend dispatches PUSH-channel notifications for them.
+    PushService.instance.initialize();
+  }
 
   void _setIndex(int i) => setState(() => _index = i);
 

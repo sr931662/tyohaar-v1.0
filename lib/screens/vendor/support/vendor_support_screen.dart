@@ -90,8 +90,14 @@ class _VendorSupportScreenState extends State<VendorSupportScreen> {
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.vendorSupportCreateTicketError)));
     } finally {
-      subjectCtrl.dispose();
-      descCtrl.dispose();
+      // Deferred a frame: showModalBottomSheet's returned Future can resolve
+      // while the sheet's closing transition is still rendering, so disposing
+      // these immediately races that still-mounted TextField tree and throws
+      // "A TextEditingController was used after being disposed."
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        subjectCtrl.dispose();
+        descCtrl.dispose();
+      });
     }
   }
 

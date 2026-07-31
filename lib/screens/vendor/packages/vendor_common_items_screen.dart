@@ -157,11 +157,17 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
             content: Text(existing == null ? l10n.vendorCommonItemsCreateError : l10n.vendorCommonItemsUpdateError)));
       }
     } finally {
-      nameCtrl.dispose();
-      priceCtrl.dispose();
-      qtyCtrl.dispose();
-      unitCtrl.dispose();
-      descCtrl.dispose();
+      // Deferred a frame: showModalBottomSheet's returned Future can resolve
+      // while the sheet's closing transition is still rendering, so disposing
+      // these immediately races that still-mounted TextField tree and throws
+      // "A TextEditingController was used after being disposed."
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        nameCtrl.dispose();
+        priceCtrl.dispose();
+        qtyCtrl.dispose();
+        unitCtrl.dispose();
+        descCtrl.dispose();
+      });
     }
   }
 
