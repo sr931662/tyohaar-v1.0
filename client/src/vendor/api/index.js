@@ -174,6 +174,61 @@ export const vendorPackagesApi = {
     vendorClient.get(`/packages/${packageId}/reviews`, { params }).then(extractPaginated),
   listItemReviews: (packageId, itemId, params) =>
     vendorClient.get(`/packages/${packageId}/items/${itemId}/reviews`, { params }).then(extractPaginated),
+
+  // Services
+  listServices: (packageId) =>
+    vendorClient.get(`/packages/${packageId}/services`).then(extractList),
+  addService: (packageId, body) =>
+    vendorClient.post(`/packages/${packageId}/services`, body).then(extractData),
+  updateService: (packageId, serviceId, body) =>
+    vendorClient.put(`/packages/${packageId}/services/${serviceId}`, body).then(extractData),
+  deleteService: (packageId, serviceId) =>
+    vendorClient.delete(`/packages/${packageId}/services/${serviceId}`).then(extractData),
+
+  // Service images
+  addServiceImage: (packageId, serviceId, body) =>
+    vendorClient.post(`/packages/${packageId}/services/${serviceId}/images`, body).then(extractData),
+  deleteServiceImage: (packageId, serviceId, imageId) =>
+    vendorClient.delete(`/packages/${packageId}/services/${serviceId}/images/${imageId}`).then(extractData),
+
+  // Common services — vendor-owned reusable service templates, attachable to
+  // any of that vendor's own packages instead of being recreated per package.
+  listCommonServices: () =>
+    vendorClient.get('/packages/vendor/common-services').then(extractList),
+  createCommonService: (body) =>
+    vendorClient.post('/packages/vendor/common-services', body).then(extractData),
+  updateCommonService: (serviceId, body) =>
+    vendorClient.put(`/packages/vendor/common-services/${serviceId}`, body).then(extractData),
+  deleteCommonService: (serviceId) =>
+    vendorClient.delete(`/packages/vendor/common-services/${serviceId}`).then(extractData),
+  attachCommonService: (packageId, serviceId) =>
+    vendorClient.post(`/packages/${packageId}/common-services/${serviceId}`).then(extractData),
+  detachCommonService: (packageId, serviceId) =>
+    vendorClient.delete(`/packages/${packageId}/common-services/${serviceId}`).then(extractData),
+};
+
+// ── Bulk import/export (common services + package services) ────────────────────
+
+export const vendorServiceIoApi = {
+  getCommonItemsTemplate: (format) =>
+    vendorClient.get('/packages/vendor/common-services/import-template', { params: { format }, responseType: 'blob' }).then((res) => res.data),
+  importCommonItems: (formData) =>
+    vendorClient.post('/packages/vendor/common-services/import', formData).then(extractData),
+  exportCommonItems: (format) =>
+    vendorClient.get('/packages/vendor/common-services/export', { params: { format }, responseType: 'blob' }).then((res) => ({
+      blob: res.data,
+      filename: filenameFromContentDisposition(res.headers['content-disposition'], `common_services.${format}`),
+    })),
+
+  getPackageItemsTemplate: (packageId, format) =>
+    vendorClient.get(`/packages/${packageId}/services/import-template`, { params: { format }, responseType: 'blob' }).then((res) => res.data),
+  importPackageItems: (packageId, formData) =>
+    vendorClient.post(`/packages/${packageId}/services/import`, formData).then(extractData),
+  exportPackageItems: (packageId, format) =>
+    vendorClient.get(`/packages/${packageId}/services/export`, { params: { format }, responseType: 'blob' }).then((res) => ({
+      blob: res.data,
+      filename: filenameFromContentDisposition(res.headers['content-disposition'], `package_services.${format}`),
+    })),
 };
 
 // ── Bulk import/export (common items + package items) ──────────────────────────

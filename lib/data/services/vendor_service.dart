@@ -244,6 +244,82 @@ class VendorService {
     await _api.dio.delete('packages/$packageId/common-items/$itemId');
   }
 
+  // ── Package services ─────────────────────────────────────────────────────
+
+  Future<List<VendorPackageService>> listPackageServices(String packageId) async {
+    final response = await _api.dio.get('packages/$packageId/services');
+    final List list = (response.data['data'] ?? []) as List;
+    return list.map((e) => VendorPackageService.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> addPackageService(String packageId, Map<String, dynamic> body) async {
+    await _api.dio.post('packages/$packageId/services', data: body);
+  }
+
+  Future<void> updatePackageService(String packageId, String serviceId, Map<String, dynamic> body) async {
+    await _api.dio.put('packages/$packageId/services/$serviceId', data: body);
+  }
+
+  Future<void> deletePackageService(String packageId, String serviceId) async {
+    await _api.dio.delete('packages/$packageId/services/$serviceId');
+  }
+
+  Future<void> addServiceImage(String packageId, String serviceId, String imageUrl) async {
+    await _api.dio.post('packages/$packageId/services/$serviceId/images', data: {'image_url': imageUrl});
+  }
+
+  Future<void> deleteServiceImage(String packageId, String serviceId, String imageId) async {
+    await _api.dio.delete('packages/$packageId/services/$serviceId/images/$imageId');
+  }
+
+  // ── Common services (reusable templates) ────────────────────────────────
+
+  Future<List<VendorCommonService>> listCommonServices() async {
+    final response = await _api.dio.get('packages/vendor/common-services');
+    final List list = (response.data['data'] ?? []) as List;
+    return list.map((e) => VendorCommonService.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> createCommonService(Map<String, dynamic> body) async {
+    await _api.dio.post('packages/vendor/common-services', data: body);
+  }
+
+  Future<void> updateCommonService(String serviceId, Map<String, dynamic> body) async {
+    await _api.dio.put('packages/vendor/common-services/$serviceId', data: body);
+  }
+
+  Future<void> deleteCommonService(String serviceId) async {
+    await _api.dio.delete('packages/vendor/common-services/$serviceId');
+  }
+
+  Future<void> attachCommonService(String packageId, String serviceId) async {
+    await _api.dio.post('packages/$packageId/common-services/$serviceId');
+  }
+
+  Future<void> detachCommonService(String packageId, String serviceId) async {
+    await _api.dio.delete('packages/$packageId/common-services/$serviceId');
+  }
+
+  // ── Bulk import/export (common services + package services) ─────────────
+
+  Future<List<int>> getCommonServicesImportTemplate({String format = 'xlsx'}) =>
+      _downloadBytes('packages/vendor/common-services/import-template', format: format);
+
+  Future<List<int>> exportCommonServices({String format = 'xlsx'}) =>
+      _downloadBytes('packages/vendor/common-services/export', format: format);
+
+  Future<Map<String, dynamic>> importCommonServices(PlatformFile file) =>
+      _uploadForImport('packages/vendor/common-services/import', file);
+
+  Future<List<int>> getPackageServicesImportTemplate(String packageId, {String format = 'xlsx'}) =>
+      _downloadBytes('packages/$packageId/services/import-template', format: format);
+
+  Future<List<int>> exportPackageServices(String packageId, {String format = 'xlsx'}) =>
+      _downloadBytes('packages/$packageId/services/export', format: format);
+
+  Future<Map<String, dynamic>> importPackageServices(String packageId, PlatformFile file) =>
+      _uploadForImport('packages/$packageId/services/import', file);
+
   // ── Bulk import/export (common items + package items) ──────────────────
 
   Future<List<int>> _downloadBytes(String path, {required String format}) async {

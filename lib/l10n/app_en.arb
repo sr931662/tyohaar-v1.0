@@ -289,9 +289,11 @@
   "vendorPackagesDeleteRestrictedError": "Could not delete — only draft/inactive packages can be deleted.",
   "vendorPackagesNewPackageButtonLabel": "New Package",
   "vendorPackagesCommonItemsButtonLabel": "Common Items",
+  "vendorPackagesCommonServicesButtonLabel": "Common Services",
   "vendorPackagesEmptyMessage": "No packages yet",
   "vendorPackagesEditButtonLabel": "Edit",
   "vendorPackagesItemsButtonLabel": "Items",
+  "vendorPackagesServicesButtonLabel": "Services",
   "vendorPackagesPhotosButtonLabel": "Photos",
   "vendorPackagesSubmitButtonLabel": "Submit",
   "vendorPackagesUnpublishButtonLabel": "Unpublish",
@@ -392,6 +394,62 @@
   "vendorCommonItemsReturnableLabel": "Returnable",
   "vendorCommonItemsReturnableBadgeLabel": "returnable",
 
+  "vendorCommonServicesNewServiceTitle": "New Common Service",
+  "vendorCommonServicesNameLabel": "Name",
+  "vendorCommonServicesBasePriceLabel": "Base Price",
+  "vendorCommonServicesBasePriceFormatHelperText": "e.g. 5000",
+  "vendorCommonServicesQuantityLabel": "Quantity",
+  "vendorCommonServicesUnitLabel": "Unit",
+  "vendorCommonServicesUnitFormatHelperText": "e.g. hours, persons",
+  "vendorCommonServicesDescriptionLabel": "Description",
+  "vendorCommonServicesCreateButtonLabel": "Create",
+  "vendorCommonServicesCreateError": "Could not create service.",
+  "vendorCommonServicesDeleteConfirmTitle": "Delete common service?",
+  "vendorCommonServicesDeleteConfirmMessage": "This removes \"{name}\" from all packages it's attached to.",
+  "@vendorCommonServicesDeleteConfirmMessage": {
+    "description": "Confirmation dialog message when deleting a vendor common service",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "vendorCommonServicesDeleteButtonLabel": "Delete",
+  "vendorCommonServicesDeleteError": "Could not delete service.",
+  "vendorCommonServicesTitle": "Common Services",
+  "vendorCommonServicesEmptyMessage": "No common services yet",
+  "vendorCommonServicesQtyPriceLabel": "Qty {quantity} · ₹{price}",
+  "@vendorCommonServicesQtyPriceLabel": {
+    "description": "Quantity and price line on a vendor common service card",
+    "placeholders": {
+      "quantity": { "type": "String" },
+      "price": { "type": "String" }
+    }
+  },
+  "vendorCommonServicesEditServiceTitle": "Edit Common Service",
+  "vendorCommonServicesMandatoryLabel": "Mandatory",
+  "vendorCommonServicesUpdateButtonLabel": "Save",
+  "vendorCommonServicesUpdateError": "Could not update service.",
+  "vendorCommonServicesEditButtonLabel": "Edit",
+  "vendorCommonServicesAddCoverPhotoButtonLabel": "Add cover photo",
+  "vendorCommonServicesChangeCoverPhotoButtonLabel": "Change cover photo",
+  "vendorCommonServicesUploadingLabel": "Uploading…",
+  "vendorCommonServicesOptionalLabel": "optional",
+  "vendorCommonServicesImportMenuLabel": "Import",
+  "vendorCommonServicesExportMenuLabel": "Export",
+  "vendorCommonServicesTemplateMenuLabel": "Download template",
+  "vendorCommonServicesChooseFormatTitle": "Choose a file format",
+  "vendorCommonServicesImportResultTitle": "Import complete",
+  "vendorCommonServicesImportResultSummary": "{created} created, {updated} updated, {errors} errors.",
+  "@vendorCommonServicesImportResultSummary": {
+    "description": "Summary shown after a bulk common-services import completes",
+    "placeholders": {
+      "created": { "type": "int" },
+      "updated": { "type": "int" },
+      "errors": { "type": "int" }
+    }
+  },
+  "vendorCommonServicesImportError": "Import failed. Please check the file and try again.",
+  "vendorCommonServicesExportError": "Export failed.",
+
   "vendorPackageItemsAddItemTitle": "Add Item",
   "vendorPackageItemsEditItemTitle": "Edit Item",
   "vendorPackageItemsNameLabel": "Name",
@@ -445,6 +503,58 @@
   "vendorPackageItemsExportError": "Export failed.",
   "vendorPackageItemsReturnableLabel": "Returnable",
   "vendorPackageItemsReturnableBadgeLabel": "returnable",
+
+  "vendorPackageServicesAddServiceTitle": "Add Service",
+  "vendorPackageServicesEditServiceTitle": "Edit Service",
+  "vendorPackageServicesNameLabel": "Name",
+  "vendorPackageServicesBasePriceLabel": "Base Price",
+  "vendorPackageServicesBasePriceFormatHelperText": "e.g. 5000",
+  "vendorPackageServicesQuantityLabel": "Quantity",
+  "vendorPackageServicesUnitLabel": "Unit",
+  "vendorPackageServicesUnitFormatHelperText": "e.g. hours, persons",
+  "vendorPackageServicesDescriptionLabel": "Description",
+  "vendorPackageServicesMandatoryLabel": "Mandatory",
+  "vendorPackageServicesSaveError": "Could not save service.",
+  "vendorPackageServicesDeleteError": "Could not delete service.",
+  "vendorPackageServicesTitle": "{packageName} — Services",
+  "@vendorPackageServicesTitle": {
+    "description": "AppBar title on the vendor package services screen",
+    "placeholders": {
+      "packageName": { "type": "String" }
+    }
+  },
+  "vendorPackageServicesLockedMessage": "Services are locked while this package is under review.",
+  "vendorPackageServicesSectionLabel": "Services",
+  "vendorPackageServicesEmptyMessage": "No services yet",
+  "vendorPackageServicesCommonPrefixLabel": "common",
+  "vendorPackageServicesOptionalLabel": "optional",
+  "vendorPackageServicesQtyPriceLabel": "Qty {quantity} · ₹{price}",
+  "@vendorPackageServicesQtyPriceLabel": {
+    "description": "Quantity and price line on a vendor package service card",
+    "placeholders": {
+      "quantity": { "type": "String" },
+      "price": { "type": "String" }
+    }
+  },
+  "vendorPackageServicesPhotosButtonLabel": "Photos",
+  "vendorPackageServicesEditButtonLabel": "Edit",
+  "vendorPackageServicesDeleteButtonLabel": "Delete",
+  "vendorPackageServicesImportMenuLabel": "Import",
+  "vendorPackageServicesExportMenuLabel": "Export",
+  "vendorPackageServicesTemplateMenuLabel": "Download template",
+  "vendorPackageServicesChooseFormatTitle": "Choose a file format",
+  "vendorPackageServicesImportResultTitle": "Import complete",
+  "vendorPackageServicesImportResultSummary": "{created} created, {updated} updated, {errors} errors.",
+  "@vendorPackageServicesImportResultSummary": {
+    "description": "Summary shown after a bulk package-services import completes",
+    "placeholders": {
+      "created": { "type": "int" },
+      "updated": { "type": "int" },
+      "errors": { "type": "int" }
+    }
+  },
+  "vendorPackageServicesImportError": "Import failed. Please check the file and try again.",
+  "vendorPackageServicesExportError": "Export failed.",
 
   "vendorProfileBusinessNameRequiredError": "Business name is required.",
   "vendorProfileCreatedMessage": "Vendor profile created!",
@@ -558,6 +668,8 @@
 
   "planFlowPackageSpecificItemsHeading": "Package Items",
   "planFlowCommonItemsHeading": "Common Items",
+  "planFlowPackageSpecificServicesHeading": "Package Services",
+  "planFlowCommonServicesHeading": "Common Services",
   "planFlowIncludedLabel": "INCLUDED",
   "planFlowOptionalAddOnsLabel": "OPTIONAL ADD-ONS",
   "planFlowNoConfigurableItemsMessage": "This package has no configurable items.",
@@ -636,7 +748,8 @@
   "planFlowSummaryBalloonColoursLabel": "Balloon Colours",
   "planFlowDualLabel": "Dual",
   "planFlowSingleLabel": "Single",
-  "planFlowSummaryIncludedItemsLabel": "Included Services",
+  "planFlowSummaryIncludedItemsLabel": "Included Items",
+  "planFlowSummaryIncludedServicesLabel": "Included Services",
   "planFlowSummaryAddOnsLabel": "Add-ons",
   "planFlowAddOnQuantityLabel": "{name} ×{qty}",
   "@planFlowAddOnQuantityLabel": {

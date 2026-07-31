@@ -5,6 +5,8 @@ import { vendorProfileApi, vendorPackagesApi, vendorOccasionsApi } from '../../a
 import { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
+import CommonServicesModal from './CommonServicesModal';
+import PackageServicesModal from './PackageServicesModal';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -928,8 +930,10 @@ export default function VendorPackagesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingPkg, setEditingPkg] = useState(null);
   const [managingItems, setManagingItems] = useState(null);
+  const [managingServices, setManagingServices] = useState(null);
   const [managingGallery, setManagingGallery] = useState(null);
   const [showCommonItems, setShowCommonItems] = useState(false);
+  const [showCommonServices, setShowCommonServices] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(null);
   const [confirmUnpublish, setConfirmUnpublish] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -1003,6 +1007,7 @@ export default function VendorPackagesPage() {
         </div>
         <div className="admin-page-header-actions">
           <button className="btn btn-secondary" onClick={() => setShowCommonItems(true)}>Common Items</button>
+          <button className="btn btn-secondary" onClick={() => setShowCommonServices(true)}>Common Services</button>
           <button className="btn btn-primary" onClick={() => setShowCreate(true)}>+ New Package</button>
         </div>
       </div>
@@ -1070,6 +1075,7 @@ export default function VendorPackagesPage() {
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button className="btn btn-secondary btn-sm" onClick={() => setEditingPkg(p)}>Edit</button>
                       <button className="btn btn-secondary btn-sm" onClick={() => setManagingItems(p)}>Items</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setManagingServices(p)}>Services</button>
                       <button className="btn btn-secondary btn-sm" onClick={() => setManagingGallery(p)}>Photos</button>
                       {p.status === 'draft' && (
                         <button className="btn btn-primary btn-sm" onClick={() => setConfirmSubmit(p)}>Submit</button>
@@ -1113,11 +1119,17 @@ export default function VendorPackagesPage() {
       {managingItems && (
         <PackageItemsModal pkg={managingItems} onClose={() => setManagingItems(null)} />
       )}
+      {managingServices && (
+        <PackageServicesModal pkg={managingServices} onClose={() => setManagingServices(null)} />
+      )}
       {managingGallery && (
         <PackageGalleryModal pkg={managingGallery} onClose={() => setManagingGallery(null)} />
       )}
       {showCommonItems && (
         <CommonItemsModal onClose={() => setShowCommonItems(false)} />
+      )}
+      {showCommonServices && (
+        <CommonServicesModal onClose={() => setShowCommonServices(false)} />
       )}
 
       <ConfirmDialog

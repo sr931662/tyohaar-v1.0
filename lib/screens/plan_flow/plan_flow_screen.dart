@@ -165,6 +165,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // included in the booking (mandatory items are always present).
   final Map<String, int> _itemQuantities = {};
 
+  List<PackageServiceLine> _packageServices = [];
+  // service.id -> chosen quantity, mirrors _itemQuantities.
+  final Map<String, int> _serviceQuantities = {};
+
   @override
   void initState() {
     super.initState();
@@ -237,12 +241,22 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     if (_pkg == null) return;
     setState(() { _loadingItems = true; _itemsError = false; _itemsLoadAttempted = true; });
     try {
-      final items = await _packageService.listPackageItems(_pkg!.id);
+      final results = await Future.wait([
+        _packageService.listPackageItems(_pkg!.id),
+        _packageService.listPackageServices(_pkg!.id),
+      ]);
+      final items = results[0] as List<PackageItem>;
+      final services = results[1] as List<PackageServiceLine>;
       setState(() {
         _packageItems = items;
         _itemQuantities.clear();
         for (final i in items.where((i) => i.isMandatory)) {
           _itemQuantities[i.id] = i.quantity;
+        }
+        _packageServices = services;
+        _serviceQuantities.clear();
+        for (final s in services.where((s) => s.isMandatory)) {
+          _serviceQuantities[s.id] = s.quantity;
         }
         _loadingItems = false;
       });
@@ -270,8 +284,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       final itemsTotal = selectedOptional.fold<double>(
         0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
       );
+      final selectedOptionalServices = _packageServices.where((s) => !s.isMandatory && _serviceQuantities.containsKey(s.id));
+      final servicesTotal = selectedOptionalServices.fold<double>(
+        0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
+      );
       final preview = await _paymentService.previewDiscount(
-        subtotal: basePrice + itemsTotal,
+        subtotal: basePrice + itemsTotal + servicesTotal,
         packageId: _pkg?.id,
         occasionId: _occasion?.id,
         couponCode: code,
@@ -331,6 +349,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           .where((i) => !i.isMandatory && _itemQuantities.containsKey(i.id))
           .map((i) => i.id)
           .toList();
+      final optionalServicesSelected = _packageServices
+          .where((s) => !s.isMandatory && _serviceQuantities.containsKey(s.id))
+          .map((s) => s.id)
+          .toList();
 
       final notes = <String>[
         if (_vibes.isNotEmpty) 'Mood: ${_vibes.join(', ')}',
@@ -355,6 +377,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'theme_id': (_pkg?.isCustomizable ?? false) ? _theme?.id : null,
         'item_ids': optionalSelected,
         'item_quantities': _itemQuantities.map((id, qty) => MapEntry(id, qty)),
+        'service_ids': optionalServicesSelected,
+        'service_quantities': _serviceQuantities.map((id, qty) => MapEntry(id, qty)),
         'special_instructions': notes.isNotEmpty ? notes : null,
         'customization_note': _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
         if ((_pkg?.isCustomizable ?? false) && balloonSelectionComplete) ...{
@@ -594,6 +618,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   _packageItems = [];
                   _itemsLoadAttempted = false;
                   _itemQuantities.clear();
+                  _packageServices = [];
+                  _serviceQuantities.clear();
                 });
                 _loadPackagesForOccasion(o.id);
               },
@@ -1042,6 +1068,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _pkg = p;
         _packageItems = [];
         _itemsLoadAttempted = false;
+        _packageServices = [];
         // A previously-picked theme is meaningless if the newly-selected
         // package isn't customizable, so always start fresh on reselection.
         _theme = null;
@@ -1175,6 +1202,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     _pkg = p;
                     _packageItems = [];
                     _itemsLoadAttempted = false;
+                    _packageServices = [];
                     // A previously-picked theme is meaningless if the newly-selected
                     // package isn't customizable, so always start fresh on reselection.
                     _theme = null;
@@ -1463,12 +1491,44 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       );
     }
 
+    final specificServices = _packageServices.where((s) => !s.isCommon).toList();
+    final commonServices = _packageServices.where((s) => s.isCommon).toList();
+
+    Widget serviceSection(String heading, List<PackageServiceLine> services) {
+      if (services.isEmpty) return const SizedBox();
+      final mandatory = services.where((s) => s.isMandatory).toList();
+      final optional = services.where((s) => !s.isMandatory).toList();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(heading, style: TyType.sans(13, color: ty.ink, weight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            if (mandatory.isNotEmpty) ...[
+              Text(l10n.planFlowIncludedLabel, style: TyType.eyebrow(11, color: ty.ink3)),
+              const SizedBox(height: 10),
+              ...mandatory.map((service) => _serviceRow(context, service, locked: true)),
+              const SizedBox(height: 20),
+            ],
+            if (optional.isNotEmpty) ...[
+              Text(l10n.planFlowOptionalAddOnsLabel, style: TyType.eyebrow(11, color: ty.ink3)),
+              const SizedBox(height: 10),
+              ...optional.map((service) => _serviceRow(context, service, locked: false)),
+            ],
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         section(l10n.planFlowPackageSpecificItemsHeading, specificItems),
         section(l10n.planFlowCommonItemsHeading, commonItems),
-        if (_packageItems.isEmpty)
+        serviceSection(l10n.planFlowPackageSpecificServicesHeading, specificServices),
+        serviceSection(l10n.planFlowCommonServicesHeading, commonServices),
+        if (_packageItems.isEmpty && _packageServices.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(l10n.planFlowNoConfigurableItemsMessage, style: TyType.sans(13, color: ty.ink3)),
@@ -1556,6 +1616,92 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
+  Widget _serviceRow(BuildContext context, PackageServiceLine service, {required bool locked}) {
+    final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
+    final selected = _serviceQuantities.containsKey(service.id);
+    final qty = _serviceQuantities[service.id] ?? service.quantity;
+    final thumbnail = service.imageUrls.isNotEmpty ? service.imageUrls.first : service.iconUrl;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: _cardDeco(ty),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (thumbnail != null)
+                GestureDetector(
+                  onTap: service.imageUrls.length > 1 ? () => _openServiceGallery(context, service) : null,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: thumbnail,
+                      width: 44, height: 44, fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => Container(width: 44, height: 44, color: ty.line2),
+                    ),
+                  ),
+                ),
+              if (thumbnail != null) const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(service.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                    if (service.description != null)
+                      Text(service.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    if (!locked)
+                      Text(l10n.planFlowAddOnPriceLabel(formatPrice(service.unitPrice), service.unit ?? l10n.planFlowUnitFallback), style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+              if (locked && !service.isQuantityAdjustable)
+                Icon(Icons.check_circle_rounded, color: ty.saffron, size: 22)
+              else if (!locked)
+                Switch.adaptive(
+                  value: selected,
+                  activeTrackColor: ty.saffron,
+                  onChanged: (v) => setState(() {
+                    if (v) {
+                      _serviceQuantities[service.id] = service.quantity;
+                    } else {
+                      _serviceQuantities.remove(service.id);
+                    }
+                  }),
+                ),
+            ],
+          ),
+          if (service.isQuantityAdjustable && (locked || selected)) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(l10n.planFlowQuantityLabel(service.unit ?? ''), style: TyType.sans(12, color: ty.ink3)),
+                const SizedBox(width: 10),
+                _qtyStepper(
+                  context,
+                  value: qty,
+                  min: service.quantity,
+                  max: service.maxQuantity ?? 999,
+                  onChanged: (v) => setState(() => _serviceQuantities[service.id] = v),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _openServiceGallery(BuildContext context, PackageServiceLine service) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _ItemImageGalleryScreen(images: service.imageUrls, title: service.name),
+      fullscreenDialog: true,
+    ));
+  }
+
   Widget _qtyStepper(BuildContext context, {required int value, required int min, required int max, required ValueChanged<int> onChanged}) {
     final ty = context.ty;
     return Container(
@@ -1604,6 +1750,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     final itemsTotal = selectedOptional.fold<double>(
       0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
     );
+    final mandatoryServices = _packageServices.where((s) => s.isMandatory).toList();
+    final selectedOptionalServices = _packageServices.where((s) => !s.isMandatory && _serviceQuantities.containsKey(s.id)).toList();
+    final servicesTotal = selectedOptionalServices.fold<double>(
+      0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
+    );
+    final addOnsTotal = itemsTotal + servicesTotal;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1624,11 +1776,20 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         if (mandatoryItems.isNotEmpty)
           _summaryCard(context, l10n.planFlowSummaryIncludedItemsLabel,
               mandatoryItems.map((i) => i.name).join(', '), onEdit: () => _jumpTo(2)),
-        if (selectedOptional.isNotEmpty)
-          _summaryCard(context, l10n.planFlowSummaryAddOnsLabel, selectedOptional.map((i) {
-            final qty = _itemQuantities[i.id] ?? i.quantity;
-            return qty > 1 ? l10n.planFlowAddOnQuantityLabel(i.name, qty) : i.name;
-          }).join(', '), onEdit: () => _jumpTo(2)),
+        if (mandatoryServices.isNotEmpty)
+          _summaryCard(context, l10n.planFlowSummaryIncludedServicesLabel,
+              mandatoryServices.map((s) => s.name).join(', '), onEdit: () => _jumpTo(2)),
+        if (selectedOptional.isNotEmpty || selectedOptionalServices.isNotEmpty)
+          _summaryCard(context, l10n.planFlowSummaryAddOnsLabel, [
+            ...selectedOptional.map((i) {
+              final qty = _itemQuantities[i.id] ?? i.quantity;
+              return qty > 1 ? l10n.planFlowAddOnQuantityLabel(i.name, qty) : i.name;
+            }),
+            ...selectedOptionalServices.map((s) {
+              final qty = _serviceQuantities[s.id] ?? s.quantity;
+              return qty > 1 ? l10n.planFlowAddOnQuantityLabel(s.name, qty) : s.name;
+            }),
+          ].join(', '), onEdit: () => _jumpTo(2)),
         _summaryCard(context, l10n.planFlowSummaryDateTimeLabel,
             l10n.planFlowDateTimeSummaryValue(DateFormat('d MMMM yyyy').format(_eventDate), l10n.planFlowDefaultEventTime),
             onEdit: () => _jumpTo(3)),
@@ -1716,13 +1877,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             final l10n = AppLocalizations.of(context)!;
             final preview = _discountPreview;
             final hasDiscount = preview != null && _couponError == null && preview.totalDiscount > 0;
-            final subtotal = (_pkg?.price ?? 0) + itemsTotal;
+            final subtotal = (_pkg?.price ?? 0) + addOnsTotal;
             final tax = (hasDiscount ? (subtotal - preview.totalDiscount) : subtotal) * 0.18;
             final total = hasDiscount ? (subtotal - preview.totalDiscount) + tax : subtotal + tax;
             return Column(
               children: [
                 _priceRow(l10n.planFlowPackageBasePriceLabel, _pkg?.price.toInt() ?? 0),
-                if (itemsTotal > 0) _priceRow(l10n.planFlowSummaryAddOnsLabel, itemsTotal.toInt()),
+                if (addOnsTotal > 0) _priceRow(l10n.planFlowSummaryAddOnsLabel, addOnsTotal.toInt()),
                 if (hasDiscount) _priceRow(l10n.planFlowDiscountLabel, -preview.totalDiscount.toInt()),
                 _priceRow(l10n.planFlowGstLabel, tax.toInt()),
                 const Divider(height: 24),

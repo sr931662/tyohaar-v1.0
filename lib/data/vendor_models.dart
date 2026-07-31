@@ -497,6 +497,94 @@ class VendorCommonItem {
   }
 }
 
+class VendorPackageService {
+  final String id;
+  final String name;
+  final String? description;
+  final double basePrice;
+  final int quantity;
+  final String? unit;
+  final bool isMandatory;
+  final bool isOptional;
+  final bool isCommon;
+  final int? maxQuantity;
+  final String? coverImageUrl;
+  final List<String> imageUrls;
+
+  VendorPackageService({
+    required this.id,
+    required this.name,
+    this.description,
+    required this.basePrice,
+    this.quantity = 1,
+    this.unit,
+    this.isMandatory = true,
+    this.isOptional = false,
+    this.isCommon = false,
+    this.maxQuantity,
+    this.coverImageUrl,
+    this.imageUrls = const [],
+  });
+
+  factory VendorPackageService.fromJson(Map<String, dynamic> json) {
+    return VendorPackageService(
+      id: asString(json['id']),
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String?,
+      basePrice: asDouble(json['base_price']),
+      quantity: json['quantity'] as int? ?? 1,
+      unit: json['unit'] as String?,
+      isMandatory: json['is_mandatory'] as bool? ?? true,
+      isOptional: json['is_optional'] as bool? ?? false,
+      isCommon: json['is_common'] as bool? ?? false,
+      maxQuantity: json['max_quantity'] as int?,
+      coverImageUrl: asUrl(json['cover_image_url']),
+      imageUrls: ((json['images'] as List?) ?? [])
+          .map((i) => asUrl(i is Map ? i['image_url'] : i))
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class VendorCommonService {
+  final String id;
+  final String name;
+  final String? description;
+  final double basePrice;
+  final int quantity;
+  final String? unit;
+  final int? maxQuantity;
+  final bool isMandatory;
+  final String? coverImageUrl;
+
+  VendorCommonService({
+    required this.id,
+    required this.name,
+    this.description,
+    required this.basePrice,
+    this.quantity = 1,
+    this.unit,
+    this.maxQuantity,
+    this.isMandatory = true,
+    this.coverImageUrl,
+  });
+
+  factory VendorCommonService.fromJson(Map<String, dynamic> json) {
+    return VendorCommonService(
+      id: asString(json['id']),
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String?,
+      basePrice: asDouble(json['base_price']),
+      quantity: json['quantity'] as int? ?? 1,
+      unit: json['unit'] as String?,
+      maxQuantity: json['max_quantity'] as int?,
+      isMandatory: json['is_mandatory'] as bool? ?? true,
+      coverImageUrl: asUrl(json['cover_image_url']),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Earnings
 // ---------------------------------------------------------------------------

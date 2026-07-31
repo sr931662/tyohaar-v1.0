@@ -6,11 +6,12 @@ import { downloadBlob } from '../../lib/downloadBlob';
 
 /**
  * Compact bulk import/export toolbar shared by CommonItemsModal (vendor-wide,
- * no packageId) and PackageItemsModal (scoped to one packageId). Import is
- * upsert-by-name on the backend — re-uploading a corrected file fixes rows
- * instead of duplicating them.
+ * no packageId) and PackageItemsModal (scoped to one packageId), and reused
+ * unchanged for services via the `entityApi` prop (defaults to items' API).
+ * Import is upsert-by-name on the backend — re-uploading a corrected file
+ * fixes rows instead of duplicating them.
  */
-export default function ItemImportExportBar({ scope, packageId, disabled, invalidateKey }) {
+export default function ItemImportExportBar({ scope, packageId, disabled, invalidateKey, entityApi = vendorItemIoApi, entityLabel = 'items' }) {
   const qc = useQueryClient();
   const fileRef = useRef(null);
   const [format, setFormat] = useState('xlsx');
@@ -22,20 +23,20 @@ export default function ItemImportExportBar({ scope, packageId, disabled, invali
 
   const api = scope === 'common'
     ? {
-        template: () => vendorItemIoApi.getCommonItemsTemplate(format),
-        doImport: (formData) => vendorItemIoApi.importCommonItems(formData),
-        doExport: () => vendorItemIoApi.exportCommonItems(format),
+        template: () => entityApi.getCommonItemsTemplate(format),
+        doImport: (formData) => entityApi.importCommonItems(formData),
+        doExport: () => entityApi.exportCommonItems(format),
       }
     : {
-        template: () => vendorItemIoApi.getPackageItemsTemplate(packageId, format),
-        doImport: (formData) => vendorItemIoApi.importPackageItems(packageId, formData),
-        doExport: () => vendorItemIoApi.exportPackageItems(packageId, format),
+        template: () => entityApi.getPackageItemsTemplate(packageId, format),
+        doImport: (formData) => entityApi.importPackageItems(packageId, formData),
+        doExport: () => entityApi.exportPackageItems(packageId, format),
       };
 
   const handleTemplate = async () => {
     try {
       const blob = await api.template();
-      downloadBlob(blob, `items_template.${format}`);
+      downloadBlob(blob, `${entityLabel}_template.${format}`);
     } catch {
       toast.error('Failed to download template.');
     }

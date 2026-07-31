@@ -7,8 +7,10 @@ import '../../../data/services/vendor_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import 'vendor_package_form_screen.dart';
 import 'vendor_package_items_screen.dart';
+import 'vendor_package_services_screen.dart';
 import 'vendor_package_gallery_screen.dart';
 import 'vendor_common_items_screen.dart';
+import 'vendor_common_services_screen.dart';
 
 /// Mirrors the web VendorPackagesPage: table/list of the vendor's own
 /// packages with status, + create/edit/items/common-items/delete/publish.
@@ -105,6 +107,14 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
           ),
           const SizedBox(height: 12),
           FloatingActionButton.extended(
+            heroTag: 'vendorPackagesCommonServices',
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const VendorCommonServicesScreen())),
+            icon: const Icon(Icons.design_services_outlined),
+            label: Text(l10n.vendorPackagesCommonServicesButtonLabel),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
             heroTag: 'vendorPackagesNewPackage',
             onPressed: () => Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) => const VendorPackageFormScreen()))
@@ -180,6 +190,12 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
                     ? null
                     : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VendorPackageItemsScreen(package: p))),
                 child: Text(l10n.vendorPackagesItemsButtonLabel),
+              ),
+              OutlinedButton(
+                onPressed: p.status == 'pending_review'
+                    ? null
+                    : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VendorPackageServicesScreen(package: p))),
+                child: Text(l10n.vendorPackagesServicesButtonLabel),
               ),
               OutlinedButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VendorPackageGalleryScreen(package: p))),

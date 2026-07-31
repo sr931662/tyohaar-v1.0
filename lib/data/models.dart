@@ -573,6 +573,89 @@ class PackageItem {
 }
 
 // ---------------------------------------------------------------------------
+// PACKAGE SERVICE  →  PackageServiceResponse
+// ---------------------------------------------------------------------------
+
+/// A labor/service line within a package (Photography, DJ, Makeup, etc.),
+/// mirroring [PackageItem] but for services the vendor performs rather than
+/// physical items. No isReturnable (doesn't apply to a service) and no
+/// review/like fields (engagement features scoped to tangible items).
+///
+/// Named PackageServiceLine (not PackageService) to avoid colliding with the
+/// PackageService API-client class in data/services/package_service.dart.
+class PackageServiceLine {
+  final String id;
+  final String name;
+  final String? description;
+  final String? unit;
+  final double unitPrice;
+  final int quantity;
+  final int? maxQuantity;
+  final bool isOptional;
+  final bool isMandatory;
+  final bool isCustomizable;
+  final bool isCommon;
+  final String? iconUrl;
+  final String? coverImageUrl;
+  final List<String> imageUrls;
+  final int displayOrder;
+
+  const PackageServiceLine({
+    required this.id,
+    required this.name,
+    this.description,
+    this.unit,
+    required this.unitPrice,
+    required this.quantity,
+    this.maxQuantity,
+    required this.isOptional,
+    required this.isMandatory,
+    this.isCustomizable = false,
+    this.isCommon = false,
+    this.iconUrl,
+    this.coverImageUrl,
+    this.imageUrls = const [],
+    this.displayOrder = 0,
+  });
+
+  /// Whether the customer can select more than the template default —
+  /// true whenever maxQuantity is null (uncapped) or greater than quantity.
+  bool get isQuantityAdjustable => maxQuantity == null || maxQuantity! > quantity;
+
+  /// Cover first, then gallery images deduped against it — the list a
+  /// gallery viewer should page through.
+  List<String> get allImageUrls => [
+        if (coverImageUrl != null && coverImageUrl!.isNotEmpty) coverImageUrl!,
+        ...imageUrls.where((u) => u != coverImageUrl),
+      ];
+
+  factory PackageServiceLine.fromJson(Map<String, dynamic> json) {
+    final isMandatory = json['is_mandatory'] as bool? ?? true;
+    return PackageServiceLine(
+      id: json['id'] as String? ?? '',
+      name: asString(json['name']),
+      description: json['description'] as String?,
+      unit: json['unit'] as String?,
+      unitPrice: asDouble(json['base_price']),
+      quantity: json['quantity'] as int? ?? 1,
+      maxQuantity: json['max_quantity'] as int?,
+      isMandatory: isMandatory,
+      isOptional: !isMandatory,
+      isCustomizable: json['is_customizable'] as bool? ?? false,
+      isCommon: json['is_common'] as bool? ?? false,
+      iconUrl: asUrl(json['icon_url']),
+      coverImageUrl: asUrl(json['cover_image_url']),
+      imageUrls: (json['images'] as List?)
+              ?.map((img) => img['image_url'] as String? ?? '')
+              .where((u) => u.isNotEmpty)
+              .toList() ??
+          const [],
+      displayOrder: json['display_order'] as int? ?? 0,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // BOOKING  →  BookingResponse / BookingDetailResponse
 // ---------------------------------------------------------------------------
 
