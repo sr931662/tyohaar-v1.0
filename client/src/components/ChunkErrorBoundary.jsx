@@ -38,9 +38,24 @@ export default class ChunkErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       if (isChunkLoadError(this.state.error)) {
+        // The one automatic reload (triggered in componentDidCatch below)
+        // already fired if this is the first time we're hitting a chunk
+        // error this tab session. If we're rendering this a second time,
+        // that reload didn't fix it (most likely a CDN/browser still
+        // serving a stale index.html), so give the user a manual way out
+        // instead of leaving them stuck on this screen indefinitely.
+        const alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG);
         return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', color: '#888' }}>
-            Updating to the latest version…
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', color: '#888', gap: 12 }}>
+            <div>Updating to the latest version…</div>
+            {alreadyReloaded && (
+              <button
+                onClick={() => window.location.reload()}
+                style={{ padding: '8px 16px', cursor: 'pointer', border: '1px solid #888', borderRadius: 6, background: 'transparent', color: 'inherit' }}
+              >
+                Reload
+              </button>
+            )}
           </div>
         );
       }
