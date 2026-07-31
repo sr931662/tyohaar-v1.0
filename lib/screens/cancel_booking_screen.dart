@@ -203,8 +203,17 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TyType.sans(14, color: ty.ink2)),
-        Text(value, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+        Flexible(child: Text(label, style: TyType.sans(14, color: ty.ink2))),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700),
+            textAlign: TextAlign.right,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }

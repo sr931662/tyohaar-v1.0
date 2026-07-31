@@ -147,7 +147,7 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: AppBar(
-        title: Text(l10n.vendorPackageServicesTitle(widget.package.name)),
+        title: Text(l10n.vendorPackageServicesTitle(widget.package.name), maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: locked
             ? null
             : [
@@ -216,7 +216,12 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(children: [
-                                        Text(service.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                        Flexible(
+                                          child: Text(service.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                        ),
                                         if (service.isCommon) ...[
                                           const SizedBox(width: 6),
                                           Text(l10n.vendorPackageServicesCommonPrefixLabel, style: TyType.sans(11, color: ty.saffron)),

@@ -241,45 +241,65 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                     return Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: ty.line)),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (item.coverImageUrl != null) ...[
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: CachedNetworkImage(imageUrl: item.coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
-                            ),
-                            const SizedBox(width: 12),
-                          ],
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(children: [
-                                  Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
-                                  if (!item.isMandatory) ...[
-                                    const SizedBox(width: 6),
-                                    Text(l10n.vendorCommonItemsOptionalLabel, style: TyType.sans(11, color: ty.ink3)),
-                                  ],
-                                  if (item.isReturnable) ...[
-                                    const SizedBox(width: 6),
-                                    Text(l10n.vendorCommonItemsReturnableBadgeLabel, style: TyType.sans(11, color: ty.saffron)),
-                                  ],
-                                ]),
-                                Text(l10n.vendorCommonItemsQtyPriceLabel(item.quantity.toString(), item.basePrice.toStringAsFixed(0)), style: TyType.sans(12, color: ty.ink2)),
-                                Text(
-                                  item.attachedPackageCount > 0
-                                      ? l10n.vendorCommonItemsAttachedCountLabel(item.attachedPackageCount)
-                                      : l10n.vendorCommonItemsNotAttachedLabel,
-                                  style: TyType.sans(11,
-                                      color: item.attachedPackageCount > 0 ? ty.ink3 : const Color(0xFFF59E0B),
-                                      weight: item.attachedPackageCount > 0 ? FontWeight.w400 : FontWeight.w700),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (item.coverImageUrl != null) ...[
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: CachedNetworkImage(imageUrl: item.coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
                                 ),
+                                const SizedBox(width: 12),
                               ],
-                            ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(children: [
+                                      Flexible(
+                                        child: Text(item.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                      ),
+                                      if (!item.isMandatory) ...[
+                                        const SizedBox(width: 6),
+                                        Text(l10n.vendorCommonItemsOptionalLabel, style: TyType.sans(11, color: ty.ink3)),
+                                      ],
+                                      if (item.isReturnable) ...[
+                                        const SizedBox(width: 6),
+                                        Text(l10n.vendorCommonItemsReturnableBadgeLabel, style: TyType.sans(11, color: ty.saffron)),
+                                      ],
+                                    ]),
+                                    Text(l10n.vendorCommonItemsQtyPriceLabel(item.quantity.toString(), item.basePrice.toStringAsFixed(0)), style: TyType.sans(12, color: ty.ink2)),
+                                    Text(
+                                      item.attachedPackageCount > 0
+                                          ? l10n.vendorCommonItemsAttachedCountLabel(item.attachedPackageCount)
+                                          : l10n.vendorCommonItemsNotAttachedLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TyType.sans(11,
+                                          color: item.attachedPackageCount > 0 ? ty.ink3 : const Color(0xFFF59E0B),
+                                          weight: item.attachedPackageCount > 0 ? FontWeight.w400 : FontWeight.w700),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          TextButton(onPressed: () => _attachAll(item), child: Text(l10n.vendorCommonItemsAttachAllButtonLabel)),
-                          TextButton(onPressed: () => _showItemForm(existing: item), child: Text(l10n.vendorCommonItemsEditButtonLabel)),
-                          IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _delete(item)),
+                          const SizedBox(height: 4),
+                          Wrap(
+                            alignment: WrapAlignment.end,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              TextButton(onPressed: () => _attachAll(item), child: Text(l10n.vendorCommonItemsAttachAllButtonLabel)),
+                              TextButton(onPressed: () => _showItemForm(existing: item), child: Text(l10n.vendorCommonItemsEditButtonLabel)),
+                              IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _delete(item)),
+                            ],
+                          ),
                         ],
                       ),
                     );

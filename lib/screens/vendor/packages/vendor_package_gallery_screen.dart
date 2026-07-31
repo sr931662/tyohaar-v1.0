@@ -93,7 +93,8 @@ class _VendorPackageGalleryScreenState extends State<VendorPackageGalleryScreen>
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: AppBar(
-        title: Text(l10n.vendorPackageGalleryTitle(widget.package.name), style: TyType.display(18, color: ty.ink)),
+        title: Text(l10n.vendorPackageGalleryTitle(widget.package.name),
+            maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.display(18, color: ty.ink)),
         centerTitle: true,
         backgroundColor: ty.paper,
         elevation: 0,

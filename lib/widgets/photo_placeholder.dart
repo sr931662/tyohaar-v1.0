@@ -67,20 +67,26 @@ class PhotoPlaceholder extends StatelessWidget {
             if (label.isNotEmpty)
               Positioned(
                 left: 12,
+                right: 12,
                 bottom: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: ty.surface.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 10.5,
-                      letterSpacing: 0.4,
-                      color: ty.ink2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: ty.surface.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 10.5,
+                        letterSpacing: 0.4,
+                        color: ty.ink2,
+                      ),
                     ),
                   ),
                 ),

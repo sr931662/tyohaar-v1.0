@@ -177,7 +177,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: AppBar(
-        title: Text(l10n.vendorPackageItemsTitle(widget.package.name)),
+        title: Text(l10n.vendorPackageItemsTitle(widget.package.name), maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: locked
             ? null
             : [
@@ -232,7 +232,12 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(children: [
-                                      Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                      Flexible(
+                                        child: Text(item.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                      ),
                                       if (item.isReturnable) ...[
                                         const SizedBox(width: 6),
                                         Text(l10n.vendorPackageItemsReturnableBadgeLabel, style: TyType.sans(11, color: ty.saffron)),

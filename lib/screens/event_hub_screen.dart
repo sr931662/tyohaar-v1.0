@@ -487,8 +487,12 @@ class _EventHubScreenState extends State<EventHubScreen> {
                 children: [
                   Icon(Icons.palette_outlined, size: resp.sp(15), color: ty.ink3),
                   SizedBox(width: resp.w(6)),
-                  Text(l10n.eventHubThemeLabel(_booking!.themeName!),
-                      style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                  Flexible(
+                    child: Text(l10n.eventHubThemeLabel(_booking!.themeName!),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                  ),
                 ],
               ),
             ] else if ((_booking?.themeColors ?? const {}).isNotEmpty) ...[
@@ -497,8 +501,12 @@ class _EventHubScreenState extends State<EventHubScreen> {
                 children: [
                   Icon(Icons.palette_outlined, size: resp.sp(15), color: ty.ink3),
                   SizedBox(width: resp.w(6)),
-                  Text(l10n.eventHubCustomThemeLabel,
-                      style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                  Flexible(
+                    child: Text(l10n.eventHubCustomThemeLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                  ),
                   SizedBox(width: resp.w(6)),
                   ..._booking!.themeColors!.values.map((hex) => Padding(
                         padding: EdgeInsets.only(right: resp.w(3)),

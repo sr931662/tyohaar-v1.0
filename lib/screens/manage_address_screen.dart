@@ -209,7 +209,12 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
               children: [
                 Row(
                   children: [
-                    Text(addr.label, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
+                    Flexible(
+                      child: Text(addr.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
+                    ),
                     if (addr.isDefault) ...[
                       const SizedBox(width: 8),
                       Container(

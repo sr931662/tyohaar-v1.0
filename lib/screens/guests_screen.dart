@@ -342,16 +342,19 @@ class _GuestsScreenState extends State<GuestsScreen> {
         ],
       ),
       SizedBox(height: resp.h(16)),
-      Row(children: [
-        for (final f in const ['All', 'Coming', 'Pending'])
-          Padding(
-            padding: EdgeInsets.only(right: resp.w(8)),
-            child: TyChip(
-                label: _filterLabel(l10n, f),
-                active: _filter == f,
-                onTap: () => setState(() => _filter = f)),
-          ),
-      ]),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          for (final f in const ['All', 'Coming', 'Pending'])
+            Padding(
+              padding: EdgeInsets.only(right: resp.w(8)),
+              child: TyChip(
+                  label: _filterLabel(l10n, f),
+                  active: _filter == f,
+                  onTap: () => setState(() => _filter = f)),
+            ),
+        ]),
+      ),
       SizedBox(height: resp.h(14)),
       ],
     );

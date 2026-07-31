@@ -95,16 +95,19 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
         children: [
           Text(_vendor!.averageRating.toStringAsFixed(1), style: TyType.display(36, color: ty.ink)),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: List.generate(5, (i) => Icon(
-                    i < _vendor!.averageRating.round() ? Icons.star_rounded : Icons.star_border_rounded,
-                    color: ty.gold, size: 20,
-                  ))),
-              const SizedBox(height: 2),
-              Text(AppLocalizations.of(context)!.vendorReviewsVerifiedCountLabel('${_vendor!.reviewCount}'), style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: List.generate(5, (i) => Icon(
+                      i < _vendor!.averageRating.round() ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: ty.gold, size: 20,
+                    ))),
+                const SizedBox(height: 2),
+                Text(AppLocalizations.of(context)!.vendorReviewsVerifiedCountLabel('${_vendor!.reviewCount}'),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
+              ],
+            ),
           ),
         ],
       ),

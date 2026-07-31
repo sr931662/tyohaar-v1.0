@@ -165,11 +165,17 @@ class _VendorSupportScreenState extends State<VendorSupportScreen> {
                                 children: [
                                   Icon(Icons.tag, size: 14, color: ty.ink3),
                                   const SizedBox(width: 4),
-                                  Text(t.ticketNumber, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+                                  Flexible(
+                                    child: Text(t.ticketNumber,
+                                        maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+                                  ),
                                   const SizedBox(width: 12),
                                   Icon(Icons.category_outlined, size: 14, color: ty.ink3),
                                   const SizedBox(width: 4),
-                                  Text(t.category, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+                                  Flexible(
+                                    child: Text(t.category,
+                                        maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.sans(12, color: ty.ink3, weight: FontWeight.w600)),
+                                  ),
                                 ],
                               ),
                             ],

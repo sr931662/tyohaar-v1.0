@@ -133,9 +133,13 @@ class InvitationCard extends StatelessWidget {
                             children: [
                               Icon(moodStyle.icon, size: 13, color: Colors.white.withValues(alpha: 0.9)),
                               const SizedBox(width: 5),
-                              Text(
-                                celebration.mood!.name,
-                                style: TyType.sans(11, color: Colors.white.withValues(alpha: 0.9), weight: FontWeight.w600),
+                              Flexible(
+                                child: Text(
+                                  celebration.mood!.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TyType.sans(11, color: Colors.white.withValues(alpha: 0.9), weight: FontWeight.w600),
+                                ),
                               ),
                             ],
                           ),
@@ -162,7 +166,10 @@ class InvitationCard extends StatelessWidget {
                           children: [
                             const Icon(Icons.event_rounded, size: 15, color: Colors.white70),
                             const SizedBox(width: 6),
-                            Text(dateStr, style: TyType.sans(13.5, color: Colors.white70)),
+                            Flexible(
+                              child: Text(dateStr,
+                                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.sans(13.5, color: Colors.white70)),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 6),

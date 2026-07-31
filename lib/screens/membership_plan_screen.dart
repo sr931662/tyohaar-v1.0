@@ -327,7 +327,11 @@ class _MembershipPlanScreenState extends State<MembershipPlanScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(planLabel.toUpperCase(), style: TyType.display(22, color: Colors.white)),
+              Flexible(
+                child: Text(planLabel.toUpperCase(),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.display(22, color: Colors.white)),
+              ),
+              const SizedBox(width: 8),
               const Icon(Icons.stars_rounded, color: Colors.white, size: 32),
             ],
           ),

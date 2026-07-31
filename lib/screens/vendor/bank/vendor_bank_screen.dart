@@ -196,7 +196,12 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(children: [
-                                  Text(a.bankName, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                  Flexible(
+                                    child: Text(a.bankName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                  ),
                                   if (a.isPrimary) ...[
                                     const SizedBox(width: 6),
                                     Container(
@@ -206,8 +211,8 @@ class _VendorBankScreenState extends State<VendorBankScreen> {
                                     ),
                                   ],
                                 ]),
-                                Text(a.accountHolderName, style: TyType.sans(12.5, color: ty.ink2)),
-                                Text(a.maskedAccountNumber, style: TyType.sans(12.5, color: ty.ink3)),
+                                Text(a.accountHolderName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.sans(12.5, color: ty.ink2)),
+                                Text(a.maskedAccountNumber, maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.sans(12.5, color: ty.ink3)),
                               ],
                             ),
                           ),

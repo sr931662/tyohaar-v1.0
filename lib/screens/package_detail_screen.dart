@@ -199,11 +199,13 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                         children: [
                           Row(
                             children: [
-                              TyPill(_fullPackage.slug ?? _fullPackage.name,
-                                  background: ty
-                                      .tint(_fullPackage.tint)
-                                      .withValues(alpha: 0.15),
-                                  foreground: ty.tint(_fullPackage.tint)),
+                              Flexible(
+                                child: TyPill(_fullPackage.slug ?? _fullPackage.name,
+                                    background: ty
+                                        .tint(_fullPackage.tint)
+                                        .withValues(alpha: 0.15),
+                                    foreground: ty.tint(_fullPackage.tint)),
+                              ),
                               const Spacer(),
                               Text(l.packageDetailBasePriceLabel(formatPrice(_fullPackage.price)),
                                   style: TyType.sans(resp.sp(14),

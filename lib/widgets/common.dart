@@ -21,16 +21,22 @@ class SectionHeader extends StatelessWidget {
         textBaseline: TextBaseline.alphabetic,
         children: [
           Expanded(
-            child: Text(title, style: TyType.display(resp.sp(21), color: ty.ink)),
+            child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.display(resp.sp(21), color: ty.ink)),
           ),
-          if (action != null)
-            GestureDetector(
-              onTap: onAction,
-              child: Text(
-                action!,
-                style: TyType.sans(resp.sp(13), color: ty.saffron, weight: FontWeight.w700),
+          if (action != null) ...[
+            SizedBox(width: resp.w(8)),
+            Flexible(
+              child: GestureDetector(
+                onTap: onAction,
+                child: Text(
+                  action!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TyType.sans(resp.sp(13), color: ty.saffron, weight: FontWeight.w700),
+                ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -114,6 +120,8 @@ AppBar tyAppBar(
     title: title == null
         ? null
         : Text(title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
                 color: ty.ink, fontWeight: FontWeight.w700, fontSize: resp.sp(16))),
     actions: actions,

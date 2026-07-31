@@ -389,7 +389,15 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TyType.sans(14, color: isBold ? ty.ink : ty.ink2, weight: isBold ? FontWeight.w700 : FontWeight.w500)),
+          Flexible(
+            child: Text(
+              label,
+              style: TyType.sans(14, color: isBold ? ty.ink : ty.ink2, weight: isBold ? FontWeight.w700 : FontWeight.w500),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 12),
           Text('₹${amount.toInt()}', style: TyType.sans(15, color: ty.ink, weight: isBold ? FontWeight.w900 : FontWeight.w700)),
         ],
       ),

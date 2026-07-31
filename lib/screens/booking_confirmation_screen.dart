@@ -110,8 +110,17 @@ class BookingConfirmationScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TyType.sans(13, color: ty.ink3, weight: FontWeight.w600)),
-        Text(value, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+        Flexible(child: Text(label, style: TyType.sans(13, color: ty.ink3, weight: FontWeight.w600))),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700),
+            textAlign: TextAlign.right,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }

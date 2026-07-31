@@ -236,13 +236,16 @@ class _AccountScreenState extends State<AccountScreen> {
                 ),
         ),
         SizedBox(width: resp.w(16)),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(name, style: TyType.display(resp.sp(22), color: ty.ink)),
-            SizedBox(height: resp.h(2)),
-            if (sub.isNotEmpty) Text(sub, style: TyType.sans(resp.sp(14), color: ty.ink2)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: TyType.display(resp.sp(22), color: ty.ink), maxLines: 1, overflow: TextOverflow.ellipsis),
+              SizedBox(height: resp.h(2)),
+              if (sub.isNotEmpty)
+                Text(sub, style: TyType.sans(resp.sp(14), color: ty.ink2), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ],
+          ),
         ),
       ],
     );

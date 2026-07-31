@@ -115,6 +115,8 @@ class CatalogueScreen extends StatelessWidget {
                         Text(
                           item.unit ??
                               l10n.catalogueDefaultUnitFallback.replaceAll('_', ' ').toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TyType.sans(10, color: ty.ink3, weight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),

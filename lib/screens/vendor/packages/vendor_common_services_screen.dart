@@ -235,41 +235,61 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
                     return Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: ty.line)),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (service.coverImageUrl != null) ...[
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: CachedNetworkImage(imageUrl: service.coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
-                            ),
-                            const SizedBox(width: 12),
-                          ],
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(children: [
-                                  Text(service.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
-                                  if (!service.isMandatory) ...[
-                                    const SizedBox(width: 6),
-                                    Text(l10n.vendorCommonServicesOptionalLabel, style: TyType.sans(11, color: ty.ink3)),
-                                  ],
-                                ]),
-                                Text(l10n.vendorCommonServicesQtyPriceLabel(service.quantity.toString(), service.basePrice.toStringAsFixed(0)), style: TyType.sans(12, color: ty.ink2)),
-                                Text(
-                                  service.attachedPackageCount > 0
-                                      ? l10n.vendorCommonServicesAttachedCountLabel(service.attachedPackageCount)
-                                      : l10n.vendorCommonServicesNotAttachedLabel,
-                                  style: TyType.sans(11,
-                                      color: service.attachedPackageCount > 0 ? ty.ink3 : const Color(0xFFF59E0B),
-                                      weight: service.attachedPackageCount > 0 ? FontWeight.w400 : FontWeight.w700),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (service.coverImageUrl != null) ...[
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: CachedNetworkImage(imageUrl: service.coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
                                 ),
+                                const SizedBox(width: 12),
                               ],
-                            ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(children: [
+                                      Flexible(
+                                        child: Text(service.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                                      ),
+                                      if (!service.isMandatory) ...[
+                                        const SizedBox(width: 6),
+                                        Text(l10n.vendorCommonServicesOptionalLabel, style: TyType.sans(11, color: ty.ink3)),
+                                      ],
+                                    ]),
+                                    Text(l10n.vendorCommonServicesQtyPriceLabel(service.quantity.toString(), service.basePrice.toStringAsFixed(0)), style: TyType.sans(12, color: ty.ink2)),
+                                    Text(
+                                      service.attachedPackageCount > 0
+                                          ? l10n.vendorCommonServicesAttachedCountLabel(service.attachedPackageCount)
+                                          : l10n.vendorCommonServicesNotAttachedLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TyType.sans(11,
+                                          color: service.attachedPackageCount > 0 ? ty.ink3 : const Color(0xFFF59E0B),
+                                          weight: service.attachedPackageCount > 0 ? FontWeight.w400 : FontWeight.w700),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          TextButton(onPressed: () => _attachAll(service), child: Text(l10n.vendorCommonServicesAttachAllButtonLabel)),
-                          TextButton(onPressed: () => _showServiceForm(existing: service), child: Text(l10n.vendorCommonServicesEditButtonLabel)),
-                          IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _delete(service)),
+                          const SizedBox(height: 4),
+                          Wrap(
+                            alignment: WrapAlignment.end,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              TextButton(onPressed: () => _attachAll(service), child: Text(l10n.vendorCommonServicesAttachAllButtonLabel)),
+                              TextButton(onPressed: () => _showServiceForm(existing: service), child: Text(l10n.vendorCommonServicesEditButtonLabel)),
+                              IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _delete(service)),
+                            ],
+                          ),
                         ],
                       ),
                     );

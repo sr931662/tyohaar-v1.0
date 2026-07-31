@@ -801,7 +801,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               children: [
                 Icon(Icons.add_location_alt_outlined, size: 18, color: ty.saffron),
                 const SizedBox(width: 10),
-                Text(AppLocalizations.of(context)!.planFlowAddNewAddressLabel, style: TyType.sans(13.5, color: ty.saffron, weight: FontWeight.w700)),
+                Flexible(
+                  child: Text(AppLocalizations.of(context)!.planFlowAddNewAddressLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TyType.sans(13.5, color: ty.saffron, weight: FontWeight.w700)),
+                ),
               ],
             ),
           ),
@@ -838,7 +843,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           child: Row(children: [
             Text('$_totalGuests', style: TyType.display(36, color: ty.ink)),
             const SizedBox(width: 8),
-            Text(l10n.planFlowGuestsAddedLabel, style: TyType.sans(14, color: ty.ink2)),
+            Flexible(
+              child: Text(l10n.planFlowGuestsAddedLabel, style: TyType.sans(14, color: ty.ink2)),
+            ),
           ]),
         ),
         const SizedBox(height: 16),
@@ -1029,7 +1036,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.72,
+          // 0.6 (not the tighter 0.72 this used to be) leaves enough height
+          // for the fixed 90px image + name + optional rating row + 2-line
+          // description + CTA even on a 320dp-wide phone, where the cell is
+          // only ~136dp wide — the old ratio clipped that content there.
+          childAspectRatio: 0.6,
           children: _packages.map((p) => _packageCard(context, p)).toList(),
         ),
         if (_pkg?.isCustomizable ?? false) _themeStep(context),
@@ -2067,7 +2078,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TyType.sans(13, color: bold ? ty.ink : ty.ink2, weight: bold ? FontWeight.w700 : FontWeight.w500)),
+          Flexible(
+            child: Text(label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TyType.sans(13, color: bold ? ty.ink : ty.ink2, weight: bold ? FontWeight.w700 : FontWeight.w500)),
+          ),
+          const SizedBox(width: 8),
           Text('₹$amount', style: TyType.sans(14, color: ty.ink, weight: bold ? FontWeight.w800 : FontWeight.w600)),
         ],
       ),

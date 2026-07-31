@@ -93,15 +93,17 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 _pill(ty, _vendor!.verificationStatus, _vendor!.verificationStatus == 'verified', true),
-                const SizedBox(width: 8),
                 _pill(ty, _vendor!.status, _vendor!.status == 'active', false),
               ],
             ),
             const SizedBox(height: 16),
-            Text(_vendor!.businessName, style: TyType.display(26, color: ty.ink)),
+            Text(_vendor!.businessName,
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: TyType.display(26, color: ty.ink)),
             const SizedBox(height: 24),
             GridView.count(
               shrinkWrap: true,
@@ -109,7 +111,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               crossAxisCount: 2,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 1.4,
+              // 1.1 (not the tighter 1.4 this used to be) leaves enough
+              // height for icon + value + label on a 320dp-wide phone,
+              // where the old ratio clipped the label line.
+              childAspectRatio: 1.1,
               children: [
                 _statCard(ty, '⭐ ${_vendor!.averageRating.toStringAsFixed(1)}', AppLocalizations.of(context)!.vendorDashboardReviewsCountLabel('${_vendor!.reviewCount}'), Icons.star_rounded),
                 _statCard(ty, '$active', AppLocalizations.of(context)!.vendorDashboardActivePackagesLabel, Icons.inventory_2_outlined),
@@ -196,6 +201,8 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       ),
       child: Text(
         label.replaceAll('_', ' ').toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TyType.sans(10.5, color: color, weight: FontWeight.w800, spacing: 0.5),
       ),
     );
@@ -217,9 +224,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           children: [
             Icon(icon, size: 20, color: ty.saffron),
             const SizedBox(height: 10),
-            Text(value, style: TyType.display(22, color: ty.ink)),
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.display(22, color: ty.ink)),
             const SizedBox(height: 2),
-            Text(label, style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
           ],
         ),
       );
@@ -229,8 +236,15 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: TyType.sans(13, color: ty.ink2)),
-            Text(value, style: TyType.sans(13, color: ty.ink, weight: FontWeight.w600)),
+            Flexible(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: TyType.sans(13, color: ty.ink2))),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(value,
+                  textAlign: TextAlign.right,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TyType.sans(13, color: ty.ink, weight: FontWeight.w600)),
+            ),
           ],
         ),
       );
