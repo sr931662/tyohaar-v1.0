@@ -171,6 +171,7 @@
   "vendorBookingDetailCelebrationLabel": "Celebration",
   "vendorBookingDetailPackageLabel": "Package",
   "vendorBookingDetailCustomizationThemeLabel": "Customization Theme",
+  "vendorBookingDetailCustomThemeValueLabel": "Custom Palette",
   "vendorBookingDetailStatusLabel": "Status",
   "vendorBookingDetailPaymentLabel": "Payment",
   "vendorBookingDetailScheduledLabel": "Scheduled",
@@ -393,6 +394,24 @@
   "vendorCommonItemsExportError": "Export failed.",
   "vendorCommonItemsReturnableLabel": "Returnable",
   "vendorCommonItemsReturnableBadgeLabel": "returnable",
+  "vendorCommonItemsAttachedCountLabel": "Attached to {count, plural, =1{1 package} other{{count} packages}}",
+  "@vendorCommonItemsAttachedCountLabel": {
+    "description": "Shown on a common item card when it is attached to one or more packages",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "vendorCommonItemsNotAttachedLabel": "Not attached to any package yet",
+  "vendorCommonItemsAttachAllButtonLabel": "Attach to all",
+  "vendorCommonItemsAttachAllSuccessMessage": "Attached to {count, plural, =1{1 package} other{{count} packages}}",
+  "@vendorCommonItemsAttachAllSuccessMessage": {
+    "description": "Toast shown after successfully attaching a common item to all packages",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "vendorCommonItemsAttachAllError": "Could not attach to packages.",
+  "vendorCommonItemsCreateWarningMessage": "Remember to attach it to a package — customers won't see it until you do.",
 
   "vendorCommonServicesNewServiceTitle": "New Common Service",
   "vendorCommonServicesNameLabel": "Name",
@@ -449,6 +468,24 @@
   },
   "vendorCommonServicesImportError": "Import failed. Please check the file and try again.",
   "vendorCommonServicesExportError": "Export failed.",
+  "vendorCommonServicesAttachedCountLabel": "Attached to {count, plural, =1{1 package} other{{count} packages}}",
+  "@vendorCommonServicesAttachedCountLabel": {
+    "description": "Shown on a common service card when it is attached to one or more packages",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "vendorCommonServicesNotAttachedLabel": "Not attached to any package yet",
+  "vendorCommonServicesAttachAllButtonLabel": "Attach to all",
+  "vendorCommonServicesAttachAllSuccessMessage": "Attached to {count, plural, =1{1 package} other{{count} packages}}",
+  "@vendorCommonServicesAttachAllSuccessMessage": {
+    "description": "Toast shown after successfully attaching a common service to all packages",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "vendorCommonServicesAttachAllError": "Could not attach to packages.",
+  "vendorCommonServicesCreateWarningMessage": "Remember to attach it to a package — customers won't see it until you do.",
 
   "vendorPackageItemsAddItemTitle": "Add Item",
   "vendorPackageItemsEditItemTitle": "Edit Item",
@@ -646,6 +683,17 @@
   "planFlowSelectThisPackageLabel": "Select This Package",
   "planFlowChooseColorThemeLabel": "CHOOSE A COLOR THEME",
   "planFlowCustomizableThemeHint": "This package is customizable — pick the palette for your celebration.",
+  "planFlowPresetThemesLabel": "Preset Themes",
+  "planFlowCustomThemeLabel": "Custom Theme",
+  "planFlowNoPresetThemesMessage": "No preset themes available right now — try Custom Theme instead.",
+  "planFlowCustomThemeColorCountLabel": "Number of colors",
+  "planFlowCustomThemeColorSlotLabel": "Color {n}",
+  "@planFlowCustomThemeColorSlotLabel": {
+    "description": "Label above the swatch picker for the Nth color slot in a custom theme",
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
   "planFlowDefaultPackageName": "Celebration Package",
 
   "planFlowBalloonColoursLabel": "BALLOON COLOURS",
@@ -1675,6 +1723,7 @@
   },
   "eventHubMultimediaHeader": "Multimedia",
   "eventHubThemeLabel": "Theme: {themeName}",
+  "eventHubCustomThemeLabel": "Theme: Custom Palette",
   "@eventHubThemeLabel": {
     "description": "Selected customization theme name on the event hub package card",
     "placeholders": {

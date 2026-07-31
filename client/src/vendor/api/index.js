@@ -168,6 +168,8 @@ export const vendorPackagesApi = {
     vendorClient.post(`/packages/${packageId}/common-items/${itemId}`).then(extractData),
   detachCommonItem: (packageId, itemId) =>
     vendorClient.delete(`/packages/${packageId}/common-items/${itemId}`).then(extractData),
+  attachAllCommonItem: (itemId, packageIds) =>
+    vendorClient.post(`/packages/vendor/common-items/${itemId}/attach-all`, { package_ids: packageIds ?? null }).then(extractData),
 
   // Reviews (read-only — vendors cannot moderate their own package/item reviews)
   listReviews: (packageId, params) =>
@@ -205,6 +207,8 @@ export const vendorPackagesApi = {
     vendorClient.post(`/packages/${packageId}/common-services/${serviceId}`).then(extractData),
   detachCommonService: (packageId, serviceId) =>
     vendorClient.delete(`/packages/${packageId}/common-services/${serviceId}`).then(extractData),
+  attachAllCommonService: (serviceId, packageIds) =>
+    vendorClient.post(`/packages/vendor/common-services/${serviceId}/attach-all`, { package_ids: packageIds ?? null }).then(extractData),
 };
 
 // ── Bulk import/export (common services + package services) ────────────────────

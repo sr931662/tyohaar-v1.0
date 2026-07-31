@@ -23,6 +23,7 @@ from app.schemas.packages.create import (
     CommonPackageItemCreate,
     PackageServiceCreate,
     CommonPackageServiceCreate,
+    AttachAllRequest,
     PackageGalleryCreate,
     PackageItemImageCreate,
     PackageServiceImageCreate,
@@ -65,6 +66,7 @@ from app.schemas.packages.response import (
     PackageAvailabilityResponse,
     PackageDetailResponse,
     LikeToggleResponse,
+    AttachAllResponse,
 )
 
 # ── filters ────────────────────────────────────────────────────────────────────
@@ -108,6 +110,7 @@ __all__ = [
     "CommonPackageItemCreate",
     "PackageServiceCreate",
     "CommonPackageServiceCreate",
+    "AttachAllRequest",
     "PackageGalleryCreate",
     "PackageItemImageCreate",
     "PackageServiceImageCreate",
@@ -144,6 +147,7 @@ __all__ = [
     "PackageAvailabilityResponse",
     "PackageDetailResponse",
     "LikeToggleResponse",
+    "AttachAllResponse",
     # filters
     "PackageFilters",
     "PackageCategoryFilters",

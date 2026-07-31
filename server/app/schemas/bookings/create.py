@@ -65,6 +65,12 @@ class BookingCreate(BaseSchema):
         default=None,
         description="Customer's chosen visual theme for the auto-created celebration (ignored if celebration_id is provided).",
     )
+    custom_theme_colors: dict[str, str] | None = Field(
+        default=None,
+        description="Customer-supplied custom palette (2-4 of primary/secondary/accent/background "
+                    "hex values), used instead of theme_id when the customer picks their own colors "
+                    "rather than a preset theme. Ignored if theme_id is also provided.",
+    )
     package_id: uuid.UUID = Field(description="UUID of the package being booked")
     address_id: uuid.UUID | None = Field(
         default=None,

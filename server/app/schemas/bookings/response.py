@@ -96,6 +96,11 @@ class BookingResponse(BaseSchema):
     celebration_title: str | None = Field(default=None, description="Customer-given name for the celebration, e.g. 'Bunty's Mehndi'")
     theme_id: uuid.UUID | None = Field(default=None, description="Selected customization theme (only set for customizable packages)")
     theme_name: str | None = Field(default=None, description="Snapshot of the selected theme's name")
+    theme_colors: dict[str, str] | None = Field(
+        default=None,
+        description="Palette colors — from the linked theme if theme_id is set, otherwise the "
+                    "customer's own custom palette (theme_name is null in that case).",
+    )
     balloon_color_mode: BalloonColorMode | None = Field(default=None, description="Single or dual balloon colour choice")
     balloon_colors: list[str] | None = Field(default=None, description="Hex code(s) of the chosen balloon colour(s)")
     address_id: uuid.UUID | None

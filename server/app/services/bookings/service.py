@@ -193,7 +193,10 @@ class BookingService(BaseService):
                     "title": data.celebration_title or f"{package.name} booking",
                     "celebration_date": data.scheduled_date,
                     "venue_address": data.venue_address,
+                    # theme_id takes precedence — the Flutter client only ever sends
+                    # one of the two, but guard against both being set anyway.
                     "theme_id": data.theme_id,
+                    "custom_theme_colors": data.custom_theme_colors if not data.theme_id else None,
                     "guest_count": 0,
                 })
                 celebration_id = celebration.id
@@ -371,14 +374,18 @@ class BookingService(BaseService):
 
     async def _attach_celebration_info(
         self, uow, bookings: list[Booking]
-    ) -> dict[UUID, tuple[str | None, UUID | None, str | None]]:
+    ) -> dict[UUID, tuple[str | None, UUID | None, str | None, dict | None]]:
         """
         Batch-fetch the celebration title and selected customization theme
-        (id + name) for a list of bookings, keyed by celebration_id. Both
-        live on Celebration, not Booking, since a booking can be one of
+        (id + name + colors) for a list of bookings, keyed by celebration_id.
+        Both live on Celebration, not Booking, since a booking can be one of
         several against the same celebration (reschedules, multi-vendor
         line items) — the celebration is the durable "event", the booking
         is one service engagement within it.
+
+        theme_colors falls back to Celebration.custom_theme_colors when no
+        catalog theme is selected (customer picked their own palette instead
+        of a preset — see plan_flow's Custom Theme option).
         """
         from sqlalchemy import select
         from app.models.occasions.celebration import Celebration
@@ -388,13 +395,16 @@ class BookingService(BaseService):
         if not celebration_ids:
             return {}
         rows = await uow.session.execute(
-            select(Celebration.id, Celebration.title, Celebration.theme_id, OccasionTheme.name)
+            select(
+                Celebration.id, Celebration.title, Celebration.theme_id,
+                OccasionTheme.name, OccasionTheme.colors, Celebration.custom_theme_colors,
+            )
             .outerjoin(OccasionTheme, OccasionTheme.id == Celebration.theme_id)
             .where(Celebration.id.in_(celebration_ids))
         )
         return {
-            cid: (title, theme_id, theme_name)
-            for cid, title, theme_id, theme_name in rows.all()
+            cid: (title, theme_id, theme_name, theme_colors if theme_id else custom_colors)
+            for cid, title, theme_id, theme_name, theme_colors, custom_colors in rows.all()
         }
 
     async def _attach_customer_info(self, uow, customer_id: UUID) -> BookingCustomerSummary | None:
@@ -453,13 +463,14 @@ class BookingService(BaseService):
             info = await self._attach_package_info(uow, [booking])
             name, cover_url = info.get(booking.package_id, (None, None))
             celeb_info = await self._attach_celebration_info(uow, [booking])
-            title, theme_id, theme_name = celeb_info.get(booking.celebration_id, (None, None, None))
+            title, theme_id, theme_name, theme_colors = celeb_info.get(booking.celebration_id, (None, None, None, None))
             response = BookingDetailResponse.model_validate(booking)
             response.package_name = name
             response.package_cover_url = cover_url
             response.celebration_title = title
             response.theme_id = theme_id
             response.theme_name = theme_name
+            response.theme_colors = theme_colors
 
             # Customer contact + vendor identity are only ever attached for
             # admin/support requesters — never for the customer's own view or
@@ -496,8 +507,8 @@ class BookingService(BaseService):
             for b in page.items:
                 item = BookingResponse.model_validate(b)
                 item.package_name, item.package_cover_url = info.get(b.package_id, (None, None))
-                item.celebration_title, item.theme_id, item.theme_name = celeb_info.get(
-                    b.celebration_id, (None, None, None)
+                item.celebration_title, item.theme_id, item.theme_name, item.theme_colors = celeb_info.get(
+                    b.celebration_id, (None, None, None, None)
                 )
                 items.append(item)
             return CursorPage(
@@ -573,8 +584,8 @@ class BookingService(BaseService):
             for b in page.items:
                 item = BookingResponse.model_validate(b)
                 item.package_name, item.package_cover_url = info.get(b.package_id, (None, None))
-                item.celebration_title, item.theme_id, item.theme_name = celeb_info.get(
-                    b.celebration_id, (None, None, None)
+                item.celebration_title, item.theme_id, item.theme_name, item.theme_colors = celeb_info.get(
+                    b.celebration_id, (None, None, None, None)
                 )
                 items.append(item)
 

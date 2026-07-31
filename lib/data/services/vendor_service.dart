@@ -244,6 +244,14 @@ class VendorService {
     await _api.dio.delete('packages/$packageId/common-items/$itemId');
   }
 
+  Future<int> attachAllCommonItem(String itemId, {List<String>? packageIds}) async {
+    final response = await _api.dio.post(
+      'packages/vendor/common-items/$itemId/attach-all',
+      data: {if (packageIds != null) 'package_ids': packageIds},
+    );
+    return (response.data['data'] as Map)['attached_count'] as int? ?? 0;
+  }
+
   // ── Package services ─────────────────────────────────────────────────────
 
   Future<List<VendorPackageService>> listPackageServices(String packageId) async {
@@ -298,6 +306,14 @@ class VendorService {
 
   Future<void> detachCommonService(String packageId, String serviceId) async {
     await _api.dio.delete('packages/$packageId/common-services/$serviceId');
+  }
+
+  Future<int> attachAllCommonService(String serviceId, {List<String>? packageIds}) async {
+    final response = await _api.dio.post(
+      'packages/vendor/common-services/$serviceId/attach-all',
+      data: {if (packageIds != null) 'package_ids': packageIds},
+    );
+    return (response.data['data'] as Map)['attached_count'] as int? ?? 0;
   }
 
   // ── Bulk import/export (common services + package services) ─────────────

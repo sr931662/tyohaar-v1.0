@@ -28,7 +28,12 @@ export default function CommonServicesModal({ onClose }) {
 
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.createCommonService(body),
-    onSuccess: () => { toast.success('Service added.'); invalidate(); setNewService({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' }); },
+    onSuccess: () => {
+      toast.success('Service added.');
+      toast.message('Remember to attach it to a package — customers won\'t see it until you do.');
+      invalidate();
+      setNewService({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' });
+    },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add service.'),
   });
 
@@ -42,6 +47,12 @@ export default function CommonServicesModal({ onClose }) {
     mutationFn: (serviceId) => vendorPackagesApi.deleteCommonService(serviceId),
     onSuccess: () => { toast.success('Service deleted.'); invalidate(); setConfirmDelete(null); },
     onError: () => toast.error('Failed to delete service.'),
+  });
+
+  const attachAllMutation = useMutation({
+    mutationFn: (serviceId) => vendorPackagesApi.attachAllCommonService(serviceId),
+    onSuccess: (result) => { toast.success(`Attached to ${result.attached_count} package(s).`); invalidate(); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to attach to packages.'),
   });
 
   const startEdit = (service) => {
@@ -149,12 +160,18 @@ export default function CommonServicesModal({ onClose }) {
                       {!service.is_mandatory && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>optional</span>}
                     </div>
                     {service.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{service.description}</div>}
+                    <div style={{ fontSize: 11, marginTop: 2, color: service.attached_package_count > 0 ? 'var(--text-tertiary)' : '#f59e0b', fontWeight: service.attached_package_count > 0 ? 400 : 600 }}>
+                      {service.attached_package_count > 0
+                        ? `Attached to ${service.attached_package_count} package${service.attached_package_count === 1 ? '' : 's'}`
+                        : 'Not attached to any package yet'}
+                    </div>
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                     {service.quantity > 1 && `${service.quantity}${service.unit ? ' ' + service.unit : 'x'} · `}
                     ₹{Number(service.base_price).toLocaleString('en-IN')}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => attachAllMutation.mutate(service.id)} disabled={attachAllMutation.isPending}>Attach to all</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => startEdit(service)}>Edit</button>
                     <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(service)}>✕</button>
                   </div>

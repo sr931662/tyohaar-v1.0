@@ -149,6 +149,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   final List<PlannedGuest> _plannedGuests = [];
   Package? _pkg;
   CelebrationTheme? _theme;
+  // Preset (catalog) vs. customer-picked custom palette — mutually
+  // exclusive; switching modes clears the other's selection.
+  bool _useCustomTheme = false;
+  int _customColorCount = 2;
+  final Map<String, String> _customThemeColors = {}; // 'primary'/'secondary'/'accent'/'background' -> hex
   String? _balloonColorMode; // 'single' | 'dual'
   final List<String> _balloonColors = []; // selected palette color names
   Address? _address;
@@ -374,7 +379,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'venue_address': _address?.fullAddress,
         'celebration_title': _nameCtrl.text.isNotEmpty ? _nameCtrl.text : 'My Celebration',
         'address_id': _address?.id,
-        'theme_id': (_pkg?.isCustomizable ?? false) ? _theme?.id : null,
+        'theme_id': (_pkg?.isCustomizable ?? false) && !_useCustomTheme ? _theme?.id : null,
+        if ((_pkg?.isCustomizable ?? false) && _useCustomTheme && _customThemeColors.length >= 2)
+          'custom_theme_colors': _customThemeColors,
         'item_ids': optionalSelected,
         'item_quantities': _itemQuantities.map((id, qty) => MapEntry(id, qty)),
         'service_ids': optionalServicesSelected,
@@ -1219,9 +1226,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Widget _themeStep(BuildContext context) {
     final ty = context.ty;
-    // Every theme in the catalog is available on every customizable package.
-    final allowedThemes = _themes;
-    if (allowedThemes.isEmpty) return const SizedBox();
     final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 16),
@@ -1233,116 +1237,247 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           Text(l10n.planFlowCustomizableThemeHint,
               style: TyType.sans(12.5, color: ty.ink2)),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 96,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: allowedThemes.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, i) {
-                final t = allowedThemes[i];
-                final on = _theme?.id == t.id;
-                Color hexToColor(String? hex) {
-                  if (hex == null || hex.isEmpty) return Colors.transparent;
-                  final h = hex.replaceAll('#', '');
-                  return Color(int.parse('FF$h', radix: 16));
-                }
-                // Themes may define 1, 2, or 4 colors — render exactly the
-                // ones present instead of assuming a fixed 4-color palette
-                // (single/dual-color themes are as valid as full ones).
-                final paletteColors = [
-                  t.colors['primary'],
-                  t.colors['secondary'],
-                  t.colors['accent'],
-                  t.colors['background'],
-                ].whereType<String>().where((h) => h.isNotEmpty).map(hexToColor).toList();
-                if (paletteColors.isEmpty) paletteColors.add(ty.saffron);
-                return GestureDetector(
-                  onTap: () => setState(() => _theme = on ? null : t),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: on ? ty.saffron : Colors.transparent,
-                            width: 3,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: paletteColors.first.withValues(alpha: 0.35),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            ClipOval(
-                              child: paletteColors.length == 1
-                                  ? Container(color: paletteColors[0])
-                                  : paletteColors.length == 2
-                                      ? Row(
-                                          children: [
-                                            Expanded(child: Container(color: paletteColors[0])),
-                                            Expanded(child: Container(color: paletteColors[1])),
-                                          ],
-                                        )
-                                      : Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Expanded(
-                                              child: Row(
-                                                children: [
-                                                  Expanded(child: Container(color: paletteColors[0])),
-                                                  Expanded(child: Container(color: paletteColors[1])),
-                                                ],
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: Row(
-                                                children: [
-                                                  Expanded(child: Container(color: paletteColors[2])),
-                                                  Expanded(child: Container(color: paletteColors.length > 3 ? paletteColors[3] : paletteColors[2])),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                            ),
-                            if (on)
-                              Container(
-                                decoration: const BoxDecoration(
-                                  color: Colors.black38,
-                                  shape: BoxShape.circle,
+          Row(
+            children: [
+              Expanded(
+                child: _themeModeTab(
+                  context,
+                  label: l10n.planFlowPresetThemesLabel,
+                  selected: !_useCustomTheme,
+                  onTap: () => setState(() {
+                    _useCustomTheme = false;
+                    _customThemeColors.clear();
+                  }),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _themeModeTab(
+                  context,
+                  label: l10n.planFlowCustomThemeLabel,
+                  selected: _useCustomTheme,
+                  onTap: () => setState(() {
+                    _useCustomTheme = true;
+                    _theme = null;
+                  }),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (!_useCustomTheme)
+            _themes.isEmpty
+                ? Text(l10n.planFlowNoPresetThemesMessage, style: TyType.sans(12.5, color: ty.ink3))
+                : SizedBox(
+                    height: 96,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _themes.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, i) => _presetThemeSwatch(context, _themes[i]),
+                    ),
+                  )
+          else
+            _customThemeSection(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _themeModeTab(BuildContext context, {required String label, required bool selected, required VoidCallback onTap}) {
+    final ty = context.ty;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? ty.saffron.withValues(alpha: 0.12) : ty.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? ty.saffron : ty.line),
+        ),
+        child: Text(
+          label,
+          style: TyType.sans(13, color: selected ? ty.saffron : ty.ink2, weight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
+  Widget _presetThemeSwatch(BuildContext context, CelebrationTheme t) {
+    final ty = context.ty;
+    final on = _theme?.id == t.id;
+    // Themes may define 1, 2, or 4 colors — render exactly the ones present
+    // instead of assuming a fixed 4-color palette (single/dual-color themes
+    // are as valid as full ones).
+    final paletteColors = [
+      t.colors['primary'],
+      t.colors['secondary'],
+      t.colors['accent'],
+      t.colors['background'],
+    ].whereType<String>().where((h) => h.isNotEmpty).map(_hexToColor).toList();
+    if (paletteColors.isEmpty) paletteColors.add(ty.saffron);
+    return GestureDetector(
+      onTap: () => setState(() => _theme = on ? null : t),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: on ? ty.saffron : Colors.transparent,
+                width: 3,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: paletteColors.first.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipOval(
+                  child: paletteColors.length == 1
+                      ? Container(color: paletteColors[0])
+                      : paletteColors.length == 2
+                          ? Row(
+                              children: [
+                                Expanded(child: Container(color: paletteColors[0])),
+                                Expanded(child: Container(color: paletteColors[1])),
+                              ],
+                            )
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Expanded(child: Container(color: paletteColors[0])),
+                                      Expanded(child: Container(color: paletteColors[1])),
+                                    ],
+                                  ),
                                 ),
-                                child: const Icon(Icons.check_rounded, color: Colors.white),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        width: 68,
-                        child: Text(
-                          t.name,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TyType.sans(11, color: ty.ink2, weight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Expanded(child: Container(color: paletteColors[2])),
+                                      Expanded(child: Container(color: paletteColors.length > 3 ? paletteColors[3] : paletteColors[2])),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                ),
+                if (on)
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.black38,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check_rounded, color: Colors.white),
                   ),
-                );
-              },
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: 68,
+            child: Text(
+              t.name,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TyType.sans(11, color: ty.ink2, weight: FontWeight.w600),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  static const List<String> _customThemeSlotKeys = ['primary', 'secondary', 'accent', 'background'];
+
+  Widget _customThemeSection(BuildContext context) {
+    final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.planFlowCustomThemeColorCountLabel, style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Row(
+          children: [2, 3, 4].map((n) {
+            final selected = _customColorCount == n;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => setState(() {
+                  _customColorCount = n;
+                  // Drop any slots beyond the new count so a reduced-then-
+                  // increased count never resurrects a stale pick.
+                  for (final key in _customThemeSlotKeys.skip(n)) {
+                    _customThemeColors.remove(key);
+                  }
+                }),
+                child: Container(
+                  width: 40,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? ty.saffron : ty.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: selected ? ty.saffron : ty.line),
+                  ),
+                  child: Text(
+                    '$n',
+                    style: TyType.sans(14, color: selected ? ty.onPrimary : ty.ink, weight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        ...List.generate(_customColorCount, (i) {
+          final key = _customThemeSlotKeys[i];
+          final selectedHex = _customThemeColors[key];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.planFlowCustomThemeColorSlotLabel(i + 1), style: TyType.sans(12, color: ty.ink3)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: _balloonColorPalette.entries.map((e) {
+                    final on = selectedHex == e.value;
+                    return GestureDetector(
+                      onTap: () => setState(() => _customThemeColors[key] = e.value),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _hexToColor(e.value),
+                          border: Border.all(color: on ? ty.saffron : Colors.black12, width: on ? 3 : 1),
+                        ),
+                        child: on ? const Icon(Icons.check_rounded, color: Colors.white, size: 16) : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 
@@ -1763,8 +1898,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _summaryCard(context, l10n.planFlowSummaryCelebrationLabel,
             l10n.planFlowCelebrationSummaryValue('${_occasion?.name}', _nameCtrl.text), onEdit: () => _jumpTo(0)),
         _summaryCard(context, l10n.planFlowSummaryPackageLabel, _pkg?.name ?? '', onEdit: () => _jumpTo(1)),
-        if ((_pkg?.isCustomizable ?? false) && _theme != null)
+        if ((_pkg?.isCustomizable ?? false) && !_useCustomTheme && _theme != null)
           _summaryCard(context, l10n.planFlowSummaryThemeLabel, _theme!.name, onEdit: () => _jumpTo(1)),
+        if ((_pkg?.isCustomizable ?? false) && _useCustomTheme && _customThemeColors.length >= 2)
+          _summaryCard(context, l10n.planFlowSummaryThemeLabel, l10n.planFlowCustomThemeLabel, onEdit: () => _jumpTo(1)),
         if ((_pkg?.isCustomizable ?? false) && _balloonColorMode != null && _balloonColors.isNotEmpty)
           _summaryCard(
             context,

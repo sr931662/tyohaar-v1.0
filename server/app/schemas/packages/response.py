@@ -152,8 +152,19 @@ class PackageItemResponse(BaseSchema):
     like_count: int = 0
     is_liked: bool = False
     images: list[PackageItemImageResponse] = Field(default_factory=list)
+    attached_package_count: int = Field(
+        default=0,
+        description="Number of packages this common item is attached to. Only meaningful "
+                    "when is_common=True — always 0 for package-specific items.",
+    )
     created_at: datetime
     updated_at: datetime
+
+
+class AttachAllResponse(BaseSchema):
+    """Result of a bulk common-item/service attach operation."""
+
+    attached_count: int = Field(description="Number of packages newly attached (already-attached ones are skipped)")
 
 
 class PackageServiceImageResponse(BaseSchema):
@@ -190,6 +201,11 @@ class PackageServiceResponse(BaseSchema):
     display_order: int
     prep_time_minutes: int | None = None
     images: list[PackageServiceImageResponse] = Field(default_factory=list)
+    attached_package_count: int = Field(
+        default=0,
+        description="Number of packages this common service is attached to. Only meaningful "
+                    "when is_common=True — always 0 for package-specific services.",
+    )
     created_at: datetime
     updated_at: datetime
 

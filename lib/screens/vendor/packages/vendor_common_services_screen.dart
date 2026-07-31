@@ -138,6 +138,9 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
       };
       if (existing == null) {
         await _vendorService.createCommonService(body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorCommonServicesCreateWarningMessage)));
+        }
       } else {
         await _vendorService.updateCommonService(existing.id, body);
       }
@@ -153,6 +156,19 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
       qtyCtrl.dispose();
       unitCtrl.dispose();
       descCtrl.dispose();
+    }
+  }
+
+  Future<void> _attachAll(VendorCommonService service) async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final count = await _vendorService.attachAllCommonService(service.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorCommonServicesAttachAllSuccessMessage(count))));
+      }
+      _load();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorCommonServicesAttachAllError)));
     }
   }
 
@@ -240,9 +256,18 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
                                   ],
                                 ]),
                                 Text(l10n.vendorCommonServicesQtyPriceLabel(service.quantity.toString(), service.basePrice.toStringAsFixed(0)), style: TyType.sans(12, color: ty.ink2)),
+                                Text(
+                                  service.attachedPackageCount > 0
+                                      ? l10n.vendorCommonServicesAttachedCountLabel(service.attachedPackageCount)
+                                      : l10n.vendorCommonServicesNotAttachedLabel,
+                                  style: TyType.sans(11,
+                                      color: service.attachedPackageCount > 0 ? ty.ink3 : const Color(0xFFF59E0B),
+                                      weight: service.attachedPackageCount > 0 ? FontWeight.w400 : FontWeight.w700),
+                                ),
                               ],
                             ),
                           ),
+                          TextButton(onPressed: () => _attachAll(service), child: Text(l10n.vendorCommonServicesAttachAllButtonLabel)),
                           TextButton(onPressed: () => _showServiceForm(existing: service), child: Text(l10n.vendorCommonServicesEditButtonLabel)),
                           IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _delete(service)),
                         ],

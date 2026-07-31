@@ -24,6 +24,8 @@ from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessRespo
 from app.models.enums import UserRole
 from app.schemas.base import CursorPage
 from app.schemas.packages import (
+    AttachAllRequest,
+    AttachAllResponse,
     LikeToggleResponse,
     PackageAvailabilityCreate,
     PackageAvailabilityResponse,
@@ -277,6 +279,22 @@ async def attach_common_item(
     vendor_id = await resolve_vendor_id_for_user(current_user)
     await service.attach_common_item(vendor_id=vendor_id, package_id=package_id, item_id=item_id)
     return SuccessResponse(data=None, message="Common item attached.")
+
+
+async def attach_all_common_item(
+    item_id: uuid.UUID,
+    body: AttachAllRequest,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[AttachAllResponse]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    attached_count = await service.attach_all_common_item(
+        vendor_id=vendor_id, item_id=item_id, package_ids=body.package_ids
+    )
+    return SuccessResponse(
+        data=AttachAllResponse(attached_count=attached_count),
+        message=f"Attached to {attached_count} package(s).",
+    )
 
 
 async def detach_common_item(
@@ -560,6 +578,22 @@ async def attach_common_service(
     vendor_id = await resolve_vendor_id_for_user(current_user)
     await service.attach_common_service(vendor_id=vendor_id, package_id=package_id, service_id=service_id)
     return SuccessResponse(data=None, message="Common service attached.")
+
+
+async def attach_all_common_service(
+    service_id: uuid.UUID,
+    body: AttachAllRequest,
+    current_user: CurrentUserDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[AttachAllResponse]:
+    vendor_id = await resolve_vendor_id_for_user(current_user)
+    attached_count = await service.attach_all_common_service(
+        vendor_id=vendor_id, service_id=service_id, package_ids=body.package_ids
+    )
+    return SuccessResponse(
+        data=AttachAllResponse(attached_count=attached_count),
+        message=f"Attached to {attached_count} package(s).",
+    )
 
 
 async def detach_common_service(

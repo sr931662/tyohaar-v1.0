@@ -52,7 +52,35 @@ _ENTITY_COLUMNS: dict[str, list[str]] = {
     "settings": ["key", "value", "description"],
     "memberships": ["tier", "name", "monthly_price", "yearly_price", "validity_days", "features"],
     "vendor_services": ["vendor_phone", "category", "name", "description", "base_price", "pricing_type"],
+    "themes": [
+        "name", "slug", "description", "cover_image_url", "thumbnail_url",
+        "primary_color", "secondary_color", "accent_color", "background_color", "is_featured",
+    ],
+    "common_items": [
+        "vendor_phone", "name", "description", "quantity", "unit", "base_price", "max_quantity",
+        "is_customizable", "is_mandatory", "is_returnable", "cover_image_url",
+    ],
+    "package_items": [
+        "vendor_phone", "package_name", "name", "description", "quantity", "unit", "base_price",
+        "max_quantity", "is_customizable", "is_mandatory", "is_returnable", "cover_image_url",
+        "icon_url", "display_order",
+    ],
+    "common_services": [
+        "vendor_phone", "name", "description", "quantity", "unit", "base_price", "max_quantity",
+        "is_customizable", "is_mandatory", "cover_image_url",
+    ],
+    "package_services": [
+        "vendor_phone", "package_name", "name", "description", "quantity", "unit", "base_price",
+        "max_quantity", "is_customizable", "is_mandatory", "cover_image_url",
+        "icon_url", "display_order",
+    ],
 }
+
+def _parse_bool_cell(value: Any, default: bool) -> bool:
+    if value is None or str(value).strip() == "":
+        return default
+    return str(value).strip().lower() in ("true", "1", "yes", "y")
+
 
 _REQUIRED_COLUMNS: dict[str, list[str]] = {
     "vendors": ["business_name", "phone"],
@@ -67,12 +95,18 @@ _REQUIRED_COLUMNS: dict[str, list[str]] = {
     "settings": ["key", "value"],
     "memberships": ["tier", "name", "monthly_price"],
     "vendor_services": ["vendor_phone", "category", "name", "base_price"],
+    "themes": ["name"],
+    "common_items": ["vendor_phone", "name", "base_price"],
+    "package_items": ["vendor_phone", "package_name", "name", "base_price"],
+    "common_services": ["vendor_phone", "name", "base_price"],
+    "package_services": ["vendor_phone", "package_name", "name", "base_price"],
 }
 
 # Entity types with a real bulk-insert implementation in _insert_row().
 EXECUTABLE_ENTITY_TYPES = {
     "faqs", "settings", "packages", "vendors", "customers", "package_categories",
     "cities", "states", "coupons", "notification_templates", "memberships", "vendor_services",
+    "themes", "package_items", "common_items", "package_services", "common_services",
 }
 
 
@@ -184,6 +218,14 @@ class IOService(BaseService):
             "vendor_type": "decorator",
             "image_1_url": "https://example.com/photos/package-cover.jpg",
             "image_2_url": "https://example.com/photos/package-2.jpg",
+            "cover_image_url": "https://example.com/photos/cover.jpg",
+            "thumbnail_url": "https://example.com/photos/thumbnail.jpg",
+            "primary_color": "#C8A96E", "secondary_color": "#F5F0E8",
+            "accent_color": "#8B1A1A", "background_color": "#FFF8F0",
+            "is_featured": "false",
+            "quantity": "1", "unit": "pieces", "max_quantity": "",
+            "is_customizable": "false", "is_mandatory": "true", "is_returnable": "false",
+            "package_name": "Premium Wedding Package", "icon_url": "",
         }
         for col_idx, col_name in enumerate(columns, start=1):
             ws.cell(row=2, column=col_idx, value=sample_row.get(col_name, ""))
@@ -883,6 +925,117 @@ class IOService(BaseService):
             session.add(obj)
             await session.flush()
             return obj.id
+        elif entity_type == "themes":
+            from app.models.occasions.occasion_theme import OccasionTheme
+            from app.services.common.helpers import slugify
+            from sqlalchemy import select
+
+            name = (row.get("name") or "").strip()
+            if not name:
+                raise ValueError("'name' is required")
+            slug = (row.get("slug") or "").strip().lower() or slugify(name)
+
+            existing = (await session.execute(
+                select(OccasionTheme).where(OccasionTheme.slug == slug)
+            )).scalars().first()
+            if existing is not None:
+                raise ValueError(f"A theme with slug '{slug}' already exists")
+
+            colors: dict[str, str] = {}
+            for field, colors_key in (
+                ("primary_color", "primary"), ("secondary_color", "secondary"),
+                ("accent_color", "accent"), ("background_color", "background"),
+            ):
+                value = (row.get(field) or "").strip()
+                if value:
+                    colors[colors_key] = value
+
+            obj = OccasionTheme(
+                name=name,
+                slug=slug,
+                description=row.get("description") or None,
+                cover_image_url=row.get("cover_image_url") or None,
+                thumbnail_url=row.get("thumbnail_url") or None,
+                colors=colors or None,
+                is_active=True,
+                is_featured=_parse_bool_cell(row.get("is_featured"), False),
+            )
+            session.add(obj)
+            await session.flush()
+            return obj.id
+        elif entity_type in ("common_items", "package_items", "common_services", "package_services"):
+            from decimal import Decimal, InvalidOperation
+
+            from app.models.packages.package import Package
+            from app.models.packages.package_item import PackageItem
+            from app.models.packages.package_service import PackageServiceLine
+            from app.models.users.user import User
+            from app.models.vendors.vendor import Vendor
+            from sqlalchemy import func, select
+
+            is_service = entity_type in ("common_services", "package_services")
+            is_common = entity_type in ("common_items", "common_services")
+            model = PackageServiceLine if is_service else PackageItem
+
+            name = (row.get("name") or "").strip()
+            vendor_phone = (row.get("vendor_phone") or "").strip()
+            if not name:
+                raise ValueError("'name' is required")
+            if not vendor_phone:
+                raise ValueError("'vendor_phone' is required")
+
+            try:
+                base_price = Decimal(str(row.get("base_price")))
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValueError(f"Invalid base_price: {row.get('base_price')!r}")
+
+            vendor = (await session.execute(
+                select(Vendor).join(User, User.id == Vendor.user_id).where(User.phone == vendor_phone)
+            )).scalars().first()
+            if vendor is None:
+                raise ValueError(f"No vendor found with phone '{vendor_phone}'")
+
+            package_id = None
+            if not is_common:
+                package_name = (row.get("package_name") or "").strip()
+                if not package_name:
+                    raise ValueError("'package_name' is required")
+                packages = (await session.execute(
+                    select(Package).where(
+                        Package.vendor_id == vendor.id,
+                        func.lower(Package.name) == package_name.lower(),
+                    )
+                )).scalars().all()
+                if not packages:
+                    raise ValueError(f"No package named '{package_name}' found for vendor '{vendor_phone}'")
+                if len(packages) > 1:
+                    raise ValueError(f"Multiple packages named '{package_name}' found for vendor '{vendor_phone}' — rename to disambiguate")
+                package_id = packages[0].id
+
+            fields: dict[str, Any] = {
+                "name": name,
+                "description": row.get("description") or None,
+                "quantity": int(row.get("quantity")) if str(row.get("quantity") or "").strip() else 1,
+                "unit": row.get("unit") or None,
+                "base_price": base_price,
+                "max_quantity": int(row.get("max_quantity")) if str(row.get("max_quantity") or "").strip() else None,
+                "is_customizable": _parse_bool_cell(row.get("is_customizable"), False),
+                "is_mandatory": _parse_bool_cell(row.get("is_mandatory"), True),
+                "cover_image_url": row.get("cover_image_url") or None,
+                "is_common": is_common,
+                "vendor_id": vendor.id if is_common else None,
+                "package_id": package_id,
+            }
+            if not is_service:
+                fields["is_returnable"] = _parse_bool_cell(row.get("is_returnable"), False)
+            if not is_common:
+                fields["icon_url"] = row.get("icon_url") or None
+                fields["display_order"] = int(row.get("display_order")) if str(row.get("display_order") or "").strip() else 0
+
+            obj = model(**fields)
+            session.add(obj)
+            await session.flush()
+            return obj.id
         raise NotImplementedError(
             f"Bulk import for entity_type='{entity_type}' is not implemented yet."
         )
@@ -1024,6 +1177,36 @@ class IOService(BaseService):
                 for service_id in inserted_ids:
                     try:
                         stmt = delete(VendorService).where(VendorService.id == uuid.UUID(service_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type == "themes":
+                from app.models.occasions.occasion_theme import OccasionTheme
+                from sqlalchemy import delete
+                for theme_id in inserted_ids:
+                    try:
+                        stmt = delete(OccasionTheme).where(OccasionTheme.id == uuid.UUID(theme_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type in ("common_items", "package_items"):
+                from app.models.packages.package_item import PackageItem
+                from sqlalchemy import delete
+                for item_id in inserted_ids:
+                    try:
+                        stmt = delete(PackageItem).where(PackageItem.id == uuid.UUID(item_id))
+                        await uow.session.execute(stmt)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            elif inserted_ids and log.entity_type in ("common_services", "package_services"):
+                from app.models.packages.package_service import PackageServiceLine
+                from sqlalchemy import delete
+                for service_id in inserted_ids:
+                    try:
+                        stmt = delete(PackageServiceLine).where(PackageServiceLine.id == uuid.UUID(service_id))
                         await uow.session.execute(stmt)
                         deleted_count += 1
                     except Exception:
@@ -1459,6 +1642,106 @@ class IOService(BaseService):
                     }
                     for vs in rows
                 ]
+
+            elif entity_type == "themes":
+                from app.models.occasions.occasion_theme import OccasionTheme
+
+                stmt = select(OccasionTheme).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+                return [
+                    {
+                        "id": str(t.id),
+                        "name": t.name,
+                        "slug": t.slug,
+                        "description": t.description or "",
+                        "cover_image_url": t.cover_image_url or "",
+                        "thumbnail_url": t.thumbnail_url or "",
+                        "primary_color": (t.colors or {}).get("primary", ""),
+                        "secondary_color": (t.colors or {}).get("secondary", ""),
+                        "accent_color": (t.colors or {}).get("accent", ""),
+                        "background_color": (t.colors or {}).get("background", ""),
+                        "is_featured": "true" if t.is_featured else "false",
+                        "created_at": str(t.created_at),
+                    }
+                    for t in rows
+                ]
+
+            elif entity_type in ("common_items", "package_items", "common_services", "package_services"):
+                from app.models.packages.package import Package
+                from app.models.packages.package_item import PackageItem
+                from app.models.packages.package_service import PackageServiceLine
+                from app.models.users.user import User
+                from app.models.vendors.vendor import Vendor
+
+                is_service = entity_type in ("common_services", "package_services")
+                is_common = entity_type in ("common_items", "common_services")
+                model = PackageServiceLine if is_service else PackageItem
+
+                stmt = select(model).where(model.is_common == is_common).limit(10000)
+                rows = (await session.execute(stmt)).scalars().all()
+
+                vendor_ids = list({r.vendor_id for r in rows if r.vendor_id})
+                phone_by_vendor_id: dict[Any, str] = {}
+                if vendor_ids:
+                    vendor_rows = (await session.execute(
+                        select(Vendor.id, User.phone)
+                        .join(User, User.id == Vendor.user_id)
+                        .where(Vendor.id.in_(vendor_ids))
+                    )).all()
+                    phone_by_vendor_id = {vid: phone for vid, phone in vendor_rows}
+
+                package_ids = list({r.package_id for r in rows if r.package_id})
+                name_by_package_id: dict[Any, str] = {}
+                if package_ids:
+                    package_rows = (await session.execute(
+                        select(Package.id, Package.name, Package.vendor_id).where(Package.id.in_(package_ids))
+                    )).all()
+                    name_by_package_id = {pid: name for pid, name, _ in package_rows}
+                    # package-scoped rows have no vendor_id of their own — resolve
+                    # the exported vendor_phone via the parent package's vendor.
+                    package_vendor_ids = list({vid for _, _, vid in package_rows if vid})
+                    if package_vendor_ids:
+                        vendor_rows = (await session.execute(
+                            select(Vendor.id, User.phone)
+                            .join(User, User.id == Vendor.user_id)
+                            .where(Vendor.id.in_(package_vendor_ids))
+                        )).all()
+                        phone_by_vendor_id.update({vid: phone for vid, phone in vendor_rows})
+                    vendor_id_by_package_id = {pid: vid for pid, _, vid in package_rows}
+                else:
+                    vendor_id_by_package_id = {}
+
+                def _phone_for(r) -> str:
+                    if r.vendor_id:
+                        return phone_by_vendor_id.get(r.vendor_id, "")
+                    if r.package_id:
+                        return phone_by_vendor_id.get(vendor_id_by_package_id.get(r.package_id), "")
+                    return ""
+
+                out = []
+                for r in rows:
+                    row_dict = {
+                        "id": str(r.id),
+                        "vendor_phone": _phone_for(r),
+                        "name": r.name,
+                        "description": r.description or "",
+                        "quantity": r.quantity,
+                        "unit": r.unit or "",
+                        "base_price": str(r.base_price),
+                        "max_quantity": r.max_quantity if r.max_quantity is not None else "",
+                        "is_customizable": "true" if r.is_customizable else "false",
+                        "is_mandatory": "true" if r.is_mandatory else "false",
+                        "cover_image_url": r.cover_image_url or "",
+                        "created_at": str(r.created_at),
+                    }
+                    if not is_service:
+                        row_dict["is_returnable"] = "true" if r.is_returnable else "false"
+                    if not is_common:
+                        row_dict["package_name"] = name_by_package_id.get(r.package_id, "")
+                        row_dict["icon_url"] = r.icon_url or ""
+                        row_dict["display_order"] = r.display_order
+                    out.append(row_dict)
+                return out
 
             return []
 

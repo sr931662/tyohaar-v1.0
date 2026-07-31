@@ -27,6 +27,7 @@ from sqlalchemy import (
     Text,
     Time,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -115,6 +116,14 @@ class Celebration(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMix
         ForeignKey("occasion_themes.id", ondelete="SET NULL"),
         nullable=True,
         comment="Customer's chosen visual theme (selected during planning)",
+    )
+
+    custom_theme_colors: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Customer-supplied custom palette (same shape as occasion_themes.colors: "
+                "{primary, secondary, accent, background}), used instead of theme_id when "
+                "the customer picks their own 2-4 colors rather than a preset theme.",
     )
 
     mood_id: Mapped[uuid.UUID | None] = mapped_column(

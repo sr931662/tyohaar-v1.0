@@ -411,7 +411,10 @@ class OccasionService(BaseService):
             mood = moods_by_id.get(c.mood_id) if c.mood_id else None
             response.occasion_name = occ.name if occ else None
             response.occasion_hero_image_url = occ.banner_url if occ else None
-            response.theme_colors = theme.colors if theme else None
+            # A preset theme's colors take precedence; otherwise fall back to
+            # the customer's own custom palette (mutually exclusive at write
+            # time — see bookings/service.py's create_booking).
+            response.theme_colors = theme.colors if theme else c.custom_theme_colors
             response.theme_cover_image_url = theme.cover_image_url if theme else None
             response.mood_name = mood.name if mood else None
             response.mood_slug = mood.slug if mood else None
@@ -613,7 +616,7 @@ class OccasionService(BaseService):
 
             can_still_respond = date.today() < celebration.celebration_date
 
-            theme_colors = None
+            theme_colors = celebration.custom_theme_colors
             if celebration.theme_id:
                 theme = await uow.occasions.themes.get_by_id(celebration.theme_id)
                 if theme:

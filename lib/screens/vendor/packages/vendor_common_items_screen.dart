@@ -144,6 +144,9 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
       };
       if (existing == null) {
         await _vendorService.createCommonItem(body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorCommonItemsCreateWarningMessage)));
+        }
       } else {
         await _vendorService.updateCommonItem(existing.id, body);
       }
@@ -159,6 +162,19 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
       qtyCtrl.dispose();
       unitCtrl.dispose();
       descCtrl.dispose();
+    }
+  }
+
+  Future<void> _attachAll(VendorCommonItem item) async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final count = await _vendorService.attachAllCommonItem(item.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorCommonItemsAttachAllSuccessMessage(count))));
+      }
+      _load();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.vendorCommonItemsAttachAllError)));
     }
   }
 
@@ -250,9 +266,18 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                                   ],
                                 ]),
                                 Text(l10n.vendorCommonItemsQtyPriceLabel(item.quantity.toString(), item.basePrice.toStringAsFixed(0)), style: TyType.sans(12, color: ty.ink2)),
+                                Text(
+                                  item.attachedPackageCount > 0
+                                      ? l10n.vendorCommonItemsAttachedCountLabel(item.attachedPackageCount)
+                                      : l10n.vendorCommonItemsNotAttachedLabel,
+                                  style: TyType.sans(11,
+                                      color: item.attachedPackageCount > 0 ? ty.ink3 : const Color(0xFFF59E0B),
+                                      weight: item.attachedPackageCount > 0 ? FontWeight.w400 : FontWeight.w700),
+                                ),
                               ],
                             ),
                           ),
+                          TextButton(onPressed: () => _attachAll(item), child: Text(l10n.vendorCommonItemsAttachAllButtonLabel)),
                           TextButton(onPressed: () => _showItemForm(existing: item), child: Text(l10n.vendorCommonItemsEditButtonLabel)),
                           IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _delete(item)),
                         ],

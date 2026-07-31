@@ -206,6 +206,25 @@ class PackageItemRepository(BaseRepository[PackageItem]):
         )
         await self._session.execute(stmt)
 
+    async def link_to_packages(self, package_ids: list[uuid.UUID], item_id: uuid.UUID) -> int:
+        """Bulk-attach one common item to several packages at once. Idempotent —
+        already-linked packages are silently skipped, not duplicated."""
+        if not package_ids:
+            return 0
+        before = (await self._session.execute(
+            select(func.count()).select_from(package_item_links).where(package_item_links.c.package_item_id == item_id)
+        )).scalar_one()
+        stmt = (
+            postgresql.insert(package_item_links)
+            .values([{"package_id": pid, "package_item_id": item_id} for pid in package_ids])
+            .on_conflict_do_nothing()
+        )
+        await self._session.execute(stmt)
+        after = (await self._session.execute(
+            select(func.count()).select_from(package_item_links).where(package_item_links.c.package_item_id == item_id)
+        )).scalar_one()
+        return after - before
+
     async def unlink_from_package(self, package_id: uuid.UUID, item_id: uuid.UUID) -> None:
         stmt = package_item_links.delete().where(
             package_item_links.c.package_id == package_id,
@@ -220,6 +239,18 @@ class PackageItemRepository(BaseRepository[PackageItem]):
         )
         result = await self._session.execute(stmt)
         return result.first() is not None
+
+    async def count_attached_packages(self, item_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+        """Batch-count how many packages each common item is attached to."""
+        if not item_ids:
+            return {}
+        stmt = (
+            select(package_item_links.c.package_item_id, func.count())
+            .where(package_item_links.c.package_item_id.in_(item_ids))
+            .group_by(package_item_links.c.package_item_id)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return {item_id: count for item_id, count in rows}
 
 
 class PackageItemImageRepository(BaseRepository[PackageItemImage]):
@@ -293,6 +324,25 @@ class PackageServiceRepository(BaseRepository[PackageServiceLine]):
         )
         await self._session.execute(stmt)
 
+    async def link_to_packages(self, package_ids: list[uuid.UUID], service_id: uuid.UUID) -> int:
+        """Bulk-attach one common service to several packages at once. Idempotent —
+        already-linked packages are silently skipped, not duplicated."""
+        if not package_ids:
+            return 0
+        before = (await self._session.execute(
+            select(func.count()).select_from(package_service_links).where(package_service_links.c.package_service_id == service_id)
+        )).scalar_one()
+        stmt = (
+            postgresql.insert(package_service_links)
+            .values([{"package_id": pid, "package_service_id": service_id} for pid in package_ids])
+            .on_conflict_do_nothing()
+        )
+        await self._session.execute(stmt)
+        after = (await self._session.execute(
+            select(func.count()).select_from(package_service_links).where(package_service_links.c.package_service_id == service_id)
+        )).scalar_one()
+        return after - before
+
     async def unlink_from_package(self, package_id: uuid.UUID, service_id: uuid.UUID) -> None:
         stmt = package_service_links.delete().where(
             package_service_links.c.package_id == package_id,
@@ -307,6 +357,18 @@ class PackageServiceRepository(BaseRepository[PackageServiceLine]):
         )
         result = await self._session.execute(stmt)
         return result.first() is not None
+
+    async def count_attached_packages(self, service_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+        """Batch-count how many packages each common service is attached to."""
+        if not service_ids:
+            return {}
+        stmt = (
+            select(package_service_links.c.package_service_id, func.count())
+            .where(package_service_links.c.package_service_id.in_(service_ids))
+            .group_by(package_service_links.c.package_service_id)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return {service_id: count for service_id, count in rows}
 
 
 class PackageServiceImageRepository(BaseRepository[PackageServiceImage]):

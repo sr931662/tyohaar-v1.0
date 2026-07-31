@@ -29,6 +29,11 @@ import '../l10n/generated/app_localizations.dart';
 import 'guests_screen.dart';
 import 'package_detail_screen.dart';
 
+Color _hexToColor(String hex) {
+  final h = hex.replaceAll('#', '');
+  return Color(int.parse('FF$h', radix: 16));
+}
+
 class EventHubScreen extends StatefulWidget {
   final String? celebrationId;
   const EventHubScreen({super.key, this.celebrationId});
@@ -484,6 +489,29 @@ class _EventHubScreenState extends State<EventHubScreen> {
                   SizedBox(width: resp.w(6)),
                   Text(l10n.eventHubThemeLabel(_booking!.themeName!),
                       style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                ],
+              ),
+            ] else if ((_booking?.themeColors ?? const {}).isNotEmpty) ...[
+              SizedBox(height: resp.h(10)),
+              Row(
+                children: [
+                  Icon(Icons.palette_outlined, size: resp.sp(15), color: ty.ink3),
+                  SizedBox(width: resp.w(6)),
+                  Text(l10n.eventHubCustomThemeLabel,
+                      style: TyType.sans(resp.sp(12.5), color: ty.ink2)),
+                  SizedBox(width: resp.w(6)),
+                  ..._booking!.themeColors!.values.map((hex) => Padding(
+                        padding: EdgeInsets.only(right: resp.w(3)),
+                        child: Container(
+                          width: resp.w(10),
+                          height: resp.w(10),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _hexToColor(hex),
+                            border: Border.all(color: Colors.black12, width: 0.5),
+                          ),
+                        ),
+                      )),
                 ],
               ),
             ],

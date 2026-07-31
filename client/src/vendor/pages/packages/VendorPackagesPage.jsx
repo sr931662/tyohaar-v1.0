@@ -232,7 +232,12 @@ function CommonItemsModal({ onClose }) {
 
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.createCommonItem(body),
-    onSuccess: () => { toast.success('Common item created.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' }); },
+    onSuccess: () => {
+      toast.success('Common item created.');
+      toast.message('Remember to attach it to a package — customers won\'t see it until you do.');
+      invalidate();
+      setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' });
+    },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to create item.'),
   });
 
@@ -246,6 +251,12 @@ function CommonItemsModal({ onClose }) {
     mutationFn: (itemId) => vendorPackagesApi.deleteCommonItem(itemId),
     onSuccess: () => { toast.success('Common item deleted.'); invalidate(); setConfirmDelete(null); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to delete item.'),
+  });
+
+  const attachAllMutation = useMutation({
+    mutationFn: (itemId) => vendorPackagesApi.attachAllCommonItem(itemId),
+    onSuccess: (result) => { toast.success(`Attached to ${result.attached_count} package(s).`); invalidate(); },
+    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to attach to packages.'),
   });
 
   const startEdit = (item) => {
@@ -358,12 +369,18 @@ function CommonItemsModal({ onClose }) {
                       {item.is_returnable && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-primary,#6366f1)', fontWeight: 400 }}>returnable</span>}
                     </div>
                     {item.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{item.description}</div>}
+                    <div style={{ fontSize: 11, marginTop: 2, color: item.attached_package_count > 0 ? 'var(--text-tertiary)' : '#f59e0b', fontWeight: item.attached_package_count > 0 ? 400 : 600 }}>
+                      {item.attached_package_count > 0
+                        ? `Attached to ${item.attached_package_count} package${item.attached_package_count === 1 ? '' : 's'}`
+                        : 'Not attached to any package yet'}
+                    </div>
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                     {item.quantity > 1 && `${item.quantity}${item.unit ? ' ' + item.unit : 'x'} · `}
                     ₹{Number(item.base_price).toLocaleString('en-IN')}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => attachAllMutation.mutate(item.id)} disabled={attachAllMutation.isPending}>Attach to all</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => startEdit(item)}>Edit</button>
                     <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(item)}>✕</button>
                   </div>

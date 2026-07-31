@@ -467,6 +467,7 @@ class VendorCommonItem {
   final bool isMandatory;
   final bool isReturnable;
   final String? coverImageUrl;
+  final int attachedPackageCount;
 
   VendorCommonItem({
     required this.id,
@@ -479,6 +480,7 @@ class VendorCommonItem {
     this.isMandatory = true,
     this.isReturnable = false,
     this.coverImageUrl,
+    this.attachedPackageCount = 0,
   });
 
   factory VendorCommonItem.fromJson(Map<String, dynamic> json) {
@@ -493,6 +495,7 @@ class VendorCommonItem {
       isMandatory: json['is_mandatory'] as bool? ?? true,
       isReturnable: json['is_returnable'] as bool? ?? false,
       coverImageUrl: asUrl(json['cover_image_url']),
+      attachedPackageCount: json['attached_package_count'] as int? ?? 0,
     );
   }
 }
@@ -557,6 +560,7 @@ class VendorCommonService {
   final int? maxQuantity;
   final bool isMandatory;
   final String? coverImageUrl;
+  final int attachedPackageCount;
 
   VendorCommonService({
     required this.id,
@@ -568,6 +572,7 @@ class VendorCommonService {
     this.maxQuantity,
     this.isMandatory = true,
     this.coverImageUrl,
+    this.attachedPackageCount = 0,
   });
 
   factory VendorCommonService.fromJson(Map<String, dynamic> json) {
@@ -581,6 +586,7 @@ class VendorCommonService {
       maxQuantity: json['max_quantity'] as int?,
       isMandatory: json['is_mandatory'] as bool? ?? true,
       coverImageUrl: asUrl(json['cover_image_url']),
+      attachedPackageCount: json['attached_package_count'] as int? ?? 0,
     );
   }
 }

@@ -678,6 +678,9 @@ class Booking {
   final String? celebrationTitle;
   final String? themeId;
   final String? themeName;
+  // Palette colors — from the linked theme if themeId is set, otherwise the
+  // customer's own custom palette (themeName is null in that case).
+  final Map<String, String>? themeColors;
   final String currency;
   final String? specialInstructions;
   final String? cancellationReason;
@@ -706,6 +709,7 @@ class Booking {
     this.celebrationTitle,
     this.themeId,
     this.themeName,
+    this.themeColors,
     required this.currency,
     this.specialInstructions,
     this.cancellationReason,
@@ -733,6 +737,8 @@ class Booking {
       celebrationTitle: json['celebration_title'] as String?,
       themeId: json['theme_id'] as String?,
       themeName: json['theme_name'] as String?,
+      themeColors: (json['theme_colors'] as Map<String, dynamic>?)
+          ?.map((k, v) => MapEntry(k, v.toString())),
       currency: json['currency'] as String? ?? 'INR',
       specialInstructions: json['special_instructions'] as String?,
       cancellationReason: json['cancellation_reason'] as String?,

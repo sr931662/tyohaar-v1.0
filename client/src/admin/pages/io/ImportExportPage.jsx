@@ -13,6 +13,7 @@ import { downloadBlob } from '../../../lib/downloadBlob';
 const ENTITY_TYPES = [
   'vendors', 'customers', 'packages', 'package_categories', 'cities', 'states',
   'coupons', 'faqs', 'notification_templates', 'settings', 'memberships', 'vendor_services',
+  'themes', 'package_items', 'common_items', 'package_services', 'common_services',
 ];
 
 // Every entity type above now has real row-insert logic in _insert_row()
@@ -27,7 +28,8 @@ const EXECUTABLE_ENTITY_TYPES = new Set(ENTITY_TYPES);
 const EXPORT_ENTITY_TYPES = [
   'vendors', 'customers', 'bookings', 'payments', 'packages', 'package_categories',
   'cities', 'states', 'coupons', 'notification_templates', 'settings', 'memberships',
-  'vendor_services', 'faqs',
+  'vendor_services', 'faqs', 'themes', 'package_items', 'common_items',
+  'package_services', 'common_services',
 ];
 
 const ENTITY_HINTS = {
@@ -38,6 +40,11 @@ const ENTITY_HINTS = {
   notification_templates: '"channel" must be one of: push, sms, email, whatsapp, in_app — add one row per channel needed for the same "template_key". "notification_category" must match a known event type, e.g. booking_confirmed, payment_received.',
   memberships: '"tier" must be one of: free, silver, gold, platinum. Each tier can only exist once — importing a tier that already has a plan will fail that row.',
   vendor_services: '"vendor_phone" must match a registered vendor\'s phone number. "category" must match an existing Vendor Category name. Services import as inactive — publish them from Vendors after review.',
+  themes: '"primary_color"/"secondary_color"/"accent_color"/"background_color" are hex codes (e.g. #C8A96E) — leave any blank for a 2 or 3-color theme. "slug" is auto-generated from "name" if left blank.',
+  common_items: '"vendor_phone" must match a registered vendor\'s phone number. Creates a reusable item template not tied to any package — attach it to packages from the vendor\'s Common Items screen afterward.',
+  package_items: '"vendor_phone" must match a registered vendor\'s phone number, and "package_name" must exactly match one of that vendor\'s existing package names (case-insensitive).',
+  common_services: '"vendor_phone" must match a registered vendor\'s phone number. Creates a reusable service template not tied to any package — attach it to packages from the vendor\'s Common Services screen afterward.',
+  package_services: '"vendor_phone" must match a registered vendor\'s phone number, and "package_name" must exactly match one of that vendor\'s existing package names (case-insensitive).',
 };
 
 function entityLabel(entityType) {

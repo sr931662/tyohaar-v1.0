@@ -9,6 +9,7 @@ from fastapi import APIRouter, status
 from app.controllers.packages import controller as ctrl
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
 from app.schemas.packages import (
+    AttachAllResponse,
     ItemImportResult,
     LikeToggleResponse,
     PackageAvailabilityResponse,
@@ -364,6 +365,18 @@ router.add_api_route(
     operation_id="packages_detach_common_item",
 )
 
+router.add_api_route(
+    "/vendor/common-items/{item_id}/attach-all",
+    ctrl.attach_all_common_item,
+    methods=["POST"],
+    response_model=SuccessResponse[AttachAllResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Attach Common Item",
+    description="Attach a common item template to several packages at once — defaults to "
+                "all of the vendor's own packages when no package_ids are given.",
+    operation_id="packages_attach_all_common_item",
+)
+
 # ── Package services ───────────────────────────────────────────────────────────
 
 router.add_api_route(
@@ -537,6 +550,18 @@ router.add_api_route(
     summary="Detach Common Service",
     description="Detach a common service template from this package (does not delete the template).",
     operation_id="packages_detach_common_service",
+)
+
+router.add_api_route(
+    "/vendor/common-services/{service_id}/attach-all",
+    ctrl.attach_all_common_service,
+    methods=["POST"],
+    response_model=SuccessResponse[AttachAllResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Attach Common Service",
+    description="Attach a common service template to several packages at once — defaults to "
+                "all of the vendor's own packages when no package_ids are given.",
+    operation_id="packages_attach_all_common_service",
 )
 
 # ── Package service images ───────────────────────────────────────────────────

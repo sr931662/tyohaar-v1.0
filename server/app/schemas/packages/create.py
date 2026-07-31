@@ -199,6 +199,16 @@ class CommonPackageItemCreate(BaseSchema):
     )
 
 
+class AttachAllRequest(BaseSchema):
+    """Bulk-attach a common item/service to several packages at once."""
+
+    package_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="Packages to attach to. Omit (or send null) to attach to *all* of the "
+                    "vendor's own packages.",
+    )
+
+
 class PackageServiceCreate(BaseSchema):
     """Payload required to add a service to an existing package."""
 

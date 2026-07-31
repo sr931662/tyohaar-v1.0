@@ -155,7 +155,9 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
           _row(ty, l10n.vendorBookingDetailCelebrationLabel, b.celebrationTitle!),
         _row(ty, l10n.vendorBookingDetailPackageLabel, b.packageName ?? '—'),
         if (b.themeName != null && b.themeName!.isNotEmpty)
-          _row(ty, l10n.vendorBookingDetailCustomizationThemeLabel, b.themeName!),
+          _row(ty, l10n.vendorBookingDetailCustomizationThemeLabel, b.themeName!)
+        else if (b.themeColors != null && b.themeColors!.isNotEmpty)
+          _row(ty, l10n.vendorBookingDetailCustomizationThemeLabel, l10n.vendorBookingDetailCustomThemeValueLabel),
         _row(ty, l10n.vendorBookingDetailStatusLabel, b.status.replaceAll('_', ' ')),
         _row(ty, l10n.vendorBookingDetailPaymentLabel, b.paymentStatus.replaceAll('_', ' ')),
         _row(ty, l10n.vendorBookingDetailScheduledLabel, '${b.scheduledDate.day}/${b.scheduledDate.month}/${b.scheduledDate.year}'),

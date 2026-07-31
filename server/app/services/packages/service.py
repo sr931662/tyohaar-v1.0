@@ -770,9 +770,13 @@ class PackageService(BaseService):
         async with self._uow() as uow:
             items = await uow.packages.items.find_common_for_vendor(vendor_id)
             images_by_item = await self._batch_item_images(uow, [i.id for i in items])
+            counts_by_item = await uow.packages.items.count_attached_packages([i.id for i in items])
             return [
                 PackageItemResponse.model_validate(i).model_copy(
-                    update={"images": images_by_item.get(i.id, [])}
+                    update={
+                        "images": images_by_item.get(i.id, []),
+                        "attached_package_count": counts_by_item.get(i.id, 0),
+                    }
                 )
                 for i in items
             ]
@@ -817,6 +821,36 @@ class PackageService(BaseService):
                 raise NotFoundError("PackageItem", str(item_id))
             await uow.packages.items.link_to_package(package_id, item_id)
             await uow.commit()
+
+    async def attach_all_common_item(
+        self,
+        vendor_id: UUID,
+        item_id: UUID,
+        package_ids: list[UUID] | None,
+    ) -> int:
+        """Attach a common item to several of the vendor's packages at once —
+        defaults to *all* of the vendor's own packages when package_ids is
+        omitted. Returns the number of newly-created attachments."""
+        async with self._uow() as uow:
+            item = await uow.packages.items.get_by_id(item_id)
+            if item is None or not item.is_common or item.vendor_id != vendor_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageItem", str(item_id))
+            if package_ids is None:
+                vendor_packages = await uow.packages.packages.find_many(
+                    uow.packages.packages._model.vendor_id == vendor_id,
+                )
+                package_ids = [p.id for p in vendor_packages]
+            else:
+                # Guard against attaching to a package the vendor doesn't own.
+                owned = await uow.packages.packages.find_many(
+                    uow.packages.packages._model.vendor_id == vendor_id,
+                    uow.packages.packages._model.id.in_(package_ids),
+                )
+                package_ids = [p.id for p in owned]
+            attached_count = await uow.packages.items.link_to_packages(package_ids, item_id)
+            await uow.commit()
+            return attached_count
 
     async def detach_common_item(
         self,
@@ -1171,9 +1205,13 @@ class PackageService(BaseService):
         async with self._uow() as uow:
             services = await uow.packages.services.find_common_for_vendor(vendor_id)
             images_by_service = await self._batch_service_images(uow, [s.id for s in services])
+            counts_by_service = await uow.packages.services.count_attached_packages([s.id for s in services])
             return [
                 PackageServiceResponse.model_validate(s).model_copy(
-                    update={"images": images_by_service.get(s.id, [])}
+                    update={
+                        "images": images_by_service.get(s.id, []),
+                        "attached_package_count": counts_by_service.get(s.id, 0),
+                    }
                 )
                 for s in services
             ]
@@ -1218,6 +1256,35 @@ class PackageService(BaseService):
                 raise NotFoundError("PackageService", str(service_id))
             await uow.packages.services.link_to_package(package_id, service_id)
             await uow.commit()
+
+    async def attach_all_common_service(
+        self,
+        vendor_id: UUID,
+        service_id: UUID,
+        package_ids: list[UUID] | None,
+    ) -> int:
+        """Attach a common service to several of the vendor's packages at once —
+        defaults to *all* of the vendor's own packages when package_ids is
+        omitted. Returns the number of newly-created attachments."""
+        async with self._uow() as uow:
+            service = await uow.packages.services.get_by_id(service_id)
+            if service is None or not service.is_common or service.vendor_id != vendor_id:
+                from app.services.exceptions import NotFoundError
+                raise NotFoundError("PackageService", str(service_id))
+            if package_ids is None:
+                vendor_packages = await uow.packages.packages.find_many(
+                    uow.packages.packages._model.vendor_id == vendor_id,
+                )
+                package_ids = [p.id for p in vendor_packages]
+            else:
+                owned = await uow.packages.packages.find_many(
+                    uow.packages.packages._model.vendor_id == vendor_id,
+                    uow.packages.packages._model.id.in_(package_ids),
+                )
+                package_ids = [p.id for p in owned]
+            attached_count = await uow.packages.services.link_to_packages(package_ids, service_id)
+            await uow.commit()
+            return attached_count
 
     async def detach_common_service(
         self,
