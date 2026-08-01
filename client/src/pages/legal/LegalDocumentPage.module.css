@@ -65,9 +65,18 @@
 
 .prose {
   max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 32px 28px;
+  background: var(--paper);
+  border-radius: 28px;
+  box-shadow: 0 16px 40px rgba(32, 24, 16, 0.08);
   font-size: 15px;
   line-height: 1.75;
   color: var(--ink-2);
+}
+.prose :global(div),
+.prose :global(section) {
+  margin: 0 0 16px;
 }
 .prose :global(h1),
 .prose :global(h2),
@@ -81,9 +90,19 @@
 .prose :global(h3):first-child {
   margin-top: 0;
 }
-.prose :global(p) { margin: 0 0 16px; }
+.prose :global(p) { margin: 0 0 18px; }
 .prose :global(ul),
-.prose :global(ol) { margin: 0 0 16px; padding-left: 22px; }
-.prose :global(li) { margin-bottom: 6px; }
+.prose :global(ol) {
+  margin: 0 0 18px;
+  padding-left: 28px;
+}
+.prose :global(li) {
+  margin-bottom: 10px;
+}
+.prose :global(br) {
+  display: block;
+  content: '';
+  margin-bottom: 16px;
+}
 .prose :global(a) { color: var(--saffron, #C8791E); }
 .prose :global(strong) { color: var(--ink); }
