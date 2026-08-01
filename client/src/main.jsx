@@ -13,32 +13,8 @@ import './index.css';
 // (<link rel="modulepreload">, router route prefetch) rather than a
 // React.lazy() import — Vite fires this event specifically for that case.
 // Guarded by the same one-shot flag as ChunkErrorBoundary so a persistently
-// stale bundle (e.g. a CDN still serving an old index.html) can't reload
-// forever — without this check, this listener alone caused a reload loop
-// with no circuit breaker at all.
-window.addEventListener('vite:preloadError', () => {
-  if (!sessionStorage.getItem('ty_chunk_reload_attempted')) {
-    sessionStorage.setItem('ty_chunk_reload_attempted', '1');
-    window.location.reload();
-  }
-});
-
-// A prior chunk-load reload succeeded (we got this far), so clear the
-// one-shot guard — otherwise a second stale-deploy later in the same tab
-// session would be unable to trigger another recovery reload.
-//
-// This has to be delayed, not immediate: this script runs on *every* load,
-// including the one the boundary's own reload() just triggered. If the
-// reload didn't actually fix anything (e.g. index.html itself is still
-// being served stale by a CDN edge cache, so the browser keeps re-fetching
-// the same broken bundle), clearing the flag right away lets the very next
-// lazy chunk failure re-arm the guard and reload again — an infinite
-// reload loop. Waiting a few seconds means the guard only clears once the
-// app has actually been running, not just once this entry script started.
-window.setTimeout(() => {
-  sessionStorage.removeItem('ty_chunk_reload_attempted');
-}, 5000);
-
+// stale bundle (or CDN/browser still serving an old index.html) can't reload
+// forever.
 function reloadFresh() {
   const url = new URL(window.location.href);
   url.searchParams.set('ty_cache_bust', String(Date.now()));
@@ -51,6 +27,19 @@ window.addEventListener('vite:preloadError', () => {
     reloadFresh();
   }
 });
+
+// A prior chunk-load reload succeeded (we got this far), so clear the
+// one-shot guard — otherwise a second stale-deploy later in the same tab
+// session would be unable to trigger another recovery reload.
+//
+// This has to be delayed, not immediate: this script runs on *every* load,
+// including the one the boundary's own reload() just triggered. If the
+// reload didn't actually fix anything (e.g. index.html itself is still
+// being served stale by a CDN edge cache), clearing the flag right away lets
+// the very next lazy chunk failure re-arm the guard and reload again.
+window.setTimeout(() => {
+  sessionStorage.removeItem('ty_chunk_reload_attempted');
+}, 5000);
 
 const queryClient = new QueryClient({
   defaultOptions: {
