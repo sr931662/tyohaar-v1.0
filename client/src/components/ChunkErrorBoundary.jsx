@@ -18,6 +18,12 @@ function isChunkLoadError(error) {
   );
 }
 
+function reloadFresh() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('ty_cache_bust', String(Date.now()));
+  window.location.replace(url.toString());
+}
+
 export default class ChunkErrorBoundary extends Component {
   state = { hasError: false, error: null };
 
@@ -31,7 +37,7 @@ export default class ChunkErrorBoundary extends Component {
       // Guarded by sessionStorage so a genuinely broken deploy (or offline
       // network) can't trap the tab in a reload loop.
       sessionStorage.setItem(RELOAD_FLAG, '1');
-      window.location.reload();
+      reloadFresh();
     }
   }
 
@@ -50,7 +56,7 @@ export default class ChunkErrorBoundary extends Component {
             <div>Updating to the latest version…</div>
             {alreadyReloaded && (
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => reloadFresh()}
                 style={{ padding: '8px 16px', cursor: 'pointer', border: '1px solid #888', borderRadius: 6, background: 'transparent', color: 'inherit' }}
               >
                 Reload

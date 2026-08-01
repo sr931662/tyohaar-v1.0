@@ -39,6 +39,19 @@ window.setTimeout(() => {
   sessionStorage.removeItem('ty_chunk_reload_attempted');
 }, 5000);
 
+function reloadFresh() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('ty_cache_bust', String(Date.now()));
+  window.location.replace(url.toString());
+}
+
+window.addEventListener('vite:preloadError', () => {
+  if (!sessionStorage.getItem('ty_chunk_reload_attempted')) {
+    sessionStorage.setItem('ty_chunk_reload_attempted', '1');
+    reloadFresh();
+  }
+});
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
