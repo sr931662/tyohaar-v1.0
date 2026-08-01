@@ -74,9 +74,15 @@
   line-height: 1.75;
   color: var(--ink-2);
 }
+.prose :global(*) {
+  background: transparent !important;
+  color: inherit !important;
+}
 .prose :global(div),
-.prose :global(section) {
+.prose :global(section),
+.prose :global(article) {
   margin: 0 0 16px;
+  background: transparent !important;
 }
 .prose :global(h1),
 .prose :global(h2),
