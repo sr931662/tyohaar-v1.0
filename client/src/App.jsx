@@ -11,6 +11,7 @@ const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
 const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
 const TermsPage = lazy(() => import('./pages/legal/TermsPage.jsx'));
 const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage.jsx'));
+const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage/index.jsx'));
 const CancellationPolicyPage = lazy(() => import('./pages/legal/CancellationPolicyPage.jsx'));
 
 import Footer from './components/layout/Footer.jsx';
@@ -146,6 +147,14 @@ export default function App() {
         element={
           <Suspense fallback={<AdminFallback />}>
             <CancellationPolicyPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/delete-account"
+        element={
+          <Suspense fallback={<AdminFallback />}>
+            <DeleteAccountPage />
           </Suspense>
         }
       />
