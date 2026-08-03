@@ -333,14 +333,15 @@ class _EventHubScreenState extends State<EventHubScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text(l10n.eventHubLovedOnesCountLabel(totalGuests),
+                                          // One count, one line — "N loved
+                                          // ones" and "N households invited"
+                                          // were both _guests.length, so the
+                                          // second line only repeated the
+                                          // first in different words.
+                                          Text(l10n.eventHubHouseholdsInvitedLabel(totalGuests),
                                               style: TyType.sans(resp.sp(15),
                                                   color: ty.ink,
                                                   weight: FontWeight.w700)),
-                                          Text(
-                                              l10n.eventHubHouseholdsInvitedLabel(_guests.length),
-                                              style: TyType.sans(resp.sp(12.5),
-                                                  color: ty.ink2)),
                                         ],
                                       ),
                                     ),

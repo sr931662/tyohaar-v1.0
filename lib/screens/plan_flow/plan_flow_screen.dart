@@ -149,13 +149,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   final List<PlannedGuest> _plannedGuests = [];
   Package? _pkg;
   CelebrationTheme? _theme;
-  // Preset (catalog) vs. customer-picked custom palette — mutually
+  // Preset (catalog) theme vs. customer-picked balloon colours — mutually
   // exclusive; switching modes clears the other's selection.
   bool _useCustomTheme = false;
-  int _customColorCount = 2;
-  final Map<String, String> _customThemeColors = {}; // 'primary'/'secondary'/'accent'/'background' -> hex
-  String? _balloonColorMode; // 'single' | 'dual'
-  final List<String> _balloonColors = []; // selected palette color names
+  // Selected palette colour names, in pick order. Capped at
+  // _maxCustomColours: the backend only accepts a single balloon colour or a
+  // two-colour combination (BookingCreate.validate_balloon_colors).
+  final List<String> _balloonColors = [];
+  static const int _maxCustomColours = 2;
   Address? _address;
   DateTime _eventDate = DateTime.now().add(const Duration(days: 30));
 
@@ -279,6 +280,19 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     super.dispose();
   }
 
+  // Mandatory items and services are charged on top of Package.price by the
+  // backend, so every subtotal shown to (or previewed for) the customer has
+  // to count them.
+  double get _includedLinesTotal {
+    final items = _packageItems.where((i) => i.isMandatory).fold<double>(
+      0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
+    );
+    final services = _packageServices.where((s) => s.isMandatory).fold<double>(
+      0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
+    );
+    return items + services;
+  }
+
   Future<void> _applyCoupon() async {
     final code = _couponCtrl.text.trim();
     if (code.isEmpty) return;
@@ -294,7 +308,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
       );
       final preview = await _paymentService.previewDiscount(
-        subtotal: basePrice + itemsTotal + servicesTotal,
+        subtotal: basePrice + _includedLinesTotal + itemsTotal + servicesTotal,
         packageId: _pkg?.id,
         occasionId: _occasion?.id,
         couponCode: code,
@@ -364,12 +378,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         if (_colorPalette.isNotEmpty) 'Color palette: ${_colorPalette.join(', ')}',
       ].join(' · ');
 
-      // Only send balloon colours once the selection is complete for the
-      // chosen mode (1 colour for single, 2 for dual) — the backend rejects
-      // a mode/colour-count mismatch, and an incomplete pick just means the
-      // customer hasn't finished this optional step yet.
-      final expectedCount = _balloonColorMode == 'dual' ? 2 : 1;
-      final balloonSelectionComplete = _balloonColorMode != null && _balloonColors.length == expectedCount;
+      // Custom colours are only sent when the customer actually picked some;
+      // the mode is derived from how many they chose (the backend accepts
+      // exactly 1 for SINGLE and exactly 2 for DUAL), so there is no separate
+      // single/dual switch for them to get wrong.
+      final usingCustomColours = (_pkg?.isCustomizable ?? false) && _useCustomTheme && _balloonColors.isNotEmpty;
       final balloonColorsHex = _balloonColors.map((name) => _balloonColorPalette[name]!).toList();
 
       final booking = await _bookingService.createBooking({
@@ -380,16 +393,19 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'celebration_title': _nameCtrl.text.isNotEmpty ? _nameCtrl.text : 'My Celebration',
         'address_id': _address?.id,
         'theme_id': (_pkg?.isCustomizable ?? false) && !_useCustomTheme ? _theme?.id : null,
-        if ((_pkg?.isCustomizable ?? false) && _useCustomTheme && _customThemeColors.length >= 2)
-          'custom_theme_colors': _customThemeColors,
+        if (usingCustomColours)
+          'custom_theme_colors': {
+            'primary': balloonColorsHex.first,
+            if (balloonColorsHex.length > 1) 'secondary': balloonColorsHex[1],
+          },
         'item_ids': optionalSelected,
         'item_quantities': _itemQuantities.map((id, qty) => MapEntry(id, qty)),
         'service_ids': optionalServicesSelected,
         'service_quantities': _serviceQuantities.map((id, qty) => MapEntry(id, qty)),
         'special_instructions': notes.isNotEmpty ? notes : null,
         'customization_note': _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
-        if ((_pkg?.isCustomizable ?? false) && balloonSelectionComplete) ...{
-          'balloon_color_mode': _balloonColorMode,
+        if (usingCustomColours) ...{
+          'balloon_color_mode': balloonColorsHex.length > 1 ? 'dual' : 'single',
           'balloon_colors': balloonColorsHex,
         },
         if (_couponCtrl.text.trim().isNotEmpty && _couponError == null)
@@ -1044,7 +1060,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           children: _packages.map((p) => _packageCard(context, p)).toList(),
         ),
         if (_pkg?.isCustomizable ?? false) _themeStep(context),
-        if (_pkg?.isCustomizable ?? false) _balloonColorStep(context),
       ],
     );
   }
@@ -1087,9 +1102,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _packageItems = [];
         _itemsLoadAttempted = false;
         _packageServices = [];
-        // A previously-picked theme is meaningless if the newly-selected
-        // package isn't customizable, so always start fresh on reselection.
+        // A previously-picked theme or colour pair is meaningless if the
+        // newly-selected package isn't customizable, so always start fresh
+        // on reselection.
         _theme = null;
+        _balloonColors.clear();
       }),
       child: Container(
         padding: const EdgeInsets.all(10),
@@ -1221,9 +1238,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     _packageItems = [];
                     _itemsLoadAttempted = false;
                     _packageServices = [];
-                    // A previously-picked theme is meaningless if the newly-selected
-                    // package isn't customizable, so always start fresh on reselection.
+                    // A previously-picked theme or colour pair is meaningless
+                    // if the newly-selected package isn't customizable, so
+                    // always start fresh on reselection.
                     _theme = null;
+                    _balloonColors.clear();
                   });
                   Navigator.pop(ctx);
                 },
@@ -1243,11 +1262,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.planFlowChooseColorThemeLabel, style: TyType.eyebrow(11, color: ty.ink3)),
+          Text(l10n.planFlowChooseBalloonColoursLabel, style: TyType.eyebrow(11, color: ty.ink3)),
           const SizedBox(height: 4),
           Text(l10n.planFlowCustomizableThemeHint,
               style: TyType.sans(12.5, color: ty.ink2)),
           const SizedBox(height: 12),
+          // A preset theme and a custom colour pick are two answers to the
+          // same question, so they are one either/or choice rather than two
+          // stacked sections the customer can fill in contradictorily.
           Row(
             children: [
               Expanded(
@@ -1257,7 +1279,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   selected: !_useCustomTheme,
                   onTap: () => setState(() {
                     _useCustomTheme = false;
-                    _customThemeColors.clear();
+                    _balloonColors.clear();
                   }),
                 ),
               ),
@@ -1265,7 +1287,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               Expanded(
                 child: _themeModeTab(
                   context,
-                  label: l10n.planFlowCustomThemeLabel,
+                  label: l10n.planFlowCustomColourLabel,
                   selected: _useCustomTheme,
                   onTap: () => setState(() {
                     _useCustomTheme = true;
@@ -1289,7 +1311,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     ),
                   )
           else
-            _customThemeSection(context),
+            _customColourSection(context),
         ],
       ),
     );
@@ -1411,178 +1433,73 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  static const List<String> _customThemeSlotKeys = ['primary', 'secondary', 'accent', 'background'];
-
-  Widget _customThemeSection(BuildContext context) {
+  // One palette, one selection — pick a single accent colour or a two-colour
+  // combination. There is no separate single/dual switch: the mode follows
+  // from how many colours are picked.
+  Widget _customColourSection(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.planFlowCustomThemeColorCountLabel, style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Row(
-          children: [2, 3, 4].map((n) {
-            final selected = _customColorCount == n;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () => setState(() {
-                  _customColorCount = n;
-                  // Drop any slots beyond the new count so a reduced-then-
-                  // increased count never resurrects a stale pick.
-                  for (final key in _customThemeSlotKeys.skip(n)) {
-                    _customThemeColors.remove(key);
+        Text(l10n.planFlowCustomColourHint, style: TyType.sans(12.5, color: ty.ink2)),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: _balloonColorPalette.entries.map((entry) {
+            final name = entry.key;
+            final color = _hexToColor(entry.value);
+            final on = _balloonColors.contains(name);
+            return GestureDetector(
+              onTap: () => setState(() {
+                if (on) {
+                  _balloonColors.remove(name);
+                } else {
+                  // At the cap, the oldest pick makes way for the new one so
+                  // tapping a colour always visibly does something.
+                  if (_balloonColors.length >= _maxCustomColours) {
+                    _balloonColors.removeAt(0);
                   }
-                }),
-                child: Container(
-                  width: 40,
-                  height: 36,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: selected ? ty.saffron : ty.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: selected ? ty.saffron : ty.line),
+                  _balloonColors.add(name);
+                }
+              }),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 3 : 1),
+                      boxShadow: on
+                          ? [BoxShadow(color: ty.saffron.withValues(alpha: 0.35), blurRadius: 6, offset: const Offset(0, 2))]
+                          : null,
+                    ),
+                    child: on
+                        ? Icon(Icons.check_rounded,
+                            color: color.computeLuminance() > 0.6 ? Colors.black87 : Colors.white, size: 18)
+                        : null,
                   ),
-                  child: Text(
-                    '$n',
-                    style: TyType.sans(14, color: selected ? ty.onPrimary : ty.ink, weight: FontWeight.w700),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: 56,
+                    child: Text(
+                      _balloonColorLabel(context, name),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TyType.sans(10.5, color: ty.ink2),
+                    ),
                   ),
-                ),
+                ],
               ),
             );
           }).toList(),
         ),
-        const SizedBox(height: 16),
-        ...List.generate(_customColorCount, (i) {
-          final key = _customThemeSlotKeys[i];
-          final selectedHex = _customThemeColors[key];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.planFlowCustomThemeColorSlotLabel(i + 1), style: TyType.sans(12, color: ty.ink3)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: _balloonColorPalette.entries.map((e) {
-                    final on = selectedHex == e.value;
-                    return GestureDetector(
-                      onTap: () => setState(() => _customThemeColors[key] = e.value),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _hexToColor(e.value),
-                          border: Border.all(color: on ? ty.saffron : Colors.black12, width: on ? 3 : 1),
-                        ),
-                        child: on ? const Icon(Icons.check_rounded, color: Colors.white, size: 16) : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          );
-        }),
       ],
-    );
-  }
-
-  Widget _balloonColorStep(BuildContext context) {
-    final ty = context.ty;
-    final l10n = AppLocalizations.of(context)!;
-    final maxColors = _balloonColorMode == 'dual' ? 2 : 1;
-    return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(l10n.planFlowBalloonColoursLabel, style: TyType.eyebrow(11, color: ty.ink3)),
-          const SizedBox(height: 4),
-          Text(
-            l10n.planFlowBalloonColoursHint,
-            style: TyType.sans(12.5, color: ty.ink2),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 9,
-            runSpacing: 9,
-            children: ['single', 'dual'].map((mode) {
-              return TyChip(
-                label: mode == 'single' ? l10n.planFlowSingleColourLabel : l10n.planFlowDualColourLabel,
-                active: _balloonColorMode == mode,
-                onTap: () => setState(() {
-                  _balloonColorMode = _balloonColorMode == mode ? null : mode;
-                  final newMax = _balloonColorMode == 'dual' ? 2 : 1;
-                  if (_balloonColors.length > newMax) {
-                    _balloonColors.removeRange(newMax, _balloonColors.length);
-                  }
-                }),
-              );
-            }).toList(),
-          ),
-          if (_balloonColorMode != null) ...[
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: _balloonColorPalette.entries.map((entry) {
-                final name = entry.key;
-                final color = _hexToColor(entry.value);
-                final on = _balloonColors.contains(name);
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    if (on) {
-                      _balloonColors.remove(name);
-                    } else {
-                      if (_balloonColors.length >= maxColors) {
-                        _balloonColors.removeAt(0);
-                      }
-                      _balloonColors.add(name);
-                    }
-                  }),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 3 : 1),
-                          boxShadow: on
-                              ? [BoxShadow(color: ty.saffron.withValues(alpha: 0.35), blurRadius: 6, offset: const Offset(0, 2))]
-                              : null,
-                        ),
-                        child: on
-                            ? Icon(Icons.check_rounded,
-                                color: color.computeLuminance() > 0.6 ? Colors.black87 : Colors.white, size: 18)
-                            : null,
-                      ),
-                      const SizedBox(height: 4),
-                      SizedBox(
-                        width: 56,
-                        child: Text(
-                          _balloonColorLabel(context, name),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TyType.sans(10.5, color: ty.ink2),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -1719,8 +1636,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
                     if (item.description != null)
                       Text(item.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    if (!locked)
-                      Text(l10n.planFlowAddOnPriceLabel(formatPrice(item.unitPrice), item.unit ?? l10n.planFlowUnitFallback), style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700)),
+                    // Priced on every row, mandatory ones included: they are
+                    // charged on top of the package base price, so hiding
+                    // their price made the running total unexplainable.
+                    Text(
+                      locked
+                          ? l10n.planFlowItemPriceLabel(formatPrice(item.unitPrice), item.unit ?? l10n.planFlowUnitFallback)
+                          : l10n.planFlowAddOnPriceLabel(formatPrice(item.unitPrice), item.unit ?? l10n.planFlowUnitFallback),
+                      style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
+                    ),
                   ],
                 ),
               ),
@@ -1798,8 +1722,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     Text(service.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
                     if (service.description != null)
                       Text(service.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    if (!locked)
-                      Text(l10n.planFlowAddOnPriceLabel(formatPrice(service.unitPrice), service.unit ?? l10n.planFlowUnitFallback), style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700)),
+                    Text(
+                      locked
+                          ? l10n.planFlowItemPriceLabel(formatPrice(service.unitPrice), service.unit ?? l10n.planFlowUnitFallback)
+                          : l10n.planFlowAddOnPriceLabel(formatPrice(service.unitPrice), service.unit ?? l10n.planFlowUnitFallback),
+                      style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
+                    ),
                   ],
                 ),
               ),
@@ -1902,6 +1830,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
     );
     final addOnsTotal = itemsTotal + servicesTotal;
+    // Mandatory lines are billed on top of the package base price server-side
+    // (BookingService: subtotal = package + mandatory + selected optional), so
+    // they belong in the breakdown too — leaving them out made the total shown
+    // here smaller than the amount charged at payment.
+    final includedTotal = _includedLinesTotal;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1911,14 +1844,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _summaryCard(context, l10n.planFlowSummaryPackageLabel, _pkg?.name ?? '', onEdit: () => _jumpTo(1)),
         if ((_pkg?.isCustomizable ?? false) && !_useCustomTheme && _theme != null)
           _summaryCard(context, l10n.planFlowSummaryThemeLabel, _theme!.name, onEdit: () => _jumpTo(1)),
-        if ((_pkg?.isCustomizable ?? false) && _useCustomTheme && _customThemeColors.length >= 2)
-          _summaryCard(context, l10n.planFlowSummaryThemeLabel, l10n.planFlowCustomThemeLabel, onEdit: () => _jumpTo(1)),
-        if ((_pkg?.isCustomizable ?? false) && _balloonColorMode != null && _balloonColors.isNotEmpty)
+        if ((_pkg?.isCustomizable ?? false) && _useCustomTheme && _balloonColors.isNotEmpty)
           _summaryCard(
             context,
             l10n.planFlowSummaryBalloonColoursLabel,
-            '${_balloonColorMode == 'dual' ? l10n.planFlowDualLabel : l10n.planFlowSingleLabel} · '
-                '${_balloonColors.map((n) => _balloonColorLabel(context, n)).join(', ')}',
+            _balloonColors.map((n) => _balloonColorLabel(context, n)).join(', '),
             onEdit: () => _jumpTo(1),
           ),
         if (mandatoryItems.isNotEmpty)
@@ -2025,12 +1955,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             final l10n = AppLocalizations.of(context)!;
             final preview = _discountPreview;
             final hasDiscount = preview != null && _couponError == null && preview.totalDiscount > 0;
-            final subtotal = (_pkg?.price ?? 0) + addOnsTotal;
+            final subtotal = (_pkg?.price ?? 0) + includedTotal + addOnsTotal;
             final tax = (hasDiscount ? (subtotal - preview.totalDiscount) : subtotal) * 0.18;
             final total = hasDiscount ? (subtotal - preview.totalDiscount) + tax : subtotal + tax;
             return Column(
               children: [
                 _priceRow(l10n.planFlowPackageBasePriceLabel, _pkg?.price.toInt() ?? 0),
+                if (includedTotal > 0) _priceRow(l10n.planFlowSummaryIncludedItemsLabel, includedTotal.toInt()),
                 if (addOnsTotal > 0) _priceRow(l10n.planFlowSummaryAddOnsLabel, addOnsTotal.toInt()),
                 if (hasDiscount) _priceRow(l10n.planFlowDiscountLabel, -preview.totalDiscount.toInt()),
                 _priceRow(l10n.planFlowGstLabel, tax.toInt()),

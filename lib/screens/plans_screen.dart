@@ -78,17 +78,11 @@ class _PlansScreenState extends State<PlansScreen> {
         padding: EdgeInsets.fromLTRB(resp.w(18), topPadding, resp.w(18),
             resp.h(28) + MediaQuery.of(context).padding.bottom),
         children: [
-          Row(
-            children: [
-              Expanded(child: Text(l10n.plansHeading, style: TyType.display(resp.sp(26), color: ty.ink))),
-              ChromeIconButton(
-                icon: Icons.add_rounded,
-                onTap: () => Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => const PlanFlowScreen()))
-                    .then((_) => _load()),
-              ),
-            ],
-          ),
+          // Single entry point to the plan flow on this screen — the labelled
+          // "Plan a new celebration" card at the bottom of the list. A second
+          // bare "+" in the header did the same thing and read as a different
+          // action.
+          Text(l10n.plansHeading, style: TyType.display(resp.sp(26), color: ty.ink)),
           SizedBox(height: resp.h(22)),
           if (_loading && _celebrations.isEmpty) ..._buildSkeletons(ty, resp),
           if (!_loading && _error != null) _buildError(context, ty, resp),
@@ -220,8 +214,13 @@ class _PlansScreenState extends State<PlansScreen> {
                 ],
               ),
             ),
-            SizedBox(width: resp.w(12)),
-            Text(_capitalise(status), style: TyType.sans(resp.sp(11.5), color: ty.ink3)),
+            // "Draft"/"Planning" is exactly what the "In progress" section
+            // header already says — only surface a status that tells the
+            // customer something new (Confirmed, Completed, Cancelled…).
+            if (!_statusImpliedBySection(status)) ...[
+              SizedBox(width: resp.w(12)),
+              Text(_capitalise(status), style: TyType.sans(resp.sp(11.5), color: ty.ink3)),
+            ],
           ],
         ),
       ),
@@ -269,6 +268,11 @@ class _PlansScreenState extends State<PlansScreen> {
       ),
     );
   }
+
+  // Statuses that mean "still being planned" — the section header carries
+  // that meaning already, so repeating it per card is noise.
+  static bool _statusImpliedBySection(String status) =>
+      status == 'draft' || status == 'planning' || status == 'in_progress';
 
   static String _capitalise(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1).toLowerCase().replaceAll('_', ' ')}';

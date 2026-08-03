@@ -681,25 +681,14 @@
   "planFlowExpandForDetailsLabel": "Expand for details",
   "planFlowSelectedLabel": "Selected",
   "planFlowSelectThisPackageLabel": "Select This Package",
-  "planFlowChooseColorThemeLabel": "CHOOSE A COLOR THEME",
-  "planFlowCustomizableThemeHint": "This package is customizable — pick the palette for your celebration.",
+  "planFlowChooseBalloonColoursLabel": "CHOOSE YOUR BALLOON COLOURS",
+  "planFlowCustomizableThemeHint": "This package is customizable — go with a preset theme, or pick your own colours.",
   "planFlowPresetThemesLabel": "Preset Themes",
-  "planFlowCustomThemeLabel": "Custom Theme",
-  "planFlowNoPresetThemesMessage": "No preset themes available right now — try Custom Theme instead.",
-  "planFlowCustomThemeColorCountLabel": "Number of colors",
-  "planFlowCustomThemeColorSlotLabel": "Color {n}",
-  "@planFlowCustomThemeColorSlotLabel": {
-    "description": "Label above the swatch picker for the Nth color slot in a custom theme",
-    "placeholders": {
-      "n": { "type": "int" }
-    }
-  },
+  "planFlowCustomColourLabel": "Custom Colour",
+  "planFlowCustomColourHint": "Pick a single accent colour, or a two-colour combination for your balloon décor.",
+  "planFlowNoPresetThemesMessage": "No preset themes available right now — try Custom Colour instead.",
   "planFlowDefaultPackageName": "Celebration Package",
 
-  "planFlowBalloonColoursLabel": "BALLOON COLOURS",
-  "planFlowBalloonColoursHint": "Pick a single accent colour, or a two-colour combination for your balloon décor.",
-  "planFlowSingleColourLabel": "Single Colour",
-  "planFlowDualColourLabel": "Dual Colour",
   "planFlowBalloonColorRed": "Red",
   "planFlowBalloonColorGold": "Gold",
   "planFlowBalloonColorRoseGold": "Rose Gold",
@@ -725,6 +714,14 @@
   "planFlowAddOnPriceLabel": "+ {price} / {unit}",
   "@planFlowAddOnPriceLabel": {
     "description": "Add-on unit price line on a package item row in the plan flow items step",
+    "placeholders": {
+      "price": { "type": "String" },
+      "unit": { "type": "String" }
+    }
+  },
+  "planFlowItemPriceLabel": "{price} / {unit}",
+  "@planFlowItemPriceLabel": {
+    "description": "Unit price line on an always-included package item row in the plan flow items step",
     "placeholders": {
       "price": { "type": "String" },
       "unit": { "type": "String" }
@@ -794,8 +791,6 @@
   "planFlowSummaryPackageLabel": "Package",
   "planFlowSummaryThemeLabel": "Theme",
   "planFlowSummaryBalloonColoursLabel": "Balloon Colours",
-  "planFlowDualLabel": "Dual",
-  "planFlowSingleLabel": "Single",
   "planFlowSummaryIncludedItemsLabel": "Included Items",
   "planFlowSummaryIncludedServicesLabel": "Included Services",
   "planFlowSummaryAddOnsLabel": "Add-ons",
@@ -1324,7 +1319,7 @@
       "number": { "type": "String" }
     }
   },
-  "paymentSecuredByRazorpayLabel": "Secured by Razorpay — 256-bit SSL encryption",
+  "paymentSecuredByRazorpayLabel": "Secured by Razorpay",
   "paymentProcessingLabel": "Processing...",
   "paymentPayButtonLabel": "Pay ₹{amount}",
   "@paymentPayButtonLabel": {
@@ -1707,16 +1702,9 @@
       "quantity": { "type": "int" }
     }
   },
-  "eventHubLovedOnesCountLabel": "{count} loved ones",
-  "@eventHubLovedOnesCountLabel": {
-    "description": "Guest count heading in the gathering card on the event hub screen",
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
   "eventHubHouseholdsInvitedLabel": "{count} households invited",
   "@eventHubHouseholdsInvitedLabel": {
-    "description": "Household count subtitle in the gathering card on the event hub screen",
+    "description": "Guest/household count line in the gathering card on the event hub screen",
     "placeholders": {
       "count": { "type": "int" }
     }

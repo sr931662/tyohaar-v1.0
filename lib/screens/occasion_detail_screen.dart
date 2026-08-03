@@ -55,7 +55,6 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
     final occasion = widget.occasion;
-    final color = ty.tint(occasion.tint);
 
     return Scaffold(
       backgroundColor: ty.paper,
@@ -90,12 +89,10 @@ class _OccasionDetailScreenState extends State<OccasionDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TyPill(
-                    occasion.category.replaceAll('_', ' ').toUpperCase(),
-                    background: color.withValues(alpha: 0.12),
-                    foreground: color,
-                  ),
-                  const SizedBox(height: 12),
+                  // Occasion.category holds the raw category_id UUID (the
+                  // backend does not send a human-readable category name), so
+                  // it is never rendered — the occasion name below is the
+                  // customer-facing label.
                   Text(occasion.name, style: TyType.display(32, color: ty.ink)),
                   const SizedBox(height: 8),
                   Text(
