@@ -102,6 +102,25 @@
     box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.2);
 }
 
+/* The confirmation checkbox opts out of the full-width input sizing above. */
+.checkboxGroup {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+}
+
+.checkboxGroup input {
+    width: auto;
+    margin-top: 0.3rem;
+    flex-shrink: 0;
+}
+
+.checkboxGroup label {
+    font-weight: 400;
+    margin-bottom: 0;
+}
+
 .errorText {
     color: #d93025;
     font-size: 0.875rem;
