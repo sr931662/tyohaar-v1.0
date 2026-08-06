@@ -1046,18 +1046,24 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GridView.count(
-          crossAxisCount: 2,
+        GridView.builder(
+          // A fixed mainAxisExtent (not childAspectRatio) sizes each cell to
+          // what the card's content actually needs — 90px image + name +
+          // optional rating row + 2-line description + CTA, plus padding —
+          // regardless of screen width. childAspectRatio scales height with
+          // width, so on anything wider than the ~320dp phone it was tuned
+          // for, the Spacer() inside _packageCard was filling a large dead
+          // gap between the description and "Expand for details".
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          // 0.6 (not the tighter 0.72 this used to be) leaves enough height
-          // for the fixed 90px image + name + optional rating row + 2-line
-          // description + CTA even on a 320dp-wide phone, where the cell is
-          // only ~136dp wide — the old ratio clipped that content there.
-          childAspectRatio: 0.6,
-          children: _packages.map((p) => _packageCard(context, p)).toList(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            mainAxisExtent: 240,
+          ),
+          itemCount: _packages.length,
+          itemBuilder: (context, i) => _packageCard(context, _packages[i]),
         ),
         if (_pkg?.isCustomizable ?? false) _themeStep(context),
       ],
@@ -1114,7 +1120,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           color: ty.surface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 2 : 1),
-          boxShadow: on ? [BoxShadow(color: ty.saffron.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 3))] : null,
+          boxShadow: [
+            on
+                ? BoxShadow(color: ty.saffron.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 3))
+                : BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 6, offset: const Offset(0, 2)),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
