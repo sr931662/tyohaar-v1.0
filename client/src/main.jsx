@@ -28,6 +28,29 @@ window.addEventListener('vite:preloadError', () => {
   }
 });
 
+// Same stale-deploy failure mode as vite:preloadError, but for the
+// index.html-referenced stylesheet <link> rather than a JS chunk. A missing
+// hashed CSS file falls through the SPA catch-all redirect and comes back
+// as index.html (text/html), which the browser refuses to apply as a
+// stylesheet — that failure only surfaces as a capturing-phase 'error'
+// event on the <link>, never a catchable JS exception, so it needs its own
+// listener instead of going through ChunkErrorBoundary.
+window.addEventListener(
+  'error',
+  (event) => {
+    const target = event.target;
+    if (
+      target instanceof HTMLLinkElement &&
+      target.rel === 'stylesheet' &&
+      !sessionStorage.getItem('ty_chunk_reload_attempted')
+    ) {
+      sessionStorage.setItem('ty_chunk_reload_attempted', '1');
+      reloadFresh();
+    }
+  },
+  true
+);
+
 // A prior chunk-load reload succeeded (we got this far), so clear the
 // one-shot guard — otherwise a second stale-deploy later in the same tab
 // session would be unable to trigger another recovery reload.
