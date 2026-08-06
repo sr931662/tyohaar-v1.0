@@ -1,4 +1,3 @@
-/assets/*  /assets/:splat  200
 /_headers  /_headers  200
 /_redirects  /_redirects  200
 /favicon.ico  /favicon.ico  200
