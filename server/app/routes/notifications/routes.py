@@ -8,6 +8,7 @@ from fastapi import APIRouter, status
 
 from app.controllers.notifications import controller as ctrl
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
+from app.schemas.cms.bulk import BulkOperationResult
 from app.schemas.notifications.response import (
     NotificationPreferencesResponse,
     NotificationResponse,
@@ -64,6 +65,23 @@ router.add_api_route(
     summary="Mark All Notifications Read",
     description="Mark every unread notification as read for the authenticated user.",
     operation_id="notifications_mark_all_read",
+)
+
+# ── Bulk delete (static — must precede /{notification_id}) ───────────────────
+
+router.add_api_route(
+    "/bulk-delete",
+    ctrl.bulk_delete_notifications,
+    methods=["POST"],
+    response_model=SuccessResponse[BulkOperationResult],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Delete My Notifications",
+    description=(
+        "Hard-delete multiple notifications from the authenticated user's own "
+        "inbox in one call. Ownership is enforced per-id — ids not owned by "
+        "the caller are reported as per-item failures, not deleted."
+    ),
+    operation_id="notifications_bulk_delete",
 )
 
 # ── Admin — send ──────────────────────────────────────────────────────────────

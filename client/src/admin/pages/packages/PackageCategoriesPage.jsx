@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { packagesApi } from '../../api';
+import { packagesApi, bulkApi } from '../../api';
 import { formatDate } from '../../utils/format';
 import EmptyState from '../../components/ui/EmptyState';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
 import ImageUploadField from '../../components/ui/ImageUploadField';
+import BulkActionBar from '../../components/ui/BulkActionBar';
+import { useRowSelection } from '../../hooks/useRowSelection';
+import { reportBulkResult } from '../../utils/bulkToast';
 
 export default function PackageCategoriesPage() {
   const qc = useQueryClient();
@@ -40,6 +43,22 @@ export default function PackageCategoriesPage() {
     onError: () => toast.error('Delete failed'),
   });
 
+  const { selected, toggleItem, toggleAll, clear, isAllSelected } = useRowSelection(categories);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deletePackageCategories(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'category',
+      nounPlural: 'categories',
+      onDone: () => { qc.invalidateQueries(['packages', 'categories']); clear(); },
+    }),
+    onError: () => toast.error('Bulk delete failed'),
+  });
+
   const openEdit = (cat) => {
     setEditItem(cat); setName(cat.name); setDescription(cat.description ?? ''); setIconUrl(cat.icon_url ?? '');
     setModalOpen(true);
@@ -65,14 +84,22 @@ export default function PackageCategoriesPage() {
       {!categories.length && !isLoading ? (
         <EmptyState title="No categories yet" action={<button className="btn btn-primary" onClick={openNew}>Create first category</button>} />
       ) : (
+        <>
+        <BulkActionBar count={selected.length} onClear={clear}>
+          <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDelete(true)}>Delete</button>
+        </BulkActionBar>
         <div className="admin-table-wrapper">
           <table className="admin-table">
             <thead>
-              <tr><th>Name</th><th>Description</th><th>Packages</th><th>Created</th><th>Actions</th></tr>
+              <tr>
+                <th style={{ width: 40 }}><input type="checkbox" checked={isAllSelected} onChange={toggleAll} /></th>
+                <th>Name</th><th>Description</th><th>Packages</th><th>Created</th><th>Actions</th>
+              </tr>
             </thead>
             <tbody>
               {categories.map((cat) => (
                 <tr key={cat.id}>
+                  <td><input type="checkbox" checked={selected.includes(cat.id)} onChange={() => toggleItem(cat.id)} /></td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {cat.icon_url && (
@@ -95,6 +122,7 @@ export default function PackageCategoriesPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <Modal
@@ -132,6 +160,16 @@ export default function PackageCategoriesPage() {
         message="Are you sure? Packages in this category will lose their category assignment."
         danger
         loading={deleteMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={() => { bulkDeleteMutation.mutate(selected); setConfirmBulkDelete(false); }}
+        title="Delete Categories"
+        message={`Delete ${selected.length} categor${selected.length === 1 ? 'y' : 'ies'}? Packages in these categories will lose their category assignment.`}
+        danger
+        loading={bulkDeleteMutation.isPending}
       />
     </div>
   );

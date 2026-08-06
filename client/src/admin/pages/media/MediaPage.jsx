@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { mediaApi } from '../../api';
+import { mediaApi, bulkApi } from '../../api';
 import { timeAgo } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
+import { ConfirmDialog } from '../../components/ui/Modal';
+import BulkActionBar from '../../components/ui/BulkActionBar';
+import { useRowSelection } from '../../hooks/useRowSelection';
+import { reportBulkResult } from '../../utils/bulkToast';
 
 export default function MediaPage() {
   const qc = useQueryClient();
@@ -33,6 +38,22 @@ export default function MediaPage() {
 
   const items = data?.pages.flatMap((p) => p?.items ?? []) ?? [];
 
+  const { selected, toggleItem, toggleAll, clear, isAllSelected } = useRowSelection(items);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deleteMediaImages(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'image',
+      nounPlural: 'images',
+      onDone: () => { qc.invalidateQueries(['media', 'pending-moderation']); clear(); },
+    }),
+    onError: () => toast.error('Bulk delete failed'),
+  });
+
   return (
     <div>
       <div className="admin-page-header">
@@ -50,10 +71,15 @@ export default function MediaPage() {
           message="All uploads have been reviewed. Check back later."
         />
       ) : (
+        <>
+        <BulkActionBar count={selected.length} onClear={clear}>
+          <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDelete(true)}>Delete</button>
+        </BulkActionBar>
         <div className="admin-table-wrapper">
           <table className="admin-table">
             <thead>
               <tr>
+                <th style={{ width: 40 }}><input type="checkbox" checked={isAllSelected} onChange={toggleAll} /></th>
                 <th>Preview</th>
                 <th>Entity</th>
                 <th>Owner</th>
@@ -65,6 +91,7 @@ export default function MediaPage() {
             <tbody>
               {items.map((img) => (
                 <tr key={img.id}>
+                  <td><input type="checkbox" checked={selected.includes(img.id)} onChange={() => toggleItem(img.id)} /></td>
                   <td>
                     {img.url ? (
                       <img
@@ -141,7 +168,18 @@ export default function MediaPage() {
             </div>
           )}
         </div>
+        </>
       )}
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={() => { bulkDeleteMutation.mutate(selected); setConfirmBulkDelete(false); }}
+        title="Delete Images"
+        message={`Delete ${selected.length} image(s)? This cannot be undone.`}
+        danger
+        loading={bulkDeleteMutation.isPending}
+      />
     </div>
   );
 }

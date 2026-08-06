@@ -10,6 +10,18 @@ from app.controllers.cms.bulk_controller import (
     archive_discounts,
     archive_packages,
     assign_memberships,
+    bulk_deactivate_membership_plans,
+    bulk_deactivate_notification_templates,
+    bulk_delete_cities,
+    bulk_delete_faqs,
+    bulk_delete_media_images,
+    bulk_delete_media_videos,
+    bulk_delete_occasion_themes,
+    bulk_delete_occasions,
+    bulk_delete_package_categories,
+    bulk_delete_roles,
+    bulk_delete_states,
+    bulk_delete_vendors,
     bulk_price_update,
     bulk_send_notifications,
     disable_discounts,
@@ -48,6 +60,12 @@ router.add_api_route(
     activate_vendors,
     methods=["POST"],
     summary="Bulk activate suspended vendors",
+)
+router.add_api_route(
+    "/vendors/delete",
+    bulk_delete_vendors,
+    methods=["POST"],
+    summary="Bulk delete vendors (cascades to their packages)",
 )
 
 # ── Packages ──────────────────────────────────────────────────────────────────
@@ -114,4 +132,73 @@ router.add_api_route(
     assign_memberships,
     methods=["POST"],
     summary="Bulk assign membership plans to users",
+)
+
+# ── Delete ────────────────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/packages/categories/delete",
+    bulk_delete_package_categories,
+    methods=["POST"],
+    summary="Bulk delete package categories",
+)
+router.add_api_route(
+    "/occasions/delete",
+    bulk_delete_occasions,
+    methods=["POST"],
+    summary="Bulk delete occasions",
+)
+router.add_api_route(
+    "/occasions/themes/delete",
+    bulk_delete_occasion_themes,
+    methods=["POST"],
+    summary="Bulk delete occasion themes",
+)
+router.add_api_route(
+    "/media/images/delete",
+    bulk_delete_media_images,
+    methods=["POST"],
+    summary="Bulk delete media images",
+)
+router.add_api_route(
+    "/media/videos/delete",
+    bulk_delete_media_videos,
+    methods=["POST"],
+    summary="Bulk delete media videos",
+)
+router.add_api_route(
+    "/roles/delete",
+    bulk_delete_roles,
+    methods=["POST"],
+    summary="Bulk delete admin roles (super-admin only)",
+)
+router.add_api_route(
+    "/notifications/templates/deactivate",
+    bulk_deactivate_notification_templates,
+    methods=["POST"],
+    summary="Bulk deactivate notification templates",
+)
+router.add_api_route(
+    "/states/delete",
+    bulk_delete_states,
+    methods=["POST"],
+    summary="Bulk delete states",
+)
+router.add_api_route(
+    "/cities/delete",
+    bulk_delete_cities,
+    methods=["POST"],
+    summary="Bulk delete cities",
+)
+router.add_api_route(
+    "/faqs/delete",
+    bulk_delete_faqs,
+    methods=["POST"],
+    summary="Bulk delete FAQs",
+)
+router.add_api_route(
+    "/memberships/plans/deactivate",
+    bulk_deactivate_membership_plans,
+    methods=["POST"],
+    summary="Bulk deactivate membership plans",
 )

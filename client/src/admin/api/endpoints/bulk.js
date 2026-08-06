@@ -44,4 +44,41 @@ export const bulkApi = {
 
   assignMemberships: (body) =>
     apiClient.post(`${BASE}/memberships/assign`, body).then(extractData),
+
+  // ── Delete ──────────────────────────────────────────────────────────────
+  deleteVendors: (ids, reason) =>
+    apiClient.post(`${BASE}/vendors/delete`, { ids, reason }).then(extractData),
+
+  deletePackageCategories: (ids) =>
+    apiClient.post(`${BASE}/packages/categories/delete`, { ids }).then(extractData),
+
+  deleteOccasions: (ids) =>
+    apiClient.post(`${BASE}/occasions/delete`, { ids }).then(extractData),
+
+  deleteOccasionThemes: (ids) =>
+    apiClient.post(`${BASE}/occasions/themes/delete`, { ids }).then(extractData),
+
+  deleteMediaImages: (ids) =>
+    apiClient.post(`${BASE}/media/images/delete`, { ids }).then(extractData),
+
+  deleteMediaVideos: (ids) =>
+    apiClient.post(`${BASE}/media/videos/delete`, { ids }).then(extractData),
+
+  deleteRoles: (ids) =>
+    apiClient.post(`${BASE}/roles/delete`, { ids }).then(extractData),
+
+  deactivateNotificationTemplates: (ids) =>
+    apiClient.post(`${BASE}/notifications/templates/deactivate`, { ids }).then(extractData),
+
+  deleteStates: (ids) =>
+    apiClient.post(`${BASE}/states/delete`, { ids }).then(extractData),
+
+  deleteCities: (ids) =>
+    apiClient.post(`${BASE}/cities/delete`, { ids }).then(extractData),
+
+  deleteFaqs: (ids) =>
+    apiClient.post(`${BASE}/faqs/delete`, { ids }).then(extractData),
+
+  deactivateMembershipPlans: (ids) =>
+    apiClient.post(`${BASE}/memberships/plans/deactivate`, { ids }).then(extractData),
 };

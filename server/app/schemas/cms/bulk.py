@@ -30,6 +30,10 @@ class BulkDiscountActionRequest(BulkIDsRequest):
     pass
 
 
+class BulkDeleteRequest(BulkIDsRequest):
+    pass
+
+
 class BulkPriceUpdateRequest(_Base):
     ids: list[uuid.UUID] = Field(..., min_length=1, max_length=500)
     adjustment_type: str = Field(..., description="FIXED | PERCENTAGE")

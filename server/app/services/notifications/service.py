@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Callable
+from typing import Any, Callable
 from uuid import UUID
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.models.notifications.notification import Notification
 from app.schemas.base import CursorPage
+from app.schemas.cms.bulk import BulkOperationResult
 from app.schemas.notifications.create import (
     BroadcastCreate,
     NotificationCreate,
@@ -403,6 +405,56 @@ class NotificationService(BaseService):
                 notification_id, user_id, uow
             )
             await uow.notifications.notifications.delete(notification)
+
+    async def bulk_delete_notifications(
+        self,
+        user_id: UUID,
+        ids: list[UUID],
+    ) -> BulkOperationResult:
+        """
+        Hard-deletes multiple of the caller's own notifications. Notification
+        has no soft-delete column, so this mirrors delete_notification's hard
+        delete. The user_id filter lives in the same WHERE clause as the id
+        filter so a caller can never bulk-delete another user's notifications
+        via a crafted id list.
+        """
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for notification_id in ids:
+                try:
+                    stmt = (
+                        sa_delete(Notification)
+                        .where(
+                            Notification.id == notification_id,
+                            Notification.user_id == user_id,
+                        )
+                        .returning(Notification.id)
+                    )
+                    result = await uow.session.execute(stmt)
+                    if result.fetchone():
+                        succeeded.append(str(notification_id))
+                    else:
+                        failed.append(
+                            {
+                                "id": str(notification_id),
+                                "error": "Not found or not owned by this user",
+                            }
+                        )
+                except Exception as exc:
+                    failed.append({"id": str(notification_id), "error": str(exc)})
+            await uow.commit()
+
+        return BulkOperationResult(
+            operation="bulk_delete_notifications",
+            total_requested=len(ids),
+            succeeded=len(succeeded),
+            failed=len(failed),
+            skipped=0,
+            errors=failed,
+            processed_ids=succeeded,
+            failed_ids=[e["id"] for e in failed],
+        )
 
     async def get_unread_count(self, user_id: UUID) -> int:
         async with self._uow() as uow:

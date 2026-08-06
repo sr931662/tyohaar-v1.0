@@ -7,6 +7,8 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import update
+
 from app.db.session import AsyncSessionLocal
 from app.models.packages.package import Package
 from app.models.packages.package_availability import PackageAvailability
@@ -22,6 +24,7 @@ from app.models.enums import (
     ReviewModerationStatus,
 )
 from app.schemas.base import CursorPage
+from app.schemas.cms.bulk import BulkOperationResult
 from app.schemas.packages import (
     LikeToggleResponse,
     PackageAvailabilityCreate,
@@ -595,6 +598,53 @@ class PackageService(BaseService):
             package = await validate_package_ownership(package_id, vendor_id, uow)
             await uow.packages.packages.soft_delete(package)
             await uow.commit()
+
+    async def bulk_delete_packages(
+        self,
+        vendor_id: UUID,
+        ids: list[UUID],
+    ) -> BulkOperationResult:
+        """
+        Vendor-scoped bulk soft-delete. The vendor_id filter lives in the same
+        WHERE clause as the id filter so a vendor can never bulk-delete another
+        vendor's packages via a crafted id list.
+        """
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for pkg_id in ids:
+                try:
+                    stmt = (
+                        update(Package)
+                        .where(
+                            Package.id == pkg_id,
+                            Package.vendor_id == vendor_id,
+                            Package.deleted_at.is_(None),
+                        )
+                        .values(deleted_at=datetime.now(tz=timezone.utc), is_active=False)
+                        .returning(Package.id)
+                    )
+                    result = await uow.session.execute(stmt)
+                    if result.fetchone():
+                        succeeded.append(str(pkg_id))
+                    else:
+                        failed.append(
+                            {"id": str(pkg_id), "error": "Not found or not owned by this vendor"}
+                        )
+                except Exception as exc:
+                    failed.append({"id": str(pkg_id), "error": str(exc)})
+            await uow.commit()
+
+        return BulkOperationResult(
+            operation="bulk_delete_packages",
+            total_requested=len(ids),
+            succeeded=len(succeeded),
+            failed=len(failed),
+            skipped=0,
+            errors=failed,
+            processed_ids=succeeded,
+            failed_ids=[e["id"] for e in failed],
+        )
 
     async def publish_package(
         self,

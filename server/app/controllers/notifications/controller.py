@@ -15,6 +15,7 @@ from app.core.pagination import CursorPaginationParams, get_cursor_pagination
 from app.core.permissions import AdminDep
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
+from app.schemas.cms.bulk import BulkDeleteRequest, BulkOperationResult
 from app.schemas.notifications.create import (
     BroadcastCreate,
     NotificationCreate,
@@ -122,6 +123,15 @@ async def delete_notification(
         notification_id=notification_id, user_id=current_user.id
     )
     return SuccessResponse(data=None, message="Notification deleted.")
+
+
+async def bulk_delete_notifications(
+    body: BulkDeleteRequest,
+    current_user: CurrentUserDep,
+    service: NotificationServiceDep,
+) -> SuccessResponse[BulkOperationResult]:
+    result = await service.bulk_delete_notifications(user_id=current_user.id, ids=body.ids)
+    return SuccessResponse(data=result, message="Bulk delete complete.")
 
 
 async def get_unread_count(

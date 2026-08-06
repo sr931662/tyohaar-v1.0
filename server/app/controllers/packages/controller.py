@@ -23,6 +23,7 @@ from app.core.permissions import (
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.models.enums import UserRole
 from app.schemas.base import CursorPage
+from app.schemas.cms.bulk import BulkDeleteRequest, BulkOperationResult
 from app.schemas.packages import (
     AttachAllRequest,
     AttachAllResponse,
@@ -133,6 +134,15 @@ async def delete_package(
 ) -> SuccessResponse[None]:
     await service.delete_package(package_id=package_id, vendor_id=vendor_id)
     return SuccessResponse(data=None, message="Package deleted.")
+
+
+async def bulk_delete_packages(
+    body: BulkDeleteRequest,
+    vendor_id: CurrentVendorIdDep,
+    service: PackageServiceDep,
+) -> SuccessResponse[BulkOperationResult]:
+    result = await service.bulk_delete_packages(vendor_id=vendor_id, ids=body.ids)
+    return SuccessResponse(data=result, message="Bulk delete complete.")
 
 
 async def publish_package(

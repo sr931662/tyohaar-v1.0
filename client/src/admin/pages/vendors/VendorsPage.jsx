@@ -11,6 +11,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import { ConfirmDialog } from '../../components/ui/Modal';
 import { useDebounce } from '../../hooks/useDebounce';
 import { usePagination } from '../../hooks/usePagination';
+import { reportBulkResult } from '../../utils/bulkToast';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -56,6 +57,19 @@ export default function VendorsPage() {
     onError: () => toast.error('Bulk suspend failed'),
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deleteVendors(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'vendor',
+      nounPlural: 'vendors',
+      onDone: () => { qc.invalidateQueries(['vendors']); setSelected([]); },
+    }),
+    onError: () => toast.error('Bulk delete failed'),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (vendorId) => vendorsApi.remove(vendorId),
     onSuccess: (res) => {
@@ -75,6 +89,7 @@ export default function VendorsPage() {
     if (bulkAction === 'approve') approveMutation.mutate(selected);
     else if (bulkAction === 'reject') rejectMutation.mutate(selected);
     else if (bulkAction === 'suspend') suspendMutation.mutate(selected);
+    else if (bulkAction === 'delete') bulkDeleteMutation.mutate(selected);
     setConfirmOpen(false);
   };
 
@@ -126,6 +141,7 @@ export default function VendorsPage() {
               <option value="approve">Approve</option>
               <option value="reject">Reject</option>
               <option value="suspend">Suspend</option>
+              <option value="delete">Delete</option>
             </select>
             <button
               className="btn btn-primary btn-sm"
@@ -222,10 +238,14 @@ export default function VendorsPage() {
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleBulkAction}
-        title={`Bulk ${bulkAction}`}
-        message={`Are you sure you want to ${bulkAction} ${selected.length} vendor(s)?`}
-        danger={bulkAction === 'reject' || bulkAction === 'suspend'}
-        loading={approveMutation.isPending || rejectMutation.isPending || suspendMutation.isPending}
+        title={bulkAction === 'delete' ? 'Delete Vendors' : `Bulk ${bulkAction}`}
+        message={
+          bulkAction === 'delete'
+            ? `Delete ${selected.length} vendor(s)? Their packages will also be removed. This cannot be undone.`
+            : `Are you sure you want to ${bulkAction} ${selected.length} vendor(s)?`
+        }
+        danger={bulkAction === 'reject' || bulkAction === 'suspend' || bulkAction === 'delete'}
+        loading={approveMutation.isPending || rejectMutation.isPending || suspendMutation.isPending || bulkDeleteMutation.isPending}
       />
 
       <ConfirmDialog

@@ -8,6 +8,7 @@ from fastapi import APIRouter, status
 
 from app.controllers.media import controller as ctrl
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
+from app.schemas.cms.bulk import BulkOperationResult
 from app.schemas.media.response import (
     ImageResponse,
     MemoryResponse,
@@ -41,6 +42,38 @@ router.add_api_route(
     summary="List Images for Entity",
     description="Return all approved images attached to a given entity. Pass `entity_type` as a query parameter.",
     operation_id="media_list_images_for_entity",
+)
+
+# ── Bulk delete (owner-scoped) ────────────────────────────────────────────────
+
+router.add_api_route(
+    "/vendor/bulk-delete-images",
+    ctrl.bulk_delete_images,
+    methods=["POST"],
+    response_model=SuccessResponse[BulkOperationResult],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Delete My Images",
+    description=(
+        "Soft-delete multiple images owned by the authenticated user in one "
+        "call. Ownership is enforced per-id — ids not owned by the caller are "
+        "reported as per-item failures, not deleted."
+    ),
+    operation_id="media_bulk_delete_images",
+)
+
+router.add_api_route(
+    "/vendor/bulk-delete-videos",
+    ctrl.bulk_delete_videos,
+    methods=["POST"],
+    response_model=SuccessResponse[BulkOperationResult],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Delete My Videos",
+    description=(
+        "Soft-delete multiple videos owned by the authenticated user in one "
+        "call. Ownership is enforced per-id — ids not owned by the caller are "
+        "reported as per-item failures, not deleted."
+    ),
+    operation_id="media_bulk_delete_videos",
 )
 
 # ── Images — direct upload (multipart) ────────────────────────────────────────

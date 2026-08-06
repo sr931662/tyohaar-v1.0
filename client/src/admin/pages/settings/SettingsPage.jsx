@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { settingsApi } from '../../api';
+import { settingsApi, bulkApi } from '../../api';
 import { formatDate } from '../../utils/format';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import RichTextEditor from '../../components/ui/RichTextEditor';
+import BulkActionBar from '../../components/ui/BulkActionBar';
+import { useRowSelection } from '../../hooks/useRowSelection';
+import { reportBulkResult } from '../../utils/bulkToast';
 
 function FAQsTab() {
   const qc = useQueryClient();
@@ -19,6 +22,9 @@ function FAQsTab() {
     queryFn: () => settingsApi.listFAQs(),
   });
 
+  const { selected, toggleItem, toggleAll, clear, isAllSelected } = useRowSelection(faqs);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
   const saveMutation = useMutation({
     mutationFn: (body) => editItem ? settingsApi.updateFAQ(editItem.id, body) : settingsApi.createFAQ(body),
     onSuccess: () => { toast.success(editItem ? 'Updated' : 'Created'); qc.invalidateQueries(['settings', 'faqs']); setOpen(false); setEditItem(null); },
@@ -29,6 +35,19 @@ function FAQsTab() {
     mutationFn: (id) => settingsApi.deleteFAQ(id),
     onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries(['settings', 'faqs']); setDeleteId(null); },
     onError: () => toast.error('Failed'),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deleteFaqs(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'FAQ',
+      nounPlural: 'FAQs',
+      onDone: () => { qc.invalidateQueries(['settings', 'faqs']); clear(); },
+    }),
+    onError: () => toast.error('Failed to delete FAQs.'),
   });
 
   const openEdit = (f) => {
@@ -42,13 +61,17 @@ function FAQsTab() {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <button className="btn btn-primary" onClick={() => { setEditItem(null); setForm({ question:'', answer:'', category:'', position:0 }); setOpen(true); }}>+ New FAQ</button>
       </div>
+      <BulkActionBar count={selected.length} onClear={clear}>
+        <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDelete(true)}>Delete</button>
+      </BulkActionBar>
       {isLoading ? <SkeletonTable rows={5} cols={3} /> : (
         <div className="admin-table-wrapper">
           <table className="admin-table">
-            <thead><tr><th>Question</th><th>Category</th><th>Pos</th><th>Actions</th></tr></thead>
+            <thead><tr><th><input type="checkbox" checked={isAllSelected} onChange={toggleAll} /></th><th>Question</th><th>Category</th><th>Pos</th><th>Actions</th></tr></thead>
             <tbody>
               {faqs.map((f) => (
                 <tr key={f.id}>
+                  <td><input type="checkbox" checked={selected.includes(f.id)} onChange={() => toggleItem(f.id)} /></td>
                   <td style={{ maxWidth: 360 }}>{f.question}</td>
                   <td>{f.category ?? '—'}</td>
                   <td>{f.position}</td>
@@ -60,7 +83,7 @@ function FAQsTab() {
                   </td>
                 </tr>
               ))}
-              {!faqs.length && <tr><td colSpan={4} className="admin-table-empty">No FAQs</td></tr>}
+              {!faqs.length && <tr><td colSpan={5} className="admin-table-empty">No FAQs</td></tr>}
             </tbody>
           </table>
         </div>
@@ -84,6 +107,16 @@ function FAQsTab() {
       </Modal>
       <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteMutation.mutate(deleteId)}
         title="Delete FAQ" message="This FAQ will be deleted." danger loading={deleteMutation.isPending} />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={() => { bulkDeleteMutation.mutate(selected); setConfirmBulkDelete(false); }}
+        title="Delete FAQs"
+        message={`Delete ${selected.length} FAQ(s)? This cannot be undone.`}
+        danger
+        loading={bulkDeleteMutation.isPending}
+      />
     </div>
   );
 }
@@ -106,6 +139,37 @@ function StatesTab() {
     queryKey: ['settings', 'cities', selectedState?.id],
     queryFn: () => settingsApi.listCities({ state_id: selectedState.id }),
     enabled: !!selectedState?.id,
+  });
+
+  const stateSelection = useRowSelection(states);
+  const citySelection = useRowSelection(cities, [selectedState?.id]);
+  const [confirmBulkDeleteStates, setConfirmBulkDeleteStates] = useState(false);
+  const [confirmBulkDeleteCities, setConfirmBulkDeleteCities] = useState(false);
+
+  const bulkDeleteStatesMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deleteStates(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'state',
+      nounPlural: 'states',
+      onDone: () => { qc.invalidateQueries(['settings', 'states']); stateSelection.clear(); },
+    }),
+    onError: () => toast.error('Failed to delete states.'),
+  });
+
+  const bulkDeleteCitiesMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deleteCities(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'city',
+      nounPlural: 'cities',
+      onDone: () => { qc.invalidateQueries(['settings', 'cities', selectedState?.id]); citySelection.clear(); },
+    }),
+    onError: () => toast.error('Failed to delete cities.'),
   });
 
   const stateMutation = useMutation({
@@ -140,13 +204,17 @@ function StatesTab() {
           <div style={{ fontWeight: 600, fontSize: 14 }}>States</div>
           <button className="btn btn-primary btn-sm" onClick={() => { setEditItem(null); setForm({ name: '', code: '', is_active: true }); setOpen(true); }}>+ Add State</button>
         </div>
+        <BulkActionBar count={stateSelection.selected.length} onClear={stateSelection.clear}>
+          <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDeleteStates(true)}>Delete</button>
+        </BulkActionBar>
         {isLoading ? <SkeletonTable rows={5} cols={3} /> : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
-              <thead><tr><th>Name</th><th>Code</th><th>Actions</th></tr></thead>
+              <thead><tr><th><input type="checkbox" checked={stateSelection.isAllSelected} onChange={stateSelection.toggleAll} /></th><th>Name</th><th>Code</th><th>Actions</th></tr></thead>
               <tbody>
                 {states.map((s) => (
                   <tr key={s.id} style={{ cursor: 'pointer', background: selectedState?.id === s.id ? 'var(--brand-50)' : '' }} onClick={() => setSelectedState(s)}>
+                    <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={stateSelection.selected.includes(s.id)} onChange={() => stateSelection.toggleItem(s.id)} /></td>
                     <td style={{ fontWeight: selectedState?.id === s.id ? 600 : 400 }}>{s.name}</td>
                     <td>{s.code ?? '—'}</td>
                     <td onClick={e => e.stopPropagation()}>
@@ -157,7 +225,7 @@ function StatesTab() {
                     </td>
                   </tr>
                 ))}
-                {!states.length && <tr><td colSpan={3} className="admin-table-empty">No states</td></tr>}
+                {!states.length && <tr><td colSpan={4} className="admin-table-empty">No states</td></tr>}
               </tbody>
             </table>
           </div>
@@ -173,20 +241,26 @@ function StatesTab() {
         {!selectedState ? (
           <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>Select a state to view cities</div>
         ) : (
-          <div className="admin-table-wrapper">
-            <table className="admin-table">
-              <thead><tr><th>City</th><th>Actions</th></tr></thead>
-              <tbody>
-                {cities.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td><button className="btn btn-danger btn-sm" onClick={() => deleteCityMutation.mutate(c.id)}>Del</button></td>
-                  </tr>
-                ))}
-                {!cities.length && <tr><td colSpan={2} className="admin-table-empty">No cities</td></tr>}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <BulkActionBar count={citySelection.selected.length} onClear={citySelection.clear}>
+              <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDeleteCities(true)}>Delete</button>
+            </BulkActionBar>
+            <div className="admin-table-wrapper">
+              <table className="admin-table">
+                <thead><tr><th><input type="checkbox" checked={citySelection.isAllSelected} onChange={citySelection.toggleAll} /></th><th>City</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {cities.map((c) => (
+                    <tr key={c.id}>
+                      <td><input type="checkbox" checked={citySelection.selected.includes(c.id)} onChange={() => citySelection.toggleItem(c.id)} /></td>
+                      <td>{c.name}</td>
+                      <td><button className="btn btn-danger btn-sm" onClick={() => deleteCityMutation.mutate(c.id)}>Del</button></td>
+                    </tr>
+                  ))}
+                  {!cities.length && <tr><td colSpan={3} className="admin-table-empty">No cities</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -202,6 +276,26 @@ function StatesTab() {
       >
         <div className="form-group"><label className="form-label">City Name *</label><input className="form-control" value={cityForm.name} onChange={e => setCityForm(f => ({ ...f, name: e.target.value }))} /></div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmBulkDeleteStates}
+        onClose={() => setConfirmBulkDeleteStates(false)}
+        onConfirm={() => { bulkDeleteStatesMutation.mutate(stateSelection.selected); setConfirmBulkDeleteStates(false); }}
+        title="Delete States"
+        message={`Delete ${stateSelection.selected.length} state(s)? States that still have cities cannot be deleted and will be reported as failed.`}
+        danger
+        loading={bulkDeleteStatesMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={confirmBulkDeleteCities}
+        onClose={() => setConfirmBulkDeleteCities(false)}
+        onConfirm={() => { bulkDeleteCitiesMutation.mutate(citySelection.selected); setConfirmBulkDeleteCities(false); }}
+        title="Delete Cities"
+        message={`Delete ${citySelection.selected.length} city(ies)? This cannot be undone.`}
+        danger
+        loading={bulkDeleteCitiesMutation.isPending}
+      />
     </div>
   );
 }

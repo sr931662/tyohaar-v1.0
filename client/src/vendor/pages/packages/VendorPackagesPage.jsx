@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { vendorProfileApi, vendorPackagesApi, vendorOccasionsApi } from '../../api';
+import { vendorProfileApi, vendorPackagesApi, vendorOccasionsApi, vendorBulkApi } from '../../api';
 import { ConfirmDialog } from '../../../admin/components/ui/Modal';
+import BulkActionBar from '../../../admin/components/ui/BulkActionBar';
+import { useRowSelection } from '../../../admin/hooks/useRowSelection';
+import { reportBulkResult } from '../../../admin/utils/bulkToast';
 import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
 import CommonServicesModal from './CommonServicesModal';
@@ -1007,6 +1010,22 @@ export default function VendorPackagesPage() {
 
   const items = data?.items ?? [];
 
+  const { selected, toggleItem, toggleAll, clear, isAllSelected } = useRowSelection(items, []);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => vendorBulkApi.deletePackages(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'package',
+      nounPlural: 'packages',
+      onDone: () => { invalidate(); clear(); setConfirmBulkDelete(false); },
+    }),
+    onError: () => toast.error('Failed to delete packages.'),
+  });
+
   if (!vendor) {
     return (
       <div style={{ padding: 48, textAlign: 'center' }}>
@@ -1046,10 +1065,15 @@ export default function VendorPackagesPage() {
           <button className="btn btn-primary" onClick={() => setShowCreate(true)}>+ Create Package</button>
         </div>
       ) : (
-        <div className="admin-table-wrapper">
+        <>
+          <BulkActionBar count={selected.length} onClear={clear}>
+            <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDelete(true)}>Delete</button>
+          </BulkActionBar>
+          <div className="admin-table-wrapper">
           <table className="admin-table">
             <thead>
               <tr>
+                <th><input type="checkbox" checked={isAllSelected} onChange={toggleAll} /></th>
                 <th>Package</th>
                 <th>Occasions</th>
                 <th>City</th>
@@ -1062,6 +1086,7 @@ export default function VendorPackagesPage() {
             <tbody>
               {items.map((p) => (
                 <tr key={p.id}>
+                  <td><input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleItem(p.id)} /></td>
                   <td>
                     <div className="admin-user-name">{p.name}</div>
                     {p.short_description && (
@@ -1112,7 +1137,8 @@ export default function VendorPackagesPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Modals */}
@@ -1171,7 +1197,17 @@ export default function VendorPackagesPage() {
         onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
         title="Delete Package"
         message={`Permanently delete "${confirmDelete?.name}"? This cannot be undone.`}
+        danger
         loading={deleteMutation.isPending}
+      />
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={() => bulkDeleteMutation.mutate(selected)}
+        title="Delete Packages"
+        message={`Permanently delete ${selected.length} package${selected.length === 1 ? '' : 's'}? This cannot be undone.`}
+        danger
+        loading={bulkDeleteMutation.isPending}
       />
     </div>
   );

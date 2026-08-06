@@ -1,15 +1,18 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { vendorBookingsApi, vendorMediaApi } from '../../api';
-import Modal from '../../../admin/components/ui/Modal';
+import { vendorBookingsApi, vendorMediaApi, vendorBulkApi } from '../../api';
+import Modal, { ConfirmDialog } from '../../../admin/components/ui/Modal';
+import BulkActionBar from '../../../admin/components/ui/BulkActionBar';
+import { useRowSelection } from '../../../admin/hooks/useRowSelection';
+import { reportBulkResult } from '../../../admin/utils/bulkToast';
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function MediaTile({ item, isVideo, bookingId, qc }) {
+function MediaTile({ item, isVideo, bookingId, qc, selected, onToggleSelect }) {
   const [editing, setEditing] = useState(false);
   const [caption, setCaption] = useState(isVideo ? (item.title ?? '') : (item.alt_text ?? ''));
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -51,6 +54,13 @@ function MediaTile({ item, isVideo, bookingId, qc }) {
         ) : (
           <img src={item.url} alt={item.alt_text ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
         )}
+        <input
+          type="checkbox"
+          checked={!!selected}
+          onChange={() => onToggleSelect?.(item.id)}
+          onClick={(e) => e.stopPropagation()}
+          style={{ position: 'absolute', top: 6, left: 6, width: 16, height: 16, cursor: 'pointer' }}
+        />
         <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
           <button
             type="button"
@@ -110,6 +120,43 @@ function BookingMediaGallery({ booking }) {
     queryFn: () => vendorMediaApi.listVideosForEntity(booking.booking_id, 'booking'),
   });
 
+  const imgSelection = useRowSelection(images, [booking.booking_id]);
+  const vidSelection = useRowSelection(videos, [booking.booking_id]);
+  const [confirmBulkDeleteImages, setConfirmBulkDeleteImages] = useState(false);
+  const [confirmBulkDeleteVideos, setConfirmBulkDeleteVideos] = useState(false);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['vendor', 'booking-media-gallery', 'images', booking.booking_id] });
+    qc.invalidateQueries({ queryKey: ['vendor', 'booking-media-gallery', 'videos', booking.booking_id] });
+    qc.invalidateQueries({ queryKey: ['vendor', 'booking-media'] });
+  };
+
+  const bulkDeleteImagesMutation = useMutation({
+    mutationFn: (ids) => vendorBulkApi.deleteMediaImages(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'photo',
+      nounPlural: 'photos',
+      onDone: () => { invalidate(); imgSelection.clear(); setConfirmBulkDeleteImages(false); },
+    }),
+    onError: () => toast.error('Failed to delete photos.'),
+  });
+
+  const bulkDeleteVideosMutation = useMutation({
+    mutationFn: (ids) => vendorBulkApi.deleteMediaVideos(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'video',
+      nounPlural: 'videos',
+      onDone: () => { invalidate(); vidSelection.clear(); setConfirmBulkDeleteVideos(false); },
+    }),
+    onError: () => toast.error('Failed to delete videos.'),
+  });
+
   if (loadingImages || loadingVideos) {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
@@ -123,13 +170,60 @@ function BookingMediaGallery({ booking }) {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-      {images.map((img) => (
-        <MediaTile key={img.id} item={img} isVideo={false} bookingId={booking.booking_id} qc={qc} />
-      ))}
-      {videos.map((vid) => (
-        <MediaTile key={vid.id} item={vid} isVideo bookingId={booking.booking_id} qc={qc} />
-      ))}
+    <div>
+      {images.length > 0 && (
+        <BulkActionBar count={imgSelection.selected.length} onClear={imgSelection.clear}>
+          <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDeleteImages(true)}>Delete Photos</button>
+        </BulkActionBar>
+      )}
+      {videos.length > 0 && (
+        <BulkActionBar count={vidSelection.selected.length} onClear={vidSelection.clear}>
+          <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDeleteVideos(true)}>Delete Videos</button>
+        </BulkActionBar>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+        {images.map((img) => (
+          <MediaTile
+            key={img.id}
+            item={img}
+            isVideo={false}
+            bookingId={booking.booking_id}
+            qc={qc}
+            selected={imgSelection.selected.includes(img.id)}
+            onToggleSelect={imgSelection.toggleItem}
+          />
+        ))}
+        {videos.map((vid) => (
+          <MediaTile
+            key={vid.id}
+            item={vid}
+            isVideo
+            bookingId={booking.booking_id}
+            qc={qc}
+            selected={vidSelection.selected.includes(vid.id)}
+            onToggleSelect={vidSelection.toggleItem}
+          />
+        ))}
+      </div>
+
+      <ConfirmDialog
+        open={confirmBulkDeleteImages}
+        onClose={() => setConfirmBulkDeleteImages(false)}
+        onConfirm={() => bulkDeleteImagesMutation.mutate(imgSelection.selected)}
+        title="Delete Photos"
+        message={`Delete ${imgSelection.selected.length} photo${imgSelection.selected.length === 1 ? '' : 's'}? This cannot be undone.`}
+        danger
+        loading={bulkDeleteImagesMutation.isPending}
+      />
+      <ConfirmDialog
+        open={confirmBulkDeleteVideos}
+        onClose={() => setConfirmBulkDeleteVideos(false)}
+        onConfirm={() => bulkDeleteVideosMutation.mutate(vidSelection.selected)}
+        title="Delete Videos"
+        message={`Delete ${vidSelection.selected.length} video${vidSelection.selected.length === 1 ? '' : 's'}? This cannot be undone.`}
+        danger
+        loading={bulkDeleteVideosMutation.isPending}
+      />
     </div>
   );
 }

@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { occasionsApi } from '../../api';
+import { occasionsApi, bulkApi } from '../../api';
 import { formatDate } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Pagination from '../../components/ui/Pagination';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
 import ImageUploadField from '../../components/ui/ImageUploadField';
+import BulkActionBar from '../../components/ui/BulkActionBar';
 import { usePagination } from '../../hooks/usePagination';
+import { useRowSelection } from '../../hooks/useRowSelection';
+import { reportBulkResult } from '../../utils/bulkToast';
 
 function UnderDevelopment({ label }) {
   return (
@@ -57,6 +60,9 @@ function ThemesTab() {
     queryFn: () => occasionsApi.listThemes(),
   });
 
+  const { selected, toggleItem, toggleAll, clear, isAllSelected } = useRowSelection(themes);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
   const saveMutation = useMutation({
     mutationFn: (body) => editItem ? occasionsApi.updateTheme(editItem.id, body) : occasionsApi.createTheme(body),
     onSuccess: () => {
@@ -71,6 +77,19 @@ function ThemesTab() {
     mutationFn: (id) => occasionsApi.deleteTheme(id),
     onSuccess: () => { toast.success('Theme deleted'); qc.invalidateQueries(['occasions', 'themes']); setDeleteId(null); },
     onError: () => toast.error('Delete failed'),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deleteOccasionThemes(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'theme',
+      nounPlural: 'themes',
+      onDone: () => { qc.invalidateQueries(['occasions', 'themes']); clear(); },
+    }),
+    onError: () => toast.error('Bulk delete failed'),
   });
 
   const openCreate = () => { setEditItem(null); setForm(EMPTY_THEME_FORM); setOpen(true); };
@@ -100,14 +119,21 @@ function ThemesTab() {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <button className="btn btn-primary btn-sm" onClick={openCreate}>+ New Theme</button>
       </div>
+      <BulkActionBar count={selected.length} onClear={clear}>
+        <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDelete(true)}>Delete</button>
+      </BulkActionBar>
       <div className="admin-table-wrapper">
         <table className="admin-table">
           <thead>
-            <tr><th>Name</th><th>Colors</th><th>Status</th><th>Actions</th></tr>
+            <tr>
+              <th style={{ width: 40 }}><input type="checkbox" checked={isAllSelected} onChange={toggleAll} /></th>
+              <th>Name</th><th>Colors</th><th>Status</th><th>Actions</th>
+            </tr>
           </thead>
           <tbody>
             {themes.map((theme) => (
               <tr key={theme.id}>
+                <td><input type="checkbox" checked={selected.includes(theme.id)} onChange={() => toggleItem(theme.id)} /></td>
                 <td><div className="admin-user-name">{theme.name}</div></td>
                 <td>
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -134,7 +160,7 @@ function ThemesTab() {
                 </td>
               </tr>
             ))}
-            {!themes.length && <tr><td colSpan={4} className="admin-table-empty">No themes yet</td></tr>}
+            {!themes.length && <tr><td colSpan={5} className="admin-table-empty">No themes yet</td></tr>}
           </tbody>
         </table>
       </div>
@@ -226,6 +252,16 @@ function ThemesTab() {
 
       <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteMutation.mutate(deleteId)}
         title="Delete Theme" message="This theme will be permanently deleted." danger loading={deleteMutation.isPending} />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={() => { bulkDeleteMutation.mutate(selected); setConfirmBulkDelete(false); }}
+        title="Delete Themes"
+        message={`Delete ${selected.length} theme(s)? This cannot be undone.`}
+        danger
+        loading={bulkDeleteMutation.isPending}
+      />
     </div>
   );
 }
@@ -272,6 +308,22 @@ export default function OccasionsPage() {
   const total = data?.total ?? 0;
   const pages = data?.pages ?? 1;
 
+  const { selected, toggleItem, toggleAll, clear, isAllSelected } = useRowSelection(items, [page]);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deleteOccasions(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'occasion',
+      nounPlural: 'occasions',
+      onDone: () => { qc.invalidateQueries(['occasions']); clear(); },
+    }),
+    onError: () => toast.error('Bulk delete failed'),
+  });
+
   const openEdit = (item) => {
     setEditItem(item);
     setForm({
@@ -317,15 +369,23 @@ export default function OccasionsPage() {
       </div>
 
       {activeTab === 'occasions' && (
-        isLoading ? <SkeletonTable rows={8} cols={5} /> : (
+        isLoading ? <SkeletonTable rows={8} cols={6} /> : (
+          <>
+          <BulkActionBar count={selected.length} onClear={clear}>
+            <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDelete(true)}>Delete</button>
+          </BulkActionBar>
           <div className="admin-table-wrapper">
             <table className="admin-table">
               <thead>
-                <tr><th>Image</th><th>Name</th><th>Description</th><th>Status</th><th>Created</th><th>Actions</th></tr>
+                <tr>
+                  <th style={{ width: 40 }}><input type="checkbox" checked={isAllSelected} onChange={toggleAll} /></th>
+                  <th>Image</th><th>Name</th><th>Description</th><th>Status</th><th>Created</th><th>Actions</th>
+                </tr>
               </thead>
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
+                    <td><input type="checkbox" checked={selected.includes(item.id)} onChange={() => toggleItem(item.id)} /></td>
                     <td>
                       {item.icon_url ? (
                         <img src={item.icon_url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'contain' }} />
@@ -345,11 +405,12 @@ export default function OccasionsPage() {
                     </td>
                   </tr>
                 ))}
-                {!items.length && <tr><td colSpan={6} className="admin-table-empty">No occasions</td></tr>}
+                {!items.length && <tr><td colSpan={7} className="admin-table-empty">No occasions</td></tr>}
               </tbody>
             </table>
             <Pagination page={page} pages={pages} total={total} perPage={perPage} onChange={setPage} />
           </div>
+          </>
         )
       )}
 
@@ -418,6 +479,16 @@ export default function OccasionsPage() {
 
       <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteMutation.mutate(deleteId)}
         title="Delete Occasion" message="This will soft-delete the occasion." danger loading={deleteMutation.isPending} />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={() => { bulkDeleteMutation.mutate(selected); setConfirmBulkDelete(false); }}
+        title="Delete Occasions"
+        message={`Delete ${selected.length} occasion(s)? This cannot be undone.`}
+        danger
+        loading={bulkDeleteMutation.isPending}
+      />
     </div>
   );
 }

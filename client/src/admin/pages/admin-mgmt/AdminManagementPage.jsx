@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { adminMgmtApi } from '../../api';
+import { adminMgmtApi, bulkApi } from '../../api';
 import { formatDateTime } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Pagination from '../../components/ui/Pagination';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
+import BulkActionBar from '../../components/ui/BulkActionBar';
 import { usePagination } from '../../hooks/usePagination';
+import { useRowSelection } from '../../hooks/useRowSelection';
+import { reportBulkResult } from '../../utils/bulkToast';
+import { useAdminAuth } from '../../context/AuthContext';
 
 function AdminsTab() {
   const qc = useQueryClient();
@@ -121,14 +125,18 @@ function AdminsTab() {
 
 function RolesTab() {
   const qc = useQueryClient();
+  const { isSuperAdmin } = useAdminAuth();
   const [open, setOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState({ name: '', description: '' });
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   const { data: roles = [] } = useQuery({
     queryKey: ['roles'],
     queryFn: () => adminMgmtApi.listRoles(),
   });
+
+  const { selected, toggleItem, toggleAll, clear, isAllSelected } = useRowSelection(roles);
 
   const saveMutation = useMutation({
     mutationFn: (body) => editItem ? adminMgmtApi.updateRole(editItem.id, body) : adminMgmtApi.createRole(body),
@@ -142,19 +150,41 @@ function RolesTab() {
     onError: () => toast.error('Failed'),
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deleteRoles(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'role',
+      nounPlural: 'roles',
+      onDone: () => { qc.invalidateQueries(['roles']); clear(); },
+    }),
+    onError: () => toast.error('Failed to delete roles.'),
+  });
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <button className="btn btn-primary" onClick={() => { setEditItem(null); setForm({ name:'', description:'' }); setOpen(true); }}>+ New Role</button>
       </div>
+      {isSuperAdmin && (
+        <BulkActionBar count={selected.length} onClear={clear}>
+          <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDelete(true)}>Delete</button>
+        </BulkActionBar>
+      )}
       <div className="admin-table-wrapper">
         <table className="admin-table">
           <thead>
-            <tr><th>Name</th><th>Description</th><th>Created</th><th>Actions</th></tr>
+            <tr>
+              {isSuperAdmin && <th><input type="checkbox" checked={isAllSelected} onChange={toggleAll} /></th>}
+              <th>Name</th><th>Description</th><th>Created</th><th>Actions</th>
+            </tr>
           </thead>
           <tbody>
             {roles.map((r) => (
               <tr key={r.id}>
+                {isSuperAdmin && <td><input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleItem(r.id)} /></td>}
                 <td><span className="badge badge-blue">{r.name}</span></td>
                 <td>{r.description ?? '—'}</td>
                 <td>{formatDateTime(r.created_at)}</td>
@@ -166,7 +196,7 @@ function RolesTab() {
                 </td>
               </tr>
             ))}
-            {!roles.length && <tr><td colSpan={4} className="admin-table-empty">No roles</td></tr>}
+            {!roles.length && <tr><td colSpan={isSuperAdmin ? 5 : 4} className="admin-table-empty">No roles</td></tr>}
           </tbody>
         </table>
       </div>
@@ -183,6 +213,16 @@ function RolesTab() {
         <div className="form-group"><label className="form-label required">Role Name</label><input className="form-control" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
         <div className="form-group"><label className="form-label">Description</label><input className="form-control" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={() => { bulkDeleteMutation.mutate(selected); setConfirmBulkDelete(false); }}
+        title="Delete Roles"
+        message={`Delete ${selected.length} role(s)? Roles still assigned to admins cannot be deleted and will be reported as failed.`}
+        danger
+        loading={bulkDeleteMutation.isPending}
+      />
     </div>
   );
 }

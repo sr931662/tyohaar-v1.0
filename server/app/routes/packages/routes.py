@@ -8,6 +8,7 @@ from fastapi import APIRouter, status
 
 from app.controllers.packages import controller as ctrl
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
+from app.schemas.cms.bulk import BulkOperationResult
 from app.schemas.packages import (
     AttachAllResponse,
     ItemImportResult,
@@ -111,6 +112,21 @@ router.add_api_route(
         "client-supplied vendor filter."
     ),
     operation_id="packages_list_vendor_packages",
+)
+
+router.add_api_route(
+    "/vendor/bulk-delete",
+    ctrl.bulk_delete_packages,
+    methods=["POST"],
+    response_model=SuccessResponse[BulkOperationResult],
+    status_code=status.HTTP_200_OK,
+    summary="Bulk Delete My Packages (Vendor)",
+    description=(
+        "Soft-delete multiple packages owned by the authenticated vendor in one "
+        "call. Ownership is enforced per-id — ids not owned by the caller are "
+        "reported as per-item failures, not deleted. Vendor role required."
+    ),
+    operation_id="packages_bulk_delete_vendor",
 )
 
 router.add_api_route(

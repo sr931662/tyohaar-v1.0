@@ -1,9 +1,14 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { vendorNotificationsApi } from '../../api';
+import { vendorNotificationsApi, vendorBulkApi } from '../../api';
 import { SkeletonCard } from '../../../admin/components/ui/Skeleton';
 import EmptyState from '../../../admin/components/ui/EmptyState';
 import Pagination from '../../../admin/components/ui/Pagination';
+import { ConfirmDialog } from '../../../admin/components/ui/Modal';
+import BulkActionBar from '../../../admin/components/ui/BulkActionBar';
+import { useRowSelection } from '../../../admin/hooks/useRowSelection';
+import { reportBulkResult } from '../../../admin/utils/bulkToast';
 import { usePagination } from '../../../admin/hooks/usePagination';
 import { timeAgo } from '../../../admin/utils/format';
 
@@ -58,6 +63,22 @@ export default function VendorNotificationsPage() {
   const pages = data?.pages ?? 1;
   const unread = typeof unreadCount === 'number' ? unreadCount : unreadCount?.count ?? 0;
 
+  const { selected, toggleItem, clear } = useRowSelection(items, [page, perPage]);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => vendorBulkApi.deleteNotifications(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deleted',
+      verbIng: 'delete',
+      nounSingular: 'notification',
+      nounPlural: 'notifications',
+      onDone: () => { invalidate(); clear(); setConfirmBulkDelete(false); },
+    }),
+    onError: () => toast.error('Failed to delete notifications.'),
+  });
+
   return (
     <div>
       <div className="admin-page-header">
@@ -101,6 +122,9 @@ export default function VendorNotificationsPage() {
         />
       ) : (
         <>
+          <BulkActionBar count={selected.length} onClear={clear}>
+            <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDelete(true)}>Delete</button>
+          </BulkActionBar>
           <div className="admin-card" style={{ overflow: 'hidden' }}>
             {items.map((n, idx) => (
               <div
@@ -113,6 +137,12 @@ export default function VendorNotificationsPage() {
                   transition: 'background 0.2s',
                 }}
               >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(n.id)}
+                  onChange={() => toggleItem(n.id)}
+                  style={{ marginTop: 8, flexShrink: 0, width: 15, height: 15, cursor: 'pointer' }}
+                />
                 <div style={{
                   fontSize: 22, width: 36, height: 36, borderRadius: '50%',
                   background: 'var(--bg-base)', display: 'flex', alignItems: 'center',
@@ -173,6 +203,16 @@ export default function VendorNotificationsPage() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={() => bulkDeleteMutation.mutate(selected)}
+        title="Delete Notifications"
+        message={`Delete ${selected.length} notification${selected.length === 1 ? '' : 's'}? This cannot be undone.`}
+        danger
+        loading={bulkDeleteMutation.isPending}
+      />
     </div>
   );
 }

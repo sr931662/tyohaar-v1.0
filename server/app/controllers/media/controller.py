@@ -18,6 +18,7 @@ from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessRespo
 from app.models.enums import MediaUsage, UserRole
 from app.models.media.image import ImageOwnerType
 from app.schemas.base import CursorPage
+from app.schemas.cms.bulk import BulkDeleteRequest, BulkOperationResult
 from app.schemas.media.create import (
     ImageUploadRegisterCreate,
     MemoryCreate,
@@ -145,6 +146,15 @@ async def delete_image(
     return SuccessResponse(data=None, message="Image deleted.")
 
 
+async def bulk_delete_images(
+    body: BulkDeleteRequest,
+    current_user: CurrentUserDep,
+    service: MediaServiceDep,
+) -> SuccessResponse[BulkOperationResult]:
+    result = await service.bulk_delete_images(owner_id=current_user.id, ids=body.ids)
+    return SuccessResponse(data=result, message="Bulk delete complete.")
+
+
 async def update_image_metadata(
     image_id: uuid.UUID,
     body: ImageMetadataUpdate,
@@ -233,6 +243,15 @@ async def delete_video(
 ) -> SuccessResponse[None]:
     await service.delete_video(video_id=video_id, owner_id=current_user.id)
     return SuccessResponse(data=None, message="Video deleted.")
+
+
+async def bulk_delete_videos(
+    body: BulkDeleteRequest,
+    current_user: CurrentUserDep,
+    service: MediaServiceDep,
+) -> SuccessResponse[BulkOperationResult]:
+    result = await service.bulk_delete_videos(owner_id=current_user.id, ids=body.ids)
+    return SuccessResponse(data=result, message="Bulk delete complete.")
 
 
 async def update_video_metadata(

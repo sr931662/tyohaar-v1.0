@@ -326,6 +326,19 @@ export const vendorNotificationsApi = {
     vendorClient.delete(`/notifications/${notificationId}`).then(extractData),
 };
 
+// ── Bulk delete ───────────────────────────────────────────────────────────────
+
+export const vendorBulkApi = {
+  deletePackages: (ids) =>
+    vendorClient.post('/packages/vendor/bulk-delete', { ids }).then(extractData),
+  deleteMediaImages: (ids) =>
+    vendorClient.post('/media/vendor/bulk-delete-images', { ids }).then(extractData),
+  deleteMediaVideos: (ids) =>
+    vendorClient.post('/media/vendor/bulk-delete-videos', { ids }).then(extractData),
+  deleteNotifications: (ids) =>
+    vendorClient.post('/notifications/bulk-delete', { ids }).then(extractData),
+};
+
 // ── Support ───────────────────────────────────────────────────────────────────
 
 export const vendorSupportApi = {

@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { membershipsApi } from '../../api';
+import { membershipsApi, bulkApi } from '../../api';
 import { formatDate, formatCurrency } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Pagination from '../../components/ui/Pagination';
 import { SkeletonTable } from '../../components/ui/Skeleton';
-import Modal from '../../components/ui/Modal';
+import Modal, { ConfirmDialog } from '../../components/ui/Modal';
+import BulkActionBar from '../../components/ui/BulkActionBar';
 import { usePagination } from '../../hooks/usePagination';
+import { useRowSelection } from '../../hooks/useRowSelection';
+import { reportBulkResult } from '../../utils/bulkToast';
 
 const TIERS = ['free', 'silver', 'gold', 'platinum'];
 
@@ -103,6 +106,22 @@ function PlansSection() {
     queryFn: () => membershipsApi.listPlans(),
   });
 
+  const { selected, toggleItem, toggleAll, clear, isAllSelected } = useRowSelection(plans);
+  const [confirmBulkDeactivate, setConfirmBulkDeactivate] = useState(false);
+
+  const bulkDeactivateMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deactivateMembershipPlans(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deactivated',
+      verbIng: 'deactivate',
+      nounSingular: 'plan',
+      nounPlural: 'plans',
+      onDone: () => { qc.invalidateQueries({ queryKey: ['memberships', 'plans'] }); clear(); },
+    }),
+    onError: () => toast.error('Failed to deactivate plans.'),
+  });
+
   const saveMutation = useMutation({
     mutationFn: (body) => (editItem ? membershipsApi.updatePlan(editItem.id, body) : membershipsApi.createPlan(body)),
     onSuccess: () => {
@@ -147,14 +166,21 @@ function PlansSection() {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <button className="btn btn-primary" onClick={openNew}>+ New Plan</button>
       </div>
+      <BulkActionBar count={selected.length} onClear={clear}>
+        <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDeactivate(true)}>Deactivate</button>
+      </BulkActionBar>
       <div className="admin-table-wrapper">
         <table className="admin-table">
           <thead>
-            <tr><th>Name</th><th>Tier</th><th>Monthly</th><th>Yearly</th><th>Active</th><th>Actions</th></tr>
+            <tr>
+              <th><input type="checkbox" checked={isAllSelected} onChange={toggleAll} /></th>
+              <th>Name</th><th>Tier</th><th>Monthly</th><th>Yearly</th><th>Active</th><th>Actions</th>
+            </tr>
           </thead>
           <tbody>
             {plans.map((p) => (
               <tr key={p.id}>
+                <td><input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleItem(p.id)} /></td>
                 <td>
                   <div className="admin-user-name">{p.name}</div>
                   <div className="admin-user-email">{p.tagline ?? p.slug}</div>
@@ -173,7 +199,7 @@ function PlansSection() {
                 </td>
               </tr>
             ))}
-            {!plans.length && <tr><td colSpan={6} className="admin-table-empty">No plans</td></tr>}
+            {!plans.length && <tr><td colSpan={7} className="admin-table-empty">No plans</td></tr>}
           </tbody>
         </table>
       </div>
@@ -299,6 +325,16 @@ function PlansSection() {
           <label><input type="checkbox" checked={form.is_active} onChange={set('is_active')} /> Active (visible to customers)</label>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmBulkDeactivate}
+        onClose={() => setConfirmBulkDeactivate(false)}
+        onConfirm={() => { bulkDeactivateMutation.mutate(selected); setConfirmBulkDeactivate(false); }}
+        title="Deactivate Plans"
+        message={`Deactivate ${selected.length} plan(s)? They will no longer be available for new subscriptions.`}
+        danger
+        loading={bulkDeactivateMutation.isPending}
+      />
     </div>
   );
 }

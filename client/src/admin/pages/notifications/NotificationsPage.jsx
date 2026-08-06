@@ -1,11 +1,14 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { notificationsApi } from '../../api';
+import { notificationsApi, bulkApi } from '../../api';
 import { formatDateTime } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
+import BulkActionBar from '../../components/ui/BulkActionBar';
+import { useRowSelection } from '../../hooks/useRowSelection';
+import { reportBulkResult } from '../../utils/bulkToast';
 
 const NOTIFICATION_TYPE_OPTIONS = [
   { value: 'booking_confirmed', label: 'Booking Confirmed' },
@@ -96,6 +99,22 @@ function TemplatesTab() {
     queryFn: () => notificationsApi.listTemplates(),
   });
 
+  const { selected, toggleItem, toggleAll, clear, isAllSelected } = useRowSelection(templates);
+  const [confirmBulkDeactivate, setConfirmBulkDeactivate] = useState(false);
+
+  const bulkDeactivateMutation = useMutation({
+    mutationFn: (ids) => bulkApi.deactivateNotificationTemplates(ids),
+    onSuccess: (result) => reportBulkResult({
+      result,
+      verbPast: 'deactivated',
+      verbIng: 'deactivate',
+      nounSingular: 'template',
+      nounPlural: 'templates',
+      onDone: () => { qc.invalidateQueries(['notifications', 'templates']); clear(); },
+    }),
+    onError: () => toast.error('Failed to deactivate templates.'),
+  });
+
   const saveMutation = useMutation({
     mutationFn: (body) => editItem
       ? notificationsApi.updateTemplate(editItem.id, { title_template: body.title_template, body_template: body.body_template })
@@ -154,14 +173,21 @@ function TemplatesTab() {
           + New Template
         </button>
       </div>
+      <BulkActionBar count={selected.length} onClear={clear}>
+        <button className="btn btn-danger btn-sm" onClick={() => setConfirmBulkDeactivate(true)}>Deactivate</button>
+      </BulkActionBar>
       <div className="admin-table-wrapper">
         <table className="admin-table">
           <thead>
-            <tr><th>Key</th><th>Title</th><th>Type</th><th>Channel</th><th>Actions</th></tr>
+            <tr>
+              <th><input type="checkbox" checked={isAllSelected} onChange={toggleAll} /></th>
+              <th>Key</th><th>Title</th><th>Type</th><th>Channel</th><th>Actions</th>
+            </tr>
           </thead>
           <tbody>
             {templates.map((t) => (
               <tr key={t.id}>
+                <td><input type="checkbox" checked={selected.includes(t.id)} onChange={() => toggleItem(t.id)} /></td>
                 <td><code style={{ fontSize: 11 }}>{t.template_key}</code></td>
                 <td>{t.title_template}</td>
                 <td>{typeLabel(t.notification_type)}</td>
@@ -174,7 +200,7 @@ function TemplatesTab() {
                 </td>
               </tr>
             ))}
-            {!templates.length && <tr><td colSpan={5} className="admin-table-empty">No templates</td></tr>}
+            {!templates.length && <tr><td colSpan={6} className="admin-table-empty">No templates</td></tr>}
           </tbody>
         </table>
       </div>
@@ -240,6 +266,15 @@ function TemplatesTab() {
 
       <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteMutation.mutate(deleteId)}
         title="Delete Template" message="This template will be permanently deleted." danger loading={deleteMutation.isPending} />
+
+      <ConfirmDialog
+        open={confirmBulkDeactivate}
+        onClose={() => setConfirmBulkDeactivate(false)}
+        onConfirm={() => { bulkDeactivateMutation.mutate(selected); setConfirmBulkDeactivate(false); }}
+        title="Deactivate Templates"
+        message={`Deactivate ${selected.length} template(s)? Deactivated templates will no longer be used to send notifications.`}
+        loading={bulkDeactivateMutation.isPending}
+      />
     </div>
   );
 }

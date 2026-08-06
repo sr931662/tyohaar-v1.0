@@ -10,7 +10,10 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
+
+from sqlalchemy import update as sa_update
 
 from app.db.session import AsyncSessionLocal
 from app.models.enums import MediaStatus
@@ -18,6 +21,7 @@ from app.models.media.image import Image, ImageOwnerType, ModerationStatus
 from app.models.media.memory import Memory, MemoryVisibility
 from app.models.media.video import Video, VideoTranscodingStatus
 from app.schemas.base import CursorPage
+from app.schemas.cms.bulk import BulkOperationResult
 from app.schemas.media.create import ImageCreate, MemoryCreate, VideoCreate
 from app.schemas.media.response import ImageResponse, MemoryResponse, VideoResponse
 from app.services.base import BaseService
@@ -253,6 +257,49 @@ class MediaService(BaseService):
             await uow.media.images.soft_delete(image)
             await uow.commit()
 
+    async def bulk_delete_images(self, owner_id: UUID, ids: list[UUID]) -> BulkOperationResult:
+        """
+        Owner-scoped bulk soft-delete. The owner_id filter lives in the same
+        WHERE clause as the id filter so a caller can never bulk-delete
+        another user's images via a crafted id list.
+        """
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for image_id in ids:
+                try:
+                    stmt = (
+                        sa_update(Image)
+                        .where(
+                            Image.id == image_id,
+                            Image.owner_id == owner_id,
+                            Image.deleted_at.is_(None),
+                        )
+                        .values(deleted_at=datetime.now(tz=timezone.utc))
+                        .returning(Image.id)
+                    )
+                    result = await uow.session.execute(stmt)
+                    if result.fetchone():
+                        succeeded.append(str(image_id))
+                    else:
+                        failed.append(
+                            {"id": str(image_id), "error": "Not found or not owned by this user"}
+                        )
+                except Exception as exc:
+                    failed.append({"id": str(image_id), "error": str(exc)})
+            await uow.commit()
+
+        return BulkOperationResult(
+            operation="bulk_delete_media_images",
+            total_requested=len(ids),
+            succeeded=len(succeeded),
+            failed=len(failed),
+            skipped=0,
+            errors=failed,
+            processed_ids=succeeded,
+            failed_ids=[e["id"] for e in failed],
+        )
+
     async def update_image_metadata(
         self,
         image_id: UUID,
@@ -450,6 +497,49 @@ class MediaService(BaseService):
             video = await validate_video_ownership(video_id, owner_id, uow)
             await uow.media.videos.soft_delete(video)
             await uow.commit()
+
+    async def bulk_delete_videos(self, owner_id: UUID, ids: list[UUID]) -> BulkOperationResult:
+        """
+        Owner-scoped bulk soft-delete. The owner_id filter lives in the same
+        WHERE clause as the id filter so a caller can never bulk-delete
+        another user's videos via a crafted id list.
+        """
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for video_id in ids:
+                try:
+                    stmt = (
+                        sa_update(Video)
+                        .where(
+                            Video.id == video_id,
+                            Video.owner_id == owner_id,
+                            Video.deleted_at.is_(None),
+                        )
+                        .values(deleted_at=datetime.now(tz=timezone.utc))
+                        .returning(Video.id)
+                    )
+                    result = await uow.session.execute(stmt)
+                    if result.fetchone():
+                        succeeded.append(str(video_id))
+                    else:
+                        failed.append(
+                            {"id": str(video_id), "error": "Not found or not owned by this user"}
+                        )
+                except Exception as exc:
+                    failed.append({"id": str(video_id), "error": str(exc)})
+            await uow.commit()
+
+        return BulkOperationResult(
+            operation="bulk_delete_media_videos",
+            total_requested=len(ids),
+            succeeded=len(succeeded),
+            failed=len(failed),
+            skipped=0,
+            errors=failed,
+            processed_ids=succeeded,
+            failed_ids=[e["id"] for e in failed],
+        )
 
     async def update_video_metadata(
         self,

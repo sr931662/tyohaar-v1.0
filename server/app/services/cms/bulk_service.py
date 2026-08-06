@@ -15,6 +15,7 @@ from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +24,7 @@ from app.models.enums import PackageStatus, VendorStatus, VendorVerificationStat
 from app.schemas.cms.bulk import (
     BulkAvailabilityUpdateRequest,
     BulkCouponGenerateRequest,
+    BulkDeleteRequest,
     BulkIDsRequest,
     BulkMembershipAssignRequest,
     BulkNotificationRequest,
@@ -488,6 +490,223 @@ class BulkService(BaseService):
             await uow.commit()
 
         return self._make_result("assign_memberships", request.user_ids, succeeded, failed)
+
+    # ── Generic Bulk Delete Helpers ───────────────────────────────────────────
+
+    async def _bulk_hard_delete(
+        self, request: BulkDeleteRequest, model: type, operation: str
+    ) -> BulkOperationResult:
+        """
+        Delete-many for models with no soft-delete column. Per-item try/except
+        so a single FK violation (e.g. a role still assigned to admins, a
+        state that still has cities) is reported as a per-item error instead
+        of aborting the whole batch — mirrors the singular delete endpoints'
+        guards without duplicating their queries.
+        """
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for item_id in request.ids:
+                try:
+                    stmt = sa_delete(model).where(model.id == item_id).returning(model.id)
+                    result = await uow.session.execute(stmt)
+                    if result.fetchone():
+                        succeeded.append(str(item_id))
+                    else:
+                        failed.append({"id": str(item_id), "error": f"{model.__name__} not found"})
+                except Exception as exc:
+                    failed.append({"id": str(item_id), "error": str(exc)})
+            await uow.commit()
+        return self._make_result(operation, request.ids, succeeded, failed)
+
+    async def _bulk_soft_delete(
+        self, request: BulkDeleteRequest, model: type, operation: str, set_inactive: bool = True
+    ) -> BulkOperationResult:
+        from datetime import datetime, timezone
+
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        values = {"deleted_at": datetime.now(tz=timezone.utc)}
+        if set_inactive:
+            values["is_active"] = False
+        async with self._uow() as uow:
+            for item_id in request.ids:
+                try:
+                    stmt = (
+                        update(model)
+                        .where(model.id == item_id, model.deleted_at.is_(None))
+                        .values(**values)
+                        .returning(model.id)
+                    )
+                    result = await uow.session.execute(stmt)
+                    if result.fetchone():
+                        succeeded.append(str(item_id))
+                    else:
+                        failed.append({"id": str(item_id), "error": f"{model.__name__} not found"})
+                except Exception as exc:
+                    failed.append({"id": str(item_id), "error": str(exc)})
+            await uow.commit()
+        return self._make_result(operation, request.ids, succeeded, failed)
+
+    async def bulk_delete_package_categories(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        from app.models.packages.package_category import PackageCategory
+
+        return await self._bulk_hard_delete(request, PackageCategory, "bulk_delete_package_categories")
+
+    async def bulk_delete_occasions(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        from app.models.occasions.occasion import Occasion
+
+        return await self._bulk_hard_delete(request, Occasion, "bulk_delete_occasions")
+
+    async def bulk_delete_occasion_themes(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        from app.models.occasions.occasion_theme import OccasionTheme
+
+        return await self._bulk_hard_delete(request, OccasionTheme, "bulk_delete_occasion_themes")
+
+    async def bulk_delete_vendors(self, request: BulkVendorActionRequest) -> BulkOperationResult:
+        """
+        Vendors cascade to their packages on delete (see
+        VendorService.delete_vendor_cascade) — that cascade must run per-id
+        here too, not a raw UPDATE on the Vendor table alone, or a bulk
+        delete would silently skip soft-deleting the vendor's packages.
+        """
+        from app.services.vendors.service import VendorService
+
+        vendor_service = VendorService(self._session_factory)
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        for vendor_id in request.ids:
+            try:
+                await vendor_service.delete_vendor_cascade(vendor_id)
+                succeeded.append(str(vendor_id))
+            except Exception as exc:
+                failed.append({"id": str(vendor_id), "error": str(exc)})
+        return self._make_result("bulk_delete_vendors", request.ids, succeeded, failed)
+
+    async def bulk_delete_media_images(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        from app.models.media.image import Image
+
+        # Image has no is_active column — only deleted_at marks it removed.
+        return await self._bulk_soft_delete(request, Image, "bulk_delete_media_images", set_inactive=False)
+
+    async def bulk_delete_media_videos(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        from app.models.media.video import Video
+
+        # Video has no is_active column — only deleted_at marks it removed.
+        return await self._bulk_soft_delete(request, Video, "bulk_delete_media_videos", set_inactive=False)
+
+    async def bulk_delete_roles(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        """
+        Roles are hard-deleted (see AdminService.delete_role), guarded by an
+        explicit "still assigned to admins" check rather than a DB FK — that
+        guard must run per-id here too, or a bulk call could delete a role
+        out from under an active admin.
+        """
+        from app.models.admin.role import AdminRole
+
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for role_id in request.ids:
+                try:
+                    role = await uow.session.get(AdminRole, role_id)
+                    if role is None:
+                        failed.append({"id": str(role_id), "error": "Role not found"})
+                        continue
+                    assigned = await uow.admin.admins.find_by_role(role_id, limit=1)
+                    if assigned:
+                        failed.append({"id": str(role_id), "error": "Role is still assigned to admins"})
+                        continue
+                    await uow.admin.roles.delete(role)
+                    succeeded.append(str(role_id))
+                except Exception as exc:
+                    failed.append({"id": str(role_id), "error": str(exc)})
+            await uow.commit()
+        return self._make_result("bulk_delete_roles", request.ids, succeeded, failed)
+
+    async def bulk_deactivate_notification_templates(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        """Templates are never hard-deleted (see NotificationService.delete_template) — bulk flips is_active off."""
+        from app.models.notifications.template import NotificationTemplate
+
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for item_id in request.ids:
+                try:
+                    stmt = (
+                        update(NotificationTemplate)
+                        .where(NotificationTemplate.id == item_id)
+                        .values(is_active=False)
+                        .returning(NotificationTemplate.id)
+                    )
+                    result = await uow.session.execute(stmt)
+                    if result.fetchone():
+                        succeeded.append(str(item_id))
+                    else:
+                        failed.append({"id": str(item_id), "error": "NotificationTemplate not found"})
+                except Exception as exc:
+                    failed.append({"id": str(item_id), "error": str(exc)})
+            await uow.commit()
+        return self._make_result("bulk_deactivate_notification_templates", request.ids, succeeded, failed)
+
+    async def bulk_delete_states(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        """Guarded the same way as the singular delete_state — a state with
+        cities still assigned must be reported as a per-item error, not deleted."""
+        from app.models.common.state import State
+
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for state_id in request.ids:
+                try:
+                    state = await uow.session.get(State, state_id)
+                    if state is None:
+                        failed.append({"id": str(state_id), "error": "State not found"})
+                        continue
+                    cities = await uow.common.cities.find_by_state(state_id, limit=1)
+                    if cities:
+                        failed.append({"id": str(state_id), "error": "State still has cities assigned"})
+                        continue
+                    await uow.common.states.delete(state)
+                    succeeded.append(str(state_id))
+                except Exception as exc:
+                    failed.append({"id": str(state_id), "error": str(exc)})
+            await uow.commit()
+        return self._make_result("bulk_delete_states", request.ids, succeeded, failed)
+
+    async def bulk_delete_cities(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        from app.models.common.city import City
+
+        return await self._bulk_hard_delete(request, City, "bulk_delete_cities")
+
+    async def bulk_delete_faqs(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        from app.models.common.faq import FAQ
+
+        return await self._bulk_hard_delete(request, FAQ, "bulk_delete_faqs")
+
+    async def bulk_deactivate_membership_plans(self, request: BulkDeleteRequest) -> BulkOperationResult:
+        from app.models.memberships.membership_plan import MembershipPlan
+
+        succeeded: list[str] = []
+        failed: list[dict[str, Any]] = []
+        async with self._uow() as uow:
+            for item_id in request.ids:
+                try:
+                    stmt = (
+                        update(MembershipPlan)
+                        .where(MembershipPlan.id == item_id)
+                        .values(is_active=False)
+                        .returning(MembershipPlan.id)
+                    )
+                    result = await uow.session.execute(stmt)
+                    if result.fetchone():
+                        succeeded.append(str(item_id))
+                    else:
+                        failed.append({"id": str(item_id), "error": "MembershipPlan not found"})
+                except Exception as exc:
+                    failed.append({"id": str(item_id), "error": str(exc)})
+            await uow.commit()
+        return self._make_result("bulk_deactivate_membership_plans", request.ids, succeeded, failed)
 
     # ── Category / City Assignment ────────────────────────────────────────────
 
