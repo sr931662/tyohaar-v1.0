@@ -88,11 +88,11 @@
 
 [data-theme="dark"] {
   /* Warm dark — matches Tyohaar "Festival of Lights" dark theme */
-  --bg-base: #1B1320;
-  --bg-surface: #211627;
-  --bg-elevated: #271A2E;
-  --bg-sidebar: #0E0A14;
-  --bg-sidebar-hover: #271A2E;
+  --bg-base: #2B0A14;
+  --bg-surface: #33101B;
+  --bg-elevated: #3D1420;
+  --bg-sidebar: #1A0510;
+  --bg-sidebar-hover: #3D1420;
   --bg-sidebar-active: var(--brand-600);
 
   --border-subtle: rgba(244,235,220,0.09);
@@ -102,7 +102,7 @@
   --text-primary: #F4EBDC;
   --text-secondary: #C6B2C0;
   --text-tertiary: #7A6A7A;
-  --text-inverse: #1B1320;
+  --text-inverse: #2B0A14;
   --text-brand: #F0A93C;
 
   --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4);
