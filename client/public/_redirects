@@ -2,5 +2,5 @@
 /_redirects  /_redirects  200
 /favicon.ico  /favicon.ico  200
 /logo.png  /logo.png  200
-/assets/*  /assets/:splat  404
+/assets/*  /404.html  404
 /*  /index.html  200
