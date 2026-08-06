@@ -69,10 +69,10 @@
 
 /* ---------- FESTIVAL OF LIGHTS ---------- */
 :root[data-theme="dark"] {
-  --paper:       #1B1320;
-  --paper-2:     #211627;
-  --surface:     #271A2E;
-  --surface-2:   #2E1F36;
+  --paper:       #2B0A14;
+  --paper-2:     #33101B;
+  --surface:     #3D1420;
+  --surface-2:   #471926;
   --ink:         #F4EBDC;
   --ink-2:       #C6B2C0;
   --ink-3:       #9C8899;

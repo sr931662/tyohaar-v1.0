@@ -73,10 +73,10 @@ class TyColors extends ThemeExtension<TyColors> {
   );
 
   static const TyColors dark = TyColors(
-    paper: Color(0xFF1B1320),
-    paper2: Color(0xFF211627),
-    surface: Color(0xFF271A2E),
-    surface2: Color(0xFF2E1F36),
+    paper: Color(0xFF2B0A14),
+    paper2: Color(0xFF33101B),
+    surface: Color(0xFF3D1420),
+    surface2: Color(0xFF471926),
     ink: Color(0xFFF4EBDC),
     ink2: Color(0xFFC6B2C0),
     ink3: Color(0xFF8A7588),
