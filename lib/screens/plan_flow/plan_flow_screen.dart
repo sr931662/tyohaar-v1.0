@@ -175,6 +175,25 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // service.id -> chosen quantity, mirrors _itemQuantities.
   final Map<String, int> _serviceQuantities = {};
 
+  // The balloon colour/theme step only makes sense when both the package
+  // supports customization AND the selected occasion allows it — admins
+  // turn this off per-occasion for religious/cultural occasions (Mehndi,
+  // Haldi, Diwali, etc.) where a balloon décor setup would look out of
+  // place. All other package customizations (items/services) stay
+  // unaffected by this flag.
+  bool get _showBalloonTheme =>
+      (_pkg?.isCustomizable ?? false) && (_occasion?.allowBalloonTheme ?? true);
+
+  // Common items/services are vendor-wide reusable add-ons shared across
+  // many packages (PackageItem.isCommon doc: "attached to the package
+  // rather than defined specifically for it") — they're never bundled into
+  // a single package's base price, so they're always presented (and
+  // priced) here as opt-in add-ons, regardless of the backend's
+  // is_mandatory flag. Only package-specific items can be genuinely
+  // included in the price.
+  bool _isIncludedItem(PackageItem i) => i.isMandatory && !i.isCommon;
+  bool _isIncludedService(PackageServiceLine s) => s.isMandatory && !s.isCommon;
+
   @override
   void initState() {
     super.initState();
@@ -256,12 +275,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       setState(() {
         _packageItems = items;
         _itemQuantities.clear();
-        for (final i in items.where((i) => i.isMandatory)) {
+        for (final i in items.where(_isIncludedItem)) {
           _itemQuantities[i.id] = i.quantity;
         }
         _packageServices = services;
         _serviceQuantities.clear();
-        for (final s in services.where((s) => s.isMandatory)) {
+        for (final s in services.where(_isIncludedService)) {
           _serviceQuantities[s.id] = s.quantity;
         }
         _loadingItems = false;
@@ -284,10 +303,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // backend, so every subtotal shown to (or previewed for) the customer has
   // to count them.
   double get _includedLinesTotal {
-    final items = _packageItems.where((i) => i.isMandatory).fold<double>(
+    final items = _packageItems.where(_isIncludedItem).fold<double>(
       0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
     );
-    final services = _packageServices.where((s) => s.isMandatory).fold<double>(
+    final services = _packageServices.where(_isIncludedService).fold<double>(
       0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
     );
     return items + services;
@@ -299,11 +318,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     setState(() { _couponLoading = true; _couponError = null; });
     try {
       final basePrice = _pkg?.price ?? 0;
-      final selectedOptional = _packageItems.where((i) => !i.isMandatory && _itemQuantities.containsKey(i.id));
+      final selectedOptional = _packageItems.where((i) => !_isIncludedItem(i) && _itemQuantities.containsKey(i.id));
       final itemsTotal = selectedOptional.fold<double>(
         0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
       );
-      final selectedOptionalServices = _packageServices.where((s) => !s.isMandatory && _serviceQuantities.containsKey(s.id));
+      final selectedOptionalServices = _packageServices.where((s) => !_isIncludedService(s) && _serviceQuantities.containsKey(s.id));
       final servicesTotal = selectedOptionalServices.fold<double>(
         0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
       );
@@ -365,11 +384,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     setState(() => _isSubmitting = true);
     try {
       final optionalSelected = _packageItems
-          .where((i) => !i.isMandatory && _itemQuantities.containsKey(i.id))
+          .where((i) => !_isIncludedItem(i) && _itemQuantities.containsKey(i.id))
           .map((i) => i.id)
           .toList();
       final optionalServicesSelected = _packageServices
-          .where((s) => !s.isMandatory && _serviceQuantities.containsKey(s.id))
+          .where((s) => !_isIncludedService(s) && _serviceQuantities.containsKey(s.id))
           .map((s) => s.id)
           .toList();
 
@@ -382,7 +401,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       // the mode is derived from how many they chose (the backend accepts
       // exactly 1 for SINGLE and exactly 2 for DUAL), so there is no separate
       // single/dual switch for them to get wrong.
-      final usingCustomColours = (_pkg?.isCustomizable ?? false) && _useCustomTheme && _balloonColors.isNotEmpty;
+      final usingCustomColours = _showBalloonTheme && _useCustomTheme && _balloonColors.isNotEmpty;
       final balloonColorsHex = _balloonColors.map((name) => _balloonColorPalette[name]!).toList();
 
       final booking = await _bookingService.createBooking({
@@ -392,7 +411,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'venue_address': _address?.fullAddress,
         'celebration_title': _nameCtrl.text.isNotEmpty ? _nameCtrl.text : 'My Celebration',
         'address_id': _address?.id,
-        'theme_id': (_pkg?.isCustomizable ?? false) && !_useCustomTheme ? _theme?.id : null,
+        'theme_id': _showBalloonTheme && !_useCustomTheme ? _theme?.id : null,
         if (usingCustomColours)
           'custom_theme_colors': {
             'primary': balloonColorsHex.first,
@@ -1065,7 +1084,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           itemCount: _packages.length,
           itemBuilder: (context, i) => _packageCard(context, _packages[i]),
         ),
-        if (_pkg?.isCustomizable ?? false) _themeStep(context),
+        if (_showBalloonTheme) _themeStep(context),
       ],
     );
   }
@@ -1537,8 +1556,26 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     final specificItems = _packageItems.where((i) => !i.isCommon).toList();
     final commonItems = _packageItems.where((i) => i.isCommon).toList();
 
-    Widget section(String heading, List<PackageItem> items) {
+    Widget section(String heading, List<PackageItem> items, {bool isCommonGroup = false}) {
       if (items.isEmpty) return const SizedBox();
+      if (isCommonGroup) {
+        // Common items are vendor-wide reusable add-ons, never bundled into
+        // this package's price — always shown as opt-in add-ons (quantity
+        // starts at 0), regardless of the backend's is_mandatory flag.
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(heading, style: TyType.sans(13, color: ty.ink, weight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              Text(l10n.planFlowAddOnsLabel, style: TyType.eyebrow(11, color: ty.ink3)),
+              const SizedBox(height: 10),
+              ...items.map((item) => _itemRow(context, item, locked: false)),
+            ],
+          ),
+        );
+      }
       final mandatory = items.where((i) => i.isMandatory).toList();
       final optional = items.where((i) => !i.isMandatory).toList();
       return Padding(
@@ -1567,8 +1604,27 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     final specificServices = _packageServices.where((s) => !s.isCommon).toList();
     final commonServices = _packageServices.where((s) => s.isCommon).toList();
 
-    Widget serviceSection(String heading, List<PackageServiceLine> services) {
+    Widget serviceSection(String heading, List<PackageServiceLine> services, {bool isCommonGroup = false}) {
       if (services.isEmpty) return const SizedBox();
+      if (isCommonGroup) {
+        // Common services are vendor-wide professional services offered
+        // across many packages, never bundled into this package's price —
+        // always shown as opt-in add-ons (quantity starts at 0), regardless
+        // of the backend's is_mandatory flag.
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(heading, style: TyType.sans(13, color: ty.ink, weight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              Text(l10n.planFlowProfessionalServicesLabel, style: TyType.eyebrow(11, color: ty.ink3)),
+              const SizedBox(height: 10),
+              ...services.map((service) => _serviceRow(context, service, locked: false)),
+            ],
+          ),
+        );
+      }
       final mandatory = services.where((s) => s.isMandatory).toList();
       final optional = services.where((s) => !s.isMandatory).toList();
       return Padding(
@@ -1598,9 +1654,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         section(l10n.planFlowPackageSpecificItemsHeading, specificItems),
-        section(l10n.planFlowCommonItemsHeading, commonItems),
+        section(l10n.planFlowCommonItemsHeading, commonItems, isCommonGroup: true),
         serviceSection(l10n.planFlowPackageSpecificServicesHeading, specificServices),
-        serviceSection(l10n.planFlowCommonServicesHeading, commonServices),
+        serviceSection(l10n.planFlowCommonServicesHeading, commonServices, isCommonGroup: true),
         if (_packageItems.isEmpty && _packageServices.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
@@ -1829,13 +1885,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   Widget _summaryStep(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
-    final mandatoryItems = _packageItems.where((i) => i.isMandatory).toList();
-    final selectedOptional = _packageItems.where((i) => !i.isMandatory && _itemQuantities.containsKey(i.id)).toList();
+    final mandatoryItems = _packageItems.where(_isIncludedItem).toList();
+    final selectedOptional = _packageItems.where((i) => !_isIncludedItem(i) && _itemQuantities.containsKey(i.id)).toList();
     final itemsTotal = selectedOptional.fold<double>(
       0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
     );
-    final mandatoryServices = _packageServices.where((s) => s.isMandatory).toList();
-    final selectedOptionalServices = _packageServices.where((s) => !s.isMandatory && _serviceQuantities.containsKey(s.id)).toList();
+    final mandatoryServices = _packageServices.where(_isIncludedService).toList();
+    final selectedOptionalServices = _packageServices.where((s) => !_isIncludedService(s) && _serviceQuantities.containsKey(s.id)).toList();
     final servicesTotal = selectedOptionalServices.fold<double>(
       0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
     );
@@ -1852,9 +1908,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _summaryCard(context, l10n.planFlowSummaryCelebrationLabel,
             l10n.planFlowCelebrationSummaryValue('${_occasion?.name}', _nameCtrl.text), onEdit: () => _jumpTo(0)),
         _summaryCard(context, l10n.planFlowSummaryPackageLabel, _pkg?.name ?? '', onEdit: () => _jumpTo(1)),
-        if ((_pkg?.isCustomizable ?? false) && !_useCustomTheme && _theme != null)
+        if (_showBalloonTheme && !_useCustomTheme && _theme != null)
           _summaryCard(context, l10n.planFlowSummaryThemeLabel, _theme!.name, onEdit: () => _jumpTo(1)),
-        if ((_pkg?.isCustomizable ?? false) && _useCustomTheme && _balloonColors.isNotEmpty)
+        if (_showBalloonTheme && _useCustomTheme && _balloonColors.isNotEmpty)
           _summaryCard(
             context,
             l10n.planFlowSummaryBalloonColoursLabel,

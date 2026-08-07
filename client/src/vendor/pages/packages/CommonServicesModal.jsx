@@ -5,6 +5,8 @@ import { vendorPackagesApi, vendorServiceIoApi } from '../../api';
 import { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
+import AttachPackagesModal from '../../components/AttachPackagesModal';
+import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
 
 // ── Common Services Modal (vendor-wide service templates) ──────────────────────
 // Reusable services (Photography, DJ, Makeup, etc.) owned by the vendor, not
@@ -18,6 +20,7 @@ export default function CommonServicesModal({ onClose }) {
   const [editForm, setEditForm] = useState({});
   const [newService, setNewService] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [attachTarget, setAttachTarget] = useState(null);
 
   const { data: services = [], isLoading } = useQuery({
     queryKey: ['vendor-common-services'],
@@ -49,8 +52,8 @@ export default function CommonServicesModal({ onClose }) {
     onError: () => toast.error('Failed to delete service.'),
   });
 
-  const attachAllMutation = useMutation({
-    mutationFn: (serviceId) => vendorPackagesApi.attachAllCommonService(serviceId),
+  const attachMutation = useMutation({
+    mutationFn: ({ serviceId, packageIds }) => vendorPackagesApi.attachAllCommonService(serviceId, packageIds),
     onSuccess: (result) => { toast.success(`Attached to ${result.attached_count} package(s).`); invalidate(); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to attach to packages.'),
   });
@@ -124,7 +127,10 @@ export default function CommonServicesModal({ onClose }) {
                   </div>
                   <div className="form-row-3" style={{ gap: 10 }}>
                     <input className="admin-input" type="number" min="1" value={editForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
-                    <input className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)} placeholder="Unit (hrs, persons…)" />
+                    <select className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)}>
+                      <option value="">Unit (optional)</option>
+                      {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                    </select>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                       <input type="checkbox" checked={editForm.is_mandatory} onChange={(e) => setEF('is_mandatory', e.target.checked)} />
                       Mandatory
@@ -171,7 +177,8 @@ export default function CommonServicesModal({ onClose }) {
                     ₹{Number(service.base_price).toLocaleString('en-IN')}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => attachAllMutation.mutate(service.id)} disabled={attachAllMutation.isPending}>Attach to all</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => attachMutation.mutate({ serviceId: service.id, packageIds: null })} disabled={attachMutation.isPending}>Attach to all</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setAttachTarget(service)}>Custom Attach</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => startEdit(service)}>Edit</button>
                     <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(service)}>✕</button>
                   </div>
@@ -188,7 +195,10 @@ export default function CommonServicesModal({ onClose }) {
             </div>
             <div className="form-row-3" style={{ gap: 10 }}>
               <input className="admin-input" type="number" min="1" value={newService.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
-              <input className="admin-input" value={newService.unit} onChange={(e) => setNF('unit', e.target.value)} placeholder="Unit (hrs, persons…)" />
+              <select className="admin-input" value={newService.unit} onChange={(e) => setNF('unit', e.target.value)}>
+                <option value="">Unit (optional)</option>
+                {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+              </select>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                 <input type="checkbox" checked={newService.is_mandatory} onChange={(e) => setNF('is_mandatory', e.target.checked)} />
                 Mandatory
@@ -219,6 +229,18 @@ export default function CommonServicesModal({ onClose }) {
         title="Delete Common Service"
         message={`Delete "${confirmDelete?.name}"? It will be removed from every package it's attached to.`}
         loading={deleteMutation.isPending}
+      />
+
+      <AttachPackagesModal
+        open={!!attachTarget}
+        onClose={() => setAttachTarget(null)}
+        isAttaching={attachMutation.isPending}
+        onAttach={(packageIds) =>
+          attachMutation.mutate(
+            { serviceId: attachTarget.id, packageIds },
+            { onSuccess: () => setAttachTarget(null) },
+          )
+        }
       />
     </div>
   );

@@ -140,6 +140,7 @@ class OccasionUpdate(_BaseSchema):
     theme_color_hex: str | None = None
     display_order: int | None = None
     is_featured: bool | None = None
+    allow_balloon_theme: bool | None = None
 
     @_field_validator("theme_color_hex")
     @classmethod

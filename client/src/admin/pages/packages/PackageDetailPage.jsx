@@ -9,6 +9,7 @@ import { SkeletonCard } from '../../components/ui/Skeleton';
 import { ConfirmDialog } from '../../components/ui/Modal';
 import RatingSummary from '../../components/ui/RatingSummary';
 import ReviewList from '../../components/reviews/ReviewList';
+import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
 
 const EMPTY_ITEM = { name: '', description: '', quantity: 1, unit: '', base_price: '', is_mandatory: true };
 
@@ -423,7 +424,10 @@ export default function PackageDetailPage() {
                     </div>
                     <div className="form-row-3" style={{ gap: 10 }}>
                       <input className="admin-input" type="number" min="1" value={editItemForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
-                      <input className="admin-input" value={editItemForm.unit} onChange={(e) => setEF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+                      <select className="admin-input" value={editItemForm.unit} onChange={(e) => setEF('unit', e.target.value)}>
+                        <option value="">Unit (optional)</option>
+                        {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                      </select>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                         <input type="checkbox" checked={editItemForm.is_mandatory} onChange={(e) => setEF('is_mandatory', e.target.checked)} />
                         Mandatory
@@ -493,7 +497,10 @@ export default function PackageDetailPage() {
                   </div>
                   <div className="form-row-3" style={{ gap: 10 }}>
                     <input className="admin-input" type="number" min="1" value={newItem.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
-                    <input className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+                    <select className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)}>
+                      <option value="">Unit (optional)</option>
+                      {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                    </select>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                       <input type="checkbox" checked={newItem.is_mandatory} onChange={(e) => setNF('is_mandatory', e.target.checked)} />
                       Mandatory

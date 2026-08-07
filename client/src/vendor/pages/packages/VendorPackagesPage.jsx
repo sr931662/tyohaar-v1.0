@@ -8,8 +8,10 @@ import { useRowSelection } from '../../../admin/hooks/useRowSelection';
 import { reportBulkResult } from '../../../admin/utils/bulkToast';
 import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
+import AttachPackagesModal from '../../components/AttachPackagesModal';
 import CommonServicesModal from './CommonServicesModal';
 import PackageServicesModal from './PackageServicesModal';
+import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -225,6 +227,7 @@ function CommonItemsModal({ onClose }) {
   const [editForm, setEditForm] = useState({});
   const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [attachTarget, setAttachTarget] = useState(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['vendor-common-items'],
@@ -256,8 +259,8 @@ function CommonItemsModal({ onClose }) {
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to delete item.'),
   });
 
-  const attachAllMutation = useMutation({
-    mutationFn: (itemId) => vendorPackagesApi.attachAllCommonItem(itemId),
+  const attachMutation = useMutation({
+    mutationFn: ({ itemId, packageIds }) => vendorPackagesApi.attachAllCommonItem(itemId, packageIds),
     onSuccess: (result) => { toast.success(`Attached to ${result.attached_count} package(s).`); invalidate(); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to attach to packages.'),
   });
@@ -331,7 +334,10 @@ function CommonItemsModal({ onClose }) {
                   </div>
                   <div className="form-row-3" style={{ gap: 10 }}>
                     <input className="admin-input" type="number" min="1" value={editForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
-                    <input className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+                    <select className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)}>
+                      <option value="">Unit (optional)</option>
+                      {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                    </select>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                       <input type="checkbox" checked={editForm.is_mandatory} onChange={(e) => setEF('is_mandatory', e.target.checked)} />
                       Mandatory
@@ -383,7 +389,8 @@ function CommonItemsModal({ onClose }) {
                     ₹{Number(item.base_price).toLocaleString('en-IN')}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => attachAllMutation.mutate(item.id)} disabled={attachAllMutation.isPending}>Attach to all</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => attachMutation.mutate({ itemId: item.id, packageIds: null })} disabled={attachMutation.isPending}>Attach to all</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setAttachTarget(item)}>Custom Attach</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => startEdit(item)}>Edit</button>
                     <button className="btn btn-sm" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: '#ef4444' }} onClick={() => setConfirmDelete(item)}>✕</button>
                   </div>
@@ -400,7 +407,10 @@ function CommonItemsModal({ onClose }) {
             </div>
             <div className="form-row-3" style={{ gap: 10 }}>
               <input className="admin-input" type="number" min="1" value={newItem.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
-              <input className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+              <select className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)}>
+                <option value="">Unit (optional)</option>
+                {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+              </select>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                 <input type="checkbox" checked={newItem.is_mandatory} onChange={(e) => setNF('is_mandatory', e.target.checked)} />
                 Mandatory
@@ -435,6 +445,18 @@ function CommonItemsModal({ onClose }) {
         title="Delete Common Item"
         message={`Delete "${confirmDelete?.name}"? It will be removed from every package it's attached to.`}
         loading={deleteMutation.isPending}
+      />
+
+      <AttachPackagesModal
+        open={!!attachTarget}
+        onClose={() => setAttachTarget(null)}
+        isAttaching={attachMutation.isPending}
+        onAttach={(packageIds) =>
+          attachMutation.mutate(
+            { itemId: attachTarget.id, packageIds },
+            { onSuccess: () => setAttachTarget(null) },
+          )
+        }
       />
     </div>
   );
@@ -570,7 +592,10 @@ function PackageItemsModal({ pkg, onClose }) {
                   </div>
                   <div className="form-row-3" style={{ gap: 10 }}>
                     <input className="admin-input" type="number" min="1" value={editForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
-                    <input className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+                    <select className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)}>
+                      <option value="">Unit (optional)</option>
+                      {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                    </select>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                       <input type="checkbox" checked={editForm.is_mandatory} onChange={(e) => setEF('is_mandatory', e.target.checked)} />
                       Mandatory
@@ -685,7 +710,10 @@ function PackageItemsModal({ pkg, onClose }) {
                 </div>
                 <div className="form-row-3" style={{ gap: 10 }}>
                   <input className="admin-input" type="number" min="1" value={newItem.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
-                  <input className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)} placeholder="Unit (hrs, pcs…)" />
+                  <select className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)}>
+                    <option value="">Unit (optional)</option>
+                    {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                  </select>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                     <input type="checkbox" checked={newItem.is_mandatory} onChange={(e) => setNF('is_mandatory', e.target.checked)} />
                     Mandatory

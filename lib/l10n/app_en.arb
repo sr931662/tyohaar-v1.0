@@ -709,6 +709,8 @@
   "planFlowCommonServicesHeading": "Common Services",
   "planFlowIncludedLabel": "INCLUDED",
   "planFlowOptionalAddOnsLabel": "OPTIONAL ADD-ONS",
+  "planFlowAddOnsLabel": "ADD-ONS",
+  "planFlowProfessionalServicesLabel": "PROFESSIONAL SERVICES",
   "planFlowNoConfigurableItemsMessage": "This package has no configurable items.",
   "planFlowUnitFallback": "unit",
   "planFlowAddOnPriceLabel": "+ {price} / {unit}",

@@ -29,6 +29,7 @@ const EMPTY_OCCASION_FORM = {
   name: '', description: '', is_active: true,
   icon_url: '',
   theme_color_hex: '', display_order: '0', is_featured: false,
+  allow_balloon_theme: true,
 };
 
 const EMPTY_THEME_FORM = {
@@ -334,6 +335,7 @@ export default function OccasionsPage() {
       theme_color_hex: item.theme_color_hex ?? '',
       display_order: String(item.display_order ?? 0),
       is_featured: item.is_featured ?? false,
+      allow_balloon_theme: item.allow_balloon_theme ?? true,
     });
     setNewOpen(true);
   };
@@ -474,6 +476,13 @@ export default function OccasionsPage() {
         <div className="form-check">
           <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
           <label htmlFor="is_active">Active</label>
+        </div>
+        <div className="form-check">
+          <input type="checkbox" id="allow_balloon_theme" checked={form.allow_balloon_theme} onChange={e => setForm(f => ({ ...f, allow_balloon_theme: e.target.checked }))} />
+          <label htmlFor="allow_balloon_theme">Allow balloon colour/theme customization</label>
+        </div>
+        <div className="form-hint">
+          Turn this off for religious and cultural occasions (Mehndi, Haldi, Diwali, etc.) — packages under this occasion will hide the balloon colour/theme step. All other package customizations stay available.
         </div>
       </Modal>
 

@@ -289,6 +289,25 @@ class PackagePricingType(str, enum.Enum):
     CUSTOM_QUOTE = "custom_quote"
 
 
+class PackageUnit(str, enum.Enum):
+    """
+    Fixed catalogue of quantity units for PackageItem/PackageService lines.
+
+    Free-text unit entry let admins/vendors type quantities (e.g. '2') into
+    the unit field by mistake — constraining new writes to this list keeps
+    the value consistent for pricing math and for display across the admin
+    portal, vendor portal, and customer app.
+    """
+    PIECES = "pieces"
+    SETS = "sets"
+    HOURS = "hours"
+    DAYS = "days"
+    PERSONS = "persons"
+    PLATES = "plates"
+    SQ_FT = "sq ft"
+    KG = "kg"
+
+
 class ReviewModerationStatus(str, enum.Enum):
     """
     Content moderation lifecycle for a customer-submitted review

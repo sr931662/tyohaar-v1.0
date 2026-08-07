@@ -21,6 +21,7 @@ from app.models.enums import (
     MediaType,
     MediaUsage,
     PackageStatus,
+    PackageUnit,
     ReviewModerationStatus,
 )
 from app.schemas.base import CursorPage
@@ -107,6 +108,41 @@ def _parse_int_cell(value: Any) -> int | None:
     return int(text) if text else None
 
 
+# Common free-text spellings vendors type into a spreadsheet, mapped to the
+# fixed PackageUnit catalogue — bulk import bypasses the create/update
+# Pydantic schemas (upsert goes straight to create_from_dict/update), so
+# without this the exact confusion the unit dropdown fixes in the admin and
+# vendor forms (quantities like '2' or '6' typed into the unit column)
+# could still slip in through an XLSX/CSV upload.
+_UNIT_SYNONYMS: dict[str, str] = {
+    "piece": "pieces", "pieces": "pieces", "pc": "pieces", "pcs": "pieces",
+    "nos": "pieces", "no": "pieces", "unit": "pieces", "units": "pieces",
+    "set": "sets", "sets": "sets",
+    "hour": "hours", "hours": "hours", "hr": "hours", "hrs": "hours",
+    "day": "days", "days": "days",
+    "person": "persons", "persons": "persons", "pax": "persons",
+    "guest": "persons", "guests": "persons",
+    "plate": "plates", "plates": "plates", "serving": "plates", "servings": "plates",
+    # Normalization below strips '.' and turns ' ' into '_' before lookup, so
+    # "sq.ft"/"sqft" both become the key "sqft" and "sq ft" becomes "sq_ft" —
+    # both keys need an entry to cover every spelling.
+    "sqft": "sq ft", "sq_ft": "sq ft",
+    "kg": "kg", "kgs": "kg", "kilogram": "kg", "kilograms": "kg",
+}
+
+
+def _normalize_unit_cell(value: str | None) -> str | None:
+    """Map a free-text spreadsheet unit cell onto the fixed PackageUnit catalogue."""
+    if not value:
+        return None
+    key = value.strip().lower().replace(".", "").replace(" ", "_")
+    canonical = _UNIT_SYNONYMS.get(key)
+    if canonical is None:
+        allowed = ", ".join(sorted(u.value for u in PackageUnit))
+        raise ValueError(f"Unrecognized unit '{value}'. Use one of: {allowed}")
+    return canonical
+
+
 def _coerce_item_import_row(row: dict[str, Any], *, is_package_item: bool) -> dict[str, Any]:
     """Convert raw (string-valued) spreadsheet cells into a PackageItem field dict."""
     def cell(key: str) -> str | None:
@@ -120,7 +156,7 @@ def _coerce_item_import_row(row: dict[str, Any], *, is_package_item: bool) -> di
         "name": cell("name"),
         "description": cell("description"),
         "quantity": _parse_int_cell(row.get("quantity")) or 1,
-        "unit": cell("unit"),
+        "unit": _normalize_unit_cell(cell("unit")),
         "base_price": Decimal(cell("base_price") or "0"),
         "max_quantity": _parse_int_cell(row.get("max_quantity")),
         "is_customizable": _parse_bool_cell(row.get("is_customizable"), False),
@@ -256,7 +292,7 @@ def _coerce_service_import_row(row: dict[str, Any], *, is_package_service: bool)
         "name": cell("name"),
         "description": cell("description"),
         "quantity": _parse_int_cell(row.get("quantity")) or 1,
-        "unit": cell("unit"),
+        "unit": _normalize_unit_cell(cell("unit")),
         "base_price": Decimal(cell("base_price") or "0"),
         "max_quantity": _parse_int_cell(row.get("max_quantity")),
         "is_customizable": _parse_bool_cell(row.get("is_customizable"), False),

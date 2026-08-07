@@ -16,7 +16,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
-from app.models.enums import Currency, PackagePricingType, PackageStatus, ReviewModerationStatus
+from app.models.enums import Currency, PackagePricingType, PackageStatus, PackageUnit, ReviewModerationStatus
 from app.schemas.packages.common import PriceTierSchema
 
 
@@ -126,8 +126,8 @@ class PackageItemCreate(BaseSchema):
     name: str = Field(min_length=1, max_length=300, description="Item name")
     description: str | None = Field(default=None, description="Item description")
     quantity: int = Field(default=1, ge=1, description="Default quantity included")
-    unit: str | None = Field(
-        default=None, max_length=50, description="Unit label, e.g. 'hours', 'pieces'"
+    unit: PackageUnit | None = Field(
+        default=None, description="Unit of quantity, chosen from the fixed unit list"
     )
     base_price: MoneyAmount = Field(description="Item base price")
     is_mandatory: bool = Field(
@@ -169,8 +169,8 @@ class CommonPackageItemCreate(BaseSchema):
     name: str = Field(min_length=1, max_length=300, description="Item name")
     description: str | None = Field(default=None, description="Item description")
     quantity: int = Field(default=1, ge=1, description="Default quantity included")
-    unit: str | None = Field(
-        default=None, max_length=50, description="Unit label, e.g. 'hours', 'pieces'"
+    unit: PackageUnit | None = Field(
+        default=None, description="Unit of quantity, chosen from the fixed unit list"
     )
     base_price: MoneyAmount = Field(description="Item base price")
     is_mandatory: bool = Field(
@@ -216,8 +216,8 @@ class PackageServiceCreate(BaseSchema):
     name: str = Field(min_length=1, max_length=300, description="Service name")
     description: str | None = Field(default=None, description="Service description")
     quantity: int = Field(default=1, ge=1, description="Default quantity included")
-    unit: str | None = Field(
-        default=None, max_length=50, description="Unit label, e.g. 'hours', 'persons'"
+    unit: PackageUnit | None = Field(
+        default=None, description="Unit of quantity, chosen from the fixed unit list"
     )
     base_price: MoneyAmount = Field(description="Service base price")
     is_mandatory: bool = Field(
@@ -256,8 +256,8 @@ class CommonPackageServiceCreate(BaseSchema):
     name: str = Field(min_length=1, max_length=300, description="Service name")
     description: str | None = Field(default=None, description="Service description")
     quantity: int = Field(default=1, ge=1, description="Default quantity included")
-    unit: str | None = Field(
-        default=None, max_length=50, description="Unit label, e.g. 'hours', 'persons'"
+    unit: PackageUnit | None = Field(
+        default=None, description="Unit of quantity, chosen from the fixed unit list"
     )
     base_price: MoneyAmount = Field(description="Service base price")
     is_mandatory: bool = Field(

@@ -15,7 +15,7 @@ from typing import Annotated
 from pydantic import Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
-from app.models.enums import Currency, PackagePricingType, PackageStatus
+from app.models.enums import Currency, PackagePricingType, PackageStatus, PackageUnit
 from app.schemas.packages.common import PriceTierSchema
 
 
@@ -105,7 +105,7 @@ class PackageItemUpdate(BaseSchema):
     name: str | None = Field(default=None, min_length=1, max_length=300)
     description: str | None = None
     quantity: int | None = Field(default=None, ge=1)
-    unit: str | None = Field(default=None, max_length=50)
+    unit: PackageUnit | None = Field(default=None)
     base_price: MoneyAmount | None = None
     is_mandatory: bool | None = None
     is_returnable: bool | None = None
@@ -123,7 +123,7 @@ class PackageServiceUpdate(BaseSchema):
     name: str | None = Field(default=None, min_length=1, max_length=300)
     description: str | None = None
     quantity: int | None = Field(default=None, ge=1)
-    unit: str | None = Field(default=None, max_length=50)
+    unit: PackageUnit | None = Field(default=None)
     base_price: MoneyAmount | None = None
     is_mandatory: bool | None = None
     is_customizable: bool | None = None

@@ -5,6 +5,7 @@ import { vendorPackagesApi, vendorServiceIoApi } from '../../api';
 import { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
+import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
 
 // ── Package Services Modal ──────────────────────────────────────────────────────
 // Mirrors PackageItemsModal exactly, minus the returnable flag (doesn't apply
@@ -138,7 +139,10 @@ export default function PackageServicesModal({ pkg, onClose }) {
                   </div>
                   <div className="form-row-3" style={{ gap: 10 }}>
                     <input className="admin-input" type="number" min="1" value={editForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
-                    <input className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)} placeholder="Unit (hrs, persons…)" />
+                    <select className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)}>
+                      <option value="">Unit (optional)</option>
+                      {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                    </select>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                       <input type="checkbox" checked={editForm.is_mandatory} onChange={(e) => setEF('is_mandatory', e.target.checked)} />
                       Mandatory
@@ -248,7 +252,10 @@ export default function PackageServicesModal({ pkg, onClose }) {
                 </div>
                 <div className="form-row-3" style={{ gap: 10 }}>
                   <input className="admin-input" type="number" min="1" value={newService.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
-                  <input className="admin-input" value={newService.unit} onChange={(e) => setNF('unit', e.target.value)} placeholder="Unit (hrs, persons…)" />
+                  <select className="admin-input" value={newService.unit} onChange={(e) => setNF('unit', e.target.value)}>
+                    <option value="">Unit (optional)</option>
+                    {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                  </select>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                     <input type="checkbox" checked={newService.is_mandatory} onChange={(e) => setNF('is_mandatory', e.target.checked)} />
                     Mandatory

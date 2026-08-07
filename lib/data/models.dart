@@ -120,6 +120,10 @@ class Occasion {
   // cards, e.g. '#C8A96E'. Null for occasions not yet migrated by an admin,
   // in which case callers should fall back to _getCategoryTint().
   final String? themeColorHex;
+  // Backend field: allow_balloon_theme — admin-controlled per occasion.
+  // Disabled for religious/cultural occasions (Mehndi, Haldi, Diwali, etc.)
+  // so packages under them never show the balloon colour/theme step.
+  final bool allowBalloonTheme;
 
   const Occasion({
     required this.id,
@@ -133,6 +137,7 @@ class Occasion {
     this.thumbnailUrl,
     this.iconUrl,
     this.themeColorHex,
+    this.allowBalloonTheme = true,
   });
 
   // Compatibility constructor for positional arguments (kept for existing callsites).
@@ -148,6 +153,7 @@ class Occasion {
     this.thumbnailUrl,
     this.iconUrl,
     this.themeColorHex,
+    this.allowBalloonTheme = true,
   });
 
   factory Occasion.fromJson(Map<String, dynamic> json) {
@@ -167,6 +173,7 @@ class Occasion {
       heroImageUrl: asUrl(json['banner_url']),
       thumbnailUrl: asUrl(json['thumbnail_url']),
       themeColorHex: json['theme_color_hex'] as String?,
+      allowBalloonTheme: json['allow_balloon_theme'] as bool? ?? true,
     );
   }
 

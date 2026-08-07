@@ -58,6 +58,7 @@ class OccasionResponse(BaseSchema):
     is_active: bool
     display_order: int
     is_featured: bool
+    allow_balloon_theme: bool
     created_at: datetime
 
 

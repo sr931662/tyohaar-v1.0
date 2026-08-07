@@ -204,6 +204,18 @@ class Occasion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment="Festival/seasonal occasions have time-bound package availability",
     )
 
+    allow_balloon_theme: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        comment=(
+            "Whether packages under this occasion may offer the balloon "
+            "colour/theme customization step. Admin-disabled for religious "
+            "and cultural occasions (e.g. Mehndi, Haldi, Diwali) where a "
+            "balloon décor setup would look out of place."
+        ),
+    )
+
     # ── Relationships ─────────────────────────────────────────────────────────
 
     category: Mapped[OccasionCategory | None] = relationship(

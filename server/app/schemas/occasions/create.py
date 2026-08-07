@@ -226,6 +226,14 @@ class OccasionCreate(BaseSchema):
         default=False,
         description="Whether this occasion is highlighted on the home screen",
     )
+    allow_balloon_theme: bool = Field(
+        default=True,
+        description=(
+            "Whether packages under this occasion may offer the balloon "
+            "colour/theme customization step. Disable for religious and "
+            "cultural occasions (e.g. Mehndi, Haldi, Diwali)."
+        ),
+    )
 
     @field_validator("theme_color_hex")
     @classmethod
