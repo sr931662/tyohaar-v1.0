@@ -60,6 +60,7 @@ class PhotoPlaceholder extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: c.withValues(alpha: 0.30),
                     ),
+                    child: Icon(Icons.image_rounded, color: c.withValues(alpha: 0.85)),
                   ),
                 ),
               ),

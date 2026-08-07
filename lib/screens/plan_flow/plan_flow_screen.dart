@@ -1067,7 +1067,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       children: [
         GridView.builder(
           // A fixed mainAxisExtent (not childAspectRatio) sizes each cell to
-          // what the card's content actually needs — 90px image + name +
+          // what the card's content actually needs — 112px image + name +
           // optional rating row + 2-line description + CTA, plus padding —
           // regardless of screen width. childAspectRatio scales height with
           // width, so on anything wider than the ~320dp phone it was tuned
@@ -1079,7 +1079,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             crossAxisCount: 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            mainAxisExtent: 240,
+            mainAxisExtent: 262,
           ),
           itemCount: _packages.length,
           itemBuilder: (context, i) => _packageCard(context, _packages[i]),
@@ -1133,16 +1133,18 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _theme = null;
         _balloonColors.clear();
       }),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: ty.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 2 : 1),
           boxShadow: [
             on
-                ? BoxShadow(color: ty.saffron.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 3))
-                : BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 6, offset: const Offset(0, 2)),
+                ? BoxShadow(color: ty.saffron.withValues(alpha: 0.22), blurRadius: 16, offset: const Offset(0, 5))
+                : BoxShadow(color: Colors.black.withValues(alpha: 0.16), blurRadius: 10, offset: const Offset(0, 3)),
           ],
         ),
         child: Column(
@@ -1151,18 +1153,37 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: CachedNetworkImage(
-                    imageUrl: p.coverImageUrl ?? '',
-                    height: 90,
+                  borderRadius: BorderRadius.circular(15),
+                  child: SizedBox(
+                    height: 112,
                     width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: 90, arch: false),
-                    errorWidget: (context, url, error) {
-                      final local = OccasionAssets.getRelatedBackground(p.name);
-                      if (local != null) return Image.asset(local, height: 90, fit: BoxFit.cover);
-                      return PhotoPlaceholder(tint: p.tint, height: 90, arch: false);
-                    },
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CachedNetworkImage(
+                          imageUrl: p.coverImageUrl ?? '',
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, arch: false),
+                          errorWidget: (context, url, error) {
+                            final local = OccasionAssets.getRelatedBackground(p.name);
+                            if (local != null) return Image.asset(local, fit: BoxFit.cover);
+                            return PhotoPlaceholder(tint: p.tint, arch: false);
+                          },
+                        ),
+                        // Subtle scrim so the price pill and heart stay legible
+                        // over bright photos without needing opaque chips.
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.black.withValues(alpha: 0.28), Colors.transparent],
+                              stops: const [0.0, 0.5],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Positioned(
@@ -1189,12 +1210,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.display(15, color: ty.ink)),
-            const SizedBox(height: 2),
+            const SizedBox(height: 11),
+            Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.display(16, color: ty.ink)),
+            const SizedBox(height: 3),
             if ((p.averageRating ?? 0) > 0 || p.reviewCount > 0)
               Padding(
-                padding: const EdgeInsets.only(bottom: 2),
+                padding: const EdgeInsets.only(bottom: 3),
                 child: Row(
                   children: [
                     TyRatingStars(rating: p.averageRating ?? 0, size: 12),
@@ -1203,13 +1224,20 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   ],
                 ),
               ),
-            Text(p.description ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: TyType.sans(11.5, color: ty.ink2, height: 1.3)),
+            Text(p.description ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: TyType.sans(11.5, color: ty.ink2, height: 1.35)),
             const Spacer(),
             GestureDetector(
               onTap: () => _openPackageDetail(context, p),
               child: Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text(AppLocalizations.of(context)!.planFlowExpandForDetailsLabel, style: TyType.sans(11.5, color: ty.saffron, weight: FontWeight.w700)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(AppLocalizations.of(context)!.planFlowExpandForDetailsLabel, style: TyType.sans(11.5, color: ty.saffron, weight: FontWeight.w700)),
+                    const SizedBox(width: 2),
+                    Icon(Icons.arrow_forward_rounded, size: 13, color: ty.saffron),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1666,6 +1694,56 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
+  /// Best-effort icon for a package item/service line, keyed off its name —
+  /// there's no backend category field for these (unlike Occasions, which
+  /// send `icon_name`), so this fills the same visual role Emblem's IconData
+  /// fallback plays there, keeping every row recognisable even with no photo.
+  static IconData _lineItemIcon(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('photo') || n.contains('video') || n.contains('camera') || n.contains('reel')) {
+      return Icons.camera_alt_rounded;
+    }
+    if (n.contains('led') || n.contains('light')) return Icons.lightbulb_rounded;
+    if (n.contains('cooler') || n.contains(' ac ') || n.contains('fan')) return Icons.ac_unit_rounded;
+    if (n.contains('balloon')) return Icons.celebration_rounded;
+    if (n.contains('cake')) return Icons.cake_rounded;
+    if (n.contains('kite') || n.contains('prop') || n.contains('toy')) return Icons.toys_rounded;
+    if (n.contains('flower') || n.contains('decor')) return Icons.local_florist_rounded;
+    if (n.contains('music') || n.contains('dj') || n.contains('sound')) return Icons.music_note_rounded;
+    if (n.contains('food') || n.contains('catering') || n.contains('cake')) return Icons.restaurant_rounded;
+    if (n.contains('backdrop') || n.contains('banner') || n.contains('marquee') || n.contains('letter')) {
+      return Icons.wallpaper_rounded;
+    }
+    return Icons.auto_awesome_rounded;
+  }
+
+  /// A 44×44 thumbnail for an item/service row — a real photo when one
+  /// exists, otherwise a tinted tile with an icon inferred from the name
+  /// (never a blank gap), matching how Occasions always show an Emblem.
+  Widget _lineThumbnail(BuildContext context, {String? imageUrl, required String name}) {
+    final ty = context.ty;
+    final icon = _lineItemIcon(name);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 44,
+        height: 44,
+        color: ty.saffronSoft,
+        alignment: Alignment.center,
+        child: (imageUrl != null && imageUrl.isNotEmpty)
+            ? CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => Icon(icon, color: ty.saffronDeep, size: 20),
+                placeholder: (_, __) => Icon(icon, color: ty.saffronDeep, size: 20),
+              )
+            : Icon(icon, color: ty.saffronDeep, size: 20),
+      ),
+    );
+  }
+
   Widget _itemRow(BuildContext context, PackageItem item, {required bool locked}) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
@@ -1682,19 +1760,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         children: [
           Row(
             children: [
-              if (thumbnail != null)
-                GestureDetector(
-                  onTap: item.imageUrls.length > 1 ? () => _openItemGallery(context, item) : null,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: thumbnail,
-                      width: 44, height: 44, fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => Container(width: 44, height: 44, color: ty.line2),
-                    ),
-                  ),
-                ),
-              if (thumbnail != null) const SizedBox(width: 12),
+              GestureDetector(
+                onTap: item.imageUrls.length > 1 ? () => _openItemGallery(context, item) : null,
+                child: _lineThumbnail(context, imageUrl: thumbnail, name: item.name),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1768,19 +1838,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         children: [
           Row(
             children: [
-              if (thumbnail != null)
-                GestureDetector(
-                  onTap: service.imageUrls.length > 1 ? () => _openServiceGallery(context, service) : null,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: thumbnail,
-                      width: 44, height: 44, fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => Container(width: 44, height: 44, color: ty.line2),
-                    ),
-                  ),
-                ),
-              if (thumbnail != null) const SizedBox(width: 12),
+              GestureDetector(
+                onTap: service.imageUrls.length > 1 ? () => _openServiceGallery(context, service) : null,
+                child: _lineThumbnail(context, imageUrl: thumbnail, name: service.name),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
