@@ -14,6 +14,7 @@ class CityFilters(BaseSchema):
     state_id: uuid.UUID | None = None
     is_active: bool | None = None
     is_tier_one: bool | None = None
+    is_serviceable: bool | None = None
     search: str | None = Field(default=None, description="Search city by name (case-insensitive)")
 
 

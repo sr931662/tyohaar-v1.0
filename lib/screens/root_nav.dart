@@ -9,7 +9,10 @@ import '../theme/typography.dart';
 import '../theme/theme_controller.dart';
 import '../theme/responsive.dart';
 import '../data/auth_manager.dart';
+import '../data/city_preference.dart';
 import '../data/models.dart';
+import '../data/serviceable_cities.dart';
+import '../data/services/common_service.dart';
 import '../data/services/user_service.dart';
 import '../data/services/notification_service.dart';
 import '../data/services/push_service.dart';
@@ -115,6 +118,12 @@ class _RootNavState extends State<RootNav> {
     await _resolveLocation();
   }
 
+  /// Resolves the device's current city via GPS and, if permission is
+  /// granted, immediately makes it the active package-filtering city — no
+  /// confirmation prompt. This runs on every cold start (so a live location
+  /// always wins over a stale one) and again on an explicit tap of the
+  /// location pin. Users without GPS (denied, or a different city than
+  /// where they physically are) set their city manually from the sidebar.
   Future<void> _resolveLocation() async {
     try {
       final result = await _locationService.resolveCurrentCity();
@@ -125,6 +134,9 @@ class _RootNavState extends State<RootNav> {
           _currentCity = result.city;
         }
       });
+      if (result.status == LocationResultStatus.success && result.city != null) {
+        await CityPreference.instance.setActiveCity(result.city!);
+      }
     } catch (_) {}
   }
 
@@ -163,6 +175,7 @@ class _RootNavState extends State<RootNav> {
       extendBody: true,
       drawer: _AppSidebar(
         user: AuthManager.instance.currentUser,
+        onUseCurrentLocation: _resolveLocation,
         onNavigate: (i) {
           if (i == 1 || i == 3) {
              AuthManager.instance.checkAuth(
@@ -197,7 +210,7 @@ class _RootNavState extends State<RootNav> {
             left: 0,
             right: 0,
             child: ListenableBuilder(
-              listenable: AuthManager.instance,
+              listenable: Listenable.merge([AuthManager.instance, CityPreference.instance]),
               builder: (ctx, _) => _StickyHeader(
                 isTransparent: _index == 0,
                 isScrolled: _isScrolled,
@@ -206,7 +219,7 @@ class _RootNavState extends State<RootNav> {
                 onOpenProfile: () => _setIndex(3),
                 user: AuthManager.instance.currentUser,
                 unreadCount: _unreadNotifs,
-                currentCity: _currentCity,
+                currentCity: CityPreference.instance.activeCity ?? _currentCity,
                 onTapLocation: _onTapLocation,
               ),
             ),
@@ -451,7 +464,8 @@ class _StickyHeader extends StatelessWidget {
 class _AppSidebar extends StatelessWidget {
   final ValueChanged<int> onNavigate;
   final User? user;
-  const _AppSidebar({required this.onNavigate, this.user});
+  final VoidCallback onUseCurrentLocation;
+  const _AppSidebar({required this.onNavigate, required this.onUseCurrentLocation, this.user});
 
   Future<void> _push(BuildContext context, Widget page) {
     return Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
@@ -476,6 +490,20 @@ class _AppSidebar extends StatelessWidget {
                 _drawerItem(context, Icons.storefront_outlined, l10n.rootNavPackagesLabel, 2),
                 _drawerItem(context, Icons.person_outline_rounded, l10n.rootNavAccountLabel, 3),
                 const Divider(height: 32, indent: 20, endIndent: 20, color: Colors.black12),
+                ListenableBuilder(
+                  listenable: CityPreference.instance,
+                  builder: (ctx, _) => ListTile(
+                    leading: Icon(Icons.location_city_rounded, color: ty.ink2, size: 22),
+                    title: Text(l10n.rootNavChangeCityLabel,
+                        style: TyType.sans(15, color: ty.ink, weight: FontWeight.w600)),
+                    subtitle: Text(
+                      CityPreference.instance.activeCity ?? l10n.exploreAllCitiesLabel,
+                      style: TyType.sans(12.5, color: ty.ink3),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
+                    onTap: () => _showCityPicker(context),
+                  ),
+                ),
                 _drawerItem(context, Icons.card_membership_rounded, l10n.rootNavMembershipLabel, -1,
                     onTap: () => _push(context, const MembershipPlanScreen())),
                 _drawerItem(context, Icons.place_outlined, l10n.rootNavManageAddressLabel, -1,
@@ -490,6 +518,104 @@ class _AppSidebar extends StatelessWidget {
           _buildFooter(context),
         ],
       ),
+    );
+  }
+
+  /// Manual city picker for users without (or overriding) GPS — sourced
+  /// live from the same admin-managed city list Explore uses, never
+  /// hardcoded client-side.
+  void _showCityPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final ty = ctx.ty;
+        final l10n = AppLocalizations.of(ctx)!;
+        return Container(
+          decoration: BoxDecoration(
+            color: ty.paper,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: ty.line2, borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Text(l10n.exploreSelectCityTitle, style: TyType.display(20, color: ty.ink)),
+                      const Spacer(),
+                      IconButton(
+                        icon: Icon(Icons.close, color: ty.ink2),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                ListTile(
+                  leading: Icon(Icons.my_location_rounded, color: ty.saffron, size: 20),
+                  title: Text(l10n.rootNavUseCurrentLocationLabel,
+                      style: TyType.sans(15, color: ty.saffron, weight: FontWeight.w700)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    onUseCurrentLocation();
+                  },
+                ),
+                const Divider(height: 1),
+                Flexible(
+                  child: FutureBuilder<List<CityOption>>(
+                    future: ServiceableCities.instance.load(),
+                    builder: (context, snapshot) {
+                      final cities = snapshot.data ?? const <CityOption>[];
+                      if (!snapshot.hasData) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                        itemCount: cities.length,
+                        itemBuilder: (_, i) {
+                          final city = cities[i];
+                          final isSelected = city.name == CityPreference.instance.activeCity;
+                          return ListTile(
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              CityPreference.instance.setActiveCity(city.name);
+                            },
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                            leading: Icon(Icons.location_city_rounded,
+                                color: isSelected ? ty.saffron : ty.ink3, size: 20),
+                            title: Text(
+                              city.name,
+                              style: TyType.sans(15, color: isSelected ? ty.saffron : ty.ink,
+                                  weight: isSelected ? FontWeight.w700 : FontWeight.normal),
+                            ),
+                            trailing: isSelected
+                                ? Icon(Icons.check_circle_rounded, color: ty.saffron, size: 18)
+                                : null,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

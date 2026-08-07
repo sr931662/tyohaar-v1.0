@@ -95,8 +95,9 @@ async def delete_state(
 async def list_cities(
     service: CommonServiceDep,
     state_id: uuid.UUID | None = None,
+    is_serviceable: bool | None = None,
 ) -> SuccessResponse[list[CityResponse]]:
-    page = await service.list_cities(state_id=state_id, limit=500)
+    page = await service.list_cities(state_id=state_id, is_serviceable=is_serviceable, limit=500)
     return SuccessResponse(data=page.items, message="Cities retrieved.")
 
 

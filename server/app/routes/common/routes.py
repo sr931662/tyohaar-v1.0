@@ -98,7 +98,7 @@ router.add_api_route(
     response_model=SuccessResponse[list[CityResponse]],
     status_code=status.HTTP_200_OK,
     summary="List Cities",
-    description="Return all cities, optionally filtered by `state_id`. Public endpoint.",
+    description="Return all cities, optionally filtered by `state_id` and/or `is_serviceable`. Public endpoint.",
     operation_id="common_list_cities",
 )
 

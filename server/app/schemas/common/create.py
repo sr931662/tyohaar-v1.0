@@ -37,6 +37,10 @@ class CityCreate(BaseSchema):
     is_active: bool = True
     is_tier_1: bool = False
     is_tier_2: bool = False
+    is_serviceable: bool = Field(
+        default=False,
+        description="True when Tyohaar actively operates in this city (vendors onboarded, bookings possible).",
+    )
     latitude: Latitude = None
     longitude: Longitude = None
     display_order: int = Field(default=0, ge=0)

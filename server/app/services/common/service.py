@@ -104,17 +104,22 @@ class CommonService(BaseService):
     async def list_cities(
         self,
         state_id: UUID | None = None,
+        is_serviceable: bool | None = None,
         cursor: str | None = None,
         limit: int = _DEFAULT_LIMIT,
     ) -> CursorPage[CityResponse]:
         limit = min(limit, _MAX_LIMIT)
         async with self._uow() as uow:
-            if state_id is not None:
+            if is_serviceable:
+                cities = await uow.common.cities.find_serviceable()
+                if state_id is not None:
+                    cities = [c for c in cities if c.state_id == state_id]
+            elif state_id is not None:
                 cities = await uow.common.cities.find_by_state(state_id, limit=limit)
             else:
                 cities = await uow.common.cities.find_active(limit=limit)
-            items = [CityResponse.model_validate(c) for c in cities]
-            return CursorPage(items=items, has_more=len(items) == limit)
+            items = [CityResponse.model_validate(c) for c in cities[:limit]]
+            return CursorPage(items=items, has_more=len(cities) > limit)
 
     async def get_city(self, city_id: UUID) -> CityResponse:
         async with self._uow() as uow:

@@ -38,6 +38,7 @@ class CityResponse(BaseSchema):
     is_active: bool
     is_tier_1: bool
     is_tier_2: bool
+    is_serviceable: bool
     latitude: Decimal | None = None
     longitude: Decimal | None = None
     display_order: int

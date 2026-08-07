@@ -6,6 +6,7 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../data/auth_manager.dart';
+import '../data/city_preference.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
 import '../data/services/celebration_service.dart';
@@ -59,10 +60,26 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadData();
+    CityPreference.instance.addListener(_onCityPreferenceChanged);
   }
 
-  /// The customer's city, taken from their default (or first) saved address.
+  @override
+  void dispose() {
+    CityPreference.instance.removeListener(_onCityPreferenceChanged);
+    super.dispose();
+  }
+
+  void _onCityPreferenceChanged() {
+    if (mounted) _loadData();
+  }
+
+  /// The city to filter packages by: the user's confirmed preference (from
+  /// a GPS suggestion or Explore's picker) if set, otherwise their default
+  /// (or first) saved address.
   Future<String?> _loadCity() async {
+    if (CityPreference.instance.activeCity != null) {
+      return CityPreference.instance.activeCity;
+    }
     if (!AuthManager.instance.isAuthenticated) return null;
     try {
       final addresses = await _userService.getAddresses();
@@ -76,12 +93,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Featured packages, preferring the customer's city. Falls back to
-  /// unfiltered featured packages when the city yields nothing (e.g. the
-  /// free-text address city doesn't match any serviceable city slug), and —
-  /// so this section is never blank — finally falls back to any packages at
-  /// all when none are flagged featured yet. `_featuredIsFallback` tracks
-  /// which tier won so the header copy stays honest ("Popular" vs "Featured").
+  /// Featured packages for the customer's city. Never crosses into other
+  /// cities' inventory: if the city is known, results are strictly scoped
+  /// to it (falling back to any non-featured package in that same city, then
+  /// an honest empty section — not another city's packages). Only when the
+  /// city is genuinely unknown do we show generic featured packages, since
+  /// there's nothing to localize by. `_featuredIsFallback` tracks whether
+  /// "Popular" (any package) or "Featured" copy applies.
   Future<List<Package>> _loadFeatured(String? city) async {
     try {
       if (city != null) {
@@ -91,16 +109,15 @@ class _HomeScreenState extends State<HomeScreen> {
           _featuredIsFallback = false;
           return inCity;
         }
+        // Known city, nothing featured yet — stay in that city rather than
+        // leaking another city's packages into a "Featured near you" rail.
+        final anyInCity = await _packageService.listPackages(city: slug);
+        _featuredIsFallback = true;
+        return anyInCity.take(8).toList();
       }
       final featured = await _packageService.listPackages(featured: true);
-      if (featured.isNotEmpty) {
-        _featuredIsFallback = false;
-        return featured;
-      }
-      final anyPackages = await _packageService.listPackages(
-          city: city?.toLowerCase().replaceAll(RegExp(r'\s+'), '-'));
-      _featuredIsFallback = true;
-      return anyPackages.take(8).toList();
+      _featuredIsFallback = false;
+      return featured;
     } catch (e) {
       logDebug('Error loading packages: $e');
       return <Package>[];

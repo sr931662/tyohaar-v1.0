@@ -27,6 +27,7 @@ class CityUpdate(BaseSchema):
     is_active: bool | None = None
     is_tier_1: bool | None = None
     is_tier_2: bool | None = None
+    is_serviceable: bool | None = None
     latitude: Latitude = None
     longitude: Longitude = None
     display_order: int | None = Field(default=None, ge=0)

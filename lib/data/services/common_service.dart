@@ -80,15 +80,25 @@ class CancellationPolicyVersion {
 class CityOption {
   final String id;
   final String name;
+  final String slug;
   final String stateId;
+  final bool isServiceable;
 
-  CityOption({required this.id, required this.name, required this.stateId});
+  CityOption({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.stateId,
+    this.isServiceable = false,
+  });
 
   factory CityOption.fromJson(Map<String, dynamic> json) {
     return CityOption(
       id: json['id'] as String,
       name: json['name'] as String,
+      slug: json['slug'] as String? ?? '',
       stateId: json['state_id'] as String? ?? '',
+      isServiceable: json['is_serviceable'] as bool? ?? false,
     );
   }
 }
@@ -149,11 +159,12 @@ class CommonService {
     return list.map((item) => StateOption.fromJson(item as Map<String, dynamic>)).toList();
   }
 
-  Future<List<CityOption>> listCities({String? stateId}) async {
+  Future<List<CityOption>> listCities({String? stateId, bool? isServiceable}) async {
     final response = await _api.dio.get(
       'common/cities',
       queryParameters: {
         if (stateId != null) 'state_id': stateId,
+        if (isServiceable != null) 'is_serviceable': isServiceable,
       },
       options: _cacheable(),
     );

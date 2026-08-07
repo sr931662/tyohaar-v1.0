@@ -1421,6 +1421,8 @@
   "rootNavActionStartCelebration": "start a celebration",
   "rootNavActionViewPlans": "view your plans",
   "rootNavActionAccessAccount": "access your account",
+  "rootNavChangeCityLabel": "Change City",
+  "rootNavUseCurrentLocationLabel": "Use current location",
 
   "authWelcomeTitle": "Welcome",
   "authHeading": "Join Tyohaar",

@@ -8,6 +8,7 @@ import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
 import 'data/app_state.dart';
 import 'data/auth_manager.dart';
+import 'data/city_preference.dart';
 import 'data/services/user_service.dart';
 import 'data/services/package_service.dart';
 import 'data/services/booking_service.dart';
@@ -108,6 +109,7 @@ class _AppStartupState extends State<_AppStartup> {
 
   Future<void> _init() async {
     await AuthManager.instance.loadStoredAuth();
+    await CityPreference.instance.loadStored();
     // loadStoredAuth only restores tokens, not the User (and thus not the
     // role) — fetch it now so a vendor with a persisted session lands
     // straight in the Vendor POV instead of flashing the customer shell.

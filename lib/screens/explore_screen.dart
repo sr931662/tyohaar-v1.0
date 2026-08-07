@@ -7,7 +7,10 @@ import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/responsive.dart';
+import '../data/city_preference.dart';
 import '../data/models.dart';
+import '../data/serviceable_cities.dart';
+import '../data/services/common_service.dart';
 import '../data/services/package_service.dart';
 import '../utils/currency.dart';
 import '../utils/log.dart';
@@ -24,25 +27,6 @@ import 'package:tyohaar/screens/package_filter_screen.dart';
 class _CityPref {
   static String? selected;
 }
-
-// Serviceable cities with display name → slug mapping.
-const List<(String, String)> _kCities = [
-  ('All Cities', ''),
-  ('Noida', 'noida'),
-  ('Delhi', 'delhi'),
-  ('Gurgaon', 'gurgaon'),
-  ('Mumbai', 'mumbai'),
-  ('Pune', 'pune'),
-  ('Bengaluru', 'bengaluru'),
-  ('Hyderabad', 'hyderabad'),
-  ('Chennai', 'chennai'),
-  ('Kolkata', 'kolkata'),
-  ('Jaipur', 'jaipur'),
-  ('Ahmedabad', 'ahmedabad'),
-  ('Lucknow', 'lucknow'),
-  ('Chandigarh', 'chandigarh'),
-  ('Indore', 'indore'),
-];
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -72,18 +56,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final GlobalKey _searchKey = GlobalKey();
   Timer? _searchDebounce;
 
+  List<CityOption> _cities = [];
+
   String get _selectedCitySlug => _CityPref.selected ?? '';
   String _selectedCityLabel(BuildContext context) {
     if (_selectedCitySlug.isEmpty) {
       return AppLocalizations.of(context)!.exploreAllCitiesLabel;
     }
-    final match = _kCities.where((c) => c.$2 == _selectedCitySlug).firstOrNull;
-    return match?.$1 ?? _selectedCitySlug;
+    final match = _cities.where((c) => c.slug == _selectedCitySlug).firstOrNull;
+    return match?.name ?? _selectedCitySlug;
   }
 
   @override
   void initState() {
     super.initState();
+    _loadCities();
+    _syncCityFromPreference();
+    CityPreference.instance.addListener(_onCityPreferenceChanged);
     _loadCategories();
     _loadPackages();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -102,7 +91,35 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    CityPreference.instance.removeListener(_onCityPreferenceChanged);
     super.dispose();
+  }
+
+  Future<void> _loadCities() async {
+    try {
+      final cities = await ServiceableCities.instance.load();
+      if (mounted) setState(() => _cities = cities);
+    } catch (e) {
+      logDebug('Error loading serviceable cities: $e');
+    }
+  }
+
+  /// Adopts the app-wide confirmed city (GPS or sidebar picker) if this
+  /// screen's own session pref hasn't been touched yet.
+  void _syncCityFromPreference() {
+    if (_CityPref.selected != null) return;
+    final active = CityPreference.instance.activeCity;
+    if (active == null) return;
+    _CityPref.selected = slugifyCity(active);
+  }
+
+  void _onCityPreferenceChanged() {
+    if (!mounted) return;
+    final active = CityPreference.instance.activeCity;
+    final slug = active == null ? null : slugifyCity(active);
+    if (slug == _CityPref.selected) return;
+    setState(() => _CityPref.selected = slug);
+    _loadPackages();
   }
 
   void _onSearchChanged(String v) {
@@ -186,13 +203,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+              if (_cities.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
               Flexible(
                 child: ListView.builder(
+                  // "All Cities" is a synthetic first item (index 0); the
+                  // rest map 1:1 to the fetched serviceable cities.
                   shrinkWrap: true,
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                  itemCount: _kCities.length,
+                  itemCount: _cities.length + 1,
                   itemBuilder: (_, i) {
-                    final (cityLabel, slug) = _kCities[i];
+                    final cityLabel = i == 0 ? '' : _cities[i - 1].name;
+                    final slug = i == 0 ? '' : _cities[i - 1].slug;
                     final label = slug.isEmpty ? l10n.exploreAllCitiesLabel : cityLabel;
                     final isSelected = slug == _selectedCitySlug;
                     return ListTile(
@@ -202,6 +228,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           _CityPref.selected = slug.isEmpty ? null : slug;
                         });
                         _loadPackages();
+                        if (slug.isEmpty) {
+                          CityPreference.instance.clearActiveCity();
+                        } else {
+                          CityPreference.instance.setActiveCity(cityLabel);
+                        }
                       },
                       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                       leading: Icon(

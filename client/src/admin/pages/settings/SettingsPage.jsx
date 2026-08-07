@@ -127,8 +127,13 @@ function StatesTab() {
   const [editItem, setEditItem] = useState(null);
   const [selectedState, setSelectedState] = useState(null);
   const [form, setForm] = useState({ name: '', code: '', is_active: true });
-  const [cityForm, setCityForm] = useState({ name: '', is_active: true });
+  const emptyCityForm = { name: '', slug: '', is_active: true, is_serviceable: false };
+  const [cityForm, setCityForm] = useState(emptyCityForm);
   const [cityOpen, setCityOpen] = useState(false);
+  const [editCityItem, setEditCityItem] = useState(null);
+  const [slugTouched, setSlugTouched] = useState(false);
+
+  const slugify = (s) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
   const { data: states = [], isLoading } = useQuery({
     queryKey: ['settings', 'states'],
@@ -185,8 +190,16 @@ function StatesTab() {
   });
 
   const cityMutation = useMutation({
-    mutationFn: (body) => settingsApi.createCity({ ...body, state_id: selectedState.id }),
-    onSuccess: () => { toast.success('City added'); qc.invalidateQueries(['settings', 'cities', selectedState.id]); setCityOpen(false); setCityForm({ name: '', is_active: true }); },
+    mutationFn: (body) => editCityItem
+      ? settingsApi.updateCity(editCityItem.id, body)
+      : settingsApi.createCity({ ...body, state_id: selectedState.id }),
+    onSuccess: () => {
+      toast.success(editCityItem ? 'City updated' : 'City added');
+      qc.invalidateQueries(['settings', 'cities', selectedState.id]);
+      setCityOpen(false);
+      setEditCityItem(null);
+      setCityForm(emptyCityForm);
+    },
     onError: () => toast.error('Failed'),
   });
 
@@ -236,7 +249,7 @@ function StatesTab() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontWeight: 600, fontSize: 14 }}>Cities {selectedState && <span style={{ color: 'var(--brand-600)' }}>— {selectedState.name}</span>}</div>
-          {selectedState && <button className="btn btn-primary btn-sm" onClick={() => setCityOpen(true)}>+ Add City</button>}
+          {selectedState && <button className="btn btn-primary btn-sm" onClick={() => { setEditCityItem(null); setCityForm(emptyCityForm); setSlugTouched(false); setCityOpen(true); }}>+ Add City</button>}
         </div>
         {!selectedState ? (
           <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>Select a state to view cities</div>
@@ -247,16 +260,30 @@ function StatesTab() {
             </BulkActionBar>
             <div className="admin-table-wrapper">
               <table className="admin-table">
-                <thead><tr><th><input type="checkbox" checked={citySelection.isAllSelected} onChange={citySelection.toggleAll} /></th><th>City</th><th>Actions</th></tr></thead>
+                <thead><tr><th><input type="checkbox" checked={citySelection.isAllSelected} onChange={citySelection.toggleAll} /></th><th>City</th><th>Slug</th><th>Serviceable</th><th>Actions</th></tr></thead>
                 <tbody>
                   {cities.map((c) => (
                     <tr key={c.id}>
                       <td><input type="checkbox" checked={citySelection.selected.includes(c.id)} onChange={() => citySelection.toggleItem(c.id)} /></td>
                       <td>{c.name}</td>
-                      <td><button className="btn btn-danger btn-sm" onClick={() => deleteCityMutation.mutate(c.id)}>Del</button></td>
+                      <td style={{ color: 'var(--text-tertiary)' }}>{c.slug}</td>
+                      <td>{c.is_serviceable
+                        ? <span className="badge badge-success">Live</span>
+                        : <span className="badge">Not live</span>}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-secondary btn-sm" onClick={() => {
+                            setEditCityItem(c);
+                            setCityForm({ name: c.name, slug: c.slug, is_active: c.is_active ?? true, is_serviceable: c.is_serviceable ?? false });
+                            setSlugTouched(true);
+                            setCityOpen(true);
+                          }}>Edit</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => deleteCityMutation.mutate(c.id)}>Del</button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
-                  {!cities.length && <tr><td colSpan={3} className="admin-table-empty">No cities</td></tr>}
+                  {!cities.length && <tr><td colSpan={5} className="admin-table-empty">No cities</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -271,10 +298,50 @@ function StatesTab() {
         <div className="form-group"><label className="form-label">Code</label><input className="form-control" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="e.g. MH" /></div>
       </Modal>
 
-      <Modal open={cityOpen} onClose={() => setCityOpen(false)} title={`Add City to ${selectedState?.name}`}
-        footer={<><button className="btn btn-secondary" onClick={() => setCityOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => cityMutation.mutate(cityForm)} disabled={!cityForm.name || cityMutation.isPending}>{cityMutation.isPending ? 'Saving…' : 'Add'}</button></>}
+      <Modal
+        open={cityOpen}
+        onClose={() => { setCityOpen(false); setEditCityItem(null); }}
+        title={editCityItem ? `Edit ${editCityItem.name}` : `Add City to ${selectedState?.name}`}
+        footer={<>
+          <button className="btn btn-secondary" onClick={() => { setCityOpen(false); setEditCityItem(null); }}>Cancel</button>
+          <button className="btn btn-primary" onClick={() => cityMutation.mutate(cityForm)} disabled={!cityForm.name || !cityForm.slug || cityMutation.isPending}>
+            {cityMutation.isPending ? 'Saving…' : editCityItem ? 'Save' : 'Add'}
+          </button>
+        </>}
       >
-        <div className="form-group"><label className="form-label">City Name *</label><input className="form-control" value={cityForm.name} onChange={e => setCityForm(f => ({ ...f, name: e.target.value }))} /></div>
+        <div className="form-group">
+          <label className="form-label">City Name *</label>
+          <input
+            className="form-control"
+            value={cityForm.name}
+            onChange={e => {
+              const name = e.target.value;
+              setCityForm(f => ({ ...f, name, slug: slugTouched ? f.slug : slugify(name) }));
+            }}
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Slug *</label>
+          <input
+            className="form-control"
+            value={cityForm.slug}
+            placeholder="e.g. noida, delhi, mumbai"
+            onChange={e => { setSlugTouched(true); setCityForm(f => ({ ...f, slug: slugify(e.target.value) })); }}
+          />
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
+            Vendors match this slug when setting a package's service city.
+          </div>
+        </div>
+        <div className="form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={cityForm.is_serviceable}
+              onChange={e => setCityForm(f => ({ ...f, is_serviceable: e.target.checked }))}
+            />
+            Serviceable — Tyohaar is live here (shown in the app's city picker and GPS matching)
+          </label>
+        </div>
       </Modal>
 
       <ConfirmDialog
