@@ -225,11 +225,14 @@ function StatesTab() {
             <table className="admin-table">
               <thead><tr><th><input type="checkbox" checked={stateSelection.isAllSelected} onChange={stateSelection.toggleAll} /></th><th>Name</th><th>Code</th><th>Actions</th></tr></thead>
               <tbody>
-                {states.map((s) => (
-                  <tr key={s.id} style={{ cursor: 'pointer', background: selectedState?.id === s.id ? 'var(--brand-50)' : '' }} onClick={() => setSelectedState(s)}>
+                {states.map((s) => {
+                  const isSelected = selectedState?.id === s.id;
+                  const selectedTextColor = isSelected ? 'var(--brand-900)' : undefined;
+                  return (
+                  <tr key={s.id} style={{ cursor: 'pointer', background: isSelected ? 'var(--brand-50)' : '' }} onClick={() => setSelectedState(s)}>
                     <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={stateSelection.selected.includes(s.id)} onChange={() => stateSelection.toggleItem(s.id)} /></td>
-                    <td style={{ fontWeight: selectedState?.id === s.id ? 600 : 400 }}>{s.name}</td>
-                    <td>{s.code ?? '—'}</td>
+                    <td style={{ fontWeight: isSelected ? 600 : 400, color: selectedTextColor }}>{s.name}</td>
+                    <td style={{ color: selectedTextColor }}>{s.code ?? '—'}</td>
                     <td onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-secondary btn-sm" onClick={() => { setEditItem(s); setForm({ name: s.name, code: s.code ?? '', is_active: s.is_active ?? true }); setOpen(true); }}>Edit</button>
@@ -237,7 +240,8 @@ function StatesTab() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {!states.length && <tr><td colSpan={4} className="admin-table-empty">No states</td></tr>}
               </tbody>
             </table>
