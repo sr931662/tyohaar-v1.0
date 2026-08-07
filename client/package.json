@@ -6,7 +6,7 @@
   "description": "Tyohaar — the home for life's celebrations. Marketing website frontend.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node -e \"require('fs').copyFileSync('dist/index.html','dist/404.html')\"",
     "preview": "vite preview"
   },
   "dependencies": {
