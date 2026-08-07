@@ -33,6 +33,11 @@ class CityCreate(BaseSchema):
 
     state_id: uuid.UUID
     name: str = Field(max_length=100)
+    display_name: str | None = Field(
+        default=None,
+        max_length=100,
+        description="Preferred display name (e.g. 'Bangalore' for 'Bengaluru'). Defaults to `name` when omitted.",
+    )
     slug: str = Field(max_length=100, pattern=r"^[a-z0-9-]+$")
     is_active: bool = True
     is_tier_1: bool = False

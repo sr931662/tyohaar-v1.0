@@ -184,7 +184,10 @@ class CommonService(BaseService):
     ) -> CityResponse:
         async with self._uow() as uow:
             await validate_state_exists(data.state_id, uow)
-            city = await uow.common.cities.create_from_dict(data.model_dump(exclude_unset=True))
+            payload = data.model_dump(exclude_unset=True)
+            if not payload.get("display_name"):
+                payload["display_name"] = payload["name"]
+            city = await uow.common.cities.create_from_dict(payload)
             await uow.commit()
             return CityResponse.model_validate(city)
 

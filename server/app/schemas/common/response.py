@@ -34,6 +34,7 @@ class CityResponse(BaseSchema):
     id: uuid.UUID
     state_id: uuid.UUID
     name: str
+    display_name: str
     slug: str
     is_active: bool
     is_tier_1: bool
