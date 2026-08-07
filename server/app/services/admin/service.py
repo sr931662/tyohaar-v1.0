@@ -341,7 +341,7 @@ class AdminService(BaseService):
         created_by_id: UUID,
     ) -> AdminRoleResponse:
         async with self._uow() as uow:
-            role = await uow.admin.roles.create(data.model_dump(exclude_unset=True))
+            role = await uow.admin.roles.create_from_dict(data.model_dump(exclude_unset=True))
             await uow.commit()
             result = AdminRoleResponse.model_validate(role)
 

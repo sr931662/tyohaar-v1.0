@@ -5,7 +5,7 @@ Pattern:
     class FooService(BaseService):
         async def do_something(self, data: FooCreate) -> FooResponse:
             async with self._uow() as uow:
-                foo = await uow.foos.foos.create(data.model_dump())
+                foo = await uow.foos.foos.create_from_dict(data.model_dump())
                 return FooResponse.model_validate(foo)
 
 All services receive a `session_factory` in their constructor so that tests

@@ -150,7 +150,7 @@ class CommonService(BaseService):
         self, data: StateCreate, admin_id: UUID
     ) -> StateResponse:
         async with self._uow() as uow:
-            state = await uow.common.states.create(data.model_dump(exclude_unset=True))
+            state = await uow.common.states.create_from_dict(data.model_dump(exclude_unset=True))
             await uow.commit()
             return StateResponse.model_validate(state)
 
@@ -184,7 +184,7 @@ class CommonService(BaseService):
     ) -> CityResponse:
         async with self._uow() as uow:
             await validate_state_exists(data.state_id, uow)
-            city = await uow.common.cities.create(data.model_dump(exclude_unset=True))
+            city = await uow.common.cities.create_from_dict(data.model_dump(exclude_unset=True))
             await uow.commit()
             return CityResponse.model_validate(city)
 
