@@ -280,6 +280,7 @@ class AuthService(BaseService):
     async def reset_password(self, data: PasswordResetConfirmCreate) -> None:
         """Verify the emailed OTP and set a new password for the account."""
         from app.core.security import hash_password
+        from app.services.admin.helpers import hash_admin_password
         from app.services.auth.exceptions import InvalidCredentialsError
 
         async with self._uow() as uow:
@@ -295,7 +296,17 @@ class AuthService(BaseService):
             if user is None:
                 raise InvalidCredentialsError("No account found for this email address.")
 
-            user.password_hash = hash_password(data.new_password)
+            # Admin/super-admin passwords are hashed with a different scheme
+            # (HMAC-SHA256, see app.services.admin.helpers) than vendor/customer
+            # passwords (bcrypt, see app.core.security) — see the matching
+            # branch in authenticate_workspace_user above. Writing the wrong
+            # scheme here locked every admin who used "forgot password" out
+            # of their account with both the old and new password rejected.
+            user.password_hash = (
+                hash_admin_password(data.new_password)
+                if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+                else hash_password(data.new_password)
+            )
             user_id = user.id
 
         # Revoke all existing sessions now that the password has changed.
