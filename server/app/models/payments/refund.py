@@ -139,7 +139,9 @@ class Refund(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     refund_status: Mapped[RefundStatus] = mapped_column(
         SAEnum(RefundStatus, name="refund_status", native_enum=False),
         nullable=False,
-        index=True,
+        # Index declared explicitly in __table_args__ — a second
+        # index=True here produces a duplicate under the naming
+        # convention and breaks metadata.create_all.
     )
 
     # ── Gateway ───────────────────────────────────────────────────────────────

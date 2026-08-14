@@ -179,7 +179,9 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
     booking_status: Mapped[BookingStatus] = mapped_column(
         SAEnum(BookingStatus, name="booking_status", native_enum=False),
         nullable=False,
-        index=True,
+        # Index declared explicitly in __table_args__ — a second
+        # index=True here produces a duplicate under the naming
+        # convention and breaks metadata.create_all.
     )
 
     payment_status: Mapped[PaymentStatus] = mapped_column(

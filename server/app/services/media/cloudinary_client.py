@@ -9,6 +9,7 @@ are set (see app/core/config.py).
 from __future__ import annotations
 
 import cloudinary
+import cloudinary.api
 import cloudinary.uploader
 from fastapi.concurrency import run_in_threadpool
 
@@ -133,3 +134,100 @@ def delete_image(public_id: str) -> None:
     """Best-effort delete of a Cloudinary asset by its public_id."""
     _ensure_configured()
     cloudinary.uploader.destroy(public_id, resource_type="image")
+
+
+async def destroy_asset(public_id: str, *, resource_type: str = "image") -> bool:
+    """Delete one Cloudinary object and confirm it is gone.
+
+    Unlike `delete_image`, this reports its outcome rather than swallowing it,
+    because the deletion pipeline is not permitted to claim success for an
+    object that still exists.
+
+    Returns True when the object was deleted or was already absent — both mean
+    "not there any more", which is what makes this idempotent. Returns False
+    when Cloudinary reported anything else; the caller records the asset as
+    unresolved rather than dropping the row that points at it.
+
+    `invalidate=True` purges CDN copies as well as the origin object. Without
+    it a deleted image stays served from edge caches for its remaining TTL.
+    """
+    _ensure_configured()
+
+    def _destroy() -> dict:
+        return cloudinary.uploader.destroy(
+            public_id,
+            resource_type=resource_type,
+            invalidate=True,
+        )
+
+    try:
+        response = await run_in_threadpool(_destroy)
+    except Exception:  # noqa: BLE001 - any failure means "still there"
+        return False
+
+    # Cloudinary returns {"result": "ok"} on delete and {"result": "not found"}
+    # when the object is already gone. Both are acceptable end states.
+    return response.get("result") in {"ok", "not found"}
+
+
+def parse_public_id(url: str) -> str | None:
+    """Recover a Cloudinary public_id from a delivery URL.
+
+    Used only by the one-off backfill for media uploaded before the id was
+    persisted. Deliberately conservative: it returns None rather than a guess,
+    because a wrong id deletes someone else's asset or silently deletes
+    nothing while reporting success.
+
+    Handles the standard shape:
+        https://res.cloudinary.com/<cloud>/<type>/upload/<transforms>/v123/<folder>/<name>.<ext>
+    """
+    if "res.cloudinary.com" not in url and "/upload/" not in url:
+        return None
+
+    try:
+        _, after_upload = url.split("/upload/", 1)
+    except ValueError:
+        return None
+
+    segments = [s for s in after_upload.split("/") if s]
+    if not segments:
+        return None
+
+    # Drop leading transformation segments (they contain '_' pairs like
+    # 'w_300,h_300') and the version segment ('v1699887766').
+    while segments and (
+        segments[0].startswith("v")
+        and segments[0][1:].isdigit()
+        or ("," in segments[0] and "_" in segments[0])
+    ):
+        segments.pop(0)
+
+    if not segments:
+        return None
+
+    public_id = "/".join(segments)
+    # Strip the format extension, but only a real one — folder names may
+    # legitimately contain dots.
+    if "." in public_id.rsplit("/", 1)[-1]:
+        public_id = public_id.rsplit(".", 1)[0]
+
+    return public_id or None
+
+
+async def asset_exists(public_id: str, *, resource_type: str = "image") -> bool:
+    """Confirm a public_id actually resolves to an object we own.
+
+    The backfill uses this to verify a parsed id before persisting it, so a
+    mis-parse is caught at backfill time rather than at purge time when the
+    consequence is a false "deleted" claim.
+    """
+    _ensure_configured()
+
+    def _fetch() -> dict:
+        return cloudinary.api.resource(public_id, resource_type=resource_type)
+
+    try:
+        await run_in_threadpool(_fetch)
+    except Exception:  # noqa: BLE001 - not found, or not ours
+        return False
+    return True

@@ -66,10 +66,24 @@ class UserProfile(UUIDPrimaryKeyMixin, TimestampMixin, MetadataMixin, Base):
         comment="CDN URL of the user's profile photo",
     )
 
+    # Deletion identifier for the photo above — a URL serves the file but
+    # cannot remove it from the provider. See app/models/media/image.py.
+    profile_photo_public_id: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="Provider object id for profile_photo_url, used to delete it.",
+    )
+
     cover_image_url: Mapped[str | None] = mapped_column(
         String(2048),
         nullable=True,
         comment="CDN URL of the profile cover/banner image",
+    )
+
+    cover_image_public_id: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="Provider object id for cover_image_url, used to delete it.",
     )
 
     # ── Personal ──────────────────────────────────────────────────────────────

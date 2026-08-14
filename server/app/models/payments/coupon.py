@@ -399,8 +399,10 @@ class Coupon(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
         Boolean,
         nullable=False,
         default=True,
-        index=True,
         comment="False immediately disables the coupon without waiting for valid_until.",
+        # Index declared explicitly in __table_args__ — a second
+        # index=True here produces a duplicate under the naming
+        # convention and breaks metadata.create_all.
     )
 
     valid_from: Mapped[datetime] = mapped_column(

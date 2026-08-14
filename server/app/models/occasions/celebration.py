@@ -193,7 +193,9 @@ class Celebration(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMix
         SAEnum(CelebrationStatus, name="celebration_status", native_enum=False),
         nullable=False,
         default=CelebrationStatus.DRAFT,
-        index=True,
+        # Index declared explicitly in __table_args__ — a second
+        # index=True here produces a duplicate under the naming
+        # convention and breaks metadata.create_all.
     )
 
     completion_percentage: Mapped[int] = mapped_column(

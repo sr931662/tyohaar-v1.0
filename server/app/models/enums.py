@@ -957,3 +957,24 @@ class AuditAction(str, enum.Enum):
     ARCHIVE = "archive"
     VIEW_SENSITIVE = "view_sensitive"  # Explicit access to PII or financial data
     BULK_ACTION = "bulk_action"        # Batch operation on multiple entities
+
+
+class DeletionRequestStatus(str, enum.Enum):
+    """Lifecycle of a user-initiated account deletion request.
+
+    Forward-only except for CANCELLED, which is reachable only from
+    RECOVERABLE (i.e. inside the recovery window).
+    """
+    PENDING_VERIFICATION = "pending_verification"  # Raised, identity not yet proven
+    RECOVERABLE = "recoverable"                    # Verified; inside recovery window
+    PURGING = "purging"                            # Purge run in progress
+    PURGED = "purged"                              # All handlers reported success
+    INCOMPLETE = "incomplete"                      # Ran, but something could not be purged
+    CANCELLED = "cancelled"                        # User restored the account in time
+
+
+class DeletionRequestChannel(str, enum.Enum):
+    """How the deletion request reached us."""
+    IN_APP = "in_app"      # Authenticated request from the mobile app
+    WEB = "web"            # Authenticated request from the website
+    SUPPORT = "support"    # Raised by support on the user's behalf, after verification

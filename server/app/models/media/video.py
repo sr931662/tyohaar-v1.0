@@ -106,6 +106,25 @@ class Video(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
 
     # ── Storage & Playback URLs ───────────────────────────────────────────────
 
+    # See the equivalent note on Image: URLs serve an asset, they cannot
+    # delete it. The provider object id is what the purge pipeline needs.
+    storage_public_id: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        index=True,
+        comment=(
+            "Provider object identifier used to delete the asset (Cloudinary "
+            "public_id). NULL means the object cannot be deleted — the purge "
+            "pipeline treats that as a failure, never as success."
+        ),
+    )
+
+    storage_provider: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Storage backend holding the object, e.g. 'cloudinary'.",
+    )
+
     url: Mapped[str] = mapped_column(
         String(2000),
         nullable=False,

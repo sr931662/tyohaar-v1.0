@@ -124,6 +124,27 @@ class Image(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
 
     # ── Storage ───────────────────────────────────────────────────────────────
 
+    # The URLs below serve the asset; they cannot delete it. Removing an object
+    # from Cloudinary requires its public_id, so it is persisted separately at
+    # upload time — without it a purge can drop the database row while the
+    # image stays publicly reachable.
+    storage_public_id: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        index=True,
+        comment=(
+            "Provider object identifier used to delete the asset (Cloudinary "
+            "public_id). NULL means the object cannot be deleted — the purge "
+            "pipeline treats that as a failure, never as success."
+        ),
+    )
+
+    storage_provider: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Storage backend holding the object, e.g. 'cloudinary'.",
+    )
+
     url: Mapped[str] = mapped_column(
         String(2000),
         nullable=False,

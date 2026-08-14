@@ -17,6 +17,7 @@ from app.routes.cms import cms_router
 from app.routes.bookings.routes import router as bookings_router
 from app.routes.budgets.routes import router as budgets_router
 from app.routes.common.routes import router as common_router
+from app.routes.deletion.routes import router as deletion_router
 from app.routes.feedback.routes import router as feedback_router
 from app.routes.media.routes import router as media_router
 from app.routes.memberships.routes import router as memberships_router
@@ -32,6 +33,7 @@ from app.routes.vendors.routes import router as vendors_router
 all_routers = [
     auth_router,
     users_router,
+    deletion_router,
     vendors_router,
     occasions_router,
     packages_router,

@@ -152,7 +152,9 @@ class VendorReview(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         SAEnum(ReviewModerationStatus, name="review_moderation_status", native_enum=False),
         nullable=False,
         default=ReviewModerationStatus.PENDING,
-        index=True,
+        # Index declared explicitly in __table_args__ — a second
+        # index=True here produces a duplicate under the naming
+        # convention and breaks metadata.create_all.
     )
 
     moderated_by_id: Mapped[uuid.UUID | None] = mapped_column(

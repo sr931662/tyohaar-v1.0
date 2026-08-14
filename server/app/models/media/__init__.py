@@ -10,12 +10,14 @@ Import order follows dependency graph:
 from app.models.media.image import Image, ModerationStatus, ImageOwnerType
 from app.models.media.video import Video, VideoTranscodingStatus
 from app.models.media.memory import Memory, MemoryVisibility
+from app.models.media.unresolved_asset import UnresolvedMediaAsset
 
 __all__ = [
     # Models
     "Image",
     "Video",
     "Memory",
+    "UnresolvedMediaAsset",
     # Local enums (move to enums.py in next enums update)
     "ModerationStatus",
     "ImageOwnerType",

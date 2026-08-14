@@ -133,11 +133,13 @@ class Referral(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     referral_code: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
-        index=True,
         comment=(
             "The alphanumeric code embedded in the referral URL. "
             "Stable per referrer and reused across multiple Referral rows."
         ),
+        # Index declared explicitly in __table_args__ — a second
+        # index=True here produces a duplicate under the naming
+        # convention and breaks metadata.create_all.
     )
 
     # ── Status ────────────────────────────────────────────────────────────────

@@ -36,6 +36,7 @@ from app.services.packages.service import PackageService
 from app.services.payments.service import PaymentService
 from app.services.referrals.service import ReferralService
 from app.services.support.service import SupportService
+from app.services.deletion.service import DeletionService
 from app.services.users.service import UserService
 from app.services.vendors.service import VendorService
 
@@ -61,6 +62,11 @@ UoWDep = Annotated[UnitOfWork, Depends(get_uow)]
 def get_auth_service() -> AuthService:
     """Dependency factory — returns an AuthService bound to the default session factory."""
     return AuthService(AsyncSessionLocal)
+
+
+def get_deletion_service() -> DeletionService:
+    """Dependency factory — returns a DeletionService bound to the default session factory."""
+    return DeletionService(AsyncSessionLocal)
 
 
 def get_user_service() -> UserService:
@@ -143,6 +149,7 @@ def get_common_service() -> CommonService:
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+DeletionServiceDep = Annotated[DeletionService, Depends(get_deletion_service)]
 VendorServiceDep = Annotated[VendorService, Depends(get_vendor_service)]
 OccasionServiceDep = Annotated[OccasionService, Depends(get_occasion_service)]
 PackageServiceDep = Annotated[PackageService, Depends(get_package_service)]

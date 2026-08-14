@@ -156,7 +156,9 @@ class VendorSettlement(UUIDPrimaryKeyMixin, TimestampMixin, AuditMixin, Base):
         SAEnum(SettlementStatus, name="settlement_status", native_enum=False),
         nullable=False,
         default=SettlementStatus.PENDING,
-        index=True,
+        # Index declared explicitly in __table_args__ — a second
+        # index=True here produces a duplicate under the naming
+        # convention and breaks metadata.create_all.
     )
 
     payout_date: Mapped[date | None] = mapped_column(

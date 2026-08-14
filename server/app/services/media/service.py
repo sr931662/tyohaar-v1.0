@@ -149,6 +149,12 @@ class MediaService(BaseService):
                 owner_type=owner_type,
                 url=result["secure_url"],
                 storage_path=result["public_id"],
+                # Explicit deletion identifier. storage_path happens to hold
+                # the same value today, but it is documented as a generic
+                # object path and rows created by other paths may not; the
+                # purge pipeline must not depend on that coincidence.
+                storage_public_id=result["public_id"],
+                storage_provider="cloudinary",
                 original_filename=filename,
                 file_size_bytes=result.get("bytes") or len(file_bytes),
                 mime_type=content_type,
@@ -384,6 +390,12 @@ class MediaService(BaseService):
                 owner_type=owner_type,
                 url=result["secure_url"],
                 storage_path=result["public_id"],
+                # Explicit deletion identifier. storage_path happens to hold
+                # the same value today, but it is documented as a generic
+                # object path and rows created by other paths may not; the
+                # purge pipeline must not depend on that coincidence.
+                storage_public_id=result["public_id"],
+                storage_provider="cloudinary",
                 original_filename=filename,
                 file_size_bytes=result.get("bytes") or len(file_bytes),
                 mime_type=content_type,

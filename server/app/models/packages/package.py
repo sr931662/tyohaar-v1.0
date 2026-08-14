@@ -175,7 +175,9 @@ class Package(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         SAEnum(PackageStatus, name="package_status", native_enum=False),
         nullable=False,
         default=PackageStatus.DRAFT,
-        index=True,
+        # Index declared explicitly in __table_args__ — a second
+        # index=True here produces a duplicate under the naming
+        # convention and breaks metadata.create_all.
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
