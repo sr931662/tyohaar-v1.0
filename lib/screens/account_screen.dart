@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -99,6 +100,38 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
+  // Google Play requires the deletion request path to be reachable from inside
+  // the app as well as from the store listing. There is no authenticated
+  // delete endpoint yet, so both routes land on the same web form.
+  Future<void> _handleDeleteAccount() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.accountDeleteAccountConfirmTitle),
+        content: Text(l10n.accountDeleteAccountConfirmMessage),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.accountDeleteAccountContinueLabel,
+                style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    final opened = await launchUrl(
+      Uri.parse('https://www.tyohaar.co/delete-account'),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.accountDeleteAccountOpenFailed)));
+    }
+  }
+
   void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
@@ -156,7 +189,7 @@ class _AccountScreenState extends State<AccountScreen> {
           SizedBox(height: resp.h(16)),
           _menuGroup(context, resp, [
             _menuItem(context, resp, Icons.delete_outline_rounded, l10n.accountDeleteAccountLabel,
-                color: ty.rose, onTap: () {}),
+                color: ty.rose, onTap: _handleDeleteAccount),
           ]),
           SizedBox(height: resp.h(24)),
           TyButton(
