@@ -1,184 +1,322 @@
-/* General Page Structure */
-.pageWrapper {
-    background-color: #f9f9f9;
-    color: #333;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    line-height: 1.6;
-}
+.page { padding-top: 0; }
 
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-}
-
-/* Hero Section */
 .hero {
-    background: linear-gradient(135deg, #6f42c1, #4a148c);
-    color: #fff;
-    padding: 4rem 1rem;
-    text-align: center;
-    border-bottom-left-radius: 20px;
-    border-bottom-right-radius: 20px;
+  background: var(--paper);
+  min-height: unset;
+  justify-content: flex-start;
+  padding-top: clamp(120px, 14vw, 160px);
+  padding-bottom: clamp(28px, 3vw, 36px);
+}
+.heroInner { max-width: 780px; }
+
+.eyebrow {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--saffron, #C8791E);
+  margin-bottom: 14px;
 }
 
-.hero h1 {
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
+.title {
+  font-size: clamp(30px, 4.4vw, 52px);
+  line-height: 1.1;
+  color: var(--ink);
+  margin: 0 0 20px;
 }
 
-.hero p {
-    font-size: 1.1rem;
-    max-width: 600px;
-    margin: 0 auto;
-    opacity: 0.9;
+.lede {
+  font-size: clamp(16px, 1.6vw, 19px);
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 640px;
 }
 
-/* Content Sections */
-.section {
-    background-color: #fff;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+.body {
+  background: var(--surface-2);
+  min-height: unset;
+  justify-content: flex-start;
+  padding-top: clamp(32px, 4vw, 44px);
+  padding-bottom: clamp(48px, 6vw, 64px);
 }
 
-.section h2 {
-    font-size: 1.8rem;
-    color: #4a148c;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid #eee;
+.inner { max-width: 760px; }
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: clamp(22px, 3vw, 32px);
+  box-shadow: var(--shadow-sm);
 }
 
-.section p,
-.section ul {
-    margin-bottom: 1rem;
+.card + .card { margin-top: clamp(18px, 2.4vw, 26px); }
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(20px, 2.4vw, 26px);
+  line-height: 1.2;
+  color: var(--ink);
+  margin: 0 0 14px;
 }
 
-.section ul {
-    list-style-position: inside;
-    padding-left: 0;
+.card p {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--ink-2);
+  margin: 0 0 16px;
+}
+.card p:last-child { margin-bottom: 0; }
+
+.card a { color: var(--saffron, #C8791E); }
+.card a:hover { text-decoration: underline; }
+
+/* Bulleted list of what gets removed — diya-dot markers instead of discs. */
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+.list li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+.list li::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0.72em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--saffron, #C8791E);
 }
 
-.section a {
-    color: #6f42c1;
-    text-decoration: none;
-    font-weight: 500;
+/* Permanence warning — rose-tinted, the app's destructive accent. */
+.notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--rose-soft);
+  border: 1px solid color-mix(in srgb, var(--rose) 26%, transparent);
+  border-radius: var(--r-md);
+  padding: 16px 18px;
+  margin-top: 4px;
+}
+.noticeIcon {
+  flex: 0 0 auto;
+  color: var(--rose);
+  margin-top: 1px;
+}
+.notice p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink);
 }
 
-.section a:hover {
-    text-decoration: underline;
+/* ---------- Form ---------- */
+.formGroup { margin-bottom: clamp(16px, 2vw, 20px); }
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 8px;
 }
 
-/* Form Styles */
-.formGroup {
-    margin-bottom: 1.5rem;
+.input,
+.select,
+.textarea {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 15.5px;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 13px 15px;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease),
+    background 0.2s var(--ease);
 }
 
-.formGroup label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
+.textarea { resize: vertical; min-height: 104px; line-height: 1.6; }
+
+/* Native select arrow varies wildly across platforms; draw our own so the
+   control matches the text inputs in both themes. */
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9' fill='none'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%23796A5A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 42px;
 }
 
-.formGroup input,
-.formGroup select,
-.formGroup textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1rem;
-    transition: border-color 0.2s;
+.input:hover,
+.select:hover,
+.textarea:hover { border-color: var(--ink-3); }
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  background: var(--surface);
+  border-color: var(--saffron, #C8791E);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--saffron) 22%, transparent);
 }
 
-.formGroup input:focus,
-.formGroup select:focus,
-.formGroup textarea:focus {
-    outline: none;
-    border-color: #6f42c1;
-    box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.2);
+.inputError,
+.inputError:hover { border-color: var(--rose); }
+.inputError:focus {
+  border-color: var(--rose);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--rose) 22%, transparent);
 }
 
-/* The confirmation checkbox opts out of the full-width input sizing above. */
-.checkboxGroup {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.6rem;
-    margin-bottom: 1.5rem;
-}
-
-.checkboxGroup input {
-    width: auto;
-    margin-top: 0.3rem;
-    flex-shrink: 0;
-}
-
-.checkboxGroup label {
-    font-weight: 400;
-    margin-bottom: 0;
+.hint {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 7px 0 0;
 }
 
 .errorText {
-    color: #d93025;
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
+  font-size: 13px;
+  color: var(--rose);
+  margin: 7px 0 0;
 }
 
-.submitButton {
-    display: inline-block;
-    width: 100%;
-    padding: 0.8rem 1.5rem;
-    background-color: #6f42c1;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s, transform 0.1s;
+/* Confirmation checkbox — opts out of the full-width input sizing above. */
+.checkboxGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--paper-2);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 15px 16px;
+  margin: clamp(20px, 2.6vw, 26px) 0 clamp(18px, 2.2vw, 22px);
+  cursor: pointer;
+}
+.checkboxGroup:hover { border-color: var(--ink-3); }
+
+.checkbox {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  margin: 2px 0 0;
+  accent-color: var(--rose);
+  cursor: pointer;
 }
 
-.submitButton:hover:not(:disabled) {
-    background-color: #5a359a;
+.checkboxLabel {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  cursor: pointer;
 }
 
-.submitButton:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
+/* Destructive submit — Button's `primary` saffron would read as celebratory.
+   Doubled selector so this beats `.primary` regardless of the order the two
+   CSS modules land in the bundle. */
+.dangerButton.dangerButton {
+  background: var(--rose);
+  color: #FFFFFF;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--rose) 34%, transparent);
+}
+.dangerButton.dangerButton:hover {
+  background: color-mix(in srgb, var(--rose) 84%, #000);
 }
 
-/* Alert Messages */
+/* ---------- Alerts ---------- */
 .alert {
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-    border-radius: 4px;
-    border: 1px solid transparent;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border-radius: var(--r-md);
+  padding: 15px 17px;
+  margin-bottom: clamp(18px, 2.2vw, 24px);
+  font-size: 14.5px;
+  line-height: 1.65;
 }
+.alert a { color: inherit; text-decoration: underline; }
+.alertIcon { flex: 0 0 auto; margin-top: 1px; }
 
 .alertSuccess {
-    background-color: #d4edda;
-    border-color: #c3e6cb;
-    color: #155724;
+  background: var(--leaf-soft);
+  border: 1px solid color-mix(in srgb, var(--leaf) 30%, transparent);
+  color: var(--ink);
 }
+.alertSuccess .alertIcon { color: var(--leaf); }
 
 .alertError {
-    background-color: #f8d7da;
-    border-color: #f5c6cb;
-    color: #721c24;
+  background: var(--rose-soft);
+  border: 1px solid color-mix(in srgb, var(--rose) 30%, transparent);
+  color: var(--ink);
+}
+.alertError .alertIcon { color: var(--rose); }
+
+/* ---------- Help channels ---------- */
+.channels {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(12px, 1.6vw, 16px);
+  margin-top: 4px;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .hero {
-        padding: 3rem 1rem;
-    }
-    .hero h1 {
-        font-size: 2rem;
-    }
-    .section {
-        padding: 1.5rem;
-    }
+.channelCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 15px 17px;
+  text-decoration: none;
+  transition: border-color 0.2s ease;
+}
+.channelCard:hover { border-color: var(--saffron, #C8791E); text-decoration: none; }
+
+.channelIcon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--saffron, #C8791E);
+}
+
+.channelText { min-width: 0; display: flex; flex-direction: column; }
+.channelLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+.channelValue {
+  font-size: 15px;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .channels { grid-template-columns: 1fr; }
+}
+
+/* The drawn select arrow is stroked in --ink-3; restate it for the dark theme. */
+:global(:root[data-theme="dark"]) .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9' fill='none'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%239C8899' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
