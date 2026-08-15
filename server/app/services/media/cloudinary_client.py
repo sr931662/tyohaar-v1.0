@@ -150,10 +150,18 @@ async def destroy_asset(public_id: str, *, resource_type: str = "image") -> bool
 
     `invalidate=True` purges CDN copies as well as the origin object. Without
     it a deleted image stays served from edge caches for its remaining TTL.
+
+    Configuration failure is reported the same way as any other failure —
+    False, never an exception. An earlier version called `_ensure_configured()`
+    outside the try, so an unconfigured deployment raised instead: the purge
+    handler died mid-transaction, its `unresolved_media_assets` bookkeeping was
+    rolled back with it, and the next handler then saw no blockers and deleted
+    the very rows that were the only pointers to the surviving objects. The
+    guarantee has to hold hardest exactly when storage is misconfigured.
     """
-    _ensure_configured()
 
     def _destroy() -> dict:
+        _ensure_configured()
         return cloudinary.uploader.destroy(
             public_id,
             resource_type=resource_type,

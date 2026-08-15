@@ -43,6 +43,7 @@ from app.models.enums import (  # noqa: E402
     DeletionRequestStatus,
     MediaUsage,
     PaymentStatus,
+    Platform,
     TicketCategory,
     TransactionType,
     UserRole,
@@ -148,6 +149,7 @@ async def build_user(sf) -> dict:
         ))
         s.add(UserDevice(
             id=uuid.uuid4(), user_id=user.id, device_id="dev-abc",
+            platform=Platform.ANDROID,
             push_notification_token="fcm-token-xyz",
         ))
 
@@ -349,10 +351,20 @@ async def main() -> int:
 
         booked = await s.get(Celebration, ids["booked"])
         unbooked = await s.get(Celebration, ids["unbooked"])
+        from app.services.deletion.handlers.celebrations import SANITISED_TITLE
+
         check("booked celebration SANITISED, not deleted",
-              booked is not None and booked.title is None and booked.venue_address is None
-              and booked.latitude is None and booked.special_instructions is None,
-              "row survives with personal fields cleared")
+              booked is not None
+              # title is NOT NULL, so it is replaced rather than cleared
+              and booked.title == SANITISED_TITLE
+              and booked.description is None
+              and booked.venue_name is None
+              and booked.venue_address is None
+              and booked.latitude is None
+              and booked.longitude is None
+              and booked.special_instructions is None,
+              f"title={booked.title!r} venue={booked.venue_address!r} "
+              f"lat={booked.latitude!r} instr={booked.special_instructions!r}")
         check("booked celebration keeps structural context",
               booked is not None and booked.occasion_id is not None
               and booked.celebration_date is not None)

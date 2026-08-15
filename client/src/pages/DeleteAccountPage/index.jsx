@@ -20,11 +20,28 @@ const REASONS = [
   'Other',
 ];
 
+// These mirror server/app/core/retention.py, which is the single source of
+// truth for every period the purge pipeline observes. Only periods that module
+// marks as confirmed may be stated as a number here: FINANCIAL_RECORD_RETENTION
+// and DELETION_EVIDENCE_RETENTION are still GuardedPeriod(confirmed=False) and
+// BACKUP_RETENTION_DAYS is still None, so those are described without one.
+const RECOVERY_WINDOW_DAYS = 14;
+const COMPLETION_DAYS = 30;
+const ABUSE_HASH_RETENTION_YEARS = 3;
+
 const REMOVED = [
   'Your profile — name, email address, phone number and saved addresses',
   'Your celebrations, plans and guest lists',
   'Photos and videos you uploaded, and the ones vendors shared with you',
   'Your saved packages, reviews and support conversations',
+  'Your registered devices, so we stop sending notifications to them',
+];
+
+const RETAINED = [
+  'Invoices, payment records and tax documents from completed bookings. We keep these for as long as the law requires, stored apart from your profile and never used to contact you.',
+  "If you were a guest at someone else's celebration, that host keeps their own record of who attended. Your link to it is removed, so it no longer points at you.",
+  'A record that you asked us to delete your account, kept as evidence that we honoured the request.',
+  `If your account was banned, a one-way hash of your phone number or email is kept for ${ABUSE_HASH_RETENTION_YEARS} years so the ban survives deletion. It cannot be reversed back into your contact details.`,
 ];
 
 const CHANNELS = [
@@ -169,17 +186,25 @@ export default function DeleteAccountPage() {
                   <li key={item}>{item}</li>
                 ))}
               </ul>
+              <p>What we keep, and why:</p>
+              <ul className={styles.list}>
+                {RETAINED.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
               <p>
-                Records tied to completed bookings — invoices, payment records and tax documents —
-                are retained where we are legally required to keep them, as described in our{' '}
-                <a href="/privacy">Privacy Policy</a>. These are kept separately from your profile
-                and are not used to contact you.
+                Our <a href="/privacy">Privacy Policy</a> describes each of these in full. Purged
+                records may persist in encrypted database backups until those backups age out on
+                their normal rotation.
               </p>
               <div className={styles.notice}>
                 <AlertTriangle size={19} strokeWidth={2} className={styles.noticeIcon} aria-hidden="true" />
                 <p>
-                  Deletion is permanent. Once your account is removed it cannot be restored, and
-                  any upcoming bookings on it will be cancelled under our{' '}
+                  Your account is deactivated as soon as your request is verified, and stays
+                  restorable for {RECOVERY_WINDOW_DAYS} days — sign back in within that time and
+                  everything comes back. After that the deletion runs and cannot be undone. It
+                  completes within {COMPLETION_DAYS} days of your request. Any upcoming bookings
+                  will be cancelled under our{' '}
                   <a href="/cancellation-policy">Cancellation Policy</a>.
                 </p>
               </div>
@@ -298,7 +323,8 @@ export default function DeleteAccountPage() {
                     onChange={update('confirmed')}
                   />
                   <span className={styles.checkboxLabel}>
-                    I understand that deleting my account is permanent and cannot be undone.
+                    I understand that my account will be deleted, and that after{' '}
+                    {RECOVERY_WINDOW_DAYS} days this cannot be undone.
                   </span>
                 </label>
                 {errors.confirmed && <p className={styles.errorText}>{errors.confirmed}</p>}

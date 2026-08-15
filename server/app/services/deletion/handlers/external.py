@@ -41,6 +41,24 @@ from app.services.deletion.registry import (
 from app.services.media import cloudinary_client
 
 
+async def _destroy(public_id: str, *, resource_type: str) -> bool:
+    """Destroy one object, converting any failure into a False.
+
+    Belt and braces on top of `destroy_asset`, which already promises not to
+    raise. If an exception escaped this handler mid-run, the transaction — and
+    with it every `unresolved_media_assets` row recorded so far — would be
+    rolled back, and the next handler would then delete media rows believing
+    nothing was outstanding. The bookkeeping has to survive the failure it is
+    there to record.
+    """
+    try:
+        return await cloudinary_client.destroy_asset(
+            public_id, resource_type=resource_type
+        )
+    except Exception:  # noqa: BLE001 - any failure means "still there"
+        return False
+
+
 async def _record_unresolved(
     session: AsyncSession,
     *,
@@ -109,7 +127,7 @@ async def purge_cloudinary_objects(
             )
             report.fail(f"image {image_id}: no storage_public_id")
             continue
-        if await cloudinary_client.destroy_asset(public_id, resource_type="image"):
+        if await _destroy(public_id, resource_type="image"):
             report.count("images_destroyed", 1)
         else:
             await _record_unresolved(
@@ -146,7 +164,7 @@ async def purge_cloudinary_objects(
             )
             report.fail(f"video {video_id}: no storage_public_id")
             continue
-        if await cloudinary_client.destroy_asset(public_id, resource_type="video"):
+        if await _destroy(public_id, resource_type="video"):
             report.count("videos_destroyed", 1)
         else:
             await _record_unresolved(
@@ -191,7 +209,7 @@ async def purge_cloudinary_objects(
                 )
                 report.fail(f"{kind}: no storage id")
                 continue
-            if await cloudinary_client.destroy_asset(pid, resource_type="image"):
+            if await _destroy(pid, resource_type="image"):
                 report.count(f"{kind}_destroyed", 1)
             else:
                 await _record_unresolved(
@@ -234,7 +252,7 @@ async def purge_cloudinary_objects(
             )
             report.fail(f"attachment {attachment_id}: no storage_key")
             continue
-        if await cloudinary_client.destroy_asset(storage_key, resource_type="image"):
+        if await _destroy(storage_key, resource_type="image"):
             report.count("support_attachments_destroyed", 1)
         else:
             await _record_unresolved(

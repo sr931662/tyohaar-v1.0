@@ -84,12 +84,15 @@ async def get_optional_user(
     if token is None:
         return None
 
-    user_id_str = extract_user_id_from_token(token)
-
     try:
+        # extract_user_id_from_token raises HTTP 401 on an invalid or expired
+        # token. On a public endpoint that must degrade to anonymous instead:
+        # a client holding a stale token would otherwise be locked out of
+        # pages that need no login at all.
+        user_id_str = extract_user_id_from_token(token)
         user_id = uuid.UUID(user_id_str)
         user = await user_service.get_user(user_id)
-    except (ValueError, NotFoundError):
+    except (ValueError, NotFoundError, HTTPException):
         return None
 
     if user.account_status not in (AccountStatus.ACTIVE, AccountStatus.PENDING_VERIFICATION):

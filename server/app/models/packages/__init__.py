@@ -13,6 +13,9 @@ from app.models.packages.package_discount import PackageDiscount
 from app.models.packages.package_availability import PackageAvailability
 from app.models.packages.package_review import PackageReview, PackageReviewModerationStatus
 from app.models.packages.package_faq import PackageFAQ
+from app.models.packages.package_like import PackageLike
+from app.models.packages.package_item_like import PackageItemLike
+from app.models.packages.package_item_review import PackageItemReview
 
 __all__ = [
     "PackageCategory",
@@ -35,4 +38,7 @@ __all__ = [
     "PackageReview",
     "PackageReviewModerationStatus",
     "PackageFAQ",
+    "PackageLike",
+    "PackageItemLike",
+    "PackageItemReview",
 ]

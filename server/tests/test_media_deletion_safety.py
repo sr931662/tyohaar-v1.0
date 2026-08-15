@@ -130,3 +130,67 @@ class TestDestroyIdempotency:
             "CDN copies must be invalidated, or a deleted image keeps serving "
             "from the edge for its remaining TTL"
         )
+
+
+class TestUnconfiguredStorageIsNotAnException:
+    """The safety guarantee must hold hardest when storage is misconfigured.
+
+    Regression test for the worst bug found during verification: `destroy_asset`
+    called `_ensure_configured()` outside its try block, so an unconfigured
+    deployment raised instead of returning False. The purge handler then died
+    mid-transaction, its `unresolved_media_assets` bookkeeping was rolled back
+    with it, and the *next* handler saw no blockers and deleted the media rows —
+    destroying the only pointers to objects that were still live and public.
+
+    Misconfigured credentials are the most likely real-world trigger, so this is
+    exactly the path that must fail safe.
+    """
+
+    async def test_destroy_asset_returns_false_when_unconfigured(self, monkeypatch):
+        from app.core.config import settings
+        from app.services.media import cloudinary_client
+
+        monkeypatch.setattr(settings, "CLOUDINARY_CLOUD_NAME", "", raising=False)
+        monkeypatch.setattr(settings, "CLOUDINARY_API_KEY", "", raising=False)
+        monkeypatch.setattr(settings, "CLOUDINARY_API_SECRET", "", raising=False)
+        monkeypatch.setattr(cloudinary_client, "_configured", False, raising=False)
+
+        result = await cloudinary_client.destroy_asset("some/id")
+
+        assert result is False, (
+            "unconfigured storage must report failure, never raise — an "
+            "exception here rolls back the record of what could not be deleted"
+        )
+
+    def test_ensure_configured_is_inside_the_try(self):
+        """Guard the structure, not just the behaviour."""
+        from pathlib import Path
+
+        source = (
+            Path(__file__).resolve().parents[1]
+            / "app/services/media/cloudinary_client.py"
+        ).read_text(encoding="utf-8")
+
+        block = source.split("async def destroy_asset")[1].split("async def")[0]
+        body_start = block.index("def _destroy()")
+        guard_pos = block.index("_ensure_configured()", body_start)
+        assert guard_pos > body_start, (
+            "_ensure_configured() must sit inside the wrapped call so its "
+            "failure is caught and reported as False"
+        )
+
+    def test_external_handler_never_calls_destroy_directly(self):
+        """Every call site must go through the non-raising wrapper."""
+        from pathlib import Path
+
+        source = (
+            Path(__file__).resolve().parents[1]
+            / "app/services/deletion/handlers/external.py"
+        ).read_text(encoding="utf-8")
+
+        body = source.split("async def _destroy")[1]
+        after_wrapper = body.split("async def _record_unresolved")[1]
+        assert "cloudinary_client.destroy_asset(" not in after_wrapper, (
+            "handlers must call _destroy(), which cannot raise and therefore "
+            "cannot discard the unresolved-asset bookkeeping"
+        )

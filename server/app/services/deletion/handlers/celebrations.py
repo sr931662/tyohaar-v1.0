@@ -36,11 +36,16 @@ from app.services.deletion.registry import (
     register_purge,
 )
 
+#: Placeholder for `title`, which is NOT NULL and so cannot simply be cleared.
+#: It carries no personal data and is deliberately recognisable in support
+#: tooling as a sanitised row rather than a real celebration name.
+SANITISED_TITLE = "Deleted celebration"
+
 #: Fields cleared on a surviving celebration. Everything here is either
-#: personal (venue address, coordinates), presentational (title, theme
-#: colours) or free text the host wrote.
-_SANITISED_FIELDS: dict[str, None] = {
-    "title": None,
+#: personal (venue address, coordinates), presentational (theme colours) or
+#: free text the host wrote. `title` is replaced rather than nulled.
+_SANITISED_FIELDS: dict[str, object] = {
+    "title": SANITISED_TITLE,
     "description": None,
     "venue_name": None,
     "venue_address": None,
