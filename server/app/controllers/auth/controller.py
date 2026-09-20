@@ -29,7 +29,11 @@ from app.schemas.auth.create import (
     VendorRegisterCreate,
 )
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
-from app.services.auth.service import RegisterResponse, TokenPairResponse
+from app.services.auth.service import (
+    AuthProviderConfig,
+    RegisterResponse,
+    TokenPairResponse,
+)
 from app.services.admin.helpers import verify_admin_password
 
 logger = logging.getLogger(__name__)
@@ -127,6 +131,25 @@ async def google_vendor_auth(
         else "Your vendor account is pending admin approval."
     )
     return SuccessResponse(data=result, message=message)
+
+
+async def get_auth_config(
+    service: AuthServiceDep,
+) -> SuccessResponse[AuthProviderConfig]:
+    return SuccessResponse(data=service.get_provider_config())
+
+
+async def google_auth(
+    body: GoogleAuthCreate,
+    service: AuthServiceDep,
+    request: Request,
+) -> SuccessResponse[TokenPairResponse]:
+    result = await service.authenticate_customer_google(
+        id_token_str=body.id_token,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("User-Agent"),
+    )
+    return SuccessResponse(data=result, message="Signed in successfully.")
 
 
 async def register(

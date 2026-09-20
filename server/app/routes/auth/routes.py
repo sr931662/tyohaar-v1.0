@@ -9,9 +9,26 @@ from fastapi import APIRouter, status
 from app.controllers.auth import controller as ctrl
 from app.core.responses import SuccessResponse
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
-from app.services.auth.service import RegisterResponse, TokenPairResponse
+from app.services.auth.service import (
+    AuthProviderConfig,
+    RegisterResponse,
+    TokenPairResponse,
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+# ── Public provider config (unauthenticated) ────────────────────────────────
+
+router.add_api_route(
+    "/config",
+    ctrl.get_auth_config,
+    methods=["GET"],
+    response_model=SuccessResponse[AuthProviderConfig],
+    status_code=status.HTTP_200_OK,
+    summary="Get Auth Provider Config",
+    description="Public, non-secret auth config (Google client ID) the client needs to start social sign-in.",
+    operation_id="auth_get_config",
+)
 
 router.add_api_route(
     "/register",
@@ -94,6 +111,20 @@ router.add_api_route(
     summary="Verify Email OTP",
     description="Verify an emailed OTP (purpose=email_verification) and mark the account's email as verified.",
     operation_id="auth_verify_email_otp",
+)
+
+router.add_api_route(
+    "/google",
+    ctrl.google_auth,
+    methods=["POST"],
+    response_model=SuccessResponse[TokenPairResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Customer Google Sign-In",
+    description=(
+        "Authenticate a customer with a Google ID token, creating the account "
+        "on first use. Sign-in and sign-up are the same call."
+    ),
+    operation_id="auth_google",
 )
 
 router.add_api_route(

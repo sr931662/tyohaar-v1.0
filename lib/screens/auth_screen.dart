@@ -5,10 +5,12 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../widgets/ty_button.dart';
+import '../widgets/google_g_logo.dart';
 import '../widgets/common.dart';
 import '../data/app_state.dart';
 import '../data/auth_manager.dart';
 import '../data/services/auth_service.dart';
+import '../data/services/google_auth_service.dart';
 // AuthCredentials is defined in auth_service.dart
 import 'root_nav.dart';
 import 'vendor/vendor_root_nav.dart';
@@ -38,6 +40,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
   bool _isLoading = false;
   String _error = '';
+  // Hidden until the server confirms a Google client ID is configured — an
+  // always-visible button would be dead for every user until it is set.
+  bool _googleEnabled = false;
   bool _loginObscure = true;
   bool _regObscure = true;
   bool _regConfirmObscure = true;
@@ -47,6 +52,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() => setState(() => _error = ''));
+    _loadProviderConfig();
+  }
+
+  Future<void> _loadProviderConfig() async {
+    try {
+      final config = await context.read<AuthService>().getProviderConfig();
+      if (mounted) setState(() => _googleEnabled = config.googleEnabled);
+    } catch (_) {
+      // Leave it hidden. Offering a control that can only fail is worse than
+      // omitting it, and email/password sign-in is unaffected.
+    }
   }
 
   @override
@@ -94,6 +110,65 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         MaterialPageRoute(builder: (_) => destination),
         (route) => false,
       );
+    }
+  }
+
+  Future<void> _handleGoogleAuth() async {
+    if (_isLoading) return;
+    setState(() { _isLoading = true; _error = ''; });
+    try {
+      final auth = context.read<AuthService>();
+      final google = context.read<GoogleAuthService>();
+      final config = await auth.getProviderConfig();
+      if (!config.googleEnabled) {
+        throw GoogleSignInFailure(GoogleSignInFailureKind.notConfigured);
+      }
+      final idToken = await google.obtainIdToken(config.googleClientId);
+      final creds = await auth.signInWithGoogle(idToken);
+      if (!mounted) return;
+      // No overrideDestination: unlike email signup there is nothing to
+      // verify — Google already vouched for the address, so the server marks
+      // the account email-verified and the user lands straight on the shell.
+      await _onSuccess(creds);
+    } on GoogleSignInFailure catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        // Dismissing the account sheet is not an error — clear the row
+        // instead of accusing the user of a failure.
+        _error = e.isCancelled ? '' : _googleErrorText(e.kind);
+      });
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final detail = e.response?.data;
+      String msg = AppLocalizations.of(context)!.authGoogleFailedError;
+      if (detail is Map) {
+        msg = detail['detail'] as String? ?? detail['message'] as String? ?? msg;
+      } else if (detail is String) {
+        msg = detail;
+      }
+      setState(() { _isLoading = false; _error = msg; });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = AppLocalizations.of(context)!.authGoogleFailedError;
+      });
+    }
+  }
+
+  String _googleErrorText(GoogleSignInFailureKind kind) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (kind) {
+      case GoogleSignInFailureKind.notConfigured:
+        return l10n.authGoogleNotConfiguredError;
+      case GoogleSignInFailureKind.unsupported:
+        return l10n.authGoogleUnsupportedError;
+      case GoogleSignInFailureKind.noIdToken:
+        return l10n.authGoogleNoIdTokenError;
+      case GoogleSignInFailureKind.cancelled:
+      case GoogleSignInFailureKind.failed:
+        return l10n.authGoogleFailedError;
     }
   }
 
@@ -291,17 +366,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             onTap: _handleLogin,
             enabled: !_isLoading,
           ),
-          if (widget.onAuthenticated == null) ...[
+          if (_googleEnabled) ...[
+            SizedBox(height: resp.h(28)),
+            _buildDivider(ty, resp),
+            SizedBox(height: resp.h(20)),
+            _buildGoogleButton(ty, resp),
+            if (widget.onAuthenticated == null) ...[
+              SizedBox(height: resp.h(8)),
+              _buildGuestLink(ty, resp),
+            ],
+          ] else if (widget.onAuthenticated == null) ...[
             SizedBox(height: resp.h(28)),
             _buildDivider(ty, resp),
             SizedBox(height: resp.h(28)),
-            Center(
-              child: TextButton(
-                onPressed: _handleSkip,
-                child: Text(l10n.authContinueAsGuestLabel,
-                    style: TyType.sans(resp.sp(14), color: ty.ink3, weight: FontWeight.w600)),
-              ),
-            ),
+            _buildGuestLink(ty, resp),
           ],
           SizedBox(height: resp.h(32)),
         ],
@@ -345,6 +423,12 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             onTap: _handleRegister,
             enabled: !_isLoading,
           ),
+          if (_googleEnabled) ...[
+            SizedBox(height: resp.h(28)),
+            _buildDivider(ty, resp),
+            SizedBox(height: resp.h(20)),
+            _buildGoogleButton(ty, resp),
+          ],
           SizedBox(height: resp.h(20)),
           Center(
             child: TextButton(
@@ -358,6 +442,60 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           ),
           SizedBox(height: resp.h(12)),
         ],
+      ),
+    );
+  }
+
+  /// Google mandates its own mark on a plain light surface, so this is a
+  /// bespoke button rather than a TyButton (which only takes an IconData).
+  Widget _buildGoogleButton(TyColors ty, TyResponsive resp) {
+    final l10n = AppLocalizations.of(context)!;
+    return Semantics(
+      button: true,
+      enabled: !_isLoading,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _isLoading ? null : _handleGoogleAuth,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(vertical: resp.h(15)),
+            decoration: BoxDecoration(
+              color: ty.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _isLoading ? ty.line2 : ty.line, width: 1.5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Opacity(
+                  opacity: _isLoading ? 0.4 : 1,
+                  child: GoogleGLogo(size: resp.w(20)),
+                ),
+                SizedBox(width: resp.w(12)),
+                Text(
+                  _isLoading ? l10n.authGoogleSigningInLabel : l10n.authGoogleSignInButtonLabel,
+                  style: TyType.sans(
+                    resp.sp(15),
+                    color: _isLoading ? ty.ink3 : ty.ink,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuestLink(TyColors ty, TyResponsive resp) {
+    return Center(
+      child: TextButton(
+        onPressed: _handleSkip,
+        child: Text(AppLocalizations.of(context)!.authContinueAsGuestLabel,
+            style: TyType.sans(resp.sp(14), color: ty.ink3, weight: FontWeight.w600)),
       ),
     );
   }

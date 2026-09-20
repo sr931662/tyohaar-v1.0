@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_contacts/flutter_contacts.dart' hide Address;
-import 'package:permission_handler/permission_handler.dart';
 
 import 'package:tyohaar/theme/assets.dart';
 import '../../theme/colors.dart';
@@ -18,38 +16,40 @@ import '../../utils/currency.dart';
 import '../../utils/log.dart';
 import 'package:tyohaar/screens/email_verification_screen.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
-import 'package:tyohaar/screens/send_invitations_screen.dart';
 import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
-import '../../widgets/avatar.dart';
 import '../../widgets/photo_placeholder.dart';
 import '../../widgets/state_screens.dart';
 import '../../widgets/ty_button.dart';
-import '../../widgets/ty_chip.dart';
 import '../../widgets/ty_rating_stars.dart';
 import '../../widgets/common.dart';
+import '../../widgets/occasion_grid.dart';
 import '../../l10n/generated/app_localizations.dart';
 
+/// Which stage of the flow a step represents — used to locate a step
+/// dynamically (jump-to-edit from Summary, gating "Continue") now that the
+/// step list itself is built dynamically (the Occasion step is only present
+/// when no [PlanFlowScreen.initialOccasion] was supplied, and Customize is
+/// only present when the selected package actually supports it).
+enum _StepKind { occasion, package, items, customize, delivery, summary }
+
+class _StepDef {
+  final _StepKind kind;
+  final String title;
+  final String subtitle;
+  final Widget Function(BuildContext) build;
+  const _StepDef({required this.kind, required this.title, required this.subtitle, required this.build});
+}
+
 class PlanFlowScreen extends StatefulWidget {
-  final int startStep;
-  const PlanFlowScreen({super.key, this.startStep = 0});
+  // Pre-selects an occasion chosen before entering the flow (e.g. tapped
+  // directly from the home screen's occasion grid), so the flow can start on
+  // the package step instead of asking the customer to pick the occasion
+  // again. When omitted, the flow opens with the occasion picker.
+  final Occasion? initialOccasion;
+  const PlanFlowScreen({super.key, this.initialOccasion});
 
   @override
   State<PlanFlowScreen> createState() => _PlanFlowScreenState();
-}
-
-// Localized display labels — depend on BuildContext, so these are functions
-// rather than top-level consts; call sites (all within this file) pass the
-// context they already have available.
-List<String> _colorPalettes(BuildContext context) {
-  final l10n = AppLocalizations.of(context)!;
-  return [
-    l10n.planFlowColorGold,
-    l10n.planFlowColorBlushPink,
-    l10n.planFlowColorSkyBlue,
-    l10n.planFlowColorSageGreen,
-    l10n.planFlowColorLavender,
-    l10n.planFlowColorMulticolor,
-  ];
 }
 
 // Curated, reliably-stockable balloon colours — must match the backend's
@@ -127,9 +127,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   bool _couponLoading = false;
   String? _couponError;
 
-  // 0 Occasion · 1 Package · 2 Package Items · 3 Details (Create an Invite) · 4 Guests · 5 Summary
-  static const _stepCount = 6;
-  late int _step = widget.startStep.clamp(0, _stepCount - 1);
+  // Step list is built dynamically by _steps (occasion is skipped when
+  // initialOccasion is supplied; customize is skipped when the package
+  // doesn't support it) — see _StepKind / _StepDef above.
+  int _step = 0;
 
   List<Occasion> _occasions = [];
   List<Package> _packages = [];
@@ -142,21 +143,16 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   bool _itemsError = false;
 
   Occasion? _occasion;
-  final _nameCtrl = TextEditingController();
-  final _notesCtrl = TextEditingController();
-  final Set<String> _vibes = {};
-  final Set<String> _colorPalette = {};
-  final List<PlannedGuest> _plannedGuests = [];
   Package? _pkg;
   CelebrationTheme? _theme;
   // Preset (catalog) theme vs. customer-picked balloon colours — mutually
   // exclusive; switching modes clears the other's selection.
   bool _useCustomTheme = false;
   // Selected palette colour names, in pick order. Capped at
-  // _maxCustomColours: the backend only accepts a single balloon colour or a
-  // two-colour combination (BookingCreate.validate_balloon_colors).
+  // _maxCustomColours: the backend accepts a single balloon colour or a
+  // 2/3/4-colour combination (BookingCreate.validate_balloon_colors).
   final List<String> _balloonColors = [];
-  static const int _maxCustomColours = 2;
+  static const int _maxCustomColours = 4;
   Address? _address;
   DateTime _eventDate = DateTime.now().add(const Duration(days: 30));
 
@@ -183,6 +179,60 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // unaffected by this flag.
   bool get _showBalloonTheme =>
       (_pkg?.isCustomizable ?? false) && (_occasion?.allowBalloonTheme ?? true);
+
+  // The step list is dynamic: the Occasion step only appears when no
+  // initialOccasion was supplied, and Customize only appears once a
+  // customizable package is selected — so both length and content shift as
+  // the customer moves through the flow.
+  List<_StepDef> get _steps {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      if (widget.initialOccasion == null)
+        _StepDef(
+          kind: _StepKind.occasion,
+          title: l10n.planFlowOccasionStepTitle,
+          subtitle: l10n.planFlowOccasionStepSubtitle,
+          build: _occasionStep,
+        ),
+      _StepDef(
+        kind: _StepKind.package,
+        title: l10n.planFlowPackageStepTitle,
+        subtitle: l10n.planFlowPackageStepSubtitle,
+        build: _packageStep,
+      ),
+      _StepDef(
+        kind: _StepKind.items,
+        title: l10n.planFlowItemsStepTitle,
+        subtitle: l10n.planFlowItemsStepSubtitle,
+        build: _packageItemsStep,
+      ),
+      if (_showBalloonTheme)
+        _StepDef(
+          kind: _StepKind.customize,
+          title: l10n.planFlowCustomizeStepTitle,
+          subtitle: l10n.planFlowCustomizeStepSubtitle,
+          build: _themeStep,
+        ),
+      _StepDef(
+        kind: _StepKind.delivery,
+        title: l10n.planFlowDetailsStepTitle,
+        subtitle: l10n.planFlowDetailsStepSubtitle,
+        build: _deliveryStep,
+      ),
+      _StepDef(
+        kind: _StepKind.summary,
+        title: l10n.planFlowSummaryStepTitle,
+        subtitle: l10n.planFlowSummaryStepSubtitle,
+        build: _summaryStep,
+      ),
+    ];
+  }
+
+  /// Index of the first step of [kind] in the current dynamic step list, or
+  /// -1 if that stage isn't part of this flow right now (e.g. Occasion when
+  /// an initialOccasion was supplied, or Customize for a non-customizable
+  /// package).
+  int _indexOf(_StepKind kind) => _steps.indexWhere((s) => s.kind == kind);
 
   // Common items/services are vendor-wide reusable add-ons shared across
   // many packages (PackageItem.isCommon doc: "attached to the package
@@ -215,7 +265,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _occasions = results[0] as List<Occasion>;
         _addresses = results[1] as List<Address>;
         _themes = results[2] as List<CelebrationTheme>;
-        if (_occasions.isNotEmpty) _occasion = _occasions.first;
+        if (widget.initialOccasion != null) {
+          _occasion = _occasions.cast<Occasion?>().firstWhere(
+                (o) => o?.id == widget.initialOccasion!.id,
+                orElse: () => widget.initialOccasion,
+              );
+        } else if (_occasions.isNotEmpty) {
+          _occasion = _occasions.first;
+        }
         if (_addresses.isNotEmpty) _address = _addresses.first;
         _isLoading = false;
       });
@@ -293,8 +350,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _notesCtrl.dispose();
     _couponCtrl.dispose();
     super.dispose();
   }
@@ -344,10 +399,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   void _next() {
-    if (_step == 1 && _pkg != null && !_itemsLoadAttempted && !_loadingItems) {
+    final steps = _steps;
+    if (steps[_step].kind == _StepKind.package && _pkg != null && !_itemsLoadAttempted && !_loadingItems) {
       _loadPackageItems();
     }
-    if (_step < _stepCount - 1) {
+    if (_step < steps.length - 1) {
       setState(() => _step++);
     } else {
       _finish();
@@ -392,39 +448,35 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           .map((s) => s.id)
           .toList();
 
-      final notes = <String>[
-        if (_vibes.isNotEmpty) 'Mood: ${_vibes.join(', ')}',
-        if (_colorPalette.isNotEmpty) 'Color palette: ${_colorPalette.join(', ')}',
-      ].join(' · ');
-
       // Custom colours are only sent when the customer actually picked some;
       // the mode is derived from how many they chose (the backend accepts
-      // exactly 1 for SINGLE and exactly 2 for DUAL), so there is no separate
-      // single/dual switch for them to get wrong.
+      // 1-4 colours: single, dual, triple, or quad), so there is no separate
+      // switch for the count to get wrong.
       final usingCustomColours = _showBalloonTheme && _useCustomTheme && _balloonColors.isNotEmpty;
       final balloonColorsHex = _balloonColors.map((name) => _balloonColorPalette[name]!).toList();
+      const balloonModeByCount = {1: 'single', 2: 'dual', 3: 'triple', 4: 'quad'};
 
       final booking = await _bookingService.createBooking({
         'package_id': _pkg?.id,
         'occasion_id': _occasion?.id,
         'scheduled_date': _eventDate.toIso8601String().split('T').first,
         'venue_address': _address?.fullAddress,
-        'celebration_title': _nameCtrl.text.isNotEmpty ? _nameCtrl.text : 'My Celebration',
+        'celebration_title': _occasion != null ? '${_occasion!.name} Celebration' : 'My Celebration',
         'address_id': _address?.id,
         'theme_id': _showBalloonTheme && !_useCustomTheme ? _theme?.id : null,
         if (usingCustomColours)
           'custom_theme_colors': {
-            'primary': balloonColorsHex.first,
+            'primary': balloonColorsHex[0],
             if (balloonColorsHex.length > 1) 'secondary': balloonColorsHex[1],
+            if (balloonColorsHex.length > 2) 'tertiary': balloonColorsHex[2],
+            if (balloonColorsHex.length > 3) 'quaternary': balloonColorsHex[3],
           },
         'item_ids': optionalSelected,
         'item_quantities': _itemQuantities.map((id, qty) => MapEntry(id, qty)),
         'service_ids': optionalServicesSelected,
         'service_quantities': _serviceQuantities.map((id, qty) => MapEntry(id, qty)),
-        'special_instructions': notes.isNotEmpty ? notes : null,
-        'customization_note': _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
         if (usingCustomColours) ...{
-          'balloon_color_mode': balloonColorsHex.length > 1 ? 'dual' : 'single',
+          'balloon_color_mode': balloonModeByCount[balloonColorsHex.length] ?? 'single',
           'balloon_colors': balloonColorsHex,
         },
         if (_couponCtrl.text.trim().isNotEmpty && _couponError == null)
@@ -442,7 +494,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             packageName: _pkg?.name ?? AppLocalizations.of(context)!.planFlowDefaultPackageName,
             scheduledDate: DateFormat('d MMMM yyyy').format(_eventDate),
             celebrationId: booking.celebrationId,
-            plannedGuests: _plannedGuests,
           ),
         ),
       );
@@ -458,8 +509,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     }
   }
 
-  int get _totalGuests => _plannedGuests.length;
-
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
@@ -473,14 +522,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     }
 
     final l10n = AppLocalizations.of(context)!;
-    final titles = [
-      [l10n.planFlowOccasionStepTitle, l10n.planFlowOccasionStepSubtitle],
-      [l10n.planFlowPackageStepTitle, l10n.planFlowPackageStepSubtitle],
-      [l10n.planFlowItemsStepTitle, l10n.planFlowItemsStepSubtitle],
-      [l10n.planFlowDetailsStepTitle, l10n.planFlowDetailsStepSubtitle],
-      [l10n.planFlowGuestsStepTitle, l10n.planFlowGuestsStepSubtitle],
-      [l10n.planFlowSummaryStepTitle, l10n.planFlowSummaryStepSubtitle],
-    ];
+    final steps = _steps;
+    final step = _step.clamp(0, steps.length - 1);
 
     return Scaffold(
       backgroundColor: ty.paper,
@@ -494,11 +537,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   Row(
                     children: [
                       ChromeIconButton(
-                        icon: _step == 0 ? Icons.close_rounded : Icons.chevron_left_rounded,
+                        icon: step == 0 ? Icons.close_rounded : Icons.chevron_left_rounded,
                         onTap: _back,
                       ),
                       const Spacer(),
-                      Text(l10n.planFlowStepIndicator(_step + 1, _stepCount),
+                      Text(l10n.planFlowStepIndicator(step + 1, steps.length),
                           style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w700)),
                       const Spacer(),
                       const SizedBox(width: 42),
@@ -507,13 +550,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      for (int i = 0; i < _stepCount; i++)
+                      for (int i = 0; i < steps.length; i++)
                         Expanded(
                           child: Container(
-                            margin: EdgeInsets.only(right: i == _stepCount - 1 ? 0 : 6),
+                            margin: EdgeInsets.only(right: i == steps.length - 1 ? 0 : 6),
                             height: 5,
                             decoration: BoxDecoration(
-                              color: i <= _step ? ty.saffron : ty.line,
+                              color: i <= step ? ty.saffron : ty.line,
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
@@ -527,11 +570,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
                 children: [
-                  Text(titles[_step][0], style: TyType.display(29, color: ty.ink)),
+                  Text(steps[step].title, style: TyType.display(29, color: ty.ink)),
                   const SizedBox(height: 6),
-                  Text(titles[_step][1], style: TyType.sans(14.5, color: ty.ink2, height: 1.5)),
+                  Text(steps[step].subtitle, style: TyType.sans(14.5, color: ty.ink2, height: 1.5)),
                   const SizedBox(height: 22),
-                  _stepBody(context),
+                  steps[step].build(context),
                 ],
               ),
             ),
@@ -540,7 +583,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: ty.line2)),
               ),
-              child: _footer(context),
+              child: _footer(context, steps, step),
             ),
           ],
         ),
@@ -548,9 +591,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  Widget _footer(BuildContext context) {
+  Widget _footer(BuildContext context, List<_StepDef> steps, int step) {
     final l10n = AppLocalizations.of(context)!;
-    if (_step == _stepCount - 1) {
+    if (step == steps.length - 1) {
       return TyButton(
         _isSubmitting ? l10n.planFlowCreatingBookingLabel : l10n.planFlowProceedToPaymentLabel,
         full: true,
@@ -561,170 +604,45 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     }
     return TyButton(l10n.planFlowContinueButtonLabel,
         full: true,
-        enabled: _step == 1 ? _pkg != null : true,
+        enabled: steps[step].kind == _StepKind.package ? _pkg != null : true,
         icon: Icons.chevron_right_rounded,
         onTap: _next);
-  }
-
-  Widget _stepBody(BuildContext context) {
-    switch (_step) {
-      case 0:
-        return _occasionStep(context);
-      case 1:
-        return _packageStep(context);
-      case 2:
-        return _packageItemsStep(context);
-      case 3:
-        return _detailsStep(context);
-      case 4:
-        return _guestsStep(context);
-      default:
-        return _summaryStep(context);
-    }
   }
 
   // ── Step 0: Occasion ────────────────────────────────────────────────────
 
   Widget _occasionStep(BuildContext context) {
-    final milestones = _occasions.where((o) {
-      final n = o.name.toLowerCase();
-      return n.contains('birth') || n.contains('anniv') || n.contains('grad') || n.contains('baby') || n.contains('shower');
-    }).toList();
-
-    final memories = _occasions.where((o) {
-      final n = o.name.toLowerCase();
-      return n.contains('wedding') || n.contains('mehndi') || n.contains('haldi') || n.contains('sangeet') || n.contains('marriage') || n.contains('engagement') || n.contains('roka');
-    }).toList();
-
-    final growth = _occasions.where((o) {
-      final n = o.name.toLowerCase();
-      return n.contains('corporate') || n.contains('annual') || n.contains('office') || n.contains('growth') || n.contains('seminar') || n.contains('workshop');
-    }).toList();
-
-    final others = _occasions.where((o) {
-      return !milestones.contains(o) && !memories.contains(o) && !growth.contains(o);
-    }).toList();
-
-    final l10n = AppLocalizations.of(context)!;
-    return Column(
-      children: [
-        if (milestones.isNotEmpty) ...[
-          _occasionGroup(context, l10n.planFlowMilestonesGroupLabel, milestones),
-          const SizedBox(height: 24),
-        ],
-        if (memories.isNotEmpty) ...[
-          _occasionGroup(context, l10n.planFlowMemoriesGroupLabel, memories),
-          const SizedBox(height: 24),
-        ],
-        if (growth.isNotEmpty) ...[
-          _occasionGroup(context, l10n.planFlowGrowthGroupLabel, growth),
-          const SizedBox(height: 24),
-        ],
-        if (others.isNotEmpty)
-          _occasionGroup(context, l10n.planFlowOtherMomentsGroupLabel, others),
-      ],
+    return OccasionGrid(
+      occasions: _occasions,
+      selectedId: _occasion?.id,
+      onSelect: (o) {
+        if (_occasion?.id == o.id) return;
+        setState(() {
+          _occasion = o;
+          // A package chosen for the previous occasion may not even
+          // apply to this one — clear it so the customer re-picks
+          // from the freshly filtered list rather than carrying
+          // forward a stale, possibly-mismatched selection.
+          _pkg = null;
+          _packageItems = [];
+          _itemsLoadAttempted = false;
+          _itemQuantities.clear();
+          _packageServices = [];
+          _serviceQuantities.clear();
+        });
+        _loadPackagesForOccasion(o.id);
+      },
     );
   }
 
-  Widget _occasionGroup(BuildContext context, String label, List<Occasion> list) {
-    final ty = context.ty;
-    if (list.isEmpty) return const SizedBox();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label.toUpperCase(), style: TyType.eyebrow(11, color: ty.ink3)),
-        const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 1.3,
-          children: list.map((o) {
-            final on = _occasion?.id == o.id;
-            final c = o.themeColor ?? ty.tint(o.tint);
-            final String? iconUrl = o.iconUrl;
-            final bool hasIcon = iconUrl != null && iconUrl.isNotEmpty;
+  // ── Step: Delivery Details ──────────────────────────────────────────────
 
-            return GestureDetector(
-              onTap: () {
-                if (_occasion?.id == o.id) return;
-                setState(() {
-                  _occasion = o;
-                  // A package chosen for the previous occasion may not even
-                  // apply to this one — clear it so the customer re-picks
-                  // from the freshly filtered list rather than carrying
-                  // forward a stale, possibly-mismatched selection.
-                  _pkg = null;
-                  _packageItems = [];
-                  _itemsLoadAttempted = false;
-                  _itemQuantities.clear();
-                  _packageServices = [];
-                  _serviceQuantities.clear();
-                });
-                _loadPackagesForOccasion(o.id);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                decoration: BoxDecoration(
-                  // No photography here by design — occasion cards are a
-                  // flat tint plus the vendor/admin-supplied 3D icon, never
-                  // an AI-generated background image.
-                  color: Color.alphaBlend(c.withValues(alpha: on ? 0.16 : 0.08), ty.surface),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: on ? Colors.transparent : ty.line, width: 1),
-                ),
-                foregroundDecoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: on ? Border.all(color: c, width: 2.5) : null,
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Center(
-                          child: hasIcon
-                              ? CachedNetworkImage(
-                                  imageUrl: iconUrl,
-                                  fit: BoxFit.contain,
-                                  errorWidget: (_, __, ___) => Icon(o.icon, size: 44, color: c),
-                                  placeholder: (_, __) => Icon(o.icon, size: 44, color: c.withValues(alpha: 0.4)),
-                                )
-                              : Icon(o.icon, size: 44, color: c),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        o.name,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TyType.sans(13.5, color: ty.ink, weight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  // ── Step 3: Details (Create an Invite) ──────────────────────────────────
-
-  Widget _detailsStep(BuildContext context) {
+  Widget _deliveryStep(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final minDate = DateTime.now().add(const Duration(days: 15));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _field(context, l10n.planFlowCelebrationNameLabel, _textInput(context, _nameCtrl)),
         Row(
           children: [
             Expanded(child: _field(context, l10n.planFlowWhenLabel,
@@ -742,47 +660,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           ],
         ),
         _field(context, l10n.planFlowWhereLabel, _addressPicker(context)),
-        _field(
-          context,
-          l10n.planFlowMoodLabel,
-          Wrap(
-            spacing: 9,
-            runSpacing: 9,
-            children: [l10n.planFlowVibeIntimate, l10n.planFlowVibeGrand, l10n.planFlowVibeTraditional, l10n.planFlowVibeModern]
-                .map((v) => TyChip(
-                      label: v,
-                      active: _vibes.contains(v),
-                      onTap: () => setState(() =>
-                          _vibes.contains(v) ? _vibes.remove(v) : _vibes.add(v)),
-                    ))
-                .toList(),
-          ),
-        ),
-        _field(
-          context,
-          l10n.planFlowColorPaletteLabel,
-          Wrap(
-            spacing: 9,
-            runSpacing: 9,
-            children: _colorPalettes(context)
-                .map((v) => TyChip(
-                      label: v,
-                      active: _colorPalette.contains(v),
-                      onTap: () => setState(() =>
-                          _colorPalette.contains(v) ? _colorPalette.remove(v) : _colorPalette.add(v)),
-                    ))
-                .toList(),
-          ),
-        ),
-        _field(
-          context,
-          l10n.planFlowAdditionalNotesLabel,
-          _textInput(
-            context,
-            _notesCtrl,
-            maxLines: 3,
-          ),
-        ),
       ],
     );
   }
@@ -864,169 +741,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  // ── Step 4: Guests ──────────────────────────────────────────────────────
-
-  Widget _guestsStep(BuildContext context) {
-    final ty = context.ty;
-    final l10n = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: _cardDeco(ty),
-          child: Row(children: [
-            Text('$_totalGuests', style: TyType.display(36, color: ty.ink)),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(l10n.planFlowGuestsAddedLabel, style: TyType.sans(14, color: ty.ink2)),
-            ),
-          ]),
-        ),
-        const SizedBox(height: 16),
-        Text(l10n.planFlowInviteViaLabel, style: TyType.eyebrow(11, color: ty.ink3)),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _inviteMethod(context, Icons.person_add_outlined, l10n.planFlowInviteMethodManualLabel, _openAddGuestManually),
-            _inviteMethod(context, Icons.contacts_outlined, l10n.planFlowInviteMethodContactsLabel, _importFromContacts),
-          ],
-        ),
-        const SizedBox(height: 24),
-        if (_plannedGuests.isNotEmpty) Text(l10n.planFlowGuestListLabel, style: TyType.eyebrow(11, color: ty.ink3)),
-        const SizedBox(height: 10),
-        ..._plannedGuests.asMap().entries.map((e) {
-          final g = e.value;
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: _cardDeco(ty),
-            child: Row(
-              children: [
-                TyAvatar(name: g.name, index: e.key, size: 40),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(g.name, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w600)),
-                      if (g.phone != null) Text(g.phone!, style: TyType.sans(12, color: ty.ink2)),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => setState(() => _plannedGuests.removeAt(e.key)),
-                  child: Icon(Icons.close_rounded, size: 20, color: ty.ink3),
-                ),
-              ],
-            ),
-          );
-        }),
-        Text(
-          l10n.planFlowInvitationsWhatsAppNotice,
-          style: TyType.sans(12, color: ty.ink3, height: 1.4),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _openAddGuestManually() async {
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    final ty = context.ty;
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 32),
-        decoration: BoxDecoration(color: ty.paper, borderRadius: const BorderRadius.vertical(top: Radius.circular(32))),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(AppLocalizations.of(ctx)!.planFlowAddGuestTitle, style: TyType.display(22, color: ty.ink)),
-            const SizedBox(height: 20),
-            _textInput(context, nameCtrl, hintText: AppLocalizations.of(ctx)!.planFlowAddGuestNameHint),
-            const SizedBox(height: 12),
-            _textInput(context, phoneCtrl,
-                icon: Icons.phone_outlined,
-                hintText: AppLocalizations.of(ctx)!.planFlowAddGuestPhoneHint,
-                helperText: AppLocalizations.of(ctx)!.planFlowAddGuestPhoneFormatHelperText),
-            const SizedBox(height: 24),
-            TyButton(AppLocalizations.of(ctx)!.planFlowAddGuestConfirmLabel, full: true, onTap: () => Navigator.pop(ctx, true)),
-          ],
-        ),
-      ),
-    );
-    if (result == true && nameCtrl.text.trim().isNotEmpty) {
-      setState(() => _plannedGuests.add(PlannedGuest(
-        name: nameCtrl.text.trim(),
-        phone: phoneCtrl.text.trim().isNotEmpty ? phoneCtrl.text.trim() : null,
-      )));
-    }
-  }
-
-  Future<void> _importFromContacts() async {
-    final status = await Permission.contacts.request();
-    if (!status.isGranted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.planFlowContactsPermissionNeededMessage)),
-        );
-      }
-      return;
-    }
-    try {
-      final contacts = await FlutterContacts.getContacts(withProperties: true);
-      final withPhones = contacts.where((c) => c.phones.isNotEmpty).toList();
-      if (!mounted) return;
-      final selected = await showModalBottomSheet<List<Contact>>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) => _ContactPickerSheet(contacts: withPhones),
-      );
-      if (selected != null && selected.isNotEmpty) {
-        setState(() {
-          for (final c in selected) {
-            final phone = c.phones.first.number;
-            if (_plannedGuests.any((g) => g.phone == phone)) continue;
-            _plannedGuests.add(PlannedGuest(name: c.displayName, phone: phone));
-          }
-        });
-      }
-    } catch (e) {
-      logDebug('Contact import failed: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.planFlowContactsImportError)),
-        );
-      }
-    }
-  }
-
-  Widget _inviteMethod(BuildContext context, IconData icon, String label, VoidCallback onTap) {
-    final ty = context.ty;
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Container(
-              width: 50, height: 50,
-              decoration: BoxDecoration(color: ty.surface2, borderRadius: BorderRadius.circular(14)),
-              child: Icon(icon, color: ty.ink2, size: 22),
-            ),
-            const SizedBox(height: 6),
-            Text(label, style: TyType.sans(10, color: ty.ink2)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Step 1: Package ─────────────────────────────────────────────────────
+  // ── Step: Package ────────────────────────────────────────────────────────
 
   Widget _packageStep(BuildContext context) {
     final ty = context.ty;
@@ -1084,7 +799,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           itemCount: _packages.length,
           itemBuilder: (context, i) => _packageCard(context, _packages[i]),
         ),
-        if (_showBalloonTheme) _themeStep(context),
       ],
     );
   }
@@ -1314,9 +1028,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   Widget _themeStep(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
-    return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 16),
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.planFlowChooseBalloonColoursLabel, style: TyType.eyebrow(11, color: ty.ink3)),
@@ -1370,7 +1082,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           else
             _customColourSection(context),
         ],
-      ),
     );
   }
 
@@ -1963,28 +1674,33 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     // they belong in the breakdown too — leaving them out made the total shown
     // here smaller than the amount charged at payment.
     final includedTotal = _includedLinesTotal;
+    final occasionIdx = _indexOf(_StepKind.occasion);
+    final packageIdx = _indexOf(_StepKind.package);
+    final itemsIdx = _indexOf(_StepKind.items);
+    final customizeIdx = _indexOf(_StepKind.customize);
+    final deliveryIdx = _indexOf(_StepKind.delivery);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _summaryCard(context, l10n.planFlowSummaryCelebrationLabel,
-            l10n.planFlowCelebrationSummaryValue('${_occasion?.name}', _nameCtrl.text), onEdit: () => _jumpTo(0)),
-        _summaryCard(context, l10n.planFlowSummaryPackageLabel, _pkg?.name ?? '', onEdit: () => _jumpTo(1)),
+        _summaryCard(context, l10n.planFlowSummaryCelebrationLabel, _occasion?.name ?? '',
+            onEdit: occasionIdx == -1 ? null : () => _jumpTo(occasionIdx)),
+        _summaryCard(context, l10n.planFlowSummaryPackageLabel, _pkg?.name ?? '', onEdit: () => _jumpTo(packageIdx)),
         if (_showBalloonTheme && !_useCustomTheme && _theme != null)
-          _summaryCard(context, l10n.planFlowSummaryThemeLabel, _theme!.name, onEdit: () => _jumpTo(1)),
+          _summaryCard(context, l10n.planFlowSummaryThemeLabel, _theme!.name, onEdit: () => _jumpTo(customizeIdx)),
         if (_showBalloonTheme && _useCustomTheme && _balloonColors.isNotEmpty)
           _summaryCard(
             context,
             l10n.planFlowSummaryBalloonColoursLabel,
             _balloonColors.map((n) => _balloonColorLabel(context, n)).join(', '),
-            onEdit: () => _jumpTo(1),
+            onEdit: () => _jumpTo(customizeIdx),
           ),
         if (mandatoryItems.isNotEmpty)
           _summaryCard(context, l10n.planFlowSummaryIncludedItemsLabel,
-              mandatoryItems.map((i) => i.name).join(', '), onEdit: () => _jumpTo(2)),
+              mandatoryItems.map((i) => i.name).join(', '), onEdit: () => _jumpTo(itemsIdx)),
         if (mandatoryServices.isNotEmpty)
           _summaryCard(context, l10n.planFlowSummaryIncludedServicesLabel,
-              mandatoryServices.map((s) => s.name).join(', '), onEdit: () => _jumpTo(2)),
+              mandatoryServices.map((s) => s.name).join(', '), onEdit: () => _jumpTo(itemsIdx)),
         if (selectedOptional.isNotEmpty || selectedOptionalServices.isNotEmpty)
           _summaryCard(context, l10n.planFlowSummaryAddOnsLabel, [
             ...selectedOptional.map((i) {
@@ -1995,11 +1711,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               final qty = _serviceQuantities[s.id] ?? s.quantity;
               return qty > 1 ? l10n.planFlowAddOnQuantityLabel(s.name, qty) : s.name;
             }),
-          ].join(', '), onEdit: () => _jumpTo(2)),
+          ].join(', '), onEdit: () => _jumpTo(itemsIdx)),
         _summaryCard(context, l10n.planFlowSummaryDateTimeLabel,
             l10n.planFlowDateTimeSummaryValue(DateFormat('d MMMM yyyy').format(_eventDate), l10n.planFlowDefaultEventTime),
-            onEdit: () => _jumpTo(3)),
-        _summaryCard(context, l10n.planFlowSummaryGuestCountLabel, l10n.planFlowGuestCountValue(_totalGuests), onEdit: () => _jumpTo(4)),
+            onEdit: () => _jumpTo(deliveryIdx)),
         const SizedBox(height: 16),
         _sectionHeader(l10n.planFlowAddressSectionHeader),
         Container(
@@ -2176,34 +1891,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  Widget _textInput(BuildContext context, TextEditingController ctrl,
-      {IconData? icon, int maxLines = 1, String? hintText, String? helperText}) {
-    final ty = context.ty;
-    final resp = context.resp;
-    return TextField(
-      controller: ctrl,
-      maxLines: maxLines,
-      style: TyType.sans(resp.sp(15.5), color: ty.ink, weight: FontWeight.w500),
-      decoration: InputDecoration(
-        isDense: true,
-        prefixIcon: icon == null ? null : Icon(icon, size: resp.sp(18), color: ty.ink2),
-        hintText: hintText,
-        helperText: helperText,
-        contentPadding: EdgeInsets.symmetric(horizontal: resp.w(16), vertical: resp.h(14)),
-        filled: true,
-        fillColor: ty.surface,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: ty.line, width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: ty.saffron, width: 1.5),
-        ),
-      ),
-    );
-  }
-
   Widget _staticInput(BuildContext context, IconData? icon, String value, {VoidCallback? onTap}) {
     final ty = context.ty;
     final resp = context.resp;
@@ -2243,96 +1930,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
 // The address add/edit form now lives in manage_address_screen.dart
 // (AddressFormSheet) and is reused here to avoid two divergent copies.
-
-class _ContactPickerSheet extends StatefulWidget {
-  final List<Contact> contacts;
-  const _ContactPickerSheet({required this.contacts});
-
-  @override
-  State<_ContactPickerSheet> createState() => _ContactPickerSheetState();
-}
-
-class _ContactPickerSheetState extends State<_ContactPickerSheet> {
-  final Set<Contact> _selected = {};
-  String _query = '';
-
-  @override
-  Widget build(BuildContext context) {
-    final ty = context.ty;
-    final l10n = AppLocalizations.of(context)!;
-    final filtered = widget.contacts
-        .where((c) => c.displayName.toLowerCase().contains(_query.toLowerCase()))
-        .toList();
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.85,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (ctx, scrollCtrl) => Container(
-        decoration: BoxDecoration(color: ty.paper, borderRadius: const BorderRadius.vertical(top: Radius.circular(32))),
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        child: Column(
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: ty.line, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(l10n.planFlowSelectGuestsTitle, style: TyType.display(20, color: ty.ink)),
-            const SizedBox(height: 12),
-            TextField(
-              onChanged: (v) => setState(() => _query = v),
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: l10n.planFlowSearchContactsHint,
-                prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                filled: true,
-                fillColor: ty.surface,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ty.line)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.builder(
-                controller: scrollCtrl,
-                itemCount: filtered.length,
-                itemBuilder: (context, i) {
-                  final c = filtered[i];
-                  final on = _selected.contains(c);
-                  return CheckboxListTile(
-                    value: on,
-                    activeColor: ty.saffron,
-                    title: Text(c.displayName, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
-                    subtitle: Text(c.phones.first.number, style: TyType.sans(12, color: ty.ink2)),
-                    onChanged: (v) => setState(() {
-                      if (v == true) {
-                        _selected.add(c);
-                      } else {
-                        _selected.remove(c);
-                      }
-                    }),
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(0, 12, 0, MediaQuery.of(context).padding.bottom + 16),
-              child: TyButton(
-                _selected.isEmpty ? l10n.planFlowSelectContactsLabel : l10n.planFlowAddGuestsCountLabel(_selected.length),
-                full: true,
-                enabled: _selected.isNotEmpty,
-                onTap: () => Navigator.pop(context, _selected.toList()),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ── Package item photo viewer ────────────────────────────────────────────────
 // Same swipeable-slider pattern as the package detail screen's image

@@ -13,6 +13,14 @@
 -optimizations !method/inlining/*
 -keepattributes *Annotation*
 
+# --- google_sign_in (Credential Manager) ---
+# google_sign_in 7.x signs in through androidx.credentials. R8 strips the
+# Play-services-backed provider because it is only ever resolved reflectively,
+# which makes authenticate() fail in release builds while working in debug.
+# These are the rules from Android's Credential Manager integration docs.
+-if class androidx.credentials.CredentialManager
+-keep class androidx.credentials.playservices.** { *; }
+
 # --- flutter_local_notifications ---
 -keep class com.dexterous.** { *; }
 

@@ -7,6 +7,7 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
 import 'models.dart';
+import 'services/google_auth_service.dart';
 
 const _kAccessToken = 'ty_access_token';
 const _kRefreshToken = 'ty_refresh_token';
@@ -100,6 +101,11 @@ class AuthManager extends ChangeNotifier {
 
   /// Clears all tokens and user state — call this after the logout API succeeds.
   Future<void> logout() async {
+    // Drop the cached Google session too, so the next "Continue with Google"
+    // shows the account picker instead of silently re-using the last account.
+    // Done here rather than at each call site so the 401 interceptor's forced
+    // logout clears it as well. Internally best-effort — never throws.
+    await GoogleAuthService().signOut();
     _isAuthenticated = false;
     _isGuest = false;
     _accessToken = null;

@@ -1,8 +1,10 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
+import '../theme/theme.dart';
 import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../data/auth_manager.dart';
@@ -15,17 +17,16 @@ import '../data/services/user_service.dart';
 import '../utils/currency.dart';
 import '../utils/log.dart';
 import '../widgets/avatar.dart';
-import '../widgets/emblem.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
+import '../widgets/occasion_grid.dart';
 import '../l10n/generated/app_localizations.dart';
 import 'event_hub_screen.dart';
 import 'manage_address_screen.dart';
 import 'membership_plan_screen.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
-import 'package:tyohaar/screens/invitation_management_screen.dart';
-import 'package:tyohaar/screens/occasion_detail_screen.dart';
+import 'package:tyohaar/screens/plan_flow/plan_flow_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ScrollController? scrollController;
@@ -210,10 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final totalGuests = _guests.length;
-    final rsvpdGuests = _guests.where((g) => g.rsvpStatus == 'confirmed').length;
-    final majorFestivals = _occasions.where((o) => o.category == 'major_festival').toList();
-    final lifeEvents = _occasions.where((o) => o.category == 'life_event').toList();
-    final minorFestivals = _occasions.where((o) => o.category == 'minor_festival').toList();
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -237,40 +234,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
               if (_occasions.isNotEmpty) ...[
                 SectionHeader(l10n.homeBrowseByOccasionHeader),
-                _festivalRail(context, _occasions),
+                SizedBox(height: resp.h(4)),
+                OccasionGrid(
+                  occasions: _occasions,
+                  onSelect: (o) => _push(context, PlanFlowScreen(initialOccasion: o)),
+                ),
                 SizedBox(height: resp.h(12)),
               ],
-
-              _taskRow(
-                context,
-                l10n.homeManageInvitationsLabel,
-                totalGuests > 0
-                    ? l10n.homeInvitationsMetaLabel(totalGuests, rsvpdGuests)
-                    : l10n.homeNoInvitationsYetMessage,
-                icon: Icons.mail_outline_rounded,
-                onTap: () => _push(context, const InvitationManagementScreen(), authAction: l10n.homeAuthActionManageInvitations),
-              ),
-              SizedBox(height: resp.h(12)),
 
               _membershipBanner(context),
-              SizedBox(height: resp.h(12)),
-
-              if (majorFestivals.isNotEmpty) ...[
-                SectionHeader(l10n.homePopularFestivalsHeader),
-                _festivalRail(context, majorFestivals),
-                SizedBox(height: resp.h(12)),
-              ],
-
-              if (lifeEvents.isNotEmpty) ...[
-                SectionHeader(l10n.homeLifeMomentsHeader),
-                _festivalRail(context, lifeEvents),
-                SizedBox(height: resp.h(12)),
-              ],
-
-              if (minorFestivals.isNotEmpty) ...[
-                SectionHeader(l10n.homeUpcomingCelebrationsHeader),
-                _festivalRail(context, minorFestivals),
-              ],
             ],
           ),
         ),
@@ -333,7 +305,13 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    return GestureDetector(
+    // Scoped to the hero itself, not the whole screen: once the hero scrolls
+    // out from under the status bar the annotation stops covering it and the
+    // app-wide theme-aware style takes back over, so the icons stay readable
+    // against the page background too.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: tyOverlayOverImage,
+      child: GestureDetector(
       onTap: () => _push(context, const EventHubScreen(), authAction: l10n.homeAuthActionViewEventHub),
       child: SizedBox(
         height: resp.h(420),
@@ -375,9 +353,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
+                    // Not theme-dependent. The status bar icons are white in
+                    // both themes (see tyOverlayOverImage), so the scrim that
+                    // has to carry them cannot be lighter in light mode — that
+                    // is what made the clock and battery unreadable.
                     colors: [
-                      Colors.black.withValues(alpha: ty.isDark ? 0.78 : 0.62),
-                      Colors.black.withValues(alpha: ty.isDark ? 0.46 : 0.34),
+                      Colors.black.withValues(alpha: 0.78),
+                      Colors.black.withValues(alpha: 0.46),
                       Colors.transparent,
                     ],
                     stops: const [0, 0.52, 1.0],
@@ -488,6 +470,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -594,44 +577,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _festivalRail(BuildContext context, List<Occasion> festivals) {
-    final ty = context.ty;
-    final resp = context.resp;
-    return SizedBox(
-      height: resp.h(140),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: festivals.length,
-        separatorBuilder: (_, __) => SizedBox(width: resp.w(12)),
-        itemBuilder: (context, i) {
-          final f = festivals[i];
-          return GestureDetector(
-            onTap: () => _push(context, OccasionDetailScreen(occasion: f)),
-            child: SizedBox(
-              width: resp.w(110),
-              child: Column(
-                children: [
-                  Emblem(
-                    icon: f.icon,
-                    imageUrl: f.iconUrl,
-                    tint: f.tint,
-                    tintColor: f.themeColor,
-                    size: resp.w(80),
-                  ),
-                  SizedBox(height: resp.h(8)),
-                  Text(f.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      style: TyType.sans(resp.sp(12), color: ty.ink, weight: FontWeight.w600)),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _stackedAvatars(BuildContext context, List<Guest> guests, int total) {
     final resp = context.resp;
     final l10n = AppLocalizations.of(context)!;
@@ -684,50 +629,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _taskRow(BuildContext context, String title, String meta, {IconData? icon, VoidCallback? onTap}) {
-    final ty = context.ty;
-    final resp = context.resp;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: EdgeInsets.only(bottom: resp.h(9)),
-        padding: EdgeInsets.symmetric(horizontal: resp.w(14), vertical: resp.h(12)),
-        decoration: _cardDecoration(ty, resp),
-        child: Row(
-          children: [
-            Container(
-              width: resp.w(34),
-              height: resp.w(34),
-              decoration: BoxDecoration(
-                color: ty.saffronSoft,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon ?? Icons.schedule_rounded, color: ty.saffronDeep, size: resp.w(17)),
-            ),
-            SizedBox(width: resp.w(12)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TyType.sans(resp.sp(14), color: ty.ink, weight: FontWeight.w600)),
-                  SizedBox(height: resp.h(1)),
-                  Text(meta, style: TyType.sans(resp.sp(11.5), color: ty.ink3)),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: ty.ink3, size: resp.w(18)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  BoxDecoration _cardDecoration(TyColors ty, TyResponsive resp) => BoxDecoration(
-        color: ty.surface,
-        borderRadius: BorderRadius.circular(resp.w(18)),
-        border: Border.all(color: ty.line),
-      );
 }

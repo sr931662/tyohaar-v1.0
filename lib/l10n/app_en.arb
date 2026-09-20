@@ -648,10 +648,10 @@
   "planFlowPackageStepSubtitle": "Hand-picked experiences, curated for families like yours.",
   "planFlowItemsStepTitle": "Package items",
   "planFlowItemsStepSubtitle": "Everything included, plus a few extras if you'd like them.",
-  "planFlowDetailsStepTitle": "Create an Invite",
-  "planFlowDetailsStepSubtitle": "The little things help us shape your plan.",
-  "planFlowGuestsStepTitle": "Who’s coming together?",
-  "planFlowGuestsStepSubtitle": "Group by household — the way families really gather.",
+  "planFlowCustomizeStepTitle": "Customize your journey",
+  "planFlowCustomizeStepSubtitle": "Pick the balloon colours that set the mood.",
+  "planFlowDetailsStepTitle": "Delivery Details",
+  "planFlowDetailsStepSubtitle": "When and where should we deliver the celebration?",
   "planFlowSummaryStepTitle": "Order Summary",
   "planFlowSummaryStepSubtitle": "Review your celebration plan before we get started.",
   "planFlowStepIndicator": "Step {current} of {total}",
@@ -685,7 +685,7 @@
   "planFlowCustomizableThemeHint": "This package is customizable — go with a preset theme, or pick your own colours.",
   "planFlowPresetThemesLabel": "Preset Themes",
   "planFlowCustomColourLabel": "Custom Colour",
-  "planFlowCustomColourHint": "Pick a single accent colour, or a two-colour combination for your balloon décor.",
+  "planFlowCustomColourHint": "Pick a single accent colour, or a combination of up to four for your balloon décor.",
   "planFlowNoPresetThemesMessage": "No preset themes available right now — try Custom Colour instead.",
   "planFlowDefaultPackageName": "Celebration Package",
 
@@ -737,59 +737,13 @@
     }
   },
 
-  "planFlowCelebrationNameLabel": "What shall we call it?",
   "planFlowWhenLabel": "When",
   "planFlowTimeLabel": "Time",
   "planFlowDefaultEventTime": "6:30 PM",
   "planFlowWhereLabel": "Where",
-  "planFlowMoodLabel": "The mood",
-  "planFlowVibeIntimate": "Intimate",
-  "planFlowVibeGrand": "Grand",
-  "planFlowVibeTraditional": "Traditional",
-  "planFlowVibeModern": "Modern",
-  "planFlowColorPaletteLabel": "Color palette",
-  "planFlowColorGold": "Gold",
-  "planFlowColorBlushPink": "Blush Pink",
-  "planFlowColorSkyBlue": "Sky Blue",
-  "planFlowColorSageGreen": "Sage Green",
-  "planFlowColorLavender": "Lavender",
-  "planFlowColorMulticolor": "Multicolor",
-  "planFlowAdditionalNotesLabel": "Anything else we should know?",
   "planFlowAddNewAddressLabel": "Add new address",
 
-  "planFlowGuestsAddedLabel": "guests added",
-  "planFlowInviteViaLabel": "INVITE VIA",
-  "planFlowInviteMethodManualLabel": "Manual",
-  "planFlowInviteMethodContactsLabel": "Contacts",
-  "planFlowGuestListLabel": "GUEST LIST",
-  "planFlowInvitationsWhatsAppNotice": "Invitations are sent via WhatsApp once your booking and payment are confirmed.",
-  "planFlowAddGuestTitle": "Add Guest",
-  "planFlowAddGuestNameHint": "Guest name",
-  "planFlowAddGuestPhoneHint": "Phone number",
-  "planFlowAddGuestPhoneFormatHelperText": "e.g. 9876543210",
-  "planFlowAddGuestConfirmLabel": "Add",
-  "planFlowContactsPermissionNeededMessage": "Contacts permission is needed to import guests.",
-  "planFlowContactsImportError": "Could not read contacts. Please try again.",
-  "planFlowSelectGuestsTitle": "Select Guests",
-  "planFlowSearchContactsHint": "Search contacts",
-  "planFlowSelectContactsLabel": "Select contacts",
-  "planFlowAddGuestsCountLabel": "{count, plural, one{Add {count} guest} other{Add {count} guests}}",
-  "@planFlowAddGuestsCountLabel": {
-    "description": "Confirm button in the contact picker sheet, shows how many guests are selected",
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
-
   "planFlowSummaryCelebrationLabel": "Celebration",
-  "planFlowCelebrationSummaryValue": "{occasionName} - {celebrationName}",
-  "@planFlowCelebrationSummaryValue": {
-    "description": "Celebration summary card value on the plan flow order summary step",
-    "placeholders": {
-      "occasionName": { "type": "String" },
-      "celebrationName": { "type": "String" }
-    }
-  },
   "planFlowSummaryPackageLabel": "Package",
   "planFlowSummaryThemeLabel": "Theme",
   "planFlowSummaryBalloonColoursLabel": "Balloon Colours",
@@ -811,14 +765,6 @@
     "placeholders": {
       "date": { "type": "String" },
       "time": { "type": "String" }
-    }
-  },
-  "planFlowSummaryGuestCountLabel": "Guest Count",
-  "planFlowGuestCountValue": "{count} Guests",
-  "@planFlowGuestCountValue": {
-    "description": "Guest count summary card value on the plan flow order summary step",
-    "placeholders": {
-      "count": { "type": "int" }
     }
   },
   "planFlowAddressSectionHeader": "Address",
@@ -1422,7 +1368,6 @@
   "rootNavGreetingFallbackName": "there",
   "rootNavDarkModeLabel": "Dark Mode",
   "rootNavLightModeLabel": "Light Mode",
-  "rootNavActionStartCelebration": "start a celebration",
   "rootNavActionViewPlans": "view your plans",
   "rootNavActionAccessAccount": "access your account",
   "rootNavChangeCityLabel": "Change City",
@@ -1444,6 +1389,12 @@
   "authSigningInLabel": "Signing in...",
   "authContinueAsGuestLabel": "Continue as Guest",
   "authOrDividerLabel": "OR",
+  "authGoogleSignInButtonLabel": "Continue with Google",
+  "authGoogleSigningInLabel": "Connecting to Google...",
+  "authGoogleNotConfiguredError": "Google Sign-In isn't available right now. Please use your email and password.",
+  "authGoogleUnsupportedError": "Google Sign-In isn't supported on this device.",
+  "authGoogleNoIdTokenError": "Google didn't return a sign-in token. Please try again or use your email and password.",
+  "authGoogleFailedError": "Couldn't sign in with Google. Please try again.",
   "authFullNameOptionalLabel": "FULL NAME (OPTIONAL)",
   "authNameHint": "Rahul Sharma",
   "authConfirmPasswordLabel": "CONFIRM PASSWORD",

@@ -263,25 +263,27 @@ class PaymentService(BaseService):
         """
         Initiate a gateway-backed payment for a booking.
 
-        1. Validate amount, gateway, booking ownership.
-        2. Calculate platform fee + GST.
+        1. Validate gateway and booking ownership.
+        2. Take the charge base from the BOOKING, not the request body.
         3. Apply the customer's active membership discount, if any, and
-           recompute final_amount server-side (never trust the client's
-           final_amount — it's only used pre-membership for schema
-           self-validation on PaymentCreate).
+           compute final_amount server-side.
         4. Create Payment (PENDING) + PaymentAttempt + Transaction ledger entry.
         5. Create the real order with the gateway (after commit) and persist
            its gateway_order_id.
+
+        Every money field on `data` is advisory only. The amount actually
+        charged is derived from booking.total_amount — the column the booking
+        service documents as the authoritative charge to the customer — so a
+        tampered client cannot post `subtotal: 1.00` and open a ₹1 gateway
+        order against a ₹50,000 booking. PaymentCreate's own validator only
+        checks that the client's numbers are self-consistent; it never ties
+        them to the booking, which is why that check cannot stand in for this.
         """
-        validate_payment_amount(data.subtotal)
         gateway_value = data.gateway.value if data.gateway and hasattr(data.gateway, "value") else (
             str(data.gateway) if data.gateway else "razorpay"
         )
         validate_gateway_supported(gateway_value)
 
-        platform_fee = calculate_platform_fee(data.subtotal)
-        gst = calculate_gst(platform_fee)
-        tax_amount = data.tax_amount + gst
         payment_number = generate_payment_reference()
 
         payment_obj: object = None
@@ -293,31 +295,63 @@ class PaymentService(BaseService):
             if booking.customer_id != customer_id:
                 raise BusinessRuleError("Booking does not belong to this customer.")
 
-            discount_amount = data.discount_amount
+            # booking.total_amount is already subtotal − discount + tax + fee,
+            # i.e. the full charge, so it is the base here.
+            #
+            # The platform fee and GST-on-fee below therefore only stay correct
+            # while calculate_platform_fee() returns 0 (the fee was removed
+            # project-wide). If a fee is ever reintroduced there, it would be
+            # added a second time on top of booking.platform_fee — at that
+            # point charge booking.amount_due and drop these two lines.
+            base_amount = booking.total_amount
+            validate_payment_amount(base_amount)
+
+            if abs(data.subtotal - base_amount) > Decimal("0.01"):
+                # Not fatal — the server figure wins either way — but a
+                # mismatch means either a stale client or a tampered payload,
+                # and both are worth seeing in the logs.
+                logger.warning(
+                    "Payment subtotal mismatch for booking %s: client sent %s, "
+                    "charging booking total %s",
+                    booking_id,
+                    data.subtotal,
+                    base_amount,
+                )
+
+            platform_fee = calculate_platform_fee(base_amount)
+            gst = calculate_gst(platform_fee)
+            tax_amount = gst
+
+            discount_amount = Decimal("0.00")
             membership = await uow.memberships.memberships.get_active_for_user(customer_id)
             if membership is not None:
                 plan = await uow.memberships.plans.get_by_id(membership.plan_id)
                 if plan is not None and plan.discount_percentage > 0:
-                    discount_amount += apply_membership_discount(data.subtotal, plan.discount_percentage)
+                    discount_amount += apply_membership_discount(base_amount, plan.discount_percentage)
 
             # Referral milestone discount — first usable grant whose min_plan_price
             # is met, consumed (decremented) on use, oldest grant first.
             usable_grants = await uow.referrals.milestone_grants.find_usable_for_user(customer_id)
             for grant in usable_grants:
-                if data.subtotal >= grant.min_plan_price:
-                    discount_amount += apply_membership_discount(data.subtotal, grant.discount_percentage)
+                if base_amount >= grant.min_plan_price:
+                    discount_amount += apply_membership_discount(base_amount, grant.discount_percentage)
                     await uow.referrals.milestone_grants.update(grant, {
                         "plans_remaining": grant.plans_remaining - 1,
                     })
                     break
 
-            final_amount = data.subtotal - discount_amount + tax_amount + platform_fee
+            # Discounts can never drive the charge below zero, which the
+            # gateway would reject anyway.
+            final_amount = max(
+                base_amount - discount_amount + tax_amount + platform_fee,
+                Decimal("0.00"),
+            )
 
             payment = await uow.payments.payments.create({
                 "booking_id": booking_id,
                 "payer_id": customer_id,
                 "currency": data.currency,
-                "subtotal": data.subtotal,
+                "subtotal": base_amount,
                 "discount_amount": discount_amount,
                 "tax_amount": tax_amount,
                 "platform_fee": platform_fee,

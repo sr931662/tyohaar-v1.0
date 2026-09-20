@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -15,6 +16,7 @@ import 'data/services/booking_service.dart';
 import 'data/services/celebration_service.dart';
 import 'data/services/media_service.dart';
 import 'data/services/auth_service.dart';
+import 'data/services/google_auth_service.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/support_service.dart';
 import 'data/services/membership_service.dart';
@@ -38,6 +40,7 @@ class TyohaarApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: AppState.instance),
         Provider(create: (_) => UserService()),
         Provider(create: (_) => AuthService()),
+        Provider(create: (_) => GoogleAuthService()),
         Provider(create: (_) => PackageService()),
         Provider(create: (_) => BookingService()),
         Provider(create: (_) => CelebrationService()),
@@ -68,9 +71,20 @@ class TyohaarApp extends StatelessWidget {
             builder: (context, child) {
               final mq = MediaQuery.of(context);
               final clampedScaler = mq.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.3);
-              return MediaQuery(
-                data: mq.copyWith(textScaler: clampedScaler),
-                child: OfflineBanner(child: child ?? const SizedBox.shrink()),
+              final theme = Theme.of(context);
+              // App-wide default for the system bars. Most screens have no
+              // AppBar, so appBarTheme.systemOverlayStyle alone would never
+              // reach them. Screens that run a photo under the status bar
+              // override this with their own, deeper AnnotatedRegion.
+              return AnnotatedRegion<SystemUiOverlayStyle>(
+                value: tySystemOverlay(
+                  theme.brightness,
+                  theme.scaffoldBackgroundColor,
+                ),
+                child: MediaQuery(
+                  data: mq.copyWith(textScaler: clampedScaler),
+                  child: OfflineBanner(child: child ?? const SizedBox.shrink()),
+                ),
               );
             },
             home: pov == UserPOV.vendor

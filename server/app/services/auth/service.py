@@ -86,12 +86,55 @@ class RegisterResponse(TokenPairResponse):
     email_verification_sent: bool = True
 
 
+@dataclass
+class AuthProviderConfig:
+    """
+    Public, non-secret auth config the client needs before it can start a
+    social sign-in. GOOGLE_CLIENT_ID is the web OAuth client ID, which is a
+    public identifier by Google's own design — it is embedded in every
+    client-side Google Sign-In integration. Passing it to the app at runtime
+    keeps it in one place (the server's .env) rather than in a build-time
+    --dart-define, matching how the Razorpay key_id is served.
+    """
+
+    google_client_id: str
+    google_enabled: bool
+
+
 # Email-verification OTPs get the 10-minute validity window the OTP email
 # text already promises (settings.OTP_EXPIRE_MINUTES); every other purpose
 # keeps the existing OTP_EXPIRY_SECONDS (5 min) unchanged.
 _OTP_EXPIRY_OVERRIDES: dict[OTPPurpose, int] = {
     OTPPurpose.EMAIL_VERIFICATION: settings.OTP_EXPIRE_MINUTES * 60,
 }
+
+
+def _verify_google_id_token(id_token_str: str) -> dict:
+    """
+    Verify a Google-issued ID token and return its decoded claims.
+
+    Shared by the vendor and customer Sign-In flows. The audience checked is
+    GOOGLE_CLIENT_ID — the *web* OAuth client ID, which is also what the
+    mobile apps pass as `serverClientId`, so tokens minted for the Android
+    and iOS OAuth clients still carry it as `aud`.
+    """
+    from app.services.auth.exceptions import InvalidCredentialsError
+    from app.services.exceptions import ExternalServiceError
+
+    if not settings.GOOGLE_CLIENT_ID:
+        raise ExternalServiceError(
+            "Google Sign-In", "Google Sign-In is not configured yet."
+        )
+
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token as google_id_token
+
+        return google_id_token.verify_oauth2_token(
+            id_token_str, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+        )
+    except ValueError:
+        raise InvalidCredentialsError("Invalid or expired Google token.")
 
 
 class AuthService(BaseService):
@@ -350,22 +393,8 @@ class AuthService(BaseService):
         still awaiting admin approval.
         """
         from app.services.auth.exceptions import InvalidCredentialsError
-        from app.services.exceptions import ExternalServiceError
 
-        if not settings.GOOGLE_CLIENT_ID:
-            raise ExternalServiceError(
-                "Google Sign-In", "Google Sign-In is not configured yet."
-            )
-
-        try:
-            from google.auth.transport import requests as google_requests
-            from google.oauth2 import id_token as google_id_token
-
-            idinfo = google_id_token.verify_oauth2_token(
-                id_token_str, google_requests.Request(), settings.GOOGLE_CLIENT_ID
-            )
-        except ValueError:
-            raise InvalidCredentialsError("Invalid or expired Google token.")
+        idinfo = _verify_google_id_token(id_token_str)
 
         email = idinfo.get("email")
         if not email or not idinfo.get("email_verified"):
@@ -407,6 +436,91 @@ class AuthService(BaseService):
                 "token_type": tokens.token_type,
                 "expires_in": tokens.expires_in,
             }
+
+    def get_provider_config(self) -> AuthProviderConfig:
+        """Lets the client fetch the Google client ID at runtime."""
+        return AuthProviderConfig(
+            google_client_id=settings.GOOGLE_CLIENT_ID,
+            google_enabled=bool(settings.GOOGLE_CLIENT_ID),
+        )
+
+    # ── Google Sign-In (Customer) ─────────────────────────────────────────────
+
+    async def authenticate_customer_google(
+        self,
+        id_token_str: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> TokenPairResponse:
+        """
+        Verify a Google ID token and sign a customer in, creating the account
+        on first use.
+
+        Unlike the vendor flow there is no approval gate, so "Sign in with
+        Google" and "Sign up with Google" are the same call — an email Google
+        reports as verified is enough to open a customer account. An existing
+        email/password customer signing in with Google is linked to the same
+        row rather than rejected: Google has proven ownership of the address,
+        which is also why this flips `email_verified` on.
+        """
+        from app.services.auth.exceptions import (
+            AccountLockedError,
+            InvalidCredentialsError,
+        )
+
+        idinfo = _verify_google_id_token(id_token_str)
+
+        email = idinfo.get("email")
+        if not email or not idinfo.get("email_verified"):
+            raise InvalidCredentialsError("Google account email is not verified.")
+        full_name = idinfo.get("name")
+
+        async with self._uow() as uow:
+            user = await uow.users.users.find_by_email(email)
+
+            if user is not None:
+                # Vendor/admin accounts sign in through the workspace portal,
+                # not the customer app — mirror of the vendor endpoint's own
+                # "not registered as a vendor" guard.
+                if user.role != UserRole.CUSTOMER:
+                    raise InvalidCredentialsError(
+                        "This Google account belongs to a business login. "
+                        "Please sign in through the vendor portal."
+                    )
+                if user.account_status != AccountStatus.ACTIVE:
+                    raise AccountLockedError("Account is not active.")
+
+                user.email_verified = True
+                return await self._create_user_session(
+                    user, ip_address, user_agent, LoginMethod.GOOGLE
+                )
+
+            user_data = {
+                "email": email,
+                "full_name": full_name,
+                "primary_login_provider": LoginMethod.GOOGLE,
+                "email_verified": True,
+                "role": UserRole.CUSTOMER,
+                "account_status": AccountStatus.ACTIVE,
+                "verification_status": VerificationStatus.UNVERIFIED,
+                # users.phone is NOT NULL and unique but Google never supplies
+                # one — same placeholder email/password signup uses, replaced
+                # when the user adds a real number in their profile.
+                "phone": f"TMP-{uuid.uuid4().hex[:10]}",
+            }
+            user = await uow.users.users.create_from_dict(user_data)
+            await uow.users.profiles.create_from_dict({"user_id": user.id})
+            new_user_id = user.id  # capture before the session expires on commit
+
+        # Second transaction, exactly as in register_user: the new user row has
+        # to be committed before _create_user_session opens its own uow.
+        class _UserRef:
+            def __init__(self, uid: uuid.UUID) -> None:
+                self.id = uid
+
+        return await self._create_user_session(
+            _UserRef(new_user_id), ip_address, user_agent, LoginMethod.GOOGLE
+        )
 
     async def _create_user_session(
         self,

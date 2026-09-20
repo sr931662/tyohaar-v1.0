@@ -4,6 +4,10 @@ import os
 # singleton read once at import time. Production ALLOWED_HOSTS only lists
 # real domains, which would reject the ASGI test client's "test" host.
 os.environ["ALLOWED_HOSTS"] = "*"
+# ...which the Settings validator only permits outside production. A developer
+# whose .env sets ENVIRONMENT=production (a deployment copy) would otherwise
+# see the whole suite fail at collection on that validator.
+os.environ["ENVIRONMENT"] = "development"
 
 import pytest
 import pytest_asyncio

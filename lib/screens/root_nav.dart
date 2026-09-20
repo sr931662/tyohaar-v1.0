@@ -21,7 +21,7 @@ import 'home_screen.dart';
 import 'plans_screen.dart';
 import 'explore_screen.dart';
 import 'account_screen.dart';
-import 'plan_flow/plan_flow_screen.dart';
+import 'invitation_management_screen.dart';
 
 import 'notifications_screen.dart';
 import 'membership_plan_screen.dart';
@@ -31,7 +31,8 @@ import 'privacy_policy_screen.dart';
 import '../l10n/generated/app_localizations.dart';
 
 /// The app's primary shell: five destinations + a raised central
-/// "Start a celebration" button that opens the planning flow.
+/// "Manage Invitations" button. Starting a celebration now happens by
+/// tapping an occasion card on the Home tab.
 class RootNav extends StatefulWidget {
   const RootNav({super.key});
 
@@ -148,13 +149,13 @@ class _RootNavState extends State<RootNav> {
     await _resolveLocation();
   }
 
-  void _openCreate() {
+  void _openInvitations() {
     AuthManager.instance.checkAuth(
       context,
-      action: AppLocalizations.of(context)!.rootNavActionStartCelebration,
+      action: AppLocalizations.of(context)!.homeAuthActionManageInvitations,
       onAuthenticated: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const PlanFlowScreen()),
+          MaterialPageRoute(builder: (_) => const InvitationManagementScreen()),
         );
       },
     );
@@ -243,7 +244,7 @@ class _RootNavState extends State<RootNav> {
             _setIndex(i);
           }
         },
-        onCreate: _openCreate,
+        onInvitations: _openInvitations,
       ),
     );
   }
@@ -704,11 +705,11 @@ class _AppSidebar extends StatelessWidget {
 class _BottomBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
-  final VoidCallback onCreate;
+  final VoidCallback onInvitations;
   const _BottomBar({
     required this.index,
     required this.onTap,
-    required this.onCreate,
+    required this.onInvitations,
   });
 
   @override
@@ -755,7 +756,7 @@ class _BottomBar extends StatelessWidget {
                 ),
                 SizedBox(
                   width: resp.w(72),
-                  child: Center(child: _CenterButton(onTap: onCreate)),
+                  child: Center(child: _CenterButton(onTap: onInvitations)),
                 ),
                 _DockItem(
                   selected: index == 2,
@@ -876,7 +877,7 @@ class _DockItem extends StatelessWidget {
   }
 }
 
-/// The raised "Start a celebration" button — a warm gradient disc with a
+/// The raised "Manage Invitations" button — a warm gradient disc with a
 /// slow breathing glow so it keeps drawing the eye without being loud.
 class _CenterButton extends StatefulWidget {
   final VoidCallback onTap;
@@ -947,7 +948,7 @@ class _CenterButtonState extends State<_CenterButton> with SingleTickerProviderS
                 colors: [ty.saffron, ty.gold],
               ),
             ),
-            child: Icon(Icons.add_rounded, color: ty.onPrimary, size: resp.sp(26)),
+            child: Icon(Icons.mail_outline_rounded, color: ty.onPrimary, size: resp.sp(24)),
           ),
         ),
       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../theme/theme.dart';
 import '../theme/colors.dart';
 import '../theme/responsive.dart';
 import '../theme/typography.dart';
@@ -112,7 +114,11 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
           ListView(
             padding: EdgeInsets.zero,
             children: [
-              Stack(
+              // Hero photo runs under the status bar — force white icons
+              // while it does, in both themes. See tyOverlayOverImage.
+              AnnotatedRegion<SystemUiOverlayStyle>(
+                value: tyOverlayOverImage,
+                child: Stack(
                 children: [
                   v.heroImageUrl != null
                       ? CachedNetworkImage(
@@ -184,6 +190,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                       ),
                     ),
                 ],
+              ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 120),

@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:gal/gal.dart';
@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:tyohaar/theme/assets.dart';
+import '../theme/theme.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/responsive.dart';
@@ -208,7 +209,11 @@ class _EventHubScreenState extends State<EventHubScreen> {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  Stack(
+                  // Hero photo runs under the status bar — force white icons
+                  // while it does, in both themes. See tyOverlayOverImage.
+                  AnnotatedRegion<SystemUiOverlayStyle>(
+                    value: tyOverlayOverImage,
+                    child: Stack(
                     key: _heroKey,
                     children: [
                       CachedNetworkImage(
@@ -271,6 +276,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                         ),
                       ),
                     ],
+                  ),
                   ),
                   Transform.translate(
                     offset: Offset(0, resp.h(-14)),

@@ -19,6 +19,23 @@ class AuthCredentials {
   });
 }
 
+/// Public, non-secret auth config from `GET auth/config` — currently just the
+/// Google web client ID, fetched at runtime so it lives only in the server's
+/// .env rather than in a build-time --dart-define.
+class AuthProviderConfig {
+  final String googleClientId;
+  final bool googleEnabled;
+
+  AuthProviderConfig({required this.googleClientId, required this.googleEnabled});
+
+  factory AuthProviderConfig.fromJson(Map<String, dynamic> json) {
+    return AuthProviderConfig(
+      googleClientId: json['google_client_id'] as String? ?? '',
+      googleEnabled: json['google_enabled'] as bool? ?? false,
+    );
+  }
+}
+
 class AuthService {
   final ApiClient _api = ApiClient();
 
@@ -58,6 +75,27 @@ class AuthService {
       user: User.fromJson(userData),
       emailVerificationSent: emailVerificationSent,
     );
+  }
+
+  /// Fetches the public provider config. Cached for the process — the values
+  /// come from server config and don't change between sign-in attempts.
+  AuthProviderConfig? _providerConfig;
+
+  Future<AuthProviderConfig> getProviderConfig() async {
+    final cached = _providerConfig;
+    if (cached != null) return cached;
+    final response = await _api.dio.get('auth/config');
+    final data = (response.data['data'] ?? response.data) as Map<String, dynamic>;
+    return _providerConfig = AuthProviderConfig.fromJson(data);
+  }
+
+  /// Exchanges a Google ID token for a Tyohaar session. Sign-in and sign-up
+  /// are the same call: the backend creates the customer account on first use.
+  Future<AuthCredentials> signInWithGoogle(String idToken) async {
+    final response = await _api.dio.post('auth/google', data: {
+      'id_token': idToken,
+    });
+    return _credentialsFromResponse(response.data as Map<String, dynamic>);
   }
 
   /// Vendor self-registration — distinct schema from customer `register`
