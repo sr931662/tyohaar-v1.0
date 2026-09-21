@@ -201,6 +201,9 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+                    // No "each": BookingItemResponse does not snapshot the
+                    // line's unit, so the app cannot tell a per-set line from
+                    // a per-piece one here. "Qty × price" is true either way.
                     Text(
                       AppLocalizations.of(context)!.vendorBookingDetailItemQtyPrice(
                         '${item.quantity}',

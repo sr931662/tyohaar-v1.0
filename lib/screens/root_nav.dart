@@ -625,7 +625,7 @@ class _AppSidebar extends StatelessWidget {
     final resp = context.resp;
     final l10n = AppLocalizations.of(context)!;
     final name = user?.displayName ?? l10n.rootNavWelcomeFallback;
-    final sub = user?.email ?? user?.phone ?? '';
+    final sub = user?.email ?? user?.displayPhone ?? l10n.commonNoContactNumber;
     final initial = name.isNotEmpty ? name[0].toUpperCase() : l10n.rootNavAvatarInitialFallback;
 
     return Container(

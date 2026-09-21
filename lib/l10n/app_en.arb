@@ -8,6 +8,7 @@
   "commonLoading": "Loading…",
   "commonRetry": "Retry",
   "commonGoBack": "Go Back",
+  "commonNoContactNumber": "No contact number added",
   "commonSomethingWentWrong": "Something went wrong",
   "commonUnexpectedErrorMessage": "We encountered an unexpected error. Please try again.",
   "commonSomethingMissing": "Something's missing",
@@ -185,7 +186,7 @@
   "vendorBookingDetailMarkCompleteButton": "Mark Complete",
   "vendorBookingDetailUpdatePrepStartTimeButton": "Update Preparation Start Time",
   "vendorBookingDetailNoItemsMessage": "No items",
-  "vendorBookingDetailItemQtyPrice": "Qty {quantity} · {price} each",
+  "vendorBookingDetailItemQtyPrice": "Qty {quantity} × {price}",
   "@vendorBookingDetailItemQtyPrice": {
     "description": "Line item row in the booking detail Items tab",
     "placeholders": {
@@ -359,12 +360,13 @@
   "vendorCommonItemsDeleteError": "Could not delete item.",
   "vendorCommonItemsTitle": "Common Items",
   "vendorCommonItemsEmptyMessage": "No common items yet",
-  "vendorCommonItemsQtyPriceLabel": "Qty {quantity} · ₹{price}",
+  "vendorCommonItemsQtyPriceLabel": "Qty {quantity} · ₹{price} {perUnit}",
   "@vendorCommonItemsQtyPriceLabel": {
-    "description": "Quantity and price line on a vendor common item card",
+    "description": "Quantity and price line on a vendor common item card. quantity already carries its unit (e.g. '2 sets') and perUnit reads 'per set'.",
     "placeholders": {
       "quantity": { "type": "String" },
-      "price": { "type": "String" }
+      "price": { "type": "String" },
+      "perUnit": { "type": "String" }
     }
   },
   "vendorCommonItemsEditItemTitle": "Edit Common Item",
@@ -435,12 +437,13 @@
   "vendorCommonServicesDeleteError": "Could not delete service.",
   "vendorCommonServicesTitle": "Common Services",
   "vendorCommonServicesEmptyMessage": "No common services yet",
-  "vendorCommonServicesQtyPriceLabel": "Qty {quantity} · ₹{price}",
+  "vendorCommonServicesQtyPriceLabel": "Qty {quantity} · ₹{price} {perUnit}",
   "@vendorCommonServicesQtyPriceLabel": {
-    "description": "Quantity and price line on a vendor common service card",
+    "description": "Quantity and price line on a vendor common service card. quantity already carries its unit (e.g. '2 sets') and perUnit reads 'per set'.",
     "placeholders": {
       "quantity": { "type": "String" },
-      "price": { "type": "String" }
+      "price": { "type": "String" },
+      "perUnit": { "type": "String" }
     }
   },
   "vendorCommonServicesEditServiceTitle": "Edit Common Service",
@@ -509,14 +512,17 @@
   "vendorPackageItemsLockedMessage": "Items are locked while this package is under review.",
   "vendorPackageItemsSectionLabel": "Items",
   "vendorPackageItemsCommonPrefixLabel": "Common · ",
-  "vendorPackageItemsQtyPriceLabel": "Qty {quantity} · ₹{price}",
+  "vendorPackageItemsQtyPriceLabel": "Qty {quantity} · ₹{price} {perUnit}",
   "@vendorPackageItemsQtyPriceLabel": {
-    "description": "Quantity and price line on a vendor package item card",
+    "description": "Quantity and price line on a vendor package item card. quantity already carries its unit (e.g. '2 sets') and perUnit reads 'per set'.",
     "placeholders": {
       "quantity": { "type": "String" },
-      "price": { "type": "String" }
+      "price": { "type": "String" },
+      "perUnit": { "type": "String" }
     }
   },
+  "vendorPackageItemsAddCoverButtonLabel": "Add cover photo",
+  "vendorPackageItemsChangeCoverButtonLabel": "Change cover photo",
   "vendorPackageItemsPhotosButtonLabel": "Photos",
   "vendorPackageItemsEditButtonLabel": "Edit",
   "vendorPackageItemsDeleteButtonLabel": "Delete",
@@ -565,14 +571,17 @@
   "vendorPackageServicesEmptyMessage": "No services yet",
   "vendorPackageServicesCommonPrefixLabel": "common",
   "vendorPackageServicesOptionalLabel": "optional",
-  "vendorPackageServicesQtyPriceLabel": "Qty {quantity} · ₹{price}",
+  "vendorPackageServicesQtyPriceLabel": "Qty {quantity} · ₹{price} {perUnit}",
   "@vendorPackageServicesQtyPriceLabel": {
-    "description": "Quantity and price line on a vendor package service card",
+    "description": "Quantity and price line on a vendor package service card. quantity already carries its unit (e.g. '2 sets') and perUnit reads 'per set'.",
     "placeholders": {
       "quantity": { "type": "String" },
-      "price": { "type": "String" }
+      "price": { "type": "String" },
+      "perUnit": { "type": "String" }
     }
   },
+  "vendorPackageServicesAddCoverButtonLabel": "Add cover photo",
+  "vendorPackageServicesChangeCoverButtonLabel": "Change cover photo",
   "vendorPackageServicesPhotosButtonLabel": "Photos",
   "vendorPackageServicesEditButtonLabel": "Edit",
   "vendorPackageServicesDeleteButtonLabel": "Delete",
@@ -1262,6 +1271,22 @@
   "paymentInitiateError": "Could not initiate payment. Please try again.",
   "paymentVerificationFailedError": "Payment received but verification failed. Contact support.",
   "paymentFailedError": "Payment failed. Please try again.",
+  "paymentUnavailableError": "Payments are temporarily unavailable. Please try again shortly.",
+  "paymentCancelledMessage": "Payment cancelled. You have not been charged.",
+  "paymentConfirmingLabel": "Confirming your payment…",
+  "paymentDoNotCloseLabel": "Please keep this screen open.",
+  "paymentUnconfirmedTitle": "Payment received — confirming",
+  "paymentUnconfirmedMessage": "Your payment went through, but we could not confirm it on our side yet. This usually settles within a few minutes and your booking will appear in My Bookings. Please do not pay again.",
+  "paymentCheckAgainButtonLabel": "Check again",
+  "paymentStillPendingMessage": "We haven't received this payment yet. If you completed it in another app, give it a moment and check My Bookings.",
+  "paymentContactSupportButtonLabel": "Contact support",
+  "paymentExternalWalletMessage": "Complete the payment in {wallet}, then return to this screen.",
+  "@paymentExternalWalletMessage": {
+    "description": "Shown after the customer picks an external wallet in Razorpay checkout",
+    "placeholders": {
+      "wallet": { "type": "String" }
+    }
+  },
   "paymentTitle": "Payment",
   "paymentOrderSummaryLabel": "Order Summary",
   "paymentBookingNumberLabel": "Booking #{number}",

@@ -1,10 +1,15 @@
 import '../api_client.dart';
 
-// Replace with real key at deployment: use --dart-define=RAZORPAY_KEY_ID=rzp_live_xxxx
-const String kRazorpayKeyId = String.fromEnvironment(
-  'RAZORPAY_KEY_ID',
-  defaultValue: 'rzp_test_PLACEHOLDER_KEY',
-);
+/// Build-time Razorpay key, kept only as a fallback for a backend that
+/// predates `GET payments/config`.
+///
+/// Empty by default on purpose. It used to default to
+/// `rzp_test_PLACEHOLDER_KEY`, which meant a misconfigured backend opened
+/// checkout with a key Razorpay rejects — the customer saw a broken sheet
+/// instead of the app saying payments are unavailable. An empty value makes
+/// [PaymentGatewayConfig.isUsable] false and the screen refuses to open
+/// checkout at all.
+const String kRazorpayKeyId = String.fromEnvironment('RAZORPAY_KEY_ID');
 
 class PaymentOrder {
   final String paymentId;
@@ -53,6 +58,39 @@ class PaymentGatewayConfig {
       isConfigured: json['is_configured'] as bool? ?? false,
     );
   }
+
+  /// The key checkout should open with — the server's, or the build-time
+  /// fallback for a backend without `payments/config`.
+  String get effectiveKeyId => keyId.isNotEmpty ? keyId : kRazorpayKeyId;
+
+  /// False when no real key is available from either source. Opening
+  /// Razorpay without one produces a confusing gateway-side error, so the
+  /// caller should surface "payments unavailable" instead.
+  bool get isUsable => effectiveKeyId.isNotEmpty;
+}
+
+/// Where a payment stands, as the server sees it — the authority the app
+/// falls back to when its own verify call cannot be completed.
+class PaymentStatusResult {
+  final String status;
+
+  PaymentStatusResult({required this.status});
+
+  factory PaymentStatusResult.fromJson(Map<String, dynamic> json) =>
+      PaymentStatusResult(status: json['payment_status'] as String? ?? '');
+
+  /// Captured — the gateway webhook has landed, whatever the client saw.
+  bool get isCompleted => status == 'completed';
+
+  /// Settled one way or the other; polling can stop.
+  bool get isTerminal => const {
+        'completed',
+        'failed',
+        'refunded',
+        'partially_refunded',
+        'cancelled',
+        'expired',
+      }.contains(status);
 }
 
 /// One discount applied within a DiscountEvaluationResponse.
@@ -161,15 +199,45 @@ class PaymentService {
     return PaymentOrder.fromJson(response.data['data'] as Map<String, dynamic>);
   }
 
+  /// Confirms a completed checkout with the backend, which re-derives the
+  /// HMAC and captures the payment.
+  ///
+  /// POST with a body, not the old GET with query parameters: the signature
+  /// is a credential, and query strings are written into access logs.
+  /// Idempotent server-side — an already-verified payment returns normally,
+  /// which is what makes the caller's retry loop safe.
   Future<void> verifyPayment({
     required String paymentId,
     required String razorpayPaymentId,
     required String signature,
   }) async {
-    await _api.dio.get('payments/$paymentId/verify', queryParameters: {
+    await _api.dio.post('payments/$paymentId/verify', data: {
       'gateway_payment_id': razorpayPaymentId,
       'gateway_signature': signature,
       'gateway': 'razorpay',
+    });
+  }
+
+  /// Reads the server's view of a payment. Used to settle the case where
+  /// checkout succeeded but the app could not complete verification — the
+  /// gateway webhook may have captured it regardless.
+  Future<PaymentStatusResult> getPaymentStatus(String paymentId) async {
+    final response = await _api.dio.get('payments/$paymentId');
+    return PaymentStatusResult.fromJson(response.data['data'] as Map<String, dynamic>);
+  }
+
+  /// Tells the backend the checkout attempt ended without success, so the
+  /// payment is not left PENDING forever — Razorpay sends no webhook for an
+  /// attempt the customer abandoned. Best-effort: never block the UI on it.
+  Future<void> reportPaymentAbandoned({
+    required String paymentId,
+    String? reasonCode,
+    String? reasonDescription,
+  }) async {
+    await _api.dio.post('payments/$paymentId/abandon', data: {
+      if (reasonCode != null && reasonCode.isNotEmpty) 'reason_code': reasonCode,
+      if (reasonDescription != null && reasonDescription.isNotEmpty)
+        'reason_description': reasonDescription,
     });
   }
 }

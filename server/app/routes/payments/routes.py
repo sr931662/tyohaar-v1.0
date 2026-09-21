@@ -236,12 +236,33 @@ router.add_api_route(
 router.add_api_route(
     "/{payment_id}/verify",
     ctrl.verify_payment,
-    methods=["GET"],
+    methods=["POST"],
     response_model=SuccessResponse[PaymentResponse],
     status_code=status.HTTP_200_OK,
     summary="Verify Payment",
-    description="Verify a payment against the gateway signature. Pass `gateway_payment_id`, `gateway_signature`, and `gateway` as query parameters.",
+    description=(
+        "Verify a payment against the gateway signature and mark it captured. "
+        "Send `gateway_payment_id`, `gateway_signature` and `gateway` in the JSON body — "
+        "the signature is a credential and must not travel in a query string. "
+        "Customer ownership required; safe to retry (an already-verified payment is returned as-is)."
+    ),
     operation_id="payments_verify_payment",
+)
+
+router.add_api_route(
+    "/{payment_id}/abandon",
+    ctrl.abandon_payment,
+    methods=["POST"],
+    response_model=SuccessResponse[PaymentResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Close Out A Failed Checkout Attempt",
+    description=(
+        "Report that the customer's checkout ended without success, so the payment does not "
+        "sit PENDING forever (Razorpay sends no webhook for an attempt the customer abandoned). "
+        "Customer ownership required. Only affects a still-open payment — a gateway-confirmed "
+        "one is returned untouched."
+    ),
+    operation_id="payments_abandon_payment",
 )
 
 router.add_api_route(

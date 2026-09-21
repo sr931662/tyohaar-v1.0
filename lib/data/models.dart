@@ -89,9 +89,25 @@ class User {
     );
   }
 
+  /// Social sign-up has no phone number to record, so the backend stores a
+  /// synthetic `TMP-<hex>` placeholder to satisfy the column's NOT NULL /
+  /// UNIQUE constraints (server/app/services/auth/service.py). It is never a
+  /// reachable number, so nothing user-facing may print or submit it.
+  static final RegExp _placeholderPhone = RegExp(r'^TMP-', caseSensitive: false);
+
+  /// True when [phone] holds a real number the user actually entered.
+  bool get hasRealPhone {
+    final p = phone;
+    return p != null && p.isNotEmpty && !_placeholderPhone.hasMatch(p);
+  }
+
+  /// [phone] when it is a real number, otherwise null — the accessor every
+  /// display and payment-prefill path should use instead of [phone].
+  String? get displayPhone => hasRealPhone ? phone : null;
+
   String get displayName =>
       fullName ??
-      (firstName != null ? '$firstName ${lastName ?? ""}'.trim() : (phone ?? id));
+      (firstName != null ? '$firstName ${lastName ?? ""}'.trim() : (displayPhone ?? id));
 }
 
 // ---------------------------------------------------------------------------

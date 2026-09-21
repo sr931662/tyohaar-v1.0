@@ -17,7 +17,14 @@ from app.core.permissions import AdminDep, CurrentVendorIdDep
 from app.models.enums import UserRole
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
-from app.schemas.payments.create import CouponCreate, DiscountPreviewRequest, PaymentCreate, RefundCreate
+from app.schemas.payments.create import (
+    CouponCreate,
+    DiscountPreviewRequest,
+    PaymentAbandonRequest,
+    PaymentCreate,
+    PaymentVerifyRequest,
+    RefundCreate,
+)
 from app.schemas.payments.filters import CouponFilters, PaymentFilters
 from app.schemas.payments.update import CouponUpdate
 from app.schemas.payments.response import (
@@ -90,21 +97,35 @@ async def handle_webhook(
 
 async def verify_payment(
     payment_id: uuid.UUID,
+    body: PaymentVerifyRequest,
     current_user: CurrentUserDep,
     service: PaymentServiceDep,
-    gateway_payment_id: str = Query(...),
-    gateway_signature: str = Query(...),
-    gateway: str = Query(default="razorpay"),
 ) -> SuccessResponse[PaymentResponse]:
     from app.core.config import settings
     result = await service.verify_payment(
         payment_id=payment_id,
-        gateway_payment_id=gateway_payment_id,
-        gateway_signature=gateway_signature,
+        customer_id=current_user.id,
+        gateway_payment_id=body.gateway_payment_id,
+        gateway_signature=body.gateway_signature,
         secret=settings.RAZORPAY_KEY_SECRET,
-        gateway=gateway,
+        gateway=body.gateway,
     )
     return SuccessResponse(data=result, message="Payment verified.")
+
+
+async def abandon_payment(
+    payment_id: uuid.UUID,
+    body: PaymentAbandonRequest,
+    current_user: CurrentUserDep,
+    service: PaymentServiceDep,
+) -> SuccessResponse[PaymentResponse]:
+    result = await service.abandon_payment(
+        payment_id=payment_id,
+        customer_id=current_user.id,
+        reason_code=body.reason_code,
+        reason_description=body.reason_description,
+    )
+    return SuccessResponse(data=result, message="Payment attempt closed.")
 
 
 async def get_payment(

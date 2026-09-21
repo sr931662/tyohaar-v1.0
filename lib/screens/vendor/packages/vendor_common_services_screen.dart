@@ -6,8 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
+import '../../../data/package_units.dart';
 import '../../../data/services/vendor_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../widgets/package_unit_field.dart';
 import 'item_import_export_menu.dart';
 
 /// Vendor-wide reusable service templates (Photography, DJ, Makeup, etc.),
@@ -46,8 +48,8 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final priceCtrl = TextEditingController(text: existing?.basePrice.toStringAsFixed(0) ?? '');
     final qtyCtrl = TextEditingController(text: existing?.quantity.toString() ?? '1');
-    final unitCtrl = TextEditingController(text: existing?.unit ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
+    String? unit = packageUnitForPicker(existing?.unit);
     bool isMandatory = existing?.isMandatory ?? true;
     String? coverImageUrl = existing?.coverImageUrl;
     bool isUploadingCover = false;
@@ -71,7 +73,13 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
                 Row(children: [
                   Expanded(child: TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorCommonServicesQuantityLabel))),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.vendorCommonServicesUnitLabel, helperText: l10n.vendorCommonServicesUnitFormatHelperText))),
+                  Expanded(
+                    child: PackageUnitField(
+                      value: unit,
+                      labelText: l10n.vendorCommonServicesUnitLabel,
+                      onChanged: (v) => setSheetState(() => unit = v),
+                    ),
+                  ),
                 ]),
                 TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorCommonServicesDescriptionLabel)),
                 SwitchListTile(
@@ -131,7 +139,7 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
         'name': nameCtrl.text.trim(),
         'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
         'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
-        'unit': unitCtrl.text.trim().isEmpty ? null : unitCtrl.text.trim(),
+        'unit': unit,
         'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'is_mandatory': isMandatory,
         'cover_image_url': coverImageUrl,
@@ -159,7 +167,6 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
         nameCtrl.dispose();
         priceCtrl.dispose();
         qtyCtrl.dispose();
-        unitCtrl.dispose();
         descCtrl.dispose();
       });
     }
@@ -270,7 +277,7 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
                                         Text(l10n.vendorCommonServicesOptionalLabel, style: TyType.sans(11, color: ty.ink3)),
                                       ],
                                     ]),
-                                    Text(l10n.vendorCommonServicesQtyPriceLabel(service.quantity.toString(), service.basePrice.toStringAsFixed(0)), style: TyType.sans(12, color: ty.ink2)),
+                                    Text(l10n.vendorCommonServicesQtyPriceLabel(packageUnitQuantity(service.quantity, service.unit), service.basePrice.toStringAsFixed(0), packageUnitPer(service.unit)), style: TyType.sans(12, color: ty.ink2)),
                                     Text(
                                       service.attachedPackageCount > 0
                                           ? l10n.vendorCommonServicesAttachedCountLabel(service.attachedPackageCount)

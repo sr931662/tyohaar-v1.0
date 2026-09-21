@@ -7,6 +7,7 @@ import '../../theme/colors.dart';
 import '../../theme/responsive.dart';
 import '../../theme/typography.dart';
 import '../../data/models.dart';
+import '../../data/package_units.dart';
 import '../../data/auth_manager.dart';
 import '../../data/services/package_service.dart';
 import '../../data/services/user_service.dart';
@@ -1428,30 +1429,64 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     return Icons.auto_awesome_rounded;
   }
 
-  /// A 44×44 thumbnail for an item/service row — a real photo when one
-  /// exists, otherwise a tinted tile with an icon inferred from the name
-  /// (never a blank gap), matching how Occasions always show an Emblem.
-  Widget _lineThumbnail(BuildContext context, {String? imageUrl, required String name}) {
+  /// Side length of an item/service row's photo. Sized to let the product
+  /// actually read on the row — these are decor pieces the customer is
+  /// choosing by look, and the previous 44px chip showed little more than a
+  /// colour. Still a left thumbnail rather than a package-style hero, so a
+  /// list of ten add-ons stays scannable and the toggle stays in reach.
+  static const double _lineThumbnailSize = 80;
+
+  /// A photo for an item/service row — the real image when one exists,
+  /// otherwise a tinted tile with an icon inferred from the name (never a
+  /// blank gap), matching how Occasions always show an Emblem.
+  ///
+  /// [hasGallery] marks rows that open a gallery on tap, which gets a small
+  /// badge so the affordance is visible rather than guessed at.
+  Widget _lineThumbnail(
+    BuildContext context, {
+    String? imageUrl,
+    required String name,
+    bool hasGallery = false,
+  }) {
     final ty = context.ty;
     final icon = _lineItemIcon(name);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 44,
-        height: 44,
-        color: ty.saffronSoft,
-        alignment: Alignment.center,
-        child: (imageUrl != null && imageUrl.isNotEmpty)
-            ? CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => Icon(icon, color: ty.saffronDeep, size: 20),
-                placeholder: (_, __) => Icon(icon, color: ty.saffronDeep, size: 20),
-              )
-            : Icon(icon, color: ty.saffronDeep, size: 20),
-      ),
+    const size = _lineThumbnailSize;
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: size,
+            height: size,
+            color: ty.saffronSoft,
+            alignment: Alignment.center,
+            child: (imageUrl != null && imageUrl.isNotEmpty)
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    width: size,
+                    height: size,
+                    fit: BoxFit.cover,
+                    memCacheWidth: 240,
+                    errorWidget: (_, __, ___) => Icon(icon, color: ty.saffronDeep, size: 30),
+                    placeholder: (_, __) => Icon(icon, color: ty.saffronDeep, size: 30),
+                  )
+                : Icon(icon, color: ty.saffronDeep, size: 30),
+          ),
+        ),
+        if (hasGallery)
+          Positioned(
+            right: 4,
+            bottom: 4,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(Icons.photo_library_rounded, size: 12, color: Colors.white),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1460,7 +1495,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     final l10n = AppLocalizations.of(context)!;
     final selected = _itemQuantities.containsKey(item.id);
     final qty = _itemQuantities[item.id] ?? item.quantity;
-    final thumbnail = item.imageUrls.isNotEmpty ? item.imageUrls.first : item.iconUrl;
+    // allImageUrls, not imageUrls: the portals set an item's photo as its
+    // cover_image_url, and most items have only that — reading the gallery
+    // list alone left every one of them on the fallback icon.
+    final images = item.allImageUrls;
+    final thumbnail = images.isNotEmpty ? images.first : item.iconUrl;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1472,8 +1511,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           Row(
             children: [
               GestureDetector(
-                onTap: item.imageUrls.length > 1 ? () => _openItemGallery(context, item) : null,
-                child: _lineThumbnail(context, imageUrl: thumbnail, name: item.name),
+                onTap: images.length > 1 ? () => _openItemGallery(context, item) : null,
+                child: _lineThumbnail(context, imageUrl: thumbnail, name: item.name, hasGallery: images.length > 1),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1487,9 +1526,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     // charged on top of the package base price, so hiding
                     // their price made the running total unexplainable.
                     Text(
+                      // Singular: the price is for one of them, so a "sets"
+                      // line must read "₹500 / set", not "₹500 / sets".
                       locked
-                          ? l10n.planFlowItemPriceLabel(formatPrice(item.unitPrice), item.unit ?? l10n.planFlowUnitFallback)
-                          : l10n.planFlowAddOnPriceLabel(formatPrice(item.unitPrice), item.unit ?? l10n.planFlowUnitFallback),
+                          ? l10n.planFlowItemPriceLabel(formatPrice(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback))
+                          : l10n.planFlowAddOnPriceLabel(formatPrice(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback)),
                       style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
                     ),
                   ],
@@ -1516,7 +1557,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text(l10n.planFlowQuantityLabel(item.unit ?? ''), style: TyType.sans(12, color: ty.ink3)),
+                Text(l10n.planFlowQuantityLabel(packageUnitLabel(item.unit).toLowerCase()), style: TyType.sans(12, color: ty.ink3)),
                 const SizedBox(width: 10),
                 _qtyStepper(
                   context,
@@ -1538,7 +1579,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     final l10n = AppLocalizations.of(context)!;
     final selected = _serviceQuantities.containsKey(service.id);
     final qty = _serviceQuantities[service.id] ?? service.quantity;
-    final thumbnail = service.imageUrls.isNotEmpty ? service.imageUrls.first : service.iconUrl;
+    final images = service.allImageUrls;
+    final thumbnail = images.isNotEmpty ? images.first : service.iconUrl;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1550,8 +1592,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           Row(
             children: [
               GestureDetector(
-                onTap: service.imageUrls.length > 1 ? () => _openServiceGallery(context, service) : null,
-                child: _lineThumbnail(context, imageUrl: thumbnail, name: service.name),
+                onTap: images.length > 1 ? () => _openServiceGallery(context, service) : null,
+                child: _lineThumbnail(context, imageUrl: thumbnail, name: service.name, hasGallery: images.length > 1),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1563,8 +1605,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                       Text(service.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
                     Text(
                       locked
-                          ? l10n.planFlowItemPriceLabel(formatPrice(service.unitPrice), service.unit ?? l10n.planFlowUnitFallback)
-                          : l10n.planFlowAddOnPriceLabel(formatPrice(service.unitPrice), service.unit ?? l10n.planFlowUnitFallback),
+                          ? l10n.planFlowItemPriceLabel(formatPrice(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback))
+                          : l10n.planFlowAddOnPriceLabel(formatPrice(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback)),
                       style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
                     ),
                   ],
@@ -1591,7 +1633,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text(l10n.planFlowQuantityLabel(service.unit ?? ''), style: TyType.sans(12, color: ty.ink3)),
+                Text(l10n.planFlowQuantityLabel(packageUnitLabel(service.unit).toLowerCase()), style: TyType.sans(12, color: ty.ink3)),
                 const SizedBox(width: 10),
                 _qtyStepper(
                   context,
@@ -1610,7 +1652,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   void _openServiceGallery(BuildContext context, PackageServiceLine service) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => _ItemImageGalleryScreen(images: service.imageUrls, title: service.name),
+      builder: (_) => _ItemImageGalleryScreen(images: service.allImageUrls, title: service.name),
       fullscreenDialog: true,
     ));
   }
@@ -1648,7 +1690,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   void _openItemGallery(BuildContext context, PackageItem item) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => _ItemImageGalleryScreen(images: item.imageUrls, title: item.name),
+      builder: (_) => _ItemImageGalleryScreen(images: item.allImageUrls, title: item.name),
       fullscreenDialog: true,
     ));
   }

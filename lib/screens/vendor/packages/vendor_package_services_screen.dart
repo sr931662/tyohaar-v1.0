@@ -6,8 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
+import '../../../data/package_units.dart';
 import '../../../data/services/vendor_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../widgets/package_unit_field.dart';
 import 'item_import_export_menu.dart';
 
 class VendorPackageServicesScreen extends StatefulWidget {
@@ -43,8 +45,10 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final priceCtrl = TextEditingController(text: existing?.basePrice.toStringAsFixed(0) ?? '');
     final qtyCtrl = TextEditingController(text: existing?.quantity.toString() ?? '1');
-    final unitCtrl = TextEditingController(text: existing?.unit ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
+    String? unit = packageUnitForPicker(existing?.unit);
+    String? coverImageUrl = existing?.coverImageUrl;
+    bool isUploadingCover = false;
     bool isMandatory = existing?.isMandatory ?? true;
     final l10n = AppLocalizations.of(context)!;
 
@@ -69,9 +73,45 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
                 Row(children: [
                   Expanded(child: TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorPackageServicesQuantityLabel))),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.vendorPackageServicesUnitLabel, helperText: l10n.vendorPackageServicesUnitFormatHelperText))),
+                  Expanded(
+                    child: PackageUnitField(
+                      value: unit,
+                      labelText: l10n.vendorPackageServicesUnitLabel,
+                      onChanged: (v) => setSheetState(() => unit = v),
+                    ),
+                  ),
                 ]),
                 TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorPackageServicesDescriptionLabel)),
+                const SizedBox(height: 12),
+                Row(children: [
+                  if (coverImageUrl != null) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(imageUrl: coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  TextButton(
+                    onPressed: isUploadingCover
+                        ? null
+                        : () async {
+                            final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+                            if (image == null) return;
+                            setSheetState(() => isUploadingCover = true);
+                            try {
+                              final url = await _vendorService.uploadImage(File(image.path), 'package_image');
+                              setSheetState(() { coverImageUrl = url; isUploadingCover = false; });
+                            } catch (_) {
+                              setSheetState(() => isUploadingCover = false);
+                            }
+                          },
+                    child: isUploadingCover
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(coverImageUrl == null
+                            ? l10n.vendorPackageServicesAddCoverButtonLabel
+                            : l10n.vendorPackageServicesChangeCoverButtonLabel),
+                  ),
+                ]),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(l10n.vendorPackageServicesMandatoryLabel),
@@ -96,9 +136,10 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
         'name': nameCtrl.text.trim(),
         'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
         'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
-        'unit': unitCtrl.text.trim().isEmpty ? null : unitCtrl.text.trim(),
+        'unit': unit,
         'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'is_mandatory': isMandatory,
+        'cover_image_url': coverImageUrl,
       };
       if (existing == null) {
         await _vendorService.addPackageService(widget.package.id, body);
@@ -117,7 +158,6 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
         nameCtrl.dispose();
         priceCtrl.dispose();
         qtyCtrl.dispose();
-        unitCtrl.dispose();
         descCtrl.dispose();
       });
     }
@@ -206,16 +246,35 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
                           children: [
                             Row(
                               children: [
+                                // Sized and fallen back to match the items
+                                // screen, so both lists read as one surface.
                                 if (service.coverImageUrl != null || service.imageUrls.isNotEmpty) ...[
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
                                     child: CachedNetworkImage(
                                       imageUrl: service.coverImageUrl ?? service.imageUrls.first,
-                                      width: 40, height: 40, fit: BoxFit.cover,
-                                      errorWidget: (context, url, error) => Container(width: 40, height: 40, color: ty.line2),
+                                      width: 52,
+                                      height: 52,
+                                      fit: BoxFit.cover,
+                                      memCacheWidth: 150,
+                                      placeholder: (context, url) => Container(width: 52, height: 52, color: Colors.black12),
+                                      errorWidget: (context, url, error) => Container(
+                                        width: 52,
+                                        height: 52,
+                                        color: Colors.black12,
+                                        child: const Icon(Icons.broken_image_outlined, size: 18),
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: 12),
+                                ] else ...[
+                                  Container(
+                                    width: 52,
+                                    height: 52,
+                                    decoration: BoxDecoration(color: ty.paper, borderRadius: BorderRadius.circular(8), border: Border.all(color: ty.line)),
+                                    child: Icon(Icons.design_services_outlined, size: 20, color: ty.ink3),
+                                  ),
+                                  const SizedBox(width: 12),
                                 ],
                                 Expanded(
                                   child: Column(
@@ -237,7 +296,7 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
                                           Text(l10n.vendorPackageServicesOptionalLabel, style: TyType.sans(11, color: ty.ink3)),
                                         ],
                                       ]),
-                                      Text(l10n.vendorPackageServicesQtyPriceLabel(service.quantity.toString(), service.basePrice.toStringAsFixed(0)),
+                                      Text(l10n.vendorPackageServicesQtyPriceLabel(packageUnitQuantity(service.quantity, service.unit), service.basePrice.toStringAsFixed(0), packageUnitPer(service.unit)),
                                           style: TyType.sans(12, color: ty.ink2)),
                                     ],
                                   ),

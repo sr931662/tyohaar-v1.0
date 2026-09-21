@@ -230,7 +230,9 @@ class _AccountScreenState extends State<AccountScreen> {
 
     final user = _user;
     final name = user?.displayName ?? l10n.accountWelcomeFallback;
-    final sub = user?.phone ?? user?.email ?? '';
+    // displayPhone, not phone — a social sign-up carries a synthetic
+    // `TMP-<hex>` placeholder that must never reach the user.
+    final sub = user?.displayPhone ?? user?.email ?? l10n.commonNoContactNumber;
     final photoUrl = user?.profilePhotoUrl;
     final initial = name.isNotEmpty ? name[0].toUpperCase() : l10n.accountAvatarInitialFallback;
 

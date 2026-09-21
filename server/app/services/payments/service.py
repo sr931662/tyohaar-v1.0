@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.enums import (
+    BookingStatus,
     CouponAdminStatus,
     CouponType,
     PaymentStatus,
@@ -43,6 +44,10 @@ from app.schemas.payments.response import (
 from app.schemas.payments.filters import CouponFilters, PaymentFilters
 from app.services.base import BaseService
 from app.services.exceptions import BusinessRuleError, ExternalServiceError, NotFoundError
+from app.services.payments.constants import (
+    WEBHOOK_FAILURE_EVENTS,
+    WEBHOOK_SUCCESS_EVENTS,
+)
 from app.services.payments.exceptions import (
     CouponNotFoundError,
     InvalidGatewaySignatureError,
@@ -465,7 +470,24 @@ class PaymentService(BaseService):
         entity = body.get("payload", {}).get("payment", {}).get("entity", {})
         gateway_order_id = entity.get("order_id")
         gateway_payment_id = entity.get("id")
-        is_success = event == "payment.captured"
+
+        # Only two events move a payment out of PENDING. Everything else
+        # Razorpay may deliver — payment.authorized, payment.pending,
+        # order.paid, payment.dispute.* — is recorded and left alone.
+        #
+        # This used to be `is_success = event == "payment.captured"` with an
+        # `else` that marked the payment FAILED, which inverted the meaning of
+        # every other event. The damaging case is the normal one: Razorpay
+        # sends payment.authorized before payment.captured, so a successful
+        # payment was marked FAILED on the first event, and the idempotency
+        # guard below then made payment.captured a no-op — leaving a captured
+        # payment and its booking permanently FAILED.
+        if event in WEBHOOK_SUCCESS_EVENTS:
+            outcome: bool | None = True
+        elif event in WEBHOOK_FAILURE_EVENTS:
+            outcome = False
+        else:
+            outcome = None
 
         now = datetime.now(tz=timezone.utc)
         payment_outcome: tuple[uuid.UUID, bool, str, Decimal] | None = None
@@ -500,10 +522,45 @@ class PaymentService(BaseService):
 
                 if payment is None:
                     logger.warning("Webhook for unknown gateway_order_id=%s", gateway_order_id)
-                # Idempotency guard — a payment only transitions out of PENDING once
-                elif payment.payment_status in (PaymentStatus.COMPLETED, PaymentStatus.FAILED):
+                elif outcome is None:
+                    # Informational event: stored above, no state change.
+                    logger.info(
+                        "Webhook event=%s for payment=%s carries no outcome; recorded only.",
+                        event,
+                        payment.id,
+                    )
+                # Idempotency guard. A capture is the gateway's own word that
+                # money moved, so it outranks anything recorded earlier and is
+                # allowed to correct a FAILED row — the case being: the
+                # customer paid, dismissed the sheet before the callback, the
+                # app reported the attempt abandoned, and payment.captured
+                # then arrived. Skipping it there left captured money recorded
+                # as a failure with the booking unconfirmed.
+                #
+                # Already-settled outcomes are still never rewritten: a second
+                # capture is a no-op, and a failure event never un-completes or
+                # un-refunds a payment.
+                elif outcome and payment.payment_status in (
+                    PaymentStatus.COMPLETED,
+                    PaymentStatus.REFUNDED,
+                    PaymentStatus.PARTIALLY_REFUNDED,
+                ):
                     pass
-                elif is_success:
+                elif not outcome and payment.payment_status in (
+                    PaymentStatus.COMPLETED,
+                    PaymentStatus.FAILED,
+                    PaymentStatus.REFUNDED,
+                    PaymentStatus.PARTIALLY_REFUNDED,
+                ):
+                    pass
+                elif outcome:
+                    if payment.payment_status == PaymentStatus.FAILED:
+                        logger.warning(
+                            "Capture event=%s promoting previously-FAILED payment=%s; "
+                            "the gateway confirms the money moved.",
+                            event,
+                            payment.id,
+                        )
                     await uow.payments.payments.update(payment, {
                         "payment_status": PaymentStatus.COMPLETED,
                         "gateway_payment_id": gateway_payment_id,
@@ -608,6 +665,7 @@ class PaymentService(BaseService):
     async def verify_payment(
         self,
         payment_id: uuid.UUID,
+        customer_id: uuid.UUID,
         gateway_payment_id: str,
         gateway_signature: str,
         secret: str,
@@ -616,21 +674,56 @@ class PaymentService(BaseService):
         """
         Client-side redirect verification (Razorpay checkout flow).
         Verifies the HMAC and marks the payment as COMPLETED.
+
+        [customer_id] is the authenticated caller, and a payment belonging to
+        anyone else is reported as not found rather than forbidden, so the
+        endpoint cannot be used to probe which payment IDs exist. The check
+        runs before the already-COMPLETED short-circuit below: that branch
+        returns the full PaymentResponse without needing a valid signature,
+        so without an ownership check any signed-in user could read back
+        another customer's payment by guessing its ID.
         """
         async with self._uow() as uow:
             payment = await validate_payment_exists(payment_id, uow)
 
+            if payment.payer_id != customer_id:
+                logger.warning(
+                    "Rejected verify_payment for payment=%s by non-owner user=%s",
+                    payment_id,
+                    customer_id,
+                )
+                raise NotFoundError("Payment", str(payment_id))
+
             if payment.payment_status == PaymentStatus.COMPLETED:
                 return PaymentResponse.model_validate(payment)
 
-            if payment.payment_status == PaymentStatus.FAILED:
-                raise PaymentAlreadyFailedError()
+            # A refunded payment is past this point in its life; re-capturing
+            # it would rewrite settled history.
+            if payment.payment_status in (
+                PaymentStatus.REFUNDED,
+                PaymentStatus.PARTIALLY_REFUNDED,
+            ):
+                return PaymentResponse.model_validate(payment)
 
             # For Razorpay: HMAC is over "order_id|payment_id"
             order_id = payment.gateway_order_id or ""
             raw = f"{order_id}|{gateway_payment_id}".encode("utf-8")
             if not verify_webhook_signature(raw, gateway_signature, secret, gateway):
+                # Only now is a FAILED row the final word: without a valid
+                # signature there is nothing to weigh against it.
+                if payment.payment_status == PaymentStatus.FAILED:
+                    raise PaymentAlreadyFailedError()
                 raise InvalidGatewaySignatureError()
+
+            # A valid signature is Razorpay's own confirmation that this order
+            # was paid, so it may correct a row the client had reported as
+            # abandoned — the customer who paid and then dismissed the sheet.
+            # The FAILED check deliberately sits after signature verification
+            # so an unsigned caller can never trigger this promotion.
+            if payment.payment_status == PaymentStatus.FAILED:
+                logger.warning(
+                    "Verified signature promoting previously-FAILED payment=%s", payment.id
+                )
 
             now = datetime.now(tz=timezone.utc)
             await uow.payments.payments.update(payment, {
@@ -713,6 +806,72 @@ class PaymentService(BaseService):
                 logger.exception("Discount usage recording failed for payment=%s", payment_id)
 
         return result
+
+    async def abandon_payment(
+        self,
+        payment_id: uuid.UUID,
+        customer_id: uuid.UUID,
+        reason_code: str | None = None,
+        reason_description: str | None = None,
+    ) -> PaymentResponse:
+        """
+        Record that the customer's checkout attempt ended without success —
+        gateway error, or the customer dismissing the sheet.
+
+        Without this, a dismissed checkout left the Payment row PENDING
+        forever: Razorpay sends no webhook for a payment the customer never
+        attempted, so nothing else would ever close the row out, and the
+        vendor's pending-amount totals counted money nobody was paying.
+
+        Deliberately conservative — it never contradicts the gateway:
+
+        * COMPLETED / FAILED / REFUNDED etc. are returned untouched, since
+          this is an unauthenticated-by-signature client claim and a webhook
+          or verify call is always the better authority.
+        * A client that reports failure while the capture webhook is in
+          flight therefore cannot undo the capture; the webhook's own
+          idempotency guard likewise leaves this FAILED row alone, so the
+          reconciliation path (client polling GET /payments/{id}) is what
+          resolves that race.
+        """
+        now = datetime.now(tz=timezone.utc)
+        async with self._uow() as uow:
+            payment = await validate_payment_exists(payment_id, uow)
+
+            if payment.payer_id != customer_id:
+                logger.warning(
+                    "Rejected abandon_payment for payment=%s by non-owner user=%s",
+                    payment_id,
+                    customer_id,
+                )
+                raise NotFoundError("Payment", str(payment_id))
+
+            open_states = (
+                PaymentStatus.PENDING,
+                PaymentStatus.INITIATED,
+                PaymentStatus.PROCESSING,
+            )
+            if payment.payment_status not in open_states:
+                return PaymentResponse.model_validate(payment)
+
+            await uow.payments.payments.update(payment, {
+                "payment_status": PaymentStatus.FAILED,
+                "failed_at": now,
+            })
+
+            attempts = await uow.payments.attempts.find_by_payment(payment.id)
+            if attempts:
+                await uow.payments.attempts.update(attempts[-1], {
+                    "attempt_status": PaymentAttemptStatus.FAILED,
+                    "completed_at": now,
+                    "failure_code": (reason_code or "")[:100] or None,
+                    "failure_reason": (reason_description or "")[:500] or None,
+                })
+
+            # The booking stays as it is: it is still a live booking the
+            # customer can retry paying for, and initiate_payment opens a new
+            # Payment row for the next attempt.
+            return PaymentResponse.model_validate(payment)
 
     # ── Payment Queries ───────────────────────────────────────────────────────
 

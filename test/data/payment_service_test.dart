@@ -119,7 +119,7 @@ void main() {
   });
 
   group('PaymentService.verifyPayment', () {
-    test('sends the gateway payment id and signature as query params', () async {
+    test('POSTs the gateway payment id and signature in the body', () async {
       adapter = _ScriptedAdapter((opts) => _json(200, '{"data":{}}'));
       ApiClient().dio.httpClientAdapter = adapter;
 
@@ -130,8 +130,118 @@ void main() {
       );
 
       expect(adapter.lastRequest?.path, 'payments/pay_1/verify');
-      expect(adapter.lastRequest?.queryParameters['gateway_payment_id'], 'rzp_pay_1');
-      expect(adapter.lastRequest?.queryParameters['gateway_signature'], 'sig_1');
+      // POST with a body, never GET with query parameters: the signature is
+      // a credential and query strings are written into access logs.
+      expect(adapter.lastRequest?.method, 'POST');
+      final body = adapter.lastRequest?.data as Map;
+      expect(body['gateway_payment_id'], 'rzp_pay_1');
+      expect(body['gateway_signature'], 'sig_1');
+      expect(body['gateway'], 'razorpay');
+    });
+
+    test('keeps the signature out of the query string entirely', () async {
+      adapter = _ScriptedAdapter((opts) => _json(200, '{"data":{}}'));
+      ApiClient().dio.httpClientAdapter = adapter;
+
+      await service.verifyPayment(
+        paymentId: 'pay_1',
+        razorpayPaymentId: 'rzp_pay_1',
+        signature: 'sig_1',
+      );
+
+      expect(adapter.lastRequest?.queryParameters, isEmpty);
+    });
+  });
+
+  group('PaymentService.getPaymentStatus', () {
+    test('reads the server payment status', () async {
+      adapter = _ScriptedAdapter(
+        (opts) => _json(200, '{"data":{"payment_status":"completed"}}'),
+      );
+      ApiClient().dio.httpClientAdapter = adapter;
+
+      final result = await service.getPaymentStatus('pay_1');
+
+      expect(adapter.lastRequest?.path, 'payments/pay_1');
+      expect(adapter.lastRequest?.method, 'GET');
+      expect(result.isCompleted, isTrue);
+      expect(result.isTerminal, isTrue);
+    });
+
+    test('treats a still-pending payment as non-terminal', () async {
+      adapter = _ScriptedAdapter(
+        (opts) => _json(200, '{"data":{"payment_status":"pending"}}'),
+      );
+      ApiClient().dio.httpClientAdapter = adapter;
+
+      final result = await service.getPaymentStatus('pay_1');
+
+      expect(result.isCompleted, isFalse);
+      // Non-terminal is what keeps the screen polling while the capture
+      // webhook is still in flight.
+      expect(result.isTerminal, isFalse);
+    });
+
+    test('treats a failed payment as terminal but not completed', () async {
+      adapter = _ScriptedAdapter(
+        (opts) => _json(200, '{"data":{"payment_status":"failed"}}'),
+      );
+      ApiClient().dio.httpClientAdapter = adapter;
+
+      final result = await service.getPaymentStatus('pay_1');
+
+      expect(result.isCompleted, isFalse);
+      expect(result.isTerminal, isTrue);
+    });
+  });
+
+  group('PaymentService.reportPaymentAbandoned', () {
+    test('POSTs the failure reason', () async {
+      adapter = _ScriptedAdapter((opts) => _json(200, '{"data":{}}'));
+      ApiClient().dio.httpClientAdapter = adapter;
+
+      await service.reportPaymentAbandoned(
+        paymentId: 'pay_1',
+        reasonCode: 'BAD_REQUEST_ERROR',
+        reasonDescription: 'Customer dismissed checkout',
+      );
+
+      expect(adapter.lastRequest?.path, 'payments/pay_1/abandon');
+      expect(adapter.lastRequest?.method, 'POST');
+      final body = adapter.lastRequest?.data as Map;
+      expect(body['reason_code'], 'BAD_REQUEST_ERROR');
+      expect(body['reason_description'], 'Customer dismissed checkout');
+    });
+
+    test('omits empty reason fields rather than sending nulls', () async {
+      adapter = _ScriptedAdapter((opts) => _json(200, '{"data":{}}'));
+      ApiClient().dio.httpClientAdapter = adapter;
+
+      await service.reportPaymentAbandoned(paymentId: 'pay_1');
+
+      final body = adapter.lastRequest?.data as Map;
+      expect(body.containsKey('reason_code'), isFalse);
+      expect(body.containsKey('reason_description'), isFalse);
+    });
+  });
+
+  group('PaymentGatewayConfig', () {
+    test('is unusable when neither the server nor the build supplies a key', () {
+      final config = PaymentGatewayConfig.fromJson(
+        {'gateway': 'razorpay', 'key_id': '', 'is_configured': false},
+      );
+      // No placeholder key: opening checkout without a real one produces a
+      // gateway-side error the customer cannot act on.
+      expect(config.isUsable, isFalse);
+      expect(config.effectiveKeyId, isEmpty);
+    });
+
+    test('prefers the key the server serves', () {
+      final config = PaymentGatewayConfig.fromJson(
+        {'gateway': 'razorpay', 'key_id': 'rzp_live_abc', 'is_configured': true},
+      );
+      expect(config.isUsable, isTrue);
+      expect(config.effectiveKeyId, 'rzp_live_abc');
     });
   });
 }

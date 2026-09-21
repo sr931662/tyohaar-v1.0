@@ -321,3 +321,44 @@ class DiscountPreviewRequest(BaseSchema):
     @classmethod
     def normalise_coupon_code(cls, v: str | None) -> str | None:
         return v.upper().strip() if v else v
+
+
+class PaymentVerifyRequest(BaseSchema):
+    """
+    Request body for client-side Razorpay checkout verification.
+
+    Sent as a POST body rather than query parameters: the signature is a
+    credential proving the capture came from Razorpay, and query strings are
+    written verbatim into Cloud Run / proxy access logs, so passing it in the
+    URL leaked it to anyone who could read logs. A body also matches the fact
+    that this call mutates the payment and confirms the booking, which a GET
+    should never do.
+    """
+
+    gateway_payment_id: str = Field(
+        max_length=255,
+        description="Razorpay's razorpay_payment_id from the checkout success callback",
+    )
+    gateway_signature: str = Field(
+        max_length=512,
+        description="razorpay_signature — HMAC-SHA256 of 'order_id|payment_id' under the API key secret",
+    )
+    gateway: str = Field(default="razorpay", max_length=50)
+
+
+class PaymentAbandonRequest(BaseSchema):
+    """
+    Request body reporting that a checkout attempt ended without success —
+    a gateway error, or the customer dismissing the sheet.
+
+    Carries no signature by design: there is nothing to prove, and the
+    service treats it as a hint that can only close out a still-open payment,
+    never contradict a gateway-confirmed one.
+    """
+
+    reason_code: str | None = Field(
+        default=None, max_length=100, description="Gateway error code, when the SDK supplied one"
+    )
+    reason_description: str | None = Field(
+        default=None, max_length=500, description="Human-readable failure reason for analytics"
+    )

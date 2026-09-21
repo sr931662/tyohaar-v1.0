@@ -67,7 +67,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           _user = user;
           _nameController.text = user.fullName ?? user.firstName ?? '';
           _emailController.text = user.email ?? '';
-          _phoneController.text = user.phone ?? '';
+          // Leave the field blank for a social sign-up's `TMP-<hex>`
+          // placeholder so the user types a real number over an empty box
+          // rather than editing gibberish.
+          _phoneController.text = user.displayPhone ?? '';
           _isLoading = false;
         });
       }

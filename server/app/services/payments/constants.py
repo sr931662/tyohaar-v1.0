@@ -16,6 +16,19 @@ GST_ON_PLATFORM_FEE = Decimal("0.18")            # 18% GST on platform fee
 
 SUPPORTED_GATEWAYS = {"razorpay", "stripe", "cashfree", "phonepe", "paytm", "offline"}
 
+# ── Razorpay webhook events ───────────────────────────────────────────────────
+# Only these move a payment out of PENDING. Every other event Razorpay can
+# deliver (payment.authorized, payment.pending, payment.dispute.*, and any
+# event added to the dashboard subscription later) is stored for audit and
+# left to the two below, so an unexpected subscription cannot transition a
+# payment by accident.
+#
+# order.paid is included as a success event because it is emitted once an
+# order is fully paid; it arrives alongside payment.captured and the
+# idempotency guard makes whichever lands second a no-op.
+WEBHOOK_SUCCESS_EVENTS = frozenset({"payment.captured", "order.paid"})
+WEBHOOK_FAILURE_EVENTS = frozenset({"payment.failed"})
+
 # Coupon discount types
 COUPON_TYPE_PERCENTAGE = "percentage"
 COUPON_TYPE_FLAT = "flat"

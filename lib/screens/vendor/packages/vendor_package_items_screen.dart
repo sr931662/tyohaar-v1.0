@@ -6,8 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
 import '../../../data/vendor_models.dart';
+import '../../../data/package_units.dart';
 import '../../../data/services/vendor_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../widgets/package_unit_field.dart';
 import 'item_import_export_menu.dart';
 
 class VendorPackageItemsScreen extends StatefulWidget {
@@ -53,8 +55,10 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final priceCtrl = TextEditingController(text: existing?.basePrice.toStringAsFixed(0) ?? '');
     final qtyCtrl = TextEditingController(text: existing?.quantity.toString() ?? '1');
-    final unitCtrl = TextEditingController(text: existing?.unit ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
+    String? unit = packageUnitForPicker(existing?.unit);
+    String? coverImageUrl = existing?.coverImageUrl;
+    bool isUploadingCover = false;
     bool isMandatory = existing?.isMandatory ?? true;
     bool isReturnable = existing?.isReturnable ?? false;
     final l10n = AppLocalizations.of(context)!;
@@ -80,9 +84,48 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                 Row(children: [
                   Expanded(child: TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.vendorPackageItemsQuantityLabel))),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.vendorPackageItemsUnitLabel, helperText: l10n.vendorPackageItemsUnitFormatHelperText))),
+                  Expanded(
+                    child: PackageUnitField(
+                      value: unit,
+                      labelText: l10n.vendorPackageItemsUnitLabel,
+                      onChanged: (v) => setSheetState(() => unit = v),
+                    ),
+                  ),
                 ]),
                 TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorPackageItemsDescriptionLabel)),
+                const SizedBox(height: 12),
+                // Cover image, matching the common-items sheet — an item
+                // without one falls back to its first gallery photo in every
+                // customer-facing list.
+                Row(children: [
+                  if (coverImageUrl != null) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(imageUrl: coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  TextButton(
+                    onPressed: isUploadingCover
+                        ? null
+                        : () async {
+                            final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+                            if (image == null) return;
+                            setSheetState(() => isUploadingCover = true);
+                            try {
+                              final url = await _vendorService.uploadImage(File(image.path), 'package_image');
+                              setSheetState(() { coverImageUrl = url; isUploadingCover = false; });
+                            } catch (_) {
+                              setSheetState(() => isUploadingCover = false);
+                            }
+                          },
+                    child: isUploadingCover
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(coverImageUrl == null
+                            ? l10n.vendorPackageItemsAddCoverButtonLabel
+                            : l10n.vendorPackageItemsChangeCoverButtonLabel),
+                  ),
+                ]),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(l10n.vendorPackageItemsMandatoryLabel),
@@ -113,10 +156,11 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
         'name': nameCtrl.text.trim(),
         'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
         'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
-        'unit': unitCtrl.text.trim().isEmpty ? null : unitCtrl.text.trim(),
+        'unit': unit,
         'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'is_mandatory': isMandatory,
         'is_returnable': isReturnable,
+        'cover_image_url': coverImageUrl,
       };
       if (existing == null) {
         await _vendorService.addPackageItem(widget.package.id, body);
@@ -135,7 +179,6 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
         nameCtrl.dispose();
         priceCtrl.dispose();
         qtyCtrl.dispose();
-        unitCtrl.dispose();
         descCtrl.dispose();
       });
     }
@@ -233,6 +276,37 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                         children: [
                           Row(
                             children: [
+                              // Cover first, else the first gallery photo —
+                              // the same precedence the customer app uses, so
+                              // the vendor sees what the customer will see.
+                              if (item.coverImageUrl != null || item.imageUrls.isNotEmpty) ...[
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: CachedNetworkImage(
+                                    imageUrl: item.coverImageUrl ?? item.imageUrls.first,
+                                    width: 52,
+                                    height: 52,
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 150,
+                                    placeholder: (context, url) => Container(width: 52, height: 52, color: Colors.black12),
+                                    errorWidget: (context, url, error) => Container(
+                                      width: 52,
+                                      height: 52,
+                                      color: Colors.black12,
+                                      child: const Icon(Icons.broken_image_outlined, size: 18),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                              ] else ...[
+                                Container(
+                                  width: 52,
+                                  height: 52,
+                                  decoration: BoxDecoration(color: ty.paper, borderRadius: BorderRadius.circular(8), border: Border.all(color: ty.line)),
+                                  child: Icon(Icons.image_outlined, size: 20, color: ty.ink3),
+                                ),
+                                const SizedBox(width: 12),
+                              ],
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,7 +323,10 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                                         Text(l10n.vendorPackageItemsReturnableBadgeLabel, style: TyType.sans(11, color: ty.saffron)),
                                       ],
                                     ]),
-                                    Text('${item.isCommon ? l10n.vendorPackageItemsCommonPrefixLabel : ""}${l10n.vendorPackageItemsQtyPriceLabel(item.quantity.toString(), item.basePrice.toStringAsFixed(0))}',
+                                    // Qty carries its unit and the price says
+                                    // what it is per, so a line priced per set
+                                    // can no longer read as a per-piece one.
+                                    Text('${item.isCommon ? l10n.vendorPackageItemsCommonPrefixLabel : ""}${l10n.vendorPackageItemsQtyPriceLabel(packageUnitQuantity(item.quantity, item.unit), item.basePrice.toStringAsFixed(0), packageUnitPer(item.unit))}',
                                         style: TyType.sans(12, color: ty.ink2)),
                                   ],
                                 ),
