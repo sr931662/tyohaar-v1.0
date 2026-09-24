@@ -120,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _featuredIsFallback = false;
       return featured;
     } catch (e) {
-      logDebug('Error loading packages: $e');
+      logError('home.loadFeatured', e);
       return <Package>[];
     }
   }
@@ -160,7 +160,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
         _error = null;
       });
-    } catch (e) {
+    } catch (e, st) {
+      logError('home.loadData', e, st);
       if (mounted) setState(() { _error = 'Could not load home data.'; _isLoading = false; });
     }
   }

@@ -722,6 +722,8 @@
   "planFlowProfessionalServicesLabel": "PROFESSIONAL SERVICES",
   "planFlowNoConfigurableItemsMessage": "This package has no configurable items.",
   "planFlowUnitFallback": "unit",
+  "planFlowAuthActionBookCelebration": "book your celebration",
+  "planFlowAuthActionSaveAddress": "save a delivery address",
   "planFlowChoiceLabel": "Choose:",
   "planFlowChoiceHint": "Select",
   "planFlowCustomizationDefaultPrompt": "What should we prepare for this?",

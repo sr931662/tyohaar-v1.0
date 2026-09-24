@@ -303,8 +303,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       // even on a fresh install where nothing has been cached yet.
       _precacheOccasionImages(_occasions);
       if (_occasion != null) _loadPackagesForOccasion(_occasion!.id);
-    } catch (e) {
-      logDebug('Error loading plan flow data: $e');
+    } catch (e, st) {
+      logError('plan_flow.loadData', e, st);
       setState(() { _isLoading = false; _loadError = true; });
     }
   }
@@ -317,8 +317,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     try {
       final packages = await _packageService.listPackages(occasionId: occasionId);
       if (mounted) setState(() { _packages = packages; _loadingPackages = false; });
-    } catch (e) {
-      logDebug('Error loading packages for occasion: $e');
+    } catch (e, st) {
+      logError('plan_flow.loadPackagesForOccasion', e, st);
       if (mounted) setState(() { _loadingPackages = false; _packagesError = true; });
     }
   }
@@ -466,6 +466,18 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Future<void> _finish() async {
     if (_isSubmitting) return;
+
+    // A guest plans the whole celebration signed out — occasion, package,
+    // add-ons, the lot — and only needs an account at the moment the booking
+    // becomes real. Asking here turns what used to be a bare 401 into the
+    // normal sign-in gate, and the flow resumes on this same step afterwards.
+    if (!AuthManager.instance.isAuthenticated) {
+      AuthManager.instance.checkAuth(
+        context,
+        action: AppLocalizations.of(context)!.planFlowAuthActionBookCelebration,
+      );
+      return;
+    }
 
     // Email verification is only required at the point of actually booking
     // an event — gate the actual booking creation call, not the planning
@@ -784,6 +796,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   Future<void> _openAddAddress() async {
+    // An address is saved against an account, so this is the one planning
+    // step a guest cannot complete. Ask for sign-in rather than letting the
+    // save fail with a 401 after they have typed the whole thing out.
+    if (!AuthManager.instance.isAuthenticated) {
+      AuthManager.instance.checkAuth(
+        context,
+        action: AppLocalizations.of(context)!.planFlowAuthActionSaveAddress,
+      );
+      return;
+    }
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,

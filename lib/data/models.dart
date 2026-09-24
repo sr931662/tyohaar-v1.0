@@ -347,12 +347,6 @@ class Package {
   final String? status;
   final bool isFeatured;
   final bool isCustomizable;
-  // Values the customer picks from on a customisable line — the numbers
-  // offered for a marquee LED, for example. Empty means no choice to make.
-  final List<String> choices;
-  // Question to put above a free-text customisation box — "Which characters
-  // do you need?" on a marquee letter set. Used when [choices] is empty.
-  final String? customizationPrompt;
   final int? minGuests;
   final int? maxGuests;
   final double? durationHours;
@@ -383,8 +377,6 @@ class Package {
     this.status,
     this.isFeatured = false,
     this.isCustomizable = false,
-    this.choices = const [],
-    this.customizationPrompt,
     this.minGuests,
     this.maxGuests,
     this.durationHours,
@@ -415,8 +407,6 @@ class Package {
         status: status,
         isFeatured: isFeatured,
         isCustomizable: isCustomizable,
-        choices: choices,
-        customizationPrompt: customizationPrompt,
         minGuests: minGuests,
         maxGuests: maxGuests,
         durationHours: durationHours,
@@ -459,11 +449,6 @@ class Package {
       status: json['status'] as String?,
       isFeatured: json['is_featured'] as bool? ?? false,
       isCustomizable: json['is_customizable'] as bool? ?? false,
-      choices: ((json['choices'] as List?) ?? const [])
-          .map((c) => c?.toString() ?? '')
-          .where((c) => c.isNotEmpty)
-          .toList(),
-      customizationPrompt: json['customization_prompt'] as String?,
       minGuests: json['min_guests'] as int?,
       maxGuests: json['max_guests'] as int?,
       durationHours: json['duration_hours'] != null
