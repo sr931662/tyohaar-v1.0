@@ -137,7 +137,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   List<Package> _packages = [];
   bool _loadingPackages = false;
   List<Address> _addresses = [];
-  List<CelebrationTheme> _themes = [];
   bool _isLoading = true;
   bool _loadError = false;
   bool _packagesError = false;
@@ -145,10 +144,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   Occasion? _occasion;
   Package? _pkg;
-  CelebrationTheme? _theme;
   // Preset (catalog) theme vs. customer-picked balloon colours — mutually
   // exclusive; switching modes clears the other's selection.
-  bool _useCustomTheme = false;
   // Selected palette colour names, in pick order. Capped at
   // _maxCustomColours: the backend accepts a single balloon colour or a
   // 2/3/4-colour combination (BookingCreate.validate_balloon_colors).
@@ -281,12 +278,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           })
         else
           Future<List<Address>>.value(const <Address>[]),
-        _packageService.listThemes().catchError((_) => <CelebrationTheme>[]),
       ]);
       setState(() {
         _occasions = results[0] as List<Occasion>;
         _addresses = results[1] as List<Address>;
-        _themes = results[2] as List<CelebrationTheme>;
         if (widget.initialOccasion != null) {
           _occasion = _occasions.cast<Occasion?>().firstWhere(
                 (o) => o?.id == widget.initialOccasion!.id,
@@ -508,7 +503,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       // the mode is derived from how many they chose (the backend accepts
       // 1-4 colours: single, dual, triple, or quad), so there is no separate
       // switch for the count to get wrong.
-      final usingCustomColours = _showBalloonTheme && _useCustomTheme && _balloonColors.isNotEmpty;
+      final usingCustomColours = _showBalloonTheme && _balloonColors.isNotEmpty;
       final balloonColorsHex = _balloonColors.map((name) => _balloonColorPalette[name]!).toList();
       const balloonModeByCount = {1: 'single', 2: 'dual', 3: 'triple', 4: 'quad'};
 
@@ -519,7 +514,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'venue_address': _address?.fullAddress,
         'celebration_title': _occasion != null ? '${_occasion!.name} Celebration' : 'My Celebration',
         'address_id': _address?.id,
-        'theme_id': _showBalloonTheme && !_useCustomTheme ? _theme?.id : null,
         if (usingCustomColours)
           'custom_theme_colors': {
             'primary': balloonColorsHex[0],
@@ -923,7 +917,6 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         // A previously-picked theme or colour pair is meaningless if the
         // newly-selected package isn't customizable, so always start fresh
         // on reselection.
-        _theme = null;
         _balloonColors.clear();
       }),
       child: AnimatedContainer(
@@ -1091,8 +1084,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     // A previously-picked theme or colour pair is meaningless
                     // if the newly-selected package isn't customizable, so
                     // always start fresh on reselection.
-                    _theme = null;
-                    _balloonColors.clear();
+                                _balloonColors.clear();
                   });
                   Navigator.pop(ctx);
                 },
@@ -1114,171 +1106,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           const SizedBox(height: 4),
           Text(l10n.planFlowCustomizableThemeHint,
               style: TyType.sans(12.5, color: ty.ink2)),
-          const SizedBox(height: 12),
-          // A preset theme and a custom colour pick are two answers to the
-          // same question, so they are one either/or choice rather than two
-          // stacked sections the customer can fill in contradictorily.
-          Row(
-            children: [
-              Expanded(
-                child: _themeModeTab(
-                  context,
-                  label: l10n.planFlowPresetThemesLabel,
-                  selected: !_useCustomTheme,
-                  onTap: () => setState(() {
-                    _useCustomTheme = false;
-                    _balloonColors.clear();
-                  }),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _themeModeTab(
-                  context,
-                  label: l10n.planFlowCustomColourLabel,
-                  selected: _useCustomTheme,
-                  onTap: () => setState(() {
-                    _useCustomTheme = true;
-                    _theme = null;
-                  }),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 16),
-          if (!_useCustomTheme)
-            _themes.isEmpty
-                ? Text(l10n.planFlowNoPresetThemesMessage, style: TyType.sans(12.5, color: ty.ink3))
-                : SizedBox(
-                    height: 96,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _themes.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (context, i) => _presetThemeSwatch(context, _themes[i]),
-                    ),
-                  )
-          else
-            _customColourSection(context),
+          // Colours are picked directly. The platform-wide preset themes used
+          // to sit alongside this as an either/or tab, but they are not tied
+          // to the package the customer is actually booking, so they offered
+          // a choice the vendor had no say in.
+          _customColourSection(context),
         ],
     );
   }
 
-  Widget _themeModeTab(BuildContext context, {required String label, required bool selected, required VoidCallback onTap}) {
-    final ty = context.ty;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? ty.saffron.withValues(alpha: 0.12) : ty.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: selected ? ty.saffron : ty.line),
-        ),
-        child: Text(
-          label,
-          style: TyType.sans(13, color: selected ? ty.saffron : ty.ink2, weight: FontWeight.w700),
-        ),
-      ),
-    );
-  }
 
-  Widget _presetThemeSwatch(BuildContext context, CelebrationTheme t) {
-    final ty = context.ty;
-    final on = _theme?.id == t.id;
-    // Themes may define 1, 2, or 4 colors — render exactly the ones present
-    // instead of assuming a fixed 4-color palette (single/dual-color themes
-    // are as valid as full ones).
-    final paletteColors = [
-      t.colors['primary'],
-      t.colors['secondary'],
-      t.colors['accent'],
-      t.colors['background'],
-    ].whereType<String>().where((h) => h.isNotEmpty).map(_hexToColor).toList();
-    if (paletteColors.isEmpty) paletteColors.add(ty.saffron);
-    return GestureDetector(
-      onTap: () => setState(() => _theme = on ? null : t),
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: on ? ty.saffron : Colors.transparent,
-                width: 3,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: paletteColors.first.withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                ClipOval(
-                  child: paletteColors.length == 1
-                      ? Container(color: paletteColors[0])
-                      : paletteColors.length == 2
-                          ? Row(
-                              children: [
-                                Expanded(child: Container(color: paletteColors[0])),
-                                Expanded(child: Container(color: paletteColors[1])),
-                              ],
-                            )
-                          : Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      Expanded(child: Container(color: paletteColors[0])),
-                                      Expanded(child: Container(color: paletteColors[1])),
-                                    ],
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      Expanded(child: Container(color: paletteColors[2])),
-                                      Expanded(child: Container(color: paletteColors.length > 3 ? paletteColors[3] : paletteColors[2])),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                ),
-                if (on)
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.black38,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.check_rounded, color: Colors.white),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            width: 68,
-            child: Text(
-              t.name,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TyType.sans(11, color: ty.ink2, weight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // One palette, one selection — pick a single accent colour or a two-colour
   // combination. There is no separate single/dual switch: the mode follows
@@ -1938,9 +1776,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         _summaryCard(context, l10n.planFlowSummaryCelebrationLabel, _occasion?.name ?? '',
             onEdit: occasionIdx == -1 ? null : () => _jumpTo(occasionIdx)),
         _summaryCard(context, l10n.planFlowSummaryPackageLabel, _pkg?.name ?? '', onEdit: () => _jumpTo(packageIdx)),
-        if (_showBalloonTheme && !_useCustomTheme && _theme != null)
-          _summaryCard(context, l10n.planFlowSummaryThemeLabel, _theme!.name, onEdit: () => _jumpTo(customizeIdx)),
-        if (_showBalloonTheme && _useCustomTheme && _balloonColors.isNotEmpty)
+        if (_showBalloonTheme && _balloonColors.isNotEmpty)
           _summaryCard(
             context,
             l10n.planFlowSummaryBalloonColoursLabel,

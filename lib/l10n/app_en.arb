@@ -692,10 +692,7 @@
   "planFlowSelectThisPackageLabel": "Select This Package",
   "planFlowChooseBalloonColoursLabel": "CHOOSE YOUR BALLOON COLOURS",
   "planFlowCustomizableThemeHint": "This package is customizable — go with a preset theme, or pick your own colours.",
-  "planFlowPresetThemesLabel": "Preset Themes",
-  "planFlowCustomColourLabel": "Custom Colour",
   "planFlowCustomColourHint": "Pick a single accent colour, or a combination of up to four for your balloon décor.",
-  "planFlowNoPresetThemesMessage": "No preset themes available right now — try Custom Colour instead.",
   "planFlowDefaultPackageName": "Celebration Package",
 
   "planFlowBalloonColorRed": "Red",
@@ -761,7 +758,6 @@
 
   "planFlowSummaryCelebrationLabel": "Celebration",
   "planFlowSummaryPackageLabel": "Package",
-  "planFlowSummaryThemeLabel": "Theme",
   "planFlowSummaryBalloonColoursLabel": "Balloon Colours",
   "planFlowSummaryIncludedItemsLabel": "Included Items",
   "planFlowSummaryIncludedServicesLabel": "Included Services",
