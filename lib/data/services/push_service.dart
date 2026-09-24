@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
 import '../api_client.dart';
+import '../auth_manager.dart';
 import '../../utils/log.dart';
 
 /// Handles Firebase Cloud Messaging setup: permission request, token
@@ -33,9 +34,18 @@ class PushService {
   bool _initialized = false;
   String? _deviceId;
 
-  /// Call once, after the user is authenticated (e.g. from RootNav.initState).
+  /// Safe to call on every shell build (RootNav.initState).
+  ///
+  /// The one-time setup really is one-time, but registration is retried on
+  /// each call: a customer who browses as a guest and then signs in gets a
+  /// second RootNav, and without the retry their device token would never
+  /// reach the server — the first pass skipped it for having no account to
+  /// attach to.
   Future<void> initialize() async {
-    if (_initialized) return;
+    if (_initialized) {
+      await _registerToken();
+      return;
+    }
     _initialized = true;
 
     try {
@@ -126,6 +136,11 @@ class PushService {
   }
 
   Future<void> _registerToken({String? tokenOverride}) async {
+    // A device is registered against a user account, so there is nothing to
+    // register for a guest — the call could only ever 401. It runs again on
+    // sign-in, which is when the token actually has an owner.
+    if (!AuthManager.instance.isAuthenticated) return;
+
     try {
       final token = tokenOverride ?? await FirebaseMessaging.instance.getToken();
       if (token == null) return;

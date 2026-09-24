@@ -33,6 +33,7 @@ from sqlalchemy import (
     Text,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -176,6 +177,24 @@ class PackageServiceLine(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
         default=False,
         comment="True if the customer can configure options for this service",
+    )
+
+    choices: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Selectable values the customer picks from when is_customizable "
+                "is set — e.g. the numbers offered for a marquee LED item. A "
+                "list of display strings; null or empty means the item takes "
+                "no choice and renders as a plain add-on.",
+    )
+
+    customization_prompt: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="Question shown to the customer for a free-text customisation — "
+                "e.g. 'Which characters do you need?' on a marquee letter set. "
+                "Used when `choices` is empty; with choices set, the customer "
+                "picks from that list instead.",
     )
 
     # ── Display ───────────────────────────────────────────────────────────────

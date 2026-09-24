@@ -127,6 +127,10 @@ class OccasionGrid extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: iconUrl,
                             fit: BoxFit.contain,
+                            // Drawn at 44dp; the grid shows a dozen of these
+                            // at once, so decoding each at source size is
+                            // pure waste on the home screen's first paint.
+                            memCacheWidth: 132,
                             errorWidget: (_, __, ___) => Icon(o.icon, size: 44, color: c),
                             placeholder: (_, __) => Icon(o.icon, size: 44, color: c.withValues(alpha: 0.4)),
                           )

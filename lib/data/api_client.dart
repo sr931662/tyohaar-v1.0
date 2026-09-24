@@ -181,6 +181,20 @@ class ApiClient {
         },
         onError: (DioException e, handler) async {
           if (e.response?.statusCode == 401) {
+            // A 401 with no session to begin with is not an expired session —
+            // it is an anonymous caller touching an authed endpoint, which is
+            // routine while browsing as a guest (the home screen asks for
+            // celebrations, My Bookings is tab-reachable, and so on).
+            //
+            // Logging out here wiped AuthManager's guest flag and fired
+            // notifyListeners(), so the whole app rebuilt out from under the
+            // guest and dropped them on an error screen mid-browse. Callers
+            // already handle the 401 itself; there is simply nothing to
+            // clear, so pass it through untouched.
+            if (AuthManager.instance.accessToken == null) {
+              return handler.next(e);
+            }
+
             // Avoid infinite loops: check if this is already a retry
             if (e.requestOptions.extra['retry'] == true) {
               await AuthManager.instance.logout();

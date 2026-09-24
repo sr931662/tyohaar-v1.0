@@ -50,12 +50,22 @@ class _RootNavState extends State<RootNav> {
   final ScrollController _homeScrollController = ScrollController();
   final LocationService _locationService = LocationService();
 
-  late final _pages = [
-    HomeScreen(scrollController: _homeScrollController),
-    const PlansScreen(),
-    const ExploreScreen(),
-    const AccountScreen(),
-  ];
+  /// Tabs that have been opened at least once.
+  ///
+  /// IndexedStack builds every child eagerly, so all four tabs used to run
+  /// initState on launch and fire their own network calls before the customer
+  /// had touched anything but Home — four screens' worth of requests
+  /// competing for the connection that Home itself needed. Only Home starts
+  /// built; the rest are placeholders until first visit, and stay alive after
+  /// that so IndexedStack still preserves their state and scroll offsets.
+  final Set<int> _builtTabs = {0};
+
+  List<Widget> _buildPages() => [
+        HomeScreen(scrollController: _homeScrollController),
+        _builtTabs.contains(1) ? const PlansScreen() : const SizedBox.shrink(),
+        _builtTabs.contains(2) ? const ExploreScreen() : const SizedBox.shrink(),
+        _builtTabs.contains(3) ? const AccountScreen() : const SizedBox.shrink(),
+      ];
 
   @override
   void initState() {
@@ -82,6 +92,8 @@ class _RootNavState extends State<RootNav> {
   void _setIndex(int i) {
     setState(() {
       _index = i;
+      // First visit builds the tab for real; it stays built from here on.
+      _builtTabs.add(i);
       _isScrolled = i == 0 &&
           _homeScrollController.hasClients &&
           _homeScrollController.offset > 20;
@@ -203,7 +215,7 @@ class _RootNavState extends State<RootNav> {
                 }
                 return false;
               },
-              child: IndexedStack(index: _index, children: _pages),
+              child: IndexedStack(index: _index, children: _buildPages()),
             ),
           ),
           Positioned(

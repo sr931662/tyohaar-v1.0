@@ -159,6 +159,15 @@ class PackageItemResponse(BaseSchema):
     )
     created_at: datetime
     updated_at: datetime
+    choices: list[str] | None = Field(
+        default=None,
+        description="Selectable values the customer picks from (e.g. marquee LED numbers). Null or empty means this line takes no choice.",
+    )
+    customization_prompt: str | None = Field(
+        default=None,
+        description="Question shown to the customer for a free-text customisation. "
+                    "Used when `choices` is empty.",
+    )
 
 
 class AttachAllResponse(BaseSchema):
@@ -208,6 +217,15 @@ class PackageServiceResponse(BaseSchema):
     )
     created_at: datetime
     updated_at: datetime
+    choices: list[str] | None = Field(
+        default=None,
+        description="Selectable values the customer picks from (e.g. marquee LED numbers). Null or empty means this line takes no choice.",
+    )
+    customization_prompt: str | None = Field(
+        default=None,
+        description="Question shown to the customer for a free-text customisation. "
+                    "Used when `choices` is empty.",
+    )
 
 
 class PackageGalleryResponse(BaseSchema):

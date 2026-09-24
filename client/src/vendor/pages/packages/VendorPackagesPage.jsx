@@ -221,11 +221,26 @@ function PackageFormModal({ initial, occasions, onClose, onSave, saving }) {
 // Reusable items owned by the vendor, not tied to any one package. Attached
 // to individual packages from the Package Items modal below.
 
+
+// Comma-separated choices <-> the API's string array.
+//
+// `choices` are the values a customer picks from on a customisable add-on —
+// the numbers offered for a marquee LED, for example. Kept as free text in
+// the form so a vendor can type "1, 2, 3" (or "0-9" spelled out) without a
+// list editor, and normalised here so the API only ever sees a clean array.
+const parseChoices = (text) =>
+  String(text || '')
+    .split(',')
+    .map((c) => c.trim())
+    .filter(Boolean);
+
+const formatChoices = (choices) => (Array.isArray(choices) ? choices.join(', ') : '');
+
 function CommonItemsModal({ onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' });
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [attachTarget, setAttachTarget] = useState(null);
 
@@ -242,7 +257,7 @@ function CommonItemsModal({ onClose }) {
       toast.success('Common item created.');
       toast.message('Remember to attach it to a package — customers won\'t see it until you do.');
       invalidate();
-      setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' });
+      setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '' });
     },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to create item.'),
   });
@@ -267,7 +282,7 @@ function CommonItemsModal({ onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '' });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '' });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -285,6 +300,9 @@ function CommonItemsModal({ onClose }) {
       unit: newItem.unit || undefined,
       description: newItem.description || undefined,
       cover_image_url: newItem.cover_image_url || undefined,
+      choices: parseChoices(newItem.choices).length ? parseChoices(newItem.choices) : undefined,
+      is_customizable: !!newItem.is_customizable,
+      customization_prompt: newItem.customization_prompt || undefined,
     });
   };
 
@@ -300,6 +318,9 @@ function CommonItemsModal({ onClose }) {
         unit: editForm.unit || undefined,
         description: editForm.description || undefined,
         cover_image_url: editForm.cover_image_url || null,
+        choices: parseChoices(editForm.choices).length ? parseChoices(editForm.choices) : null,
+        is_customizable: !!editForm.is_customizable,
+        customization_prompt: editForm.customization_prompt || null,
       },
     });
   };
@@ -330,6 +351,14 @@ function CommonItemsModal({ onClose }) {
                 <div key={item.id} className="admin-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div className="form-row-2-1" style={{ gap: 10 }}>
                     <input className="admin-input" value={editForm.name} onChange={(e) => setEF('name', e.target.value)} placeholder="Item name" />
+                    <input className="admin-input" value={editForm.choices} onChange={(e) => setEF('choices', e.target.value)} placeholder="Choices (optional), e.g. 1, 2, 3" title="Comma-separated values the customer picks from, e.g. the numbers offered for a marquee LED. Leave blank for a plain add-on." />
+                    <label className="admin-checkline" title="Tick when the customer must tell you something about this item — which characters they want on a marquee letter set, for example. Leave Choices blank to get a free-text box.">
+                      <input type="checkbox" checked={!!editForm.is_customizable} onChange={(e) => setEF('is_customizable', e.target.checked)} />
+                      <span>Ask the customer for details</span>
+                    </label>
+                    {editForm.is_customizable && parseChoices(editForm.choices).length === 0 && (
+                      <input className="admin-input" value={editForm.customization_prompt} onChange={(e) => setEF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which characters do you need?" />
+                    )}
                     <input className="admin-input" type="number" min="0" value={editForm.base_price} onChange={(e) => setEF('base_price', e.target.value)} placeholder="Price (₹)" />
                   </div>
                   <div className="form-row-3" style={{ gap: 10 }}>
@@ -403,6 +432,14 @@ function CommonItemsModal({ onClose }) {
           <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="form-row-2-1" style={{ gap: 10 }}>
               <input className="admin-input" value={newItem.name} onChange={(e) => setNF('name', e.target.value)} placeholder="Item name *" />
+              <input className="admin-input" value={newItem.choices} onChange={(e) => setNF('choices', e.target.value)} placeholder="Choices (optional), e.g. 1, 2, 3" title="Comma-separated values the customer picks from, e.g. the numbers offered for a marquee LED. Leave blank for a plain add-on." />
+              <label className="admin-checkline" title="Tick when the customer must tell you something about this item — which characters they want on a marquee letter set, for example. Leave Choices blank to get a free-text box.">
+                <input type="checkbox" checked={!!newItem.is_customizable} onChange={(e) => setNF('is_customizable', e.target.checked)} />
+                <span>Ask the customer for details</span>
+              </label>
+              {newItem.is_customizable && parseChoices(newItem.choices).length === 0 && (
+                <input className="admin-input" value={newItem.customization_prompt} onChange={(e) => setNF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which characters do you need?" />
+              )}
               <input className="admin-input" type="number" min="0" value={newItem.base_price} onChange={(e) => setNF('base_price', e.target.value)} placeholder="Price (₹) *" />
             </div>
             <div className="form-row-3" style={{ gap: 10 }}>
@@ -468,7 +505,7 @@ function PackageItemsModal({ pkg, onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' });
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [managingImagesFor, setManagingImagesFor] = useState(null);
   const [attachingId, setAttachingId] = useState('');
@@ -487,7 +524,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.addItem(pkg.id, { ...body, package_id: pkg.id }),
-    onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '' }); },
+    onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '' }); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add item.'),
   });
 
@@ -517,7 +554,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '' });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '' });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -535,6 +572,9 @@ function PackageItemsModal({ pkg, onClose }) {
       unit: newItem.unit || undefined,
       description: newItem.description || undefined,
       cover_image_url: newItem.cover_image_url || undefined,
+      choices: parseChoices(newItem.choices).length ? parseChoices(newItem.choices) : undefined,
+      is_customizable: !!newItem.is_customizable,
+      customization_prompt: newItem.customization_prompt || undefined,
     });
   };
 
@@ -550,6 +590,9 @@ function PackageItemsModal({ pkg, onClose }) {
         unit: editForm.unit || undefined,
         description: editForm.description || undefined,
         cover_image_url: editForm.cover_image_url || null,
+        choices: parseChoices(editForm.choices).length ? parseChoices(editForm.choices) : null,
+        is_customizable: !!editForm.is_customizable,
+        customization_prompt: editForm.customization_prompt || null,
       },
     });
   };
@@ -588,6 +631,14 @@ function PackageItemsModal({ pkg, onClose }) {
                 <div key={item.id} className="admin-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div className="form-row-2-1" style={{ gap: 10 }}>
                     <input className="admin-input" value={editForm.name} onChange={(e) => setEF('name', e.target.value)} placeholder="Item name" />
+                    <input className="admin-input" value={editForm.choices} onChange={(e) => setEF('choices', e.target.value)} placeholder="Choices (optional), e.g. 1, 2, 3" title="Comma-separated values the customer picks from, e.g. the numbers offered for a marquee LED. Leave blank for a plain add-on." />
+                    <label className="admin-checkline" title="Tick when the customer must tell you something about this item — which characters they want on a marquee letter set, for example. Leave Choices blank to get a free-text box.">
+                      <input type="checkbox" checked={!!editForm.is_customizable} onChange={(e) => setEF('is_customizable', e.target.checked)} />
+                      <span>Ask the customer for details</span>
+                    </label>
+                    {editForm.is_customizable && parseChoices(editForm.choices).length === 0 && (
+                      <input className="admin-input" value={editForm.customization_prompt} onChange={(e) => setEF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which characters do you need?" />
+                    )}
                     <input className="admin-input" type="number" min="0" value={editForm.base_price} onChange={(e) => setEF('base_price', e.target.value)} placeholder="Price (₹)" />
                   </div>
                   <div className="form-row-3" style={{ gap: 10 }}>
@@ -706,6 +757,14 @@ function PackageItemsModal({ pkg, onClose }) {
               <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div className="form-row-2-1" style={{ gap: 10 }}>
                   <input className="admin-input" value={newItem.name} onChange={(e) => setNF('name', e.target.value)} placeholder="Item name *" />
+                  <input className="admin-input" value={newItem.choices} onChange={(e) => setNF('choices', e.target.value)} placeholder="Choices (optional), e.g. 1, 2, 3" title="Comma-separated values the customer picks from, e.g. the numbers offered for a marquee LED. Leave blank for a plain add-on." />
+                  <label className="admin-checkline" title="Tick when the customer must tell you something about this item — which characters they want on a marquee letter set, for example. Leave Choices blank to get a free-text box.">
+                    <input type="checkbox" checked={!!newItem.is_customizable} onChange={(e) => setNF('is_customizable', e.target.checked)} />
+                    <span>Ask the customer for details</span>
+                  </label>
+                  {newItem.is_customizable && parseChoices(newItem.choices).length === 0 && (
+                    <input className="admin-input" value={newItem.customization_prompt} onChange={(e) => setNF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which characters do you need?" />
+                  )}
                   <input className="admin-input" type="number" min="0" value={newItem.base_price} onChange={(e) => setNF('base_price', e.target.value)} placeholder="Price (₹) *" />
                 </div>
                 <div className="form-row-3" style={{ gap: 10 }}>

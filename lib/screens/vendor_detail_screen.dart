@@ -126,6 +126,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                           height: 300,
                           width: double.infinity,
                           fit: BoxFit.cover,
+                          memCacheWidth: 1080,
                           placeholder: (context, url) => PhotoPlaceholder(tint: v.tint, height: 300, arch: false, radius: BorderRadius.zero),
                           errorWidget: (context, url, error) => PhotoPlaceholder(tint: v.tint, height: 300, arch: false, radius: BorderRadius.zero),
                         )
@@ -170,6 +171,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                   width: 46,
                                   height: 46,
                                   fit: BoxFit.cover,
+                                  memCacheWidth: 140,
                                   errorWidget: (_, __, ___) => PhotoPlaceholder(tint: v.tint, arch: false),
                                 ),
                               ),

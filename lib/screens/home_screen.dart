@@ -134,10 +134,16 @@ class _HomeScreenState extends State<HomeScreen> {
           logDebug('Error loading occasions: $e');
           return <Occasion>[];
         }),
-        _celebrationService.listCelebrations().catchError((e) {
-          logDebug('Error loading celebrations: $e');
-          return <Celebration>[];
-        }),
+        // Celebrations are per-user, so a guest has none to fetch. Asking
+        // anyway cost a round trip that could only ever 401, and the home
+        // screen is the first thing a guest sees.
+        if (AuthManager.instance.isAuthenticated)
+          _celebrationService.listCelebrations().catchError((e) {
+            logDebug('Error loading celebrations: $e');
+            return <Celebration>[];
+          })
+        else
+          Future<List<Celebration>>.value(const <Celebration>[]),
       ]);
 
       setState(() {
@@ -330,6 +336,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     : CachedNetworkImage(
                         imageUrl: heroUrl ?? '',
                         fit: BoxFit.cover,
+                        // Decode at roughly the widest phone screen rather
+                        // than the source resolution — the hero is the first
+                        // image on the first screen, and a full-size decode
+                        // of a multi-megapixel upload stalls the frame.
+                        memCacheWidth: 1080,
                         placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: resp.h(440), arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius))),
                         errorWidget: (context, url, error) {
                           final local = _activeCelebration?.occasionName != null
@@ -554,6 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: resp.h(125),
                           width: double.infinity,
                           fit: BoxFit.cover,
+                          memCacheWidth: 600,
                           placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: resp.h(125), arch: false),
                           errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: resp.h(125), arch: false),
                         ),

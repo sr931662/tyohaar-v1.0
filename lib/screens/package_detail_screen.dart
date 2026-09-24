@@ -330,6 +330,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
           itemBuilder: (context, i) => CachedNetworkImage(
             imageUrl: urls[i],
             fit: BoxFit.cover,
+            memCacheWidth: 1080,
             placeholder: (context, url) => PhotoPlaceholder(
                 tint: _fullPackage.tint,
                 height: resp.h(300),
@@ -513,6 +514,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
           width: resp.w(size),
           height: resp.w(size),
           fit: BoxFit.cover,
+          memCacheWidth: 300,
           placeholder: (_, __) => Container(
               width: resp.w(size), height: resp.w(size), color: ty.surface),
           errorWidget: (_, __, ___) => Container(
@@ -570,6 +572,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                     itemBuilder: (_, i) => CachedNetworkImage(
                       imageUrl: urls[i],
                       fit: BoxFit.cover,
+                      memCacheWidth: 600,
                       placeholder: (_, __) => Container(color: ty.surface),
                       errorWidget: (_, __, ___) => Container(
                         color: ty.surface,

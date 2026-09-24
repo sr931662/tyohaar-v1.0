@@ -155,6 +155,18 @@ class PackageItemCreate(BaseSchema):
         default=None, ge=0, le=1440,
         description="Vendor-suggested setup/prep time (minutes) required before the event's scheduled start",
     )
+    choices: list[str] | None = Field(
+        default=None,
+        max_length=200,
+        description="Selectable values the customer picks from (e.g. marquee LED numbers). Null or empty means this line takes no choice.",
+    )
+    customization_prompt: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Question shown to the customer for a free-text customisation "
+                    "(e.g. 'Which characters do you need?' on a marquee letter set). "
+                    "Used when `choices` is empty.",
+    )
 
 
 class CommonPackageItemCreate(BaseSchema):
@@ -196,6 +208,18 @@ class CommonPackageItemCreate(BaseSchema):
     prep_time_minutes: int | None = Field(
         default=None, ge=0, le=1440,
         description="Vendor-suggested setup/prep time (minutes) required before the event's scheduled start",
+    )
+    choices: list[str] | None = Field(
+        default=None,
+        max_length=200,
+        description="Selectable values the customer picks from (e.g. marquee LED numbers). Null or empty means this line takes no choice.",
+    )
+    customization_prompt: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Question shown to the customer for a free-text customisation "
+                    "(e.g. 'Which characters do you need?' on a marquee letter set). "
+                    "Used when `choices` is empty.",
     )
 
 
@@ -242,6 +266,18 @@ class PackageServiceCreate(BaseSchema):
         default=None, ge=0, le=1440,
         description="Vendor-suggested setup/prep time (minutes) required before the event's scheduled start",
     )
+    choices: list[str] | None = Field(
+        default=None,
+        max_length=200,
+        description="Selectable values the customer picks from (e.g. marquee LED numbers). Null or empty means this line takes no choice.",
+    )
+    customization_prompt: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Question shown to the customer for a free-text customisation "
+                    "(e.g. 'Which characters do you need?' on a marquee letter set). "
+                    "Used when `choices` is empty.",
+    )
 
 
 class CommonPackageServiceCreate(BaseSchema):
@@ -280,6 +316,18 @@ class CommonPackageServiceCreate(BaseSchema):
     prep_time_minutes: int | None = Field(
         default=None, ge=0, le=1440,
         description="Vendor-suggested setup/prep time (minutes) required before the event's scheduled start",
+    )
+    choices: list[str] | None = Field(
+        default=None,
+        max_length=200,
+        description="Selectable values the customer picks from (e.g. marquee LED numbers). Null or empty means this line takes no choice.",
+    )
+    customization_prompt: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Question shown to the customer for a free-text customisation "
+                    "(e.g. 'Which characters do you need?' on a marquee letter set). "
+                    "Used when `choices` is empty.",
     )
 
 

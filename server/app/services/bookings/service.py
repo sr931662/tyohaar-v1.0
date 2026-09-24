@@ -38,6 +38,7 @@ from app.services.exceptions import BusinessRuleError
 from app.services.bookings.constants import (
     CANCELLATION_FEE_PERCENTAGE,
     CANCELLATION_WINDOW_HOURS,
+    MAX_CUSTOMIZATION_LENGTH,
 )
 from app.services.bookings.exceptions import (
     AssignmentNotFoundError,
@@ -224,6 +225,40 @@ class BookingService(BaseService):
                     qty = min(qty, pi.max_quantity)
                 return qty
 
+            # 3b. Resolve the customer's pick for each customisable line.
+            # Validated against the line's own `choices` so a tampered client
+            # cannot order a marquee LED "99" that the vendor never offered,
+            # and snapshotted onto the booking row so later edits to the
+            # package cannot rewrite what was ordered.
+            item_customizations = data.item_customizations or {}
+            service_customizations = data.service_customizations or {}
+
+            def _resolve_customization(line, supplied: dict) -> str | None:
+                """
+                What the customer specified for one line, or None.
+
+                Two shapes, decided by the line itself: a fixed `choices` list
+                means the value must be one of them, so a tampered client
+                cannot order an option the vendor never offered. Otherwise it
+                is free text — the characters wanted on a marquee letter set,
+                say — trimmed and capped, since there is no list to check it
+                against and the column is bounded.
+                """
+                value = supplied.get(str(line.id))
+                if value is None:
+                    return None
+                value = value.strip()
+                if not value:
+                    return None
+
+                offered = getattr(line, "choices", None) or []
+                if offered:
+                    return value if value in offered else None
+
+                if not getattr(line, "is_customizable", False):
+                    return None
+                return value[:MAX_CUSTOMIZATION_LENGTH]
+
             # 1b. Fetch mandatory services from package, plus any selected
             # optional services (add-ons) — mirrors items 1-3 above.
             package_services = await uow.packages.services.find_by_package_including_common(data.package_id)
@@ -325,6 +360,7 @@ class BookingService(BaseService):
                     is_addon=not pi.is_mandatory,
                     display_order=idx,
                     prep_time_minutes=pi.prep_time_minutes,
+                    notes=_resolve_customization(pi, item_customizations),
                 )
                 await uow.bookings.items.create(item)
 
@@ -344,6 +380,7 @@ class BookingService(BaseService):
                     is_addon=not ps.is_mandatory,
                     display_order=idx,
                     prep_time_minutes=ps.prep_time_minutes,
+                    notes=_resolve_customization(ps, service_customizations),
                 )
                 await uow.bookings.service_items.create(service_item)
 

@@ -168,9 +168,20 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // included in the booking (mandatory items are always present).
   final Map<String, int> _itemQuantities = {};
 
+  /// Mirrors the server's MAX_CUSTOMIZATION_LENGTH, so the field stops the
+  /// customer at the same point the API would silently truncate them.
+  static const int _maxCustomizationLength = 100;
+
+  // item.id -> what the customer picked or typed for that item (the
+  // characters wanted on a marquee letter set, say). Only ever holds ids of
+  // lines that actually ask for something.
+  final Map<String, String> _itemChoices = {};
+
   List<PackageServiceLine> _packageServices = [];
   // service.id -> chosen quantity, mirrors _itemQuantities.
   final Map<String, int> _serviceQuantities = {};
+  // service.id -> picked choice, mirrors _itemChoices.
+  final Map<String, String> _serviceChoices = {};
 
   // The balloon colour/theme step only makes sense when both the package
   // supports customization AND the selected occasion allows it — admins
@@ -259,7 +270,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     try {
       final results = await Future.wait([
         _packageService.listOccasions(),
-        _userService.getAddresses(),
+        // Addresses are per-user. A guest has none and the endpoint 401s,
+        // which used to take the whole screen down with it — browsing the
+        // plan flow signed-out is a supported path, and the address is only
+        // needed at the delivery step, which already gates on sign-in.
+        if (AuthManager.instance.isAuthenticated)
+          _userService.getAddresses().catchError((e) {
+            logDebug('Error loading addresses: $e');
+            return <Address>[];
+          })
+        else
+          Future<List<Address>>.value(const <Address>[]),
         _packageService.listThemes().catchError((_) => <CelebrationTheme>[]),
       ]);
       setState(() {
@@ -399,8 +420,30 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     }
   }
 
+  /// Ids of lines that are in the booking, offer choices, and have none
+  /// picked. "Marquee LED, unspecified number" is not an order a vendor can
+  /// fulfil, so the items step will not advance while any remain.
+  List<String> get _unansweredChoices => [
+        for (final i in _packageItems)
+          if (i.needsCustomization &&
+              _itemQuantities.containsKey(i.id) &&
+              (_itemChoices[i.id]?.isEmpty ?? true))
+            i.id,
+        for (final s in _packageServices)
+          if (s.needsCustomization &&
+              _serviceQuantities.containsKey(s.id) &&
+              (_serviceChoices[s.id]?.isEmpty ?? true))
+            s.id,
+      ];
+
   void _next() {
     final steps = _steps;
+    if (steps[_step].kind == _StepKind.items && _unansweredChoices.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.planFlowChoiceRequiredMessage)),
+      );
+      return;
+    }
     if (steps[_step].kind == _StepKind.package && _pkg != null && !_itemsLoadAttempted && !_loadingItems) {
       _loadPackageItems();
     }
@@ -476,6 +519,18 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         'item_quantities': _itemQuantities.map((id, qty) => MapEntry(id, qty)),
         'service_ids': optionalServicesSelected,
         'service_quantities': _serviceQuantities.map((id, qty) => MapEntry(id, qty)),
+        // Only for lines actually in the booking — the maps can still hold a
+        // pick for an add-on the customer selected and then switched off.
+        if (_itemChoices.isNotEmpty)
+          'item_customizations': {
+            for (final e in _itemChoices.entries)
+              if (_itemQuantities.containsKey(e.key)) e.key: e.value,
+          },
+        if (_serviceChoices.isNotEmpty)
+          'service_customizations': {
+            for (final e in _serviceChoices.entries)
+              if (_serviceQuantities.containsKey(e.key)) e.key: e.value,
+          },
         if (usingCustomColours) ...{
           'balloon_color_mode': balloonModeByCount[balloonColorsHex.length] ?? 'single',
           'balloon_colors': balloonColorsHex,
@@ -1552,6 +1607,22 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 ),
             ],
           ),
+          if (item.needsCustomization && (locked || selected)) ...[
+            const SizedBox(height: 8),
+            _customizationField(
+              context,
+              choices: item.choices,
+              prompt: item.customizationPrompt,
+              value: _itemChoices[item.id],
+              onChanged: (v) => setState(() {
+                if (v == null) {
+                  _itemChoices.remove(item.id);
+                } else {
+                  _itemChoices[item.id] = v;
+                }
+              }),
+            ),
+          ],
           if (item.isQuantityAdjustable && (locked || selected)) ...[
             const SizedBox(height: 8),
             Row(
@@ -1571,6 +1642,106 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  /// Dropdown for a line whose vendor defined a set of selectable values —
+  /// the number on a marquee LED being the case this was built for.
+  ///
+  /// The options come from the line itself rather than anything hardcoded
+  /// here, so a vendor adding a new customisable add-on in the portal needs
+  /// no app change. Starts unset, and the customer must pick before the step
+  /// will advance, since "Marquee LED, unspecified number" is not an order
+  /// the vendor can fulfil.
+  /// What the customer has to tell the vendor about a customisable line.
+  ///
+  /// Two shapes, decided by the line itself rather than anything named here,
+  /// so adding a customisable add-on in the portal needs no app change:
+  ///
+  ///  * a fixed `choices` list renders a dropdown;
+  ///  * otherwise a free-text box under the line's own prompt — a marquee
+  ///    letter set, where the vendor needs the actual characters (letters,
+  ///    numbers, symbols) and no list could cover them.
+  Widget _customizationField(
+    BuildContext context, {
+    required List<String> choices,
+    required String? prompt,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
+    final unanswered = value == null || value.isEmpty;
+
+    if (choices.isNotEmpty) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Text(l10n.planFlowChoiceLabel, style: TyType.sans(12, color: ty.ink3)),
+          const SizedBox(width: 10),
+          Container(
+            constraints: const BoxConstraints(minWidth: 96),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: ty.surface2,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                // An unanswered line is the one thing blocking this step, so
+                // say so on the control itself, not only in a banner.
+                color: unanswered ? ty.saffron : ty.line,
+              ),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isDense: true,
+                hint: Text(l10n.planFlowChoiceHint, style: TyType.sans(12.5, color: ty.ink3)),
+                style: TyType.sans(13, color: ty.ink, weight: FontWeight.w600),
+                dropdownColor: ty.surface,
+                items: choices
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          prompt?.trim().isNotEmpty == true ? prompt!.trim() : l10n.planFlowCustomizationDefaultPrompt,
+          style: TyType.sans(12, color: ty.ink3),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          initialValue: value,
+          maxLength: _maxCustomizationLength,
+          textCapitalization: TextCapitalization.characters,
+          style: TyType.sans(13.5, color: ty.ink, weight: FontWeight.w600),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: l10n.planFlowCustomizationHint,
+            hintStyle: TyType.sans(12.5, color: ty.ink3),
+            filled: true,
+            fillColor: ty.surface2,
+            counterText: '',
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: ty.line),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: unanswered ? ty.saffron : ty.line),
+            ),
+          ),
+          onChanged: (v) => onChanged(v.trim().isEmpty ? null : v),
+        ),
+      ],
     );
   }
 
@@ -1628,6 +1799,22 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 ),
             ],
           ),
+          if (service.needsCustomization && (locked || selected)) ...[
+            const SizedBox(height: 8),
+            _customizationField(
+              context,
+              choices: service.choices,
+              prompt: service.customizationPrompt,
+              value: _serviceChoices[service.id],
+              onChanged: (v) => setState(() {
+                if (v == null) {
+                  _serviceChoices.remove(service.id);
+                } else {
+                  _serviceChoices[service.id] = v;
+                }
+              }),
+            ),
+          ],
           if (service.isQuantityAdjustable && (locked || selected)) ...[
             const SizedBox(height: 8),
             Row(

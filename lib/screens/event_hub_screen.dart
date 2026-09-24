@@ -221,6 +221,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                         height: resp.h(360),
                         width: double.infinity,
                         fit: BoxFit.cover,
+                        memCacheWidth: 1080,
                         placeholder: (context, url) => PhotoPlaceholder(
                             tint: 'saffron',
                             height: resp.h(360),
@@ -455,6 +456,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
                     width: resp.w(56),
                     height: resp.w(56),
                     fit: BoxFit.cover,
+                    memCacheWidth: 170,
                     placeholder: (context, url) => PhotoPlaceholder(
                         tint: 'saffron',
                         height: resp.w(56),
@@ -859,6 +861,7 @@ class _EventMediaSectionState extends State<_EventMediaSection> {
                     CachedNetworkImage(
                       imageUrl: item.gridThumbnailUrl,
                       fit: BoxFit.cover,
+                      memCacheWidth: 360,
                       placeholder: (context, url) =>
                           PhotoPlaceholder(tint: 'saffron', arch: false),
                       errorWidget: (context, url, error) =>

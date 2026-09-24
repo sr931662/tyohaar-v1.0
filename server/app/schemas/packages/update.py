@@ -115,6 +115,18 @@ class PackageItemUpdate(BaseSchema):
     cover_image_url: str | None = Field(default=None, max_length=500)
     display_order: int | None = Field(default=None, ge=0)
     prep_time_minutes: int | None = Field(default=None, ge=0, le=1440)
+    choices: list[str] | None = Field(
+        default=None,
+        max_length=200,
+        description="Selectable values the customer picks from (e.g. marquee LED numbers). Null or empty means this line takes no choice.",
+    )
+    customization_prompt: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Question shown to the customer for a free-text customisation "
+                    "(e.g. 'Which characters do you need?' on a marquee letter set). "
+                    "Used when `choices` is empty.",
+    )
 
 
 class PackageServiceUpdate(BaseSchema):
@@ -132,6 +144,18 @@ class PackageServiceUpdate(BaseSchema):
     cover_image_url: str | None = Field(default=None, max_length=500)
     display_order: int | None = Field(default=None, ge=0)
     prep_time_minutes: int | None = Field(default=None, ge=0, le=1440)
+    choices: list[str] | None = Field(
+        default=None,
+        max_length=200,
+        description="Selectable values the customer picks from (e.g. marquee LED numbers). Null or empty means this line takes no choice.",
+    )
+    customization_prompt: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Question shown to the customer for a free-text customisation "
+                    "(e.g. 'Which characters do you need?' on a marquee letter set). "
+                    "Used when `choices` is empty.",
+    )
 
 
 class PackagePricingUpdate(BaseSchema):

@@ -131,6 +131,21 @@ class BookingCreate(BaseSchema):
         description="Optional per-service quantity override, keyed by PackageService "
                     "id (as string), mirroring item_quantities.",
     )
+    item_customizations: dict[str, str] | None = Field(
+        default=None,
+        description="What the customer specified for each customisable item, keyed by "
+                    "PackageItem id (as string) — the characters wanted on a marquee "
+                    "letter set, for example. When the item defines `choices` the value "
+                    "must be one of them; otherwise it is free text, trimmed and capped "
+                    "server-side. Snapshotted onto the BookingItem so a later edit to "
+                    "the package cannot rewrite what was ordered. Ignored for items "
+                    "that are not customisable.",
+    )
+    service_customizations: dict[str, str] | None = Field(
+        default=None,
+        description="What the customer specified for each customisable service, keyed by "
+                    "PackageService id (as string), mirroring item_customizations.",
+    )
     balloon_color_mode: BalloonColorMode | None = Field(
         default=None,
         description="Whether the customer wants a single accent balloon colour or a two-colour combination.",

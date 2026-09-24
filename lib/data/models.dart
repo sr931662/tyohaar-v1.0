@@ -347,6 +347,12 @@ class Package {
   final String? status;
   final bool isFeatured;
   final bool isCustomizable;
+  // Values the customer picks from on a customisable line — the numbers
+  // offered for a marquee LED, for example. Empty means no choice to make.
+  final List<String> choices;
+  // Question to put above a free-text customisation box — "Which characters
+  // do you need?" on a marquee letter set. Used when [choices] is empty.
+  final String? customizationPrompt;
   final int? minGuests;
   final int? maxGuests;
   final double? durationHours;
@@ -377,6 +383,8 @@ class Package {
     this.status,
     this.isFeatured = false,
     this.isCustomizable = false,
+    this.choices = const [],
+    this.customizationPrompt,
     this.minGuests,
     this.maxGuests,
     this.durationHours,
@@ -407,6 +415,8 @@ class Package {
         status: status,
         isFeatured: isFeatured,
         isCustomizable: isCustomizable,
+        choices: choices,
+        customizationPrompt: customizationPrompt,
         minGuests: minGuests,
         maxGuests: maxGuests,
         durationHours: durationHours,
@@ -449,6 +459,11 @@ class Package {
       status: json['status'] as String?,
       isFeatured: json['is_featured'] as bool? ?? false,
       isCustomizable: json['is_customizable'] as bool? ?? false,
+      choices: ((json['choices'] as List?) ?? const [])
+          .map((c) => c?.toString() ?? '')
+          .where((c) => c.isNotEmpty)
+          .toList(),
+      customizationPrompt: json['customization_prompt'] as String?,
       minGuests: json['min_guests'] as int?,
       maxGuests: json['max_guests'] as int?,
       durationHours: json['duration_hours'] != null
@@ -492,6 +507,12 @@ class PackageItem {
   final bool isOptional;
   final bool isMandatory;
   final bool isCustomizable;
+  // Values the customer picks from on a customisable line — the numbers
+  // offered for a marquee LED, for example. Empty means no choice to make.
+  final List<String> choices;
+  // Question to put above a free-text customisation box — "Which characters
+  // do you need?" on a marquee letter set. Used when [choices] is empty.
+  final String? customizationPrompt;
   // True for a vendor-wide reusable item attached to the package rather than
   // one defined specifically for it — see VendorCommonItemsScreen.
   final bool isCommon;
@@ -516,6 +537,8 @@ class PackageItem {
     required this.isOptional,
     required this.isMandatory,
     this.isCustomizable = false,
+    this.choices = const [],
+    this.customizationPrompt,
     this.isCommon = false,
     this.iconUrl,
     this.coverImageUrl,
@@ -538,6 +561,8 @@ class PackageItem {
         isOptional: isOptional,
         isMandatory: isMandatory,
         isCustomizable: isCustomizable,
+        choices: choices,
+        customizationPrompt: customizationPrompt,
         isCommon: isCommon,
         iconUrl: iconUrl,
         coverImageUrl: coverImageUrl,
@@ -552,6 +577,12 @@ class PackageItem {
   /// Whether the customer can select more than the template default —
   /// true whenever maxQuantity is null (uncapped) or greater than quantity.
   bool get isQuantityAdjustable => maxQuantity == null || maxQuantity! > quantity;
+
+  /// True when the customer must say something about this line before it can
+  /// be ordered — pick from [choices], or type an answer to
+  /// [customizationPrompt]. A marquee letter set is the latter: the vendor
+  /// needs to know which characters to bring.
+  bool get needsCustomization => choices.isNotEmpty || isCustomizable;
 
   /// Cover first, then gallery images deduped against it — the list a
   /// gallery viewer should page through.
@@ -576,6 +607,11 @@ class PackageItem {
       // Was: json['is_optional'] — backend sends is_mandatory (inverted).
       isOptional: !isMandatory,
       isCustomizable: json['is_customizable'] as bool? ?? false,
+      choices: ((json['choices'] as List?) ?? const [])
+          .map((c) => c?.toString() ?? '')
+          .where((c) => c.isNotEmpty)
+          .toList(),
+      customizationPrompt: json['customization_prompt'] as String?,
       isCommon: json['is_common'] as bool? ?? false,
       iconUrl: asUrl(json['icon_url']),
       coverImageUrl: asUrl(json['cover_image_url']),
@@ -617,6 +653,12 @@ class PackageServiceLine {
   final bool isOptional;
   final bool isMandatory;
   final bool isCustomizable;
+  // Values the customer picks from on a customisable line — the numbers
+  // offered for a marquee LED, for example. Empty means no choice to make.
+  final List<String> choices;
+  // Question to put above a free-text customisation box — "Which characters
+  // do you need?" on a marquee letter set. Used when [choices] is empty.
+  final String? customizationPrompt;
   final bool isCommon;
   final String? iconUrl;
   final String? coverImageUrl;
@@ -634,6 +676,8 @@ class PackageServiceLine {
     required this.isOptional,
     required this.isMandatory,
     this.isCustomizable = false,
+    this.choices = const [],
+    this.customizationPrompt,
     this.isCommon = false,
     this.iconUrl,
     this.coverImageUrl,
@@ -644,6 +688,12 @@ class PackageServiceLine {
   /// Whether the customer can select more than the template default —
   /// true whenever maxQuantity is null (uncapped) or greater than quantity.
   bool get isQuantityAdjustable => maxQuantity == null || maxQuantity! > quantity;
+
+  /// True when the customer must say something about this line before it can
+  /// be ordered — pick from [choices], or type an answer to
+  /// [customizationPrompt]. A marquee letter set is the latter: the vendor
+  /// needs to know which characters to bring.
+  bool get needsCustomization => choices.isNotEmpty || isCustomizable;
 
   /// Cover first, then gallery images deduped against it — the list a
   /// gallery viewer should page through.
@@ -665,6 +715,11 @@ class PackageServiceLine {
       isMandatory: isMandatory,
       isOptional: !isMandatory,
       isCustomizable: json['is_customizable'] as bool? ?? false,
+      choices: ((json['choices'] as List?) ?? const [])
+          .map((c) => c?.toString() ?? '')
+          .where((c) => c.isNotEmpty)
+          .toList(),
+      customizationPrompt: json['customization_prompt'] as String?,
       isCommon: json['is_common'] as bool? ?? false,
       iconUrl: asUrl(json['icon_url']),
       coverImageUrl: asUrl(json['cover_image_url']),

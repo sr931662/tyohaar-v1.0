@@ -184,6 +184,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     child: CachedNetworkImage(
                       imageUrl: b.packageCoverUrl ?? '',
                       fit: BoxFit.cover,
+                      memCacheWidth: 300,
                       placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', arch: false),
                       errorWidget: (context, url, error) => OccasionAssets.getFallback(b.packageName ?? '', arch: false),
                     ),

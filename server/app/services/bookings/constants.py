@@ -19,3 +19,9 @@ VALID_STATUS_TRANSITIONS: dict[str, set[str]] = {
     "no_show": set(),
     "rescheduled": {"confirmed", "cancelled"},
 }
+
+# Longest free-text customisation accepted on a booking line — the characters
+# a customer wants on a marquee letter set, for example. Bounded because the
+# value goes into BookingItem.notes and, unlike a `choices` pick, there is no
+# list to validate it against.
+MAX_CUSTOMIZATION_LENGTH = 100

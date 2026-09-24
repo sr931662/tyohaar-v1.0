@@ -142,6 +142,12 @@ class BookingItemResponse(BaseSchema):
     package_item_id: uuid.UUID
     name: str = Field(description="Item name snapshotted at booking time")
     quantity: int
+    unit: str | None = Field(
+        default=None,
+        description="Quantity unit snapshotted at booking time (pieces, sets, hours…). "
+                    "Needed to say what unit_price is per — without it a per-set line "
+                    "reads as a per-piece one.",
+    )
     unit_price: MoneyAmount
     final_price: MoneyAmount
     is_addon: bool = False

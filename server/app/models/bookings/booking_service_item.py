@@ -164,6 +164,13 @@ class BookingServiceItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
                 "at booking time.",
     )
 
+    notes: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Customer's pick for a customisable service, snapshotted at "
+                "booking time (mirrors BookingItem.notes).",
+    )
+
     # ── Relationships ─────────────────────────────────────────────────────────
 
     booking: Mapped[Booking] = relationship(
