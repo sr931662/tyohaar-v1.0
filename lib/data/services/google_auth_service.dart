@@ -1,5 +1,7 @@
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../utils/log.dart';
+
 /// Why a Google sign-in attempt didn't yield an ID token. The UI maps these to
 /// localized copy — `cancelled` deliberately has none, since dismissing the
 /// account sheet isn't an error worth reporting back to the user.
@@ -62,7 +64,21 @@ class GoogleAuthService {
     final GoogleSignInAccount account;
     try {
       account = await GoogleSignIn.instance.authenticate();
-    } on GoogleSignInException catch (e) {
+    } on GoogleSignInException catch (e, st) {
+      if (e.code != GoogleSignInExceptionCode.canceled) {
+        // The UI only ever shows a generic "couldn't sign in" line, so the
+        // platform's own reason was lost — and in a release build nothing
+        // reached the device log either. Report it: the common production
+        // cause is the app's signing certificate not matching any Android
+        // OAuth client (Play re-signs an App Bundle with its own key), and
+        // that is only distinguishable from a consent-screen or network
+        // problem by this description.
+        logError(
+          'google_sign_in.authenticate [${e.code}] serverClientId=$serverClientId',
+          e,
+          st,
+        );
+      }
       throw GoogleSignInFailure(
         e.code == GoogleSignInExceptionCode.canceled
             ? GoogleSignInFailureKind.cancelled
@@ -73,8 +89,13 @@ class GoogleAuthService {
 
     final idToken = account.authentication.idToken;
     if (idToken == null || idToken.isEmpty) {
-      // Almost always a misconfigured serverClientId or a missing SHA-1 in the
-      // Firebase project — Google signs the user in but mints no ID token.
+      // Signed in, but no ID token minted — the signature that reaches this
+      // point is almost always an Android OAuth client mismatch for the
+      // project that owns serverClientId.
+      logError(
+        'google_sign_in.noIdToken serverClientId=$serverClientId',
+        StateError('Google returned an account but no ID token'),
+      );
       throw GoogleSignInFailure(GoogleSignInFailureKind.noIdToken);
     }
     return idToken;
