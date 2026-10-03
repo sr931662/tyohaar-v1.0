@@ -6,10 +6,16 @@ import { vendorMediaApi } from '../api';
  * File field that supports both pasting a URL and uploading a local file
  * (image or document, depending on `accept`). Uploading replaces the URL
  * text with the returned Cloudinary URL.
+ *
+ * With `multiple`, several files can be picked at once; every uploaded URL is
+ * handed to `onUploaded` so a gallery can keep them all instead of only the
+ * last one. `onChange` still receives the final URL for single-value callers.
  */
 export default function ImageUploadField({
   value,
   onChange,
+  onUploaded,
+  multiple = false,
   usage,
   placeholder = 'https://...',
   accept = 'image/*',
@@ -20,15 +26,23 @@ export default function ImageUploadField({
   const showImagePreview = accept.includes('image');
 
   const handleFile = async (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = ''; // allow re-selecting the same file later
-    if (!file) return;
+    if (!files.length) return;
 
     setUploading(true);
     try {
-      const uploaded = await vendorMediaApi.uploadImage(file, usage);
-      onChange(uploaded.url);
-      toast.success('File uploaded.');
+      const urls = [];
+      for (const file of files) {
+        const uploaded = await vendorMediaApi.uploadImage(file, usage);
+        urls.push(uploaded.url);
+      }
+      if (onUploaded) {
+        onUploaded(urls);
+      } else {
+        onChange(urls[urls.length - 1]);
+        toast.success(urls.length > 1 ? `${urls.length} files uploaded.` : 'File uploaded.');
+      }
     } catch (err) {
       const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Upload failed.';
       toast.error(msg);
@@ -61,6 +75,7 @@ export default function ImageUploadField({
           ref={fileInputRef}
           type="file"
           accept={accept}
+          multiple={multiple}
           style={{ display: 'none' }}
           onChange={handleFile}
         />

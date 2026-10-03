@@ -25,3 +25,9 @@ VALID_STATUS_TRANSITIONS: dict[str, set[str]] = {
 # value goes into BookingItem.notes and, unlike a `choices` pick, there is no
 # list to validate it against.
 MAX_CUSTOMIZATION_LENGTH = 100
+
+# A line with no `choices` takes a number, not free text: the characters are
+# stocked digits a vendor physically brings, one per digit. The count of them
+# is the line's quantity, so this is both the digit cap and the quantity cap
+# for such a line — kept in step with _maxCustomizationDigits in the app.
+MAX_CUSTOMIZATION_DIGITS = 4

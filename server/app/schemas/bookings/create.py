@@ -136,10 +136,13 @@ class BookingCreate(BaseSchema):
         description="What the customer specified for each customisable item, keyed by "
                     "PackageItem id (as string) — the characters wanted on a marquee "
                     "letter set, for example. When the item defines `choices` the value "
-                    "must be one of them; otherwise it is free text, trimmed and capped "
-                    "server-side. Snapshotted onto the BookingItem so a later edit to "
-                    "the package cannot rewrite what was ordered. Ignored for items "
-                    "that are not customisable.",
+                    "must be one of them; otherwise the line takes a number and "
+                    "everything that is not a digit is stripped server-side, capped at "
+                    "4 digits. The digit count becomes the line's quantity, so \"20\" "
+                    "is two characters and bills at 2 x the item's base price — any "
+                    "quantity sent for such an item is ignored. Snapshotted onto the "
+                    "BookingItem so a later edit to the package cannot rewrite what was "
+                    "ordered. Ignored for items that are not customisable.",
     )
     service_customizations: dict[str, str] | None = Field(
         default=None,

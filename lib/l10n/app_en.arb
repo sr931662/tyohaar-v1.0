@@ -723,8 +723,18 @@
   "planFlowAuthActionSaveAddress": "save a delivery address",
   "planFlowChoiceLabel": "Choose:",
   "planFlowChoiceHint": "Select",
-  "planFlowCustomizationDefaultPrompt": "What should we prepare for this?",
-  "planFlowCustomizationHint": "e.g. 25, HAPPY, $",
+  "planFlowCustomizationDefaultPrompt": "Which number should we set?",
+  "planFlowNumberUnsetHint": "Scroll to set your number.",
+  "planFlowNumberDigitCountLabel": "Digits",
+  "planFlowNumberPriceLabel": "{count, plural, =1{{count} digit × {price} = {total}} other{{count} digits × {price} = {total}}}",
+  "@planFlowNumberPriceLabel": {
+    "description": "Live per-digit price breakdown under the number wheels on a customisable marquee line",
+    "placeholders": {
+      "count": { "type": "int" },
+      "price": { "type": "String" },
+      "total": { "type": "String" }
+    }
+  },
   "planFlowChoiceRequiredMessage": "Please make a selection for every add-on that asks for one.",
   "planFlowAddOnPriceLabel": "+ {price} / {unit}",
   "@planFlowAddOnPriceLabel": {

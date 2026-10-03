@@ -7,6 +7,7 @@ import BulkActionBar from '../../../admin/components/ui/BulkActionBar';
 import { useRowSelection } from '../../../admin/hooks/useRowSelection';
 import { reportBulkResult } from '../../../admin/utils/bulkToast';
 import ImageUploadField from '../../components/ImageUploadField';
+import PackageGalleryEditor from './PackageGalleryEditor';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
 import AttachPackagesModal from '../../components/AttachPackagesModal';
 import CommonServicesModal from './CommonServicesModal';
@@ -180,6 +181,19 @@ function PackageFormModal({ initial, occasions, onClose, onSave, saving }) {
             />
           </div>
           <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 2 }}>More Photos</label>
+            <p style={{ margin: '0 0 10px', fontSize: 11, color: 'var(--text-tertiary)' }}>
+              The cover image always shows first. Add more photos here — customers swipe through all of them on the package page.
+            </p>
+            {isEdit ? (
+              <PackageGalleryEditor pkgId={initial.id} compact />
+            ) : (
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                Create the package first, then reopen it (or use the Photos button) to add more photos.
+              </p>
+            )}
+          </div>
+          <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
               Service City
               <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
@@ -225,9 +239,13 @@ function PackageFormModal({ initial, occasions, onClose, onSave, saving }) {
 // Comma-separated choices <-> the API's string array.
 //
 // `choices` are the values a customer picks from on a customisable add-on —
-// the numbers offered for a marquee LED, for example. Kept as free text in
+// the sizes offered on a backdrop, for example. Kept as free text in
 // the form so a vendor can type "1, 2, 3" (or "0-9" spelled out) without a
 // list editor, and normalised here so the API only ever sees a clean array.
+//
+// Leaving `choices` blank is the other shape: the line takes a number the
+// customer dials in, and is billed one unit per digit — a marquee letter set,
+// where each digit of "20" is a character the vendor physically brings.
 const parseChoices = (text) =>
   String(text || '')
     .split(',')
@@ -352,12 +370,12 @@ function CommonItemsModal({ onClose }) {
                   <div className="form-row-2-1" style={{ gap: 10 }}>
                     <input className="admin-input" value={editForm.name} onChange={(e) => setEF('name', e.target.value)} placeholder="Item name" />
                     <input className="admin-input" value={editForm.choices} onChange={(e) => setEF('choices', e.target.value)} placeholder="Choices (optional), e.g. 1, 2, 3" title="Comma-separated values the customer picks from, e.g. the numbers offered for a marquee LED. Leave blank for a plain add-on." />
-                    <label className="admin-checkline" title="Tick when the customer must tell you something about this item — which characters they want on a marquee letter set, for example. Leave Choices blank to get a free-text box.">
+                    <label className="admin-checkline" title="Tick when the customer must tell you a number for this item — the 25 on a 25th-anniversary marquee, for example. Leave Choices blank and the customer dials the number on a digit picker; the item is then charged per digit, so 20 is two characters at the item's price each. Max Quantity caps how many digits they can order.">
                       <input type="checkbox" checked={!!editForm.is_customizable} onChange={(e) => setEF('is_customizable', e.target.checked)} />
                       <span>Ask the customer for details</span>
                     </label>
                     {editForm.is_customizable && parseChoices(editForm.choices).length === 0 && (
-                      <input className="admin-input" value={editForm.customization_prompt} onChange={(e) => setEF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which characters do you need?" />
+                      <input className="admin-input" value={editForm.customization_prompt} onChange={(e) => setEF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which number should we set?" />
                     )}
                     <input className="admin-input" type="number" min="0" value={editForm.base_price} onChange={(e) => setEF('base_price', e.target.value)} placeholder="Price (₹)" />
                   </div>
@@ -433,12 +451,12 @@ function CommonItemsModal({ onClose }) {
             <div className="form-row-2-1" style={{ gap: 10 }}>
               <input className="admin-input" value={newItem.name} onChange={(e) => setNF('name', e.target.value)} placeholder="Item name *" />
               <input className="admin-input" value={newItem.choices} onChange={(e) => setNF('choices', e.target.value)} placeholder="Choices (optional), e.g. 1, 2, 3" title="Comma-separated values the customer picks from, e.g. the numbers offered for a marquee LED. Leave blank for a plain add-on." />
-              <label className="admin-checkline" title="Tick when the customer must tell you something about this item — which characters they want on a marquee letter set, for example. Leave Choices blank to get a free-text box.">
+              <label className="admin-checkline" title="Tick when the customer must tell you a number for this item — the 25 on a 25th-anniversary marquee, for example. Leave Choices blank and the customer dials the number on a digit picker; the item is then charged per digit, so 20 is two characters at the item's price each. Max Quantity caps how many digits they can order.">
                 <input type="checkbox" checked={!!newItem.is_customizable} onChange={(e) => setNF('is_customizable', e.target.checked)} />
                 <span>Ask the customer for details</span>
               </label>
               {newItem.is_customizable && parseChoices(newItem.choices).length === 0 && (
-                <input className="admin-input" value={newItem.customization_prompt} onChange={(e) => setNF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which characters do you need?" />
+                <input className="admin-input" value={newItem.customization_prompt} onChange={(e) => setNF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which number should we set?" />
               )}
               <input className="admin-input" type="number" min="0" value={newItem.base_price} onChange={(e) => setNF('base_price', e.target.value)} placeholder="Price (₹) *" />
             </div>
@@ -632,12 +650,12 @@ function PackageItemsModal({ pkg, onClose }) {
                   <div className="form-row-2-1" style={{ gap: 10 }}>
                     <input className="admin-input" value={editForm.name} onChange={(e) => setEF('name', e.target.value)} placeholder="Item name" />
                     <input className="admin-input" value={editForm.choices} onChange={(e) => setEF('choices', e.target.value)} placeholder="Choices (optional), e.g. 1, 2, 3" title="Comma-separated values the customer picks from, e.g. the numbers offered for a marquee LED. Leave blank for a plain add-on." />
-                    <label className="admin-checkline" title="Tick when the customer must tell you something about this item — which characters they want on a marquee letter set, for example. Leave Choices blank to get a free-text box.">
+                    <label className="admin-checkline" title="Tick when the customer must tell you a number for this item — the 25 on a 25th-anniversary marquee, for example. Leave Choices blank and the customer dials the number on a digit picker; the item is then charged per digit, so 20 is two characters at the item's price each. Max Quantity caps how many digits they can order.">
                       <input type="checkbox" checked={!!editForm.is_customizable} onChange={(e) => setEF('is_customizable', e.target.checked)} />
                       <span>Ask the customer for details</span>
                     </label>
                     {editForm.is_customizable && parseChoices(editForm.choices).length === 0 && (
-                      <input className="admin-input" value={editForm.customization_prompt} onChange={(e) => setEF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which characters do you need?" />
+                      <input className="admin-input" value={editForm.customization_prompt} onChange={(e) => setEF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which number should we set?" />
                     )}
                     <input className="admin-input" type="number" min="0" value={editForm.base_price} onChange={(e) => setEF('base_price', e.target.value)} placeholder="Price (₹)" />
                   </div>
@@ -758,12 +776,12 @@ function PackageItemsModal({ pkg, onClose }) {
                 <div className="form-row-2-1" style={{ gap: 10 }}>
                   <input className="admin-input" value={newItem.name} onChange={(e) => setNF('name', e.target.value)} placeholder="Item name *" />
                   <input className="admin-input" value={newItem.choices} onChange={(e) => setNF('choices', e.target.value)} placeholder="Choices (optional), e.g. 1, 2, 3" title="Comma-separated values the customer picks from, e.g. the numbers offered for a marquee LED. Leave blank for a plain add-on." />
-                  <label className="admin-checkline" title="Tick when the customer must tell you something about this item — which characters they want on a marquee letter set, for example. Leave Choices blank to get a free-text box.">
+                  <label className="admin-checkline" title="Tick when the customer must tell you a number for this item — the 25 on a 25th-anniversary marquee, for example. Leave Choices blank and the customer dials the number on a digit picker; the item is then charged per digit, so 20 is two characters at the item's price each. Max Quantity caps how many digits they can order.">
                     <input type="checkbox" checked={!!newItem.is_customizable} onChange={(e) => setNF('is_customizable', e.target.checked)} />
                     <span>Ask the customer for details</span>
                   </label>
                   {newItem.is_customizable && parseChoices(newItem.choices).length === 0 && (
-                    <input className="admin-input" value={newItem.customization_prompt} onChange={(e) => setNF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which characters do you need?" />
+                    <input className="admin-input" value={newItem.customization_prompt} onChange={(e) => setNF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which number should we set?" />
                   )}
                   <input className="admin-input" type="number" min="0" value={newItem.base_price} onChange={(e) => setNF('base_price', e.target.value)} placeholder="Price (₹) *" />
                 </div>
@@ -939,34 +957,10 @@ function PackageItemImagesModal({ pkgId, item, onClose, onChanged }) {
 }
 
 // ── Package Gallery Modal ───────────────────────────────────────────────────────
-// Additional images beyond the single cover image (set in the main package
-// form) — shown to customers as a swipeable slider on the package detail
-// page, with the cover image always first.
+// The package's extra photos, on their own — the same editor the package form
+// embeds, reachable from the Photos button on each row.
 
 function PackageGalleryModal({ pkg, onClose }) {
-  const qc = useQueryClient();
-  const [uploadUrl, setUploadUrl] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(null);
-
-  const { data: gallery = [], isLoading } = useQuery({
-    queryKey: ['pkg-gallery', pkg.id],
-    queryFn: () => vendorPackagesApi.listGallery(pkg.id),
-  });
-
-  const invalidate = () => qc.invalidateQueries(['pkg-gallery', pkg.id]);
-
-  const addMutation = useMutation({
-    mutationFn: (fileUrl) => vendorPackagesApi.addGalleryItem(pkg.id, { file_url: fileUrl }),
-    onSuccess: () => { toast.success('Image added.'); invalidate(); setUploadUrl(''); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add image.'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (galleryId) => vendorPackagesApi.deleteGalleryItem(pkg.id, galleryId),
-    onSuccess: () => { toast.success('Image removed.'); invalidate(); setConfirmDelete(null); },
-    onError: () => toast.error('Failed to remove image.'),
-  });
-
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
       <div className="admin-modal lg" onClick={(e) => e.stopPropagation()}>
@@ -981,51 +975,9 @@ function PackageGalleryModal({ pkg, onClose }) {
           <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', marginBottom: 16 }}>
             The cover image (set on the package form) always shows first to customers. Add more photos here — customers can swipe through all of them on the package page.
           </p>
-
-          {isLoading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginBottom: 20 }}>
-              {[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 10 }} />)}
-            </div>
-          ) : gallery.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginBottom: 20 }}>
-              {gallery.map((item) => (
-                <div key={item.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '4/3', background: 'var(--bg-base)' }}>
-                  <img src={item.file_url} alt={item.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  <button
-                    onClick={() => setConfirmDelete(item)}
-                    style={{ position: 'absolute', top: 5, right: 5, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(239,68,68,0.85)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
-                  >×</button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: 16 }}>No additional photos yet. Add your first one below.</p>
-          )}
-
-          <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Add Photo</h4>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
-              <ImageUploadField value={uploadUrl} onChange={setUploadUrl} usage="package_image" placeholder="Image URL (https://...)" />
-            </div>
-            <button
-              className="btn btn-primary"
-              disabled={!uploadUrl || addMutation.isPending}
-              onClick={() => addMutation.mutate(uploadUrl)}
-            >
-              {addMutation.isPending ? 'Adding…' : '+ Add'}
-            </button>
-          </div>
+          <PackageGalleryEditor pkgId={pkg.id} />
         </div>
       </div>
-
-      <ConfirmDialog
-        open={!!confirmDelete}
-        onClose={() => setConfirmDelete(null)}
-        onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
-        title="Remove Photo"
-        message="Remove this photo from the package gallery?"
-        loading={deleteMutation.isPending}
-      />
     </div>
   );
 }

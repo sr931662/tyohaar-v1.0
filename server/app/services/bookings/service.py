@@ -38,7 +38,13 @@ from app.services.exceptions import BusinessRuleError
 from app.services.bookings.constants import (
     CANCELLATION_FEE_PERCENTAGE,
     CANCELLATION_WINDOW_HOURS,
+    MAX_CUSTOMIZATION_DIGITS,
     MAX_CUSTOMIZATION_LENGTH,
+)
+from app.services.bookings.helpers import (
+    digit_quantity,
+    is_numeric_line,
+    resolve_customization,
 )
 from app.services.bookings.exceptions import (
     AssignmentNotFoundError,
@@ -211,12 +217,39 @@ class BookingService(BaseService):
                 optional_items = [i for i in package_items if not i.is_mandatory and i.id in data.item_ids]
                 selected_items.extend(optional_items)
 
-            # 3. Resolve per-item quantities — customer may request more than
+            # 3. Resolve the customer's pick for each customisable line.
+            # Validated against the line's own `choices` so a tampered client
+            # cannot order a marquee LED "99" that the vendor never offered,
+            # and snapshotted onto the booking row so later edits to the
+            # package cannot rewrite what was ordered. Resolved before the
+            # quantities because a numeric line's quantity is derived from it.
+            item_customizations = data.item_customizations or {}
+            service_customizations = data.service_customizations or {}
+
+            def _resolve_customization(line, supplied: dict) -> str | None:
+                return resolve_customization(
+                    line,
+                    supplied,
+                    max_length=MAX_CUSTOMIZATION_LENGTH,
+                    max_digits=MAX_CUSTOMIZATION_DIGITS,
+                )
+
+            # 3b. Resolve per-item quantities — customer may request more than
             # the package template's default (e.g. 5 balloons isn't enough
             # for a bigger event), clamped to [template quantity, max_quantity].
             item_quantities = data.item_quantities or {}
 
             def _resolve_qty(pi) -> int:
+                # A numeric line prices itself off the number the customer
+                # set — one character per digit — so its quantity is derived
+                # here rather than taken from the client: a tampered
+                # item_quantities cannot buy a four-character marquee at the
+                # price of one.
+                if is_numeric_line(pi):
+                    digits = _resolve_customization(pi, item_customizations)
+                    if digits:
+                        return digit_quantity(pi, digits)
+
                 requested = item_quantities.get(str(pi.id))
                 if requested is None:
                     return pi.quantity
@@ -224,40 +257,6 @@ class BookingService(BaseService):
                 if pi.max_quantity is not None:
                     qty = min(qty, pi.max_quantity)
                 return qty
-
-            # 3b. Resolve the customer's pick for each customisable line.
-            # Validated against the line's own `choices` so a tampered client
-            # cannot order a marquee LED "99" that the vendor never offered,
-            # and snapshotted onto the booking row so later edits to the
-            # package cannot rewrite what was ordered.
-            item_customizations = data.item_customizations or {}
-            service_customizations = data.service_customizations or {}
-
-            def _resolve_customization(line, supplied: dict) -> str | None:
-                """
-                What the customer specified for one line, or None.
-
-                Two shapes, decided by the line itself: a fixed `choices` list
-                means the value must be one of them, so a tampered client
-                cannot order an option the vendor never offered. Otherwise it
-                is free text — the characters wanted on a marquee letter set,
-                say — trimmed and capped, since there is no list to check it
-                against and the column is bounded.
-                """
-                value = supplied.get(str(line.id))
-                if value is None:
-                    return None
-                value = value.strip()
-                if not value:
-                    return None
-
-                offered = getattr(line, "choices", None) or []
-                if offered:
-                    return value if value in offered else None
-
-                if not getattr(line, "is_customizable", False):
-                    return None
-                return value[:MAX_CUSTOMIZATION_LENGTH]
 
             # 1b. Fetch mandatory services from package, plus any selected
             # optional services (add-ons) — mirrors items 1-3 above.
@@ -270,6 +269,13 @@ class BookingService(BaseService):
             service_quantities = data.service_quantities or {}
 
             def _resolve_service_qty(ps) -> int:
+                # Mirrors _resolve_qty: a numeric service line is billed by
+                # the count of characters the customer set.
+                if is_numeric_line(ps):
+                    digits = _resolve_customization(ps, service_customizations)
+                    if digits:
+                        return digit_quantity(ps, digits)
+
                 requested = service_quantities.get(str(ps.id))
                 if requested is None:
                     return ps.quantity

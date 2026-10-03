@@ -569,6 +569,12 @@ class PackageItem {
   /// needs to know which characters to bring.
   bool get needsCustomization => choices.isNotEmpty || isCustomizable;
 
+  /// True when the answer is a number the customer dials in rather than a
+  /// pick from [choices] — a marquee letter set, where each digit is a
+  /// physical character the vendor brings and bills for. The digit count
+  /// drives the line's quantity, so "20" costs 2 x [unitPrice].
+  bool get needsNumericCustomization => choices.isEmpty && isCustomizable;
+
   /// Cover first, then gallery images deduped against it — the list a
   /// gallery viewer should page through.
   List<String> get allImageUrls => [
@@ -679,6 +685,12 @@ class PackageServiceLine {
   /// [customizationPrompt]. A marquee letter set is the latter: the vendor
   /// needs to know which characters to bring.
   bool get needsCustomization => choices.isNotEmpty || isCustomizable;
+
+  /// True when the answer is a number the customer dials in rather than a
+  /// pick from [choices] — a marquee letter set, where each digit is a
+  /// physical character the vendor brings and bills for. The digit count
+  /// drives the line's quantity, so "20" costs 2 x [unitPrice].
+  bool get needsNumericCustomization => choices.isEmpty && isCustomizable;
 
   /// Cover first, then gallery images deduped against it — the list a
   /// gallery viewer should page through.

@@ -200,10 +200,13 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     customization_prompt: Mapped[str | None] = mapped_column(
         String(200),
         nullable=True,
-        comment="Question shown to the customer for a free-text customisation — "
-                "e.g. 'Which characters do you need?' on a marquee letter set. "
-                "Used when `choices` is empty; with choices set, the customer "
-                "picks from that list instead.",
+        comment="Question shown to the customer above the number picker — "
+                "e.g. 'Which number should we set?' on a marquee letter set. "
+                "Used when `choices` is empty, in which case the line takes a "
+                "number (digits only, max 4) and is billed one unit per digit, "
+                "so '20' is two characters at base_price each. With choices "
+                "set, the customer picks from that list instead and the "
+                "quantity is unaffected.",
     )
 
     # ── Display ───────────────────────────────────────────────────────────────

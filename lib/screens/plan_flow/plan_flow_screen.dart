@@ -165,9 +165,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // included in the booking (mandatory items are always present).
   final Map<String, int> _itemQuantities = {};
 
-  /// Mirrors the server's MAX_CUSTOMIZATION_LENGTH, so the field stops the
-  /// customer at the same point the API would silently truncate them.
-  static const int _maxCustomizationLength = 100;
+  /// Mirrors the server's MAX_CUSTOMIZATION_DIGITS, so the wheels offer
+  /// exactly the numbers the API will accept. Each digit is a physical
+  /// character the vendor brings, so this is also the per-line quantity cap.
+  static const int _maxCustomizationDigits = 4;
 
   // item.id -> what the customer picked or typed for that item (the
   // characters wanted on a marquee letter set, say). Only ever holds ids of
@@ -250,6 +251,26 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // priced) here as opt-in add-ons, regardless of the backend's
   // is_mandatory flag. Only package-specific items can be genuinely
   // included in the price.
+  /// One physical character per digit, so the number the customer dialled
+  /// *is* the line's quantity — "20" is two characters at the line's unit
+  /// price. Kept in `_itemQuantities` so every running total, coupon preview
+  /// and the booking payload price it the one way. The server recomputes the
+  /// same count from the customisation it stores, so this is the display
+  /// half of the rule, not the authority for it.
+  void _syncNumericQuantity(PackageItem item, String? value) {
+    if (!item.needsNumericCustomization) return;
+    if (!_itemQuantities.containsKey(item.id)) return;
+    _itemQuantities[item.id] =
+        (value == null || value.isEmpty) ? item.quantity : value.length;
+  }
+
+  void _syncNumericServiceQuantity(PackageServiceLine service, String? value) {
+    if (!service.needsNumericCustomization) return;
+    if (!_serviceQuantities.containsKey(service.id)) return;
+    _serviceQuantities[service.id] =
+        (value == null || value.isEmpty) ? service.quantity : value.length;
+  }
+
   bool _isIncludedItem(PackageItem i) => i.isMandatory && !i.isCommon;
   bool _isIncludedService(PackageServiceLine s) => s.isMandatory && !s.isCommon;
 
@@ -1461,6 +1482,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   onChanged: (v) => setState(() {
                     if (v) {
                       _itemQuantities[item.id] = item.quantity;
+                      // Switching a numeric line back on restores the number
+                      // the customer had already dialled, and its price with it.
+                      _syncNumericQuantity(item, _itemChoices[item.id]);
                     } else {
                       _itemQuantities.remove(item.id);
                     }
@@ -1475,16 +1499,22 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               choices: item.choices,
               prompt: item.customizationPrompt,
               value: _itemChoices[item.id],
+              unitPrice: item.unitPrice,
+              maxQuantity: item.maxQuantity,
               onChanged: (v) => setState(() {
                 if (v == null) {
                   _itemChoices.remove(item.id);
                 } else {
                   _itemChoices[item.id] = v;
                 }
+                _syncNumericQuantity(item, v);
               }),
             ),
           ],
-          if (item.isQuantityAdjustable && (locked || selected)) ...[
+          // A numeric line has no stepper: its quantity is the count of
+          // characters the customer dialled, and two controls disagreeing
+          // over the same number is how you ship a wrong invoice.
+          if (item.isQuantityAdjustable && !item.needsNumericCustomization && (locked || selected)) ...[
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -1506,28 +1536,22 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  /// Dropdown for a line whose vendor defined a set of selectable values —
-  /// the number on a marquee LED being the case this was built for.
-  ///
-  /// The options come from the line itself rather than anything hardcoded
-  /// here, so a vendor adding a new customisable add-on in the portal needs
-  /// no app change. Starts unset, and the customer must pick before the step
-  /// will advance, since "Marquee LED, unspecified number" is not an order
-  /// the vendor can fulfil.
   /// What the customer has to tell the vendor about a customisable line.
   ///
   /// Two shapes, decided by the line itself rather than anything named here,
   /// so adding a customisable add-on in the portal needs no app change:
   ///
   ///  * a fixed `choices` list renders a dropdown;
-  ///  * otherwise a free-text box under the line's own prompt — a marquee
-  ///    letter set, where the vendor needs the actual characters (letters,
-  ///    numbers, symbols) and no list could cover them.
+  ///  * otherwise the number wheels — a marquee letter set, where the vendor
+  ///    brings one physical character per digit and bills for each, so "20"
+  ///    is two characters at [unitPrice] apiece.
   Widget _customizationField(
     BuildContext context, {
     required List<String> choices,
     required String? prompt,
     required String? value,
+    required double unitPrice,
+    required int? maxQuantity,
     required ValueChanged<String?> onChanged,
   }) {
     final ty = context.ty;
@@ -1570,39 +1594,19 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          prompt?.trim().isNotEmpty == true ? prompt!.trim() : l10n.planFlowCustomizationDefaultPrompt,
-          style: TyType.sans(12, color: ty.ink3),
-        ),
-        const SizedBox(height: 6),
-        TextFormField(
-          initialValue: value,
-          maxLength: _maxCustomizationLength,
-          textCapitalization: TextCapitalization.characters,
-          style: TyType.sans(13.5, color: ty.ink, weight: FontWeight.w600),
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: l10n.planFlowCustomizationHint,
-            hintStyle: TyType.sans(12.5, color: ty.ink3),
-            filled: true,
-            fillColor: ty.surface2,
-            counterText: '',
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: ty.line),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: unanswered ? ty.saffron : ty.line),
-            ),
-          ),
-          onChanged: (v) => onChanged(v.trim().isEmpty ? null : v),
-        ),
-      ],
+    // A vendor may cap the line (max_quantity) — one character per digit
+    // means that cap is also the digit cap, so the wheels never let a
+    // customer build a number the vendor cannot physically supply.
+    final digitCap = maxQuantity == null
+        ? _maxCustomizationDigits
+        : maxQuantity.clamp(1, _maxCustomizationDigits);
+
+    return _NumberWheelField(
+      prompt: prompt?.trim().isNotEmpty == true ? prompt!.trim() : l10n.planFlowCustomizationDefaultPrompt,
+      value: value,
+      unitPrice: unitPrice,
+      maxDigits: digitCap,
+      onChanged: onChanged,
     );
   }
 
@@ -1653,6 +1657,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   onChanged: (v) => setState(() {
                     if (v) {
                       _serviceQuantities[service.id] = service.quantity;
+                      _syncNumericServiceQuantity(service, _serviceChoices[service.id]);
                     } else {
                       _serviceQuantities.remove(service.id);
                     }
@@ -1666,6 +1671,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               context,
               choices: service.choices,
               prompt: service.customizationPrompt,
+              unitPrice: service.unitPrice,
+              maxQuantity: service.maxQuantity,
               value: _serviceChoices[service.id],
               onChanged: (v) => setState(() {
                 if (v == null) {
@@ -1673,10 +1680,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 } else {
                   _serviceChoices[service.id] = v;
                 }
+                _syncNumericServiceQuantity(service, v);
               }),
             ),
           ],
-          if (service.isQuantityAdjustable && (locked || selected)) ...[
+          // See the item row: a numeric line is priced by its digit count,
+          // so it owns the quantity and the stepper stands down.
+          if (service.isQuantityAdjustable && !service.needsNumericCustomization && (locked || selected)) ...[
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -2081,6 +2091,237 @@ class _ItemImageGalleryScreenState extends State<_ItemImageGalleryScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Number wheels for a marquee-style line — one wheel per physical character
+/// the vendor will bring.
+///
+/// Numbers only: the characters are stocked digits, and the price follows the
+/// count of them, so "20" is two characters and costs 2 x the line's unit
+/// price. The customer adds or drops a digit with the -/+ control and dials
+/// each one on its own wheel, and the running cost is spelled out underneath
+/// rather than left to appear in the total later.
+///
+/// Reports null until a wheel is actually touched: the wheels have to show
+/// something, and a silent default of "00" would price two characters nobody
+/// chose. While it is null the items step refuses to advance, same as an
+/// unpicked dropdown.
+class _NumberWheelField extends StatefulWidget {
+  final String prompt;
+  final String? value;
+  final double unitPrice;
+  final int maxDigits;
+  final ValueChanged<String?> onChanged;
+
+  const _NumberWheelField({
+    required this.prompt,
+    required this.value,
+    required this.unitPrice,
+    required this.maxDigits,
+    required this.onChanged,
+  });
+
+  @override
+  State<_NumberWheelField> createState() => _NumberWheelFieldState();
+}
+
+class _NumberWheelFieldState extends State<_NumberWheelField> {
+  static const double _wheelItemExtent = 34;
+  static const double _wheelHeight = 108;
+
+  late List<int> _digits;
+  late List<FixedExtentScrollController> _controllers;
+  // The wheels start on 0 whether or not the customer has chosen anything, so
+  // "has 0 been chosen or merely shown?" is tracked here rather than inferred
+  // from the digits.
+  late bool _touched;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = (widget.value ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    _touched = existing.isNotEmpty;
+    _digits = existing.isEmpty
+        ? List.filled(widget.maxDigits >= 2 ? 2 : 1, 0)
+        : existing.split('').take(widget.maxDigits).map(int.parse).toList();
+    _controllers = [
+      for (final d in _digits) FixedExtentScrollController(initialItem: d),
+    ];
+  }
+
+  // Deliberately no didUpdateWidget resync: the parent rebuilds on every
+  // scroll with the value this widget just reported, and re-seeding the
+  // controllers from it would fight the wheel mid-fling.
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _report() => widget.onChanged(_touched ? _digits.join() : null);
+
+  void _setDigit(int index, int digit) {
+    setState(() {
+      _digits[index] = digit;
+      _touched = true;
+    });
+    _report();
+  }
+
+  void _changeDigitCount(int delta) {
+    final next = _digits.length + delta;
+    if (next < 1 || next > widget.maxDigits) return;
+    setState(() {
+      if (delta > 0) {
+        _digits.add(0);
+        _controllers.add(FixedExtentScrollController(initialItem: 0));
+      } else {
+        _digits.removeLast();
+        _controllers.removeLast().dispose();
+      }
+      _touched = true;
+    });
+    _report();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
+    final total = widget.unitPrice * _digits.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.prompt, style: TyType.sans(12, color: ty.ink3)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: ty.surface2,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _touched ? ty.line : ty.saffron),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < _digits.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 4),
+                    _wheel(context, i),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.planFlowNumberDigitCountLabel, style: TyType.sans(11, color: ty.ink3)),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _digitCountButton(
+                      context,
+                      icon: Icons.remove_rounded,
+                      enabled: _digits.length > 1,
+                      onTap: () => _changeDigitCount(-1),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        '${_digits.length}',
+                        style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700),
+                      ),
+                    ),
+                    _digitCountButton(
+                      context,
+                      icon: Icons.add_rounded,
+                      enabled: _digits.length < widget.maxDigits,
+                      onTap: () => _changeDigitCount(1),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _touched
+              ? l10n.planFlowNumberPriceLabel(
+                  _digits.length,
+                  formatPrice(widget.unitPrice),
+                  formatPrice(total),
+                )
+              : l10n.planFlowNumberUnsetHint,
+          style: TyType.sans(
+            11.5,
+            color: _touched ? ty.saffron : ty.ink3,
+            weight: _touched ? FontWeight.w700 : FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _wheel(BuildContext context, int index) {
+    final ty = context.ty;
+    return SizedBox(
+      width: 38,
+      height: _wheelHeight,
+      child: ListWheelScrollView.useDelegate(
+        controller: _controllers[index],
+        itemExtent: _wheelItemExtent,
+        physics: const FixedExtentScrollPhysics(),
+        // Dims the neighbours rather than hiding them, so it reads as a dial
+        // the customer can turn instead of a box showing one fixed digit.
+        overAndUnderCenterOpacity: 0.32,
+        diameterRatio: 1.5,
+        onSelectedItemChanged: (v) => _setDigit(index, v),
+        childDelegate: ListWheelChildLoopingListDelegate(
+          children: [
+            for (var d = 0; d <= 9; d++)
+              Center(
+                child: Text(
+                  '$d',
+                  style: TyType.sans(22, color: ty.ink, weight: FontWeight.w700),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _digitCountButton(
+    BuildContext context, {
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    final ty = context.ty;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: ty.surface2,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: ty.line),
+        ),
+        child: Icon(icon, size: 16, color: enabled ? ty.ink : ty.ink3),
       ),
     );
   }
