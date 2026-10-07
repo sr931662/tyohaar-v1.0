@@ -134,7 +134,6 @@ class _HelpScreenState extends State<HelpScreen> {
               Text(l10n.helpPopularTopicsLabel, style: TyType.eyebrow(11, color: ty.ink3)),
               const SizedBox(height: 16),
               _topicCard(context, Icons.celebration_outlined, l10n.helpTopicPlanningFirstEvent),
-              _topicCard(context, Icons.card_membership_rounded, l10n.helpTopicMembershipBenefits),
               _topicCard(context, Icons.account_balance_wallet_outlined, l10n.helpTopicPaymentsRefunds),
               _topicCard(context, Icons.security_rounded, l10n.helpTopicPrivacySafety),
               const SizedBox(height: 32),

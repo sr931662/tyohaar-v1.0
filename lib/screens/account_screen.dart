@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../utils/log.dart';
 
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -18,7 +18,6 @@ import 'my_bookings_screen.dart';
 import 'refer_earn_screen.dart';
 import 'help_screen.dart';
 import 'my_profile_screen.dart';
-import 'membership_plan_screen.dart';
 import 'manage_address_screen.dart';
 import 'about_app_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -100,9 +99,9 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  // Google Play requires the deletion request path to be reachable from inside
-  // the app as well as from the store listing. There is no authenticated
-  // delete endpoint yet, so both routes land on the same web form.
+  // App Store (5.1.1(v)) and Google Play both require that an account can be
+  // deleted from inside the app, so this calls the deletion endpoint directly
+  // rather than sending the customer to a web form.
   Future<void> _handleDeleteAccount() async {
     final l10n = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
@@ -122,14 +121,40 @@ class _AccountScreenState extends State<AccountScreen> {
     );
     if (confirm != true || !mounted) return;
 
-    final opened = await launchUrl(
-      Uri.parse('https://www.tyohaar.co/delete-account'),
-      mode: LaunchMode.externalApplication,
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final userService = context.read<UserService>();
+    final authService = context.read<AuthService>();
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
+      ),
     );
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.accountDeleteAccountOpenFailed)));
+    try {
+      await userService.requestAccountDeletion();
+    } catch (e) {
+      logDebug('Account deletion request failed: $e');
+      navigator.pop();
+      messenger.showSnackBar(SnackBar(content: Text(l10n.accountDeleteAccountFailed)));
+      return;
     }
+
+    // The server has already deactivated the account; the logout call is
+    // best-effort, the local session is cleared regardless.
+    try {
+      await authService.logout();
+    } catch (_) {}
+    await AuthManager.instance.logout();
+
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      (_) => false,
+    );
+    messenger.showSnackBar(SnackBar(content: Text(l10n.accountDeleteAccountDoneMessage)));
   }
 
   void _push(BuildContext context, Widget page) {
@@ -167,8 +192,6 @@ class _AccountScreenState extends State<AccountScreen> {
           _menuGroup(context, resp, [
             _menuItem(context, resp, Icons.person_outline_rounded, l10n.accountMyProfileLabel,
                 onTap: () => _push(context, const MyProfileScreen())),
-            _menuItem(context, resp, Icons.card_membership_rounded, l10n.accountMyMembershipPlanLabel,
-                onTap: () => _push(context, const MembershipPlanScreen())),
             _menuItem(context, resp, Icons.place_outlined, l10n.accountManageAddressesLabel,
                 onTap: () => _push(context, const ManageAddressScreen())),
           ]),

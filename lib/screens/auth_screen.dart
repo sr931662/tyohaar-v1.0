@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
@@ -56,6 +59,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _loadProviderConfig() async {
+    // Google sign-in stays Android-only for now. On iOS it needs its own OAuth
+    // client (GIDClientID + URL scheme in Info.plist) or the plugin crashes,
+    // and App Store guideline 4.8 then also requires Sign in with Apple to be
+    // offered alongside it. Email/password works on every platform.
+    if (!kIsWeb && Platform.isIOS) return;
     try {
       final config = await context.read<AuthService>().getProviderConfig();
       if (mounted) setState(() => _googleEnabled = config.googleEnabled);

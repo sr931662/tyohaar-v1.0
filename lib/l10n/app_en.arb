@@ -842,22 +842,6 @@
   "feedbackSubmittingLabel": "Submitting...",
   "feedbackSubmitButtonLabel": "Submit Feedback",
 
-  "profileYouHeading": "You",
-  "profileAvatarInitialLabel": "A",
-  "profileMockUserName": "Aarav Sharma",
-  "profileMockUserEmailLocation": "aarav.sharma@gmail.com · Jaipur",
-  "profileMemberSinceBadge": "✦ Member since 2024",
-  "profileStatCelebrationsLabel": "Celebrations",
-  "profileStatPhotosLabel": "Photos",
-  "profileStatSavedPartnersLabel": "Saved partners",
-  "profileMenuHouseholdsFamilyLabel": "Households & family",
-  "profileMenuHouseholdsFamilySubtitle": "3 groups",
-  "profileMenuPaymentMethodsLabel": "Payment methods",
-  "profileMenuPaymentMethodsSubtitle": "2 cards",
-  "profileMenuNotificationsLabel": "Notifications",
-  "profileMenuPrivacySecurityLabel": "Privacy & security",
-  "profileMenuHelpSupportLabel": "Help & support",
-  "profileSignOutLabel": "Sign out",
 
   "sendInvitationsTitle": "Send Invitations",
   "sendInvitationsInviteMessage": "Hi {name}! You're invited to {packageName} on {date} 🎉",
@@ -916,21 +900,21 @@
 
   "accountHeading": "Account",
   "accountTutorialTitle": "Everything about you, in one place",
-  "accountTutorialDescription": "Jump to your bookings, referrals, or help from here — and manage your profile and membership below.",
+  "accountTutorialDescription": "Jump to your bookings, referrals, or help from here — and manage your profile and addresses below.",
   "accountSignOutConfirmTitle": "Sign out?",
   "accountSignOutConfirmMessage": "You will need to sign in again to access your account.",
   "accountSignOutLabel": "Sign out",
   "accountSectionPersonalLabel": "Personal",
   "accountSectionSupportLegalLabel": "Support & Legal",
   "accountMyProfileLabel": "My Profile",
-  "accountMyMembershipPlanLabel": "My Membership Plan",
   "accountManageAddressesLabel": "Manage Addresses",
   "accountMyTicketsLabel": "My Tickets",
   "accountDeleteAccountLabel": "Delete Account",
   "accountDeleteAccountConfirmTitle": "Delete your account?",
-  "accountDeleteAccountConfirmMessage": "We will open tyohaar.co so you can submit your deletion request. Deleting your account is permanent — your profile, celebrations, photos and saved packages are removed and cannot be restored.",
-  "accountDeleteAccountContinueLabel": "Continue",
-  "accountDeleteAccountOpenFailed": "Could not open the page. Please visit tyohaar.co/delete-account in your browser.",
+  "accountDeleteAccountConfirmMessage": "This permanently deletes your Tyohaar account. Your account is deactivated right away, and your profile, celebrations, photos and saved packages are removed for good once the short recovery period ends. To change your mind during that period, contact support.",
+  "accountDeleteAccountContinueLabel": "Delete",
+  "accountDeleteAccountFailed": "We couldn't delete your account right now. Please check your connection and try again.",
+  "accountDeleteAccountDoneMessage": "Your account has been deleted.",
   "accountMyBookingsLabel": "My Bookings",
   "accountReferEarnLabel": "Refer & Earn",
   "accountHelpLabel": "Help",
@@ -989,8 +973,6 @@
   "bookingConfirmationBookingIdLabel": "Booking ID",
   "bookingConfirmationDeliveryDateLabel": "Delivery Date",
   "bookingConfirmationPackageLabel": "Package",
-  "bookingConfirmationDownloadInvoiceButtonLabel": "Download Invoice",
-  "bookingConfirmationDownloadingInvoiceMessage": "Downloading invoice...",
   "bookingConfirmationGoToEventHubButtonLabel": "Go to Event Hub",
 
   "guestsTitle": "Guest list",
@@ -1062,7 +1044,6 @@
   "helpLoadFaqsError": "Could not load FAQs. Please try again.",
   "helpPopularTopicsLabel": "POPULAR TOPICS",
   "helpTopicPlanningFirstEvent": "Planning your first event",
-  "helpTopicMembershipBenefits": "Membership benefits",
   "helpTopicPaymentsRefunds": "Payments & Refunds",
   "helpTopicPrivacySafety": "Privacy & Safety",
   "helpFaqsLabel": "FAQs",
@@ -1143,117 +1124,6 @@
     }
   },
 
-  "membershipPlanLoadError": "Could not load membership plans.",
-  "membershipPlanTitle": "Membership Plans",
-  "membershipPlanActivatedMessage": "Membership activated!",
-  "membershipPlanSubscribeError": "Could not subscribe. Please try again.",
-  "membershipPlanPaidCheckoutComingSoonMessage": "Paid plan checkout is coming soon — contact support to subscribe for now.",
-  "membershipPlanRenewedMessage": "Membership renewed.",
-  "membershipPlanRenewError": "Could not renew. Please try again.",
-  "membershipPlanUpgradeConfirmTitle": "Upgrade to {planName}?",
-  "@membershipPlanUpgradeConfirmTitle": {
-    "description": "Confirmation dialog title when upgrading to another membership tier",
-    "placeholders": {
-      "planName": { "type": "String" }
-    }
-  },
-  "membershipPlanDowngradeConfirmTitle": "Downgrade to {planName}?",
-  "@membershipPlanDowngradeConfirmTitle": {
-    "description": "Confirmation dialog title when downgrading to another membership tier",
-    "placeholders": {
-      "planName": { "type": "String" }
-    }
-  },
-  "membershipPlanChangeTierConfirmMessage": "This takes effect immediately and starts a fresh billing period on the new plan.",
-  "membershipPlanConfirmButtonLabel": "Confirm",
-  "membershipPlanUpgradedMessage": "Upgraded to {planName}.",
-  "@membershipPlanUpgradedMessage": {
-    "description": "SnackBar shown after successfully upgrading the membership tier",
-    "placeholders": {
-      "planName": { "type": "String" }
-    }
-  },
-  "membershipPlanDowngradedMessage": "Downgraded to {planName}.",
-  "@membershipPlanDowngradedMessage": {
-    "description": "SnackBar shown after successfully downgrading the membership tier",
-    "placeholders": {
-      "planName": { "type": "String" }
-    }
-  },
-  "membershipPlanChangeTierError": "Could not change plan. Please try again.",
-  "membershipPlanCancelConfirmTitle": "Cancel membership?",
-  "membershipPlanCancelConfirmMessage": "Your membership benefits will end immediately.",
-  "membershipPlanKeepButtonLabel": "Keep",
-  "membershipPlanCancelledMessage": "Membership cancelled.",
-  "membershipPlanCancelError": "Could not cancel. Please try again.",
-  "membershipPlanAllPlansHeading": "ALL PLANS",
-  "membershipPlanMonthlyLabel": "Monthly",
-  "membershipPlanYearlyLabel": "Yearly",
-  "membershipPlanMemberFallback": "Member",
-  "membershipPlanValidTillLabel": "Valid till {date}",
-  "@membershipPlanValidTillLabel": {
-    "description": "Active membership expiry date on the membership card",
-    "placeholders": {
-      "date": { "type": "String" }
-    }
-  },
-  "membershipPlanNoExpiryLabel": "No expiry",
-  "membershipPlanLapsedMessage": "Your membership has lapsed. Renew by {date} to keep your benefits.",
-  "@membershipPlanLapsedMessage": {
-    "description": "Grace period notice on the active membership card",
-    "placeholders": {
-      "date": { "type": "String" }
-    }
-  },
-  "membershipPlanRenewNowButtonLabel": "Renew Now",
-  "membershipPlanUpgradeButtonLabel": "Upgrade",
-  "membershipPlanDowngradeButtonLabel": "Downgrade",
-  "membershipPlanOffPackagesBadge": "{percent}% off packages",
-  "@membershipPlanOffPackagesBadge": {
-    "description": "Plan benefit badge showing the package discount percentage",
-    "placeholders": {
-      "percent": { "type": "String" }
-    }
-  },
-  "membershipPlanCashbackBadge": "{percent}% cashback",
-  "@membershipPlanCashbackBadge": {
-    "description": "Plan benefit badge showing the cashback percentage",
-    "placeholders": {
-      "percent": { "type": "String" }
-    }
-  },
-  "membershipPlanWelcomeBonusBadge": "₹{amount} welcome bonus",
-  "@membershipPlanWelcomeBonusBadge": {
-    "description": "Plan benefit badge showing the wallet welcome bonus amount",
-    "placeholders": {
-      "amount": { "type": "String" }
-    }
-  },
-  "membershipPlanFreeInvitationsBadge": "{count} free invitations",
-  "@membershipPlanFreeInvitationsBadge": {
-    "description": "Plan benefit badge showing the number of free invitations included",
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
-  "membershipPlanPriorityBookingBadge": "Priority booking",
-  "membershipPlanExclusivePackagesBadge": "Exclusive packages",
-  "membershipPlanFreeCancellationBadge": "Free cancellation",
-  "membershipPlanFreeLabel": "Free",
-  "membershipPlanPriceValue": "₹{price}/{period}",
-  "@membershipPlanPriceValue": {
-    "description": "Plan price with billing period suffix on a plan card",
-    "placeholders": {
-      "price": { "type": "String" },
-      "period": { "type": "String" }
-    }
-  },
-  "membershipPlanYearSuffix": "yr",
-  "membershipPlanMonthSuffix": "mo",
-  "membershipPlanCurrentPlanLabel": "Current Plan",
-  "membershipPlanPleaseWaitLabel": "Please wait...",
-  "membershipPlanSubscribeButtonLabel": "Subscribe",
-  "membershipPlanContactSupportButtonLabel": "Contact Support",
 
   "memoriesLoadError": "Could not load memories.",
   "memoriesTitle": "Memories",
@@ -1390,7 +1260,7 @@
   "rootNavPackagesLabel": "Packages",
   "rootNavAccountLabel": "Account",
   "rootNavInvitationsLabel": "Invitations",
-  "rootNavMembershipLabel": "Membership",
+  "rootNavInvitationsLabel": "Invitations",
   "rootNavManageAddressLabel": "Manage Address",
   "rootNavHelpSupportLabel": "Help & Support",
   "rootNavPrivacyPolicyLabel": "Privacy Policy",
@@ -1838,9 +1708,6 @@
       "location": { "type": "String" }
     }
   },
-  "homeMembershipBannerHeading": "Upgrade to Gold",
-  "homeMembershipBannerBody": "Get exclusive access to premium themes and early bird discounts.",
-  "homeMembershipBannerButtonLabel": "Join Now",
   "homeMoreGuestsCountLabel": "+{count}",
   "@homeMoreGuestsCountLabel": {
     "description": "Overflow count badge on the stacked guest avatars on the home screen hero card",
@@ -1868,7 +1735,6 @@
   "homeSetCityActionLabel": "Set city",
   "homeAuthActionManageInvitations": "manage invitations",
   "homeAuthActionViewEventHub": "view your event hub",
-  "homeAuthActionViewMembershipPlans": "view membership plans",
   "homeAuthActionManageAddress": "manage your address",
 
   "invitationManagementAppBarTitle": "Manage Invitations",

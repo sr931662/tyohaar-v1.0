@@ -24,7 +24,6 @@ import '../widgets/occasion_grid.dart';
 import '../l10n/generated/app_localizations.dart';
 import 'event_hub_screen.dart';
 import 'manage_address_screen.dart';
-import 'membership_plan_screen.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
 import 'package:tyohaar/screens/plan_flow/plan_flow_screen.dart';
 
@@ -249,7 +248,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(height: resp.h(12)),
               ],
 
-              _membershipBanner(context),
             ],
           ),
         ),
@@ -481,59 +479,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
-      ),
-    );
-  }
-
-  Widget _membershipBanner(BuildContext context) {
-    final ty = context.ty;
-    final resp = context.resp;
-    final l10n = AppLocalizations.of(context)!;
-    return GestureDetector(
-      onTap: () => _push(context, const MembershipPlanScreen(), authAction: l10n.homeAuthActionViewMembershipPlans),
-      child: Container(
-      padding: EdgeInsets.all(resp.w(20)),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [ty.saffron, ty.saffronDeep],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(resp.w(24)),
-        boxShadow: [
-          BoxShadow(
-            color: ty.saffron.withValues(alpha: 0.3),
-            blurRadius: resp.w(15),
-            offset: Offset(0, resp.h(8)),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.homeMembershipBannerHeading,
-                    style: TyType.display(resp.sp(20), color: Colors.white)),
-                SizedBox(height: resp.h(4)),
-                Text(l10n.homeMembershipBannerBody,
-                    style: TyType.sans(resp.sp(12), color: Colors.white.withValues(alpha: 0.9))),
-              ],
-            ),
-          ),
-          SizedBox(width: resp.w(12)),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: resp.w(16), vertical: resp.h(8)),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(resp.w(12)),
-            ),
-            child: Text(l10n.homeMembershipBannerButtonLabel,
-                style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w700)),
-          ),
-        ],
       ),
       ),
     );

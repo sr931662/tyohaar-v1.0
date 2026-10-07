@@ -1506,62 +1506,6 @@ class CelebrationChecklistItem {
 }
 
 // ---------------------------------------------------------------------------
-// MEMBERSHIP  →  UserMembershipResponse
-// ---------------------------------------------------------------------------
-
-class Membership {
-  final String id;
-  // Backend field: tier (was: type).
-  final String type;
-  final String status;
-  // Backend field: expires_at (was: validTill as plain string).
-  final String validTill;
-  final bool autoRenew;
-  final double? amountPaid;
-  final String currency;
-  final int? invitationsRemaining;
-  // Computed field from backend: true when status is ACTIVE or GRACE_PERIOD.
-  final bool isActive;
-
-  const Membership({
-    required this.id,
-    required this.type,
-    required this.status,
-    required this.validTill,
-    required this.autoRenew,
-    this.amountPaid,
-    required this.currency,
-    this.invitationsRemaining,
-    required this.isActive,
-  });
-
-  // Legacy positional constructor kept for existing hardcoded UI callsites.
-  const Membership.positional(this.type, this.status, this.validTill)
-      : id = '',
-        autoRenew = false,
-        amountPaid = null,
-        currency = 'INR',
-        invitationsRemaining = null,
-        isActive = false;
-
-  factory Membership.fromJson(Map<String, dynamic> json) {
-    return Membership(
-      id: json['id'] as String? ?? '',
-      type: json['tier'] as String? ?? 'free',
-      status: json['status'] as String? ?? 'inactive',
-      validTill: json['expires_at'] as String? ?? '',
-      autoRenew: json['auto_renew'] as bool? ?? false,
-      amountPaid: json['amount_paid'] != null
-          ? double.tryParse(json['amount_paid'].toString())
-          : null,
-      currency: json['currency'] as String? ?? 'INR',
-      invitationsRemaining: json['invitations_remaining'] as int?,
-      isActive: json['is_active'] as bool? ?? false,
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // UI-ONLY TYPES (no backend binding)
 // ---------------------------------------------------------------------------
 

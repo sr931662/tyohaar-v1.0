@@ -20,7 +20,6 @@ import 'data/services/auth_service.dart';
 import 'data/services/google_auth_service.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/support_service.dart';
-import 'data/services/membership_service.dart';
 import 'data/services/referral_service.dart';
 import 'data/services/common_service.dart';
 import 'data/services/vendor_service.dart';
@@ -48,7 +47,6 @@ class TyohaarApp extends StatelessWidget {
         Provider(create: (_) => MediaService()),
         Provider(create: (_) => NotificationService()),
         Provider(create: (_) => SupportService()),
-        Provider(create: (_) => MembershipService()),
         Provider(create: (_) => ReferralService()),
         Provider(create: (_) => CommonService()),
         Provider(create: (_) => VendorService()),

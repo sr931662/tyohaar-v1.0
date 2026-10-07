@@ -26,10 +26,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Tyohaar saves package images you download to your photo library.</string>
+	<string>Tyohaar saves package and celebration photos you download to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Tyohaar saves package images you download to your photo library.</string>
+	<string>Tyohaar lets you choose photos from your library, for example to set your profile picture, and saves photos you download.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Tyohaar uses the camera only if you choose to take a photo, for example for your profile picture.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Tyohaar uses the microphone only if you choose to record a video to upload.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Tyohaar uses your contacts to help you invite guests to your celebration.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
@@ -70,8 +76,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

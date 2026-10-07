@@ -23,7 +23,6 @@ import 'account_screen.dart';
 import 'invitation_management_screen.dart';
 
 import 'notifications_screen.dart';
-import 'membership_plan_screen.dart';
 import 'manage_address_screen.dart';
 import 'help_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -515,8 +514,6 @@ class _AppSidebar extends StatelessWidget {
                     onTap: () => _showCityPicker(context),
                   ),
                 ),
-                _drawerItem(context, Icons.card_membership_rounded, l10n.rootNavMembershipLabel, -1,
-                    onTap: () => _push(context, const MembershipPlanScreen())),
                 _drawerItem(context, Icons.place_outlined, l10n.rootNavManageAddressLabel, -1,
                     onTap: () => _push(context, const ManageAddressScreen())),
                 _drawerItem(context, Icons.help_outline_rounded, l10n.rootNavHelpSupportLabel, -1,

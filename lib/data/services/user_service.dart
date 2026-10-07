@@ -40,4 +40,10 @@ class UserService {
   Future<void> deleteAddress(String addressId) async {
     await _api.dio.delete('users/me/addresses/$addressId');
   }
+
+  /// Asks the server to permanently delete the signed-in account. The account
+  /// is deactivated straight away and purged once its recovery window closes.
+  Future<void> requestAccountDeletion() async {
+    await _api.dio.post('account/deletion-request');
+  }
 }

@@ -85,11 +85,6 @@ class BookingConfirmationScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-              TyButton(l10n.bookingConfirmationDownloadInvoiceButtonLabel, kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.description_outlined, onTap: () {
-                // TODO: Implement invoice download
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.bookingConfirmationDownloadingInvoiceMessage)));
-              }),
               const Spacer(),
               TyButton(l10n.bookingConfirmationGoToEventHubButtonLabel, full: true, onTap: () {
                 Navigator.of(context).pushAndRemoveUntil(
