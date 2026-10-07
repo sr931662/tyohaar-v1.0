@@ -48,7 +48,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     - Personal/demographic data lives in UserProfile (1:1 via profile relation).
     - Saved addresses live in UserAddress (1:N).
     - Device registrations live in UserDevice (1:N).
-    - Financial data lives in separate Wallet/Membership models.
+    - Financial data lives in separate Wallet/Payment models.
 
     Phone is the primary identifier; email is optional but unique when present.
     `full_name` is a denormalized display convenience — when set, it overrides

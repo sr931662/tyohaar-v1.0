@@ -12,7 +12,7 @@ import { downloadBlob } from '../../../lib/downloadBlob';
 // download a blank template.
 const ENTITY_TYPES = [
   'vendors', 'customers', 'packages', 'package_categories', 'cities', 'states',
-  'coupons', 'faqs', 'notification_templates', 'settings', 'memberships', 'vendor_services',
+  'coupons', 'faqs', 'notification_templates', 'settings', 'vendor_services',
   'themes', 'package_items', 'common_items', 'package_services', 'common_services',
 ];
 
@@ -27,7 +27,7 @@ const EXECUTABLE_ENTITY_TYPES = new Set(ENTITY_TYPES);
 // in io_service.py) plus bookings/payments, which have no import path.
 const EXPORT_ENTITY_TYPES = [
   'vendors', 'customers', 'bookings', 'payments', 'packages', 'package_categories',
-  'cities', 'states', 'coupons', 'notification_templates', 'settings', 'memberships',
+  'cities', 'states', 'coupons', 'notification_templates', 'settings',
   'vendor_services', 'faqs', 'themes', 'package_items', 'common_items',
   'package_services', 'common_services',
 ];
@@ -38,7 +38,6 @@ const ENTITY_HINTS = {
   cities: 'Import States first — "state" must exactly match an existing state name (case-insensitive).',
   coupons: '"discount_type" must be one of: percentage, fixed_amount, fixed_price, free_service, cashback. Coupons import as Draft — publish them from Discounts after review.',
   notification_templates: '"channel" must be one of: push, sms, email, whatsapp, in_app — add one row per channel needed for the same "template_key". "notification_category" must match a known event type, e.g. booking_confirmed, payment_received.',
-  memberships: '"tier" must be one of: free, silver, gold, platinum. Each tier can only exist once — importing a tier that already has a plan will fail that row.',
   vendor_services: '"vendor_phone" must match a registered vendor\'s phone number. "category" must match an existing Vendor Category name. Services import as inactive — publish them from Vendors after review.',
   themes: '"primary_color"/"secondary_color"/"accent_color"/"background_color" are hex codes (e.g. #C8A96E) — leave any blank for a 2 or 3-color theme. "slug" is auto-generated from "name" if left blank.',
   common_items: '"vendor_phone" must match a registered vendor\'s phone number. Creates a reusable item template not tied to any package — attach it to packages from the vendor\'s Common Items screen afterward.',

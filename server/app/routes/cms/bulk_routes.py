@@ -9,8 +9,6 @@ from app.controllers.cms.bulk_controller import (
     approve_vendors,
     archive_discounts,
     archive_packages,
-    assign_memberships,
-    bulk_deactivate_membership_plans,
     bulk_deactivate_notification_templates,
     bulk_delete_cities,
     bulk_delete_faqs,
@@ -127,12 +125,6 @@ router.add_api_route(
     methods=["POST"],
     summary="Bulk archive discounts",
 )
-router.add_api_route(
-    "/memberships/assign",
-    assign_memberships,
-    methods=["POST"],
-    summary="Bulk assign membership plans to users",
-)
 
 # ── Delete ────────────────────────────────────────────────────────────────────
 
@@ -195,10 +187,4 @@ router.add_api_route(
     bulk_delete_faqs,
     methods=["POST"],
     summary="Bulk delete FAQs",
-)
-router.add_api_route(
-    "/memberships/plans/deactivate",
-    bulk_deactivate_membership_plans,
-    methods=["POST"],
-    summary="Bulk deactivate membership plans",
 )

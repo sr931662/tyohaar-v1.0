@@ -119,7 +119,6 @@ class CustomerCRMSummary(_Base):
     last_login_at: datetime | None = None
     city: str | None = None
     state: str | None = None
-    membership_tier: str | None = None
 
 
 class CustomerFinancials(_Base):
@@ -135,7 +134,6 @@ class CustomerFinancials(_Base):
 class CustomerCRMProfile(_Base):
     summary: CustomerCRMSummary
     financials: CustomerFinancials
-    active_membership: dict[str, Any] | None = None
     recent_bookings: list[dict[str, Any]]
     recent_payments: list[dict[str, Any]]
     addresses: list[dict[str, Any]]
@@ -160,7 +158,6 @@ class VendorCRMFilter(_Base):
 class CustomerCRMFilter(_Base):
     account_status: str | None = None
     city: str | None = None
-    membership_tier: str | None = None
     min_spent: Decimal | None = None
     max_spent: Decimal | None = None
     registered_from: datetime | None = None

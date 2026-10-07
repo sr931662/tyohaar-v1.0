@@ -133,7 +133,6 @@ class CouponUpdate(BaseSchema):
     first_booking_only: bool | None = Field(default=None)
     repeat_customers_only: bool | None = Field(default=None)
     referral_users_only: bool | None = Field(default=None)
-    eligible_membership_tiers: list[str] | None = None
     eligible_customer_group_ids: list[uuid.UUID] | None = None
     applicable_vendor_ids: list[uuid.UUID] | None = None
     applicable_package_ids: list[uuid.UUID] | None = None

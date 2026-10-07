@@ -26,7 +26,6 @@ const NOTIFICATION_TYPE_OPTIONS = [
   { value: 'vendor_assigned', label: 'Vendor Assigned' },
   { value: 'rsvp_update', label: 'RSVP Update' },
   { value: 'celebration_upcoming', label: 'Celebration Upcoming' },
-  { value: 'membership_expiring', label: 'Membership Expiring' },
   { value: 'support_update', label: 'Support Update' },
 ];
 
@@ -52,7 +51,6 @@ const DYNAMIC_CONTENT_OPTIONS = [
   { key: 'celebration_title', label: 'Celebration Title' },
   { key: 'amount', label: 'Amount' },
   { key: 'payment_status', label: 'Payment Status' },
-  { key: 'membership_tier', label: 'Membership Tier' },
   { key: 'ticket_number', label: 'Support Ticket #' },
 ];
 

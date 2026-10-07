@@ -1,12 +1,8 @@
 """
 Tier: relationships and platform records that survive in reduced form.
 
-Three different treatments live here, and the distinction between them is the
+Two different treatments live here, and the distinction between them is the
 whole point:
-
-  * **Memberships** are deleted. The audit found no independent accounting
-    value — every rupee lives in `payments`/`invoices`, which the membership
-    merely points at — and nothing in the schema references the table.
 
   * **Referrals** are reduced to counters. Fraud and reward accounting need to
     know that a reward was earned and paid, not who the two parties were, and
@@ -31,7 +27,6 @@ from app.core.retention import (
     REVIEW_AUTHOR_STRATEGY,
     SCRUB_REVIEW_FREE_TEXT,
 )
-from app.models.memberships.user_membership import UserMembership
 from app.models.packages.package_item_review import PackageItemReview
 from app.models.packages.package_review import PackageReview
 from app.models.referrals.referral import Referral
@@ -61,26 +56,6 @@ def _scrub(text: str | None) -> str | None:
     if not text:
         return text
     return _PHONE_RE.sub(_REDACTED, _EMAIL_RE.sub(_REDACTED, text))
-
-
-@register_purge("memberships", order=TIER_SANITISE)
-async def purge_memberships(
-    session: AsyncSession, user_id: uuid.UUID
-) -> PurgeReport:
-    """Delete membership rows outright.
-
-    Reclassified from RETAIN during the field-level audit: the table holds
-    platform state and free text (`cancellation_notes`, `upgrade_reason`,
-    `renewal_history`) and no accounting record of its own.
-    """
-    report = PurgeReport(handler="memberships")
-
-    result = await session.execute(
-        delete(UserMembership).where(UserMembership.user_id == user_id)
-    )
-    report.count("user_memberships", result.rowcount or 0)
-
-    return report
 
 
 @register_purge("referrals", order=TIER_SANITISE + 10)

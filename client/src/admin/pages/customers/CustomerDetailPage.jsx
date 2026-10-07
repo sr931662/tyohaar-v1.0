@@ -23,12 +23,11 @@ export default function CustomerDetailPage() {
 
   if (!crm) return <div className="admin-empty"><div className="admin-empty-title">Customer not found</div></div>;
 
-  // CRM customer profile: { summary, financials, active_membership, recent_bookings, addresses, open_support_tickets, ... }
+  // CRM customer profile: { summary, financials, recent_bookings, addresses, open_support_tickets, ... }
   const s = crm.summary ?? {};
   const fin = crm.financials ?? {};
   const recentBookings = crm.recent_bookings ?? [];
   const addresses = crm.addresses ?? [];
-  const activeMembership = crm.active_membership;
 
   return (
     <div>
@@ -56,10 +55,6 @@ export default function CustomerDetailPage() {
         <div className="admin-metric-card">
           <div className="admin-metric-label">Avg Booking Value</div>
           <div className="admin-metric-value">{formatCurrency(fin.avg_booking_value ?? 0)}</div>
-        </div>
-        <div className="admin-metric-card">
-          <div className="admin-metric-label">Membership</div>
-          <div className="admin-metric-value" style={{ fontSize: 16 }}>{activeMembership?.plan_name ?? 'None'}</div>
         </div>
       </div>
 

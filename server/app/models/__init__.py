@@ -10,7 +10,6 @@ import app.models.common         # noqa: F401
 import app.models.feedback       # noqa: F401
 import app.models.invitations    # noqa: F401
 import app.models.media          # noqa: F401
-import app.models.memberships    # noqa: F401
 import app.models.notifications  # noqa: F401
 import app.models.occasions      # noqa: F401
 import app.models.packages       # noqa: F401

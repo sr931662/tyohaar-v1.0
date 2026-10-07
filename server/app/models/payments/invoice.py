@@ -1,7 +1,7 @@
 """
 Invoice — a generalized GST-compliant financial invoice for non-booking payments.
 
-Covers memberships, vendor settlement disbursements, platform adjustment invoices,
+Covers vendor settlement disbursements, platform adjustment invoices,
 and any other financial transaction that requires a formal billing document.
 For booking-specific invoices see app/models/bookings/booking_invoice.py.
 """
@@ -45,7 +45,9 @@ class InvoiceEntityType(str, enum.Enum):
     The platform domain that triggered this invoice.
     NOTE: Move to app/models/enums.py in the next enums update.
     """
-    MEMBERSHIP = "membership"           # Membership subscription renewal or purchase
+    # Legacy: the membership feature was removed, but invoices already issued
+    # for it are financial records that must stay readable.
+    MEMBERSHIP = "membership"
     VENDOR_SETTLEMENT = "vendor_settlement"  # Payout to a vendor after booking completion
     PLATFORM_ADJUSTMENT = "platform_adjustment"  # Manual credit/debit by Tyohaar finance
     CREDIT_NOTE = "credit_note"         # Formal credit note against a prior invoice
@@ -58,7 +60,6 @@ class Invoice(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
 
     This model complements BookingInvoice (which is booking-specific) by
     covering all other billable events on the platform:
-    - Membership subscription invoices (monthly/annual renewals).
     - Vendor settlement disbursement records.
     - Platform fee adjustments (credits, penalties, corrections).
     - Future: credit notes against prior invoices.
@@ -92,7 +93,7 @@ class Invoice(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
     `line_items` JSONB (array):
         [
           {
-            "description": "Tyohaar Gold Membership - Monthly",
+            "description": "Platform adjustment - April",
             "quantity": 1,
             "unit_price": 999.00,
             "amount": 999.00,
@@ -135,7 +136,7 @@ class Invoice(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
         PGUUID(as_uuid=True),
         nullable=True,
         comment=(
-            "UUID of the triggering entity (e.g., user_memberships.id for MEMBERSHIP). "
+            "UUID of the triggering entity (e.g., the settlement for VENDOR_SETTLEMENT). "
             "Not a FK to allow cross-domain flexibility."
         ),
     )

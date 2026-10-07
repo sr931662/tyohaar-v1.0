@@ -54,7 +54,7 @@ from app.services.payments.exceptions import (
     PaymentAlreadyFailedError,
 )
 from app.services.payments.helpers import (
-    apply_membership_discount,
+    apply_percentage_discount,
     calculate_coupon_discount,
     calculate_gst,
     calculate_platform_fee,
@@ -270,7 +270,7 @@ class PaymentService(BaseService):
 
         1. Validate gateway and booking ownership.
         2. Take the charge base from the BOOKING, not the request body.
-        3. Apply the customer's active membership discount, if any, and
+        3. Apply any referral milestone discount the customer holds, and
            compute final_amount server-side.
         4. Create Payment (PENDING) + PaymentAttempt + Transaction ledger entry.
         5. Create the real order with the gateway (after commit) and persist
@@ -328,18 +328,13 @@ class PaymentService(BaseService):
             tax_amount = gst
 
             discount_amount = Decimal("0.00")
-            membership = await uow.memberships.memberships.get_active_for_user(customer_id)
-            if membership is not None:
-                plan = await uow.memberships.plans.get_by_id(membership.plan_id)
-                if plan is not None and plan.discount_percentage > 0:
-                    discount_amount += apply_membership_discount(base_amount, plan.discount_percentage)
 
             # Referral milestone discount — first usable grant whose min_plan_price
             # is met, consumed (decremented) on use, oldest grant first.
             usable_grants = await uow.referrals.milestone_grants.find_usable_for_user(customer_id)
             for grant in usable_grants:
                 if base_amount >= grant.min_plan_price:
-                    discount_amount += apply_membership_discount(base_amount, grant.discount_percentage)
+                    discount_amount += apply_percentage_discount(base_amount, grant.discount_percentage)
                     await uow.referrals.milestone_grants.update(grant, {
                         "plans_remaining": grant.plans_remaining - 1,
                     })
@@ -1289,7 +1284,6 @@ class PaymentService(BaseService):
                 "first_booking_only": source.first_booking_only,
                 "repeat_customers_only": source.repeat_customers_only,
                 "referral_users_only": source.referral_users_only,
-                "eligible_membership_tiers": source.eligible_membership_tiers,
                 "eligible_customer_group_ids": source.eligible_customer_group_ids,
                 "applicable_vendor_ids": source.applicable_vendor_ids,
                 "applicable_package_ids": source.applicable_package_ids,

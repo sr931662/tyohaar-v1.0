@@ -85,13 +85,6 @@ _OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
-        "name": "Memberships",
-        "description": (
-            "Membership plans, subscriptions, upgrades, "
-            "and cancellations."
-        ),
-    },
-    {
         "name": "Notifications",
         "description": (
             "Send push / SMS / email notifications, list, "
@@ -169,7 +162,7 @@ _OPENAPI_TAGS: list[dict] = [
         "name": "CMS — Bulk Operations",
         "description": (
             "Bulk vendor approve/reject/suspend, package publish/archive, "
-            "price updates, notification blasts, coupon generation, membership assignment."
+            "price updates, notification blasts, coupon generation."
         ),
     },
     {

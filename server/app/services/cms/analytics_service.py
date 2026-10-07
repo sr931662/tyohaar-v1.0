@@ -37,7 +37,6 @@ from app.schemas.cms.analytics import (
     GeographicMetrics,
     HeatmapData,
     MediaMetrics,
-    MembershipMetrics,
     NotificationMetrics,
     OccasionMetrics,
     PaymentMetrics,
@@ -368,101 +367,6 @@ class AnalyticsService(BaseService):
             total_refunded=Decimal(str(refund_vol)).quantize(Decimal("0.01")),
             gateway_success_rate=round(success_count / max(total_txn, 1) * 100, 2),
             avg_transaction_value=Decimal(str(avg_txn)).quantize(Decimal("0.01")),
-        )
-
-    # ── Memberships ───────────────────────────────────────────────────────────
-
-    async def _get_membership_metrics(self, session: AsyncSession) -> MembershipMetrics:
-        from app.models.memberships.user_membership import UserMembership
-        from app.models.memberships.membership_plan import MembershipPlan
-        from app.models.enums import MembershipBillingCycle
-
-        now = self._now()
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-        active = await self._scalar(
-            session,
-            select(func.count()).select_from(UserMembership).where(
-                UserMembership.membership_status == "ACTIVE",
-            ),
-        )
-        expired_month = await self._scalar(
-            session,
-            select(func.count()).select_from(UserMembership).where(
-                UserMembership.membership_status == "EXPIRED",
-                UserMembership.expires_at >= month_start,
-                UserMembership.expires_at <= now,
-            ),
-        )
-        new_month = await self._scalar(
-            session,
-            select(func.count()).select_from(UserMembership).where(
-                UserMembership.created_at >= month_start
-            ),
-        )
-        renewed_month = await self._scalar(
-            session,
-            select(func.count()).select_from(UserMembership).where(
-                UserMembership.renewal_count > 0,
-                UserMembership.updated_at >= month_start,
-            ),
-        )
-
-        # MRR from active memberships, amortised to a monthly figure per billing cycle
-        mrr_row = await self._scalar(
-            session,
-            select(
-                func.coalesce(
-                    func.sum(
-                        case(
-                            (
-                                UserMembership.billing_cycle == MembershipBillingCycle.ANNUAL,
-                                MembershipPlan.yearly_price / 12,
-                            ),
-                            (
-                                UserMembership.billing_cycle == MembershipBillingCycle.QUARTERLY,
-                                MembershipPlan.monthly_price,
-                            ),
-                            else_=MembershipPlan.monthly_price,
-                        )
-                    ),
-                    0,
-                )
-            )
-            .select_from(UserMembership)
-            .join(MembershipPlan, UserMembership.plan_id == MembershipPlan.id)
-            .where(UserMembership.membership_status == "ACTIVE"),
-        )
-
-        # Plan breakdown
-        plan_rows = await self._rows(
-            session,
-            select(MembershipPlan.name, func.count().label("cnt"))
-            .select_from(UserMembership)
-            .join(MembershipPlan, UserMembership.plan_id == MembershipPlan.id)
-            .where(UserMembership.membership_status == "ACTIVE")
-            .group_by(MembershipPlan.name)
-            .order_by(func.count().desc()),
-        )
-        plan_breakdown = [
-            CategoryBreakdown(label=r.name, value=r.cnt) for r in plan_rows
-        ]
-
-        from app.models.users.user import User
-        total_users = await self._scalar(
-            session,
-            select(func.count()).select_from(User).where(User.deleted_at.is_(None)),
-        )
-
-        return MembershipMetrics(
-            total_active=int(active),
-            expired_this_month=int(expired_month),
-            renewed_this_month=int(renewed_month),
-            new_subscriptions_this_month=int(new_month),
-            conversion_rate=round(int(active) / max(int(total_users), 1) * 100, 2),
-            monthly_recurring_revenue=Decimal(str(mrr_row)).quantize(Decimal("0.01")),
-            churn_rate=round(int(expired_month) / max(int(active) + int(expired_month), 1) * 100, 2),
-            plan_breakdown=plan_breakdown,
         )
 
     # ── Referrals ─────────────────────────────────────────────────────────────
@@ -970,7 +874,6 @@ class AnalyticsService(BaseService):
             geographic = await _safe(self._get_geographic_metrics(s), GeographicMetrics(top_cities=[], revenue_by_state=[], booking_heat=[]))
             platform_health = await _safe(self._get_platform_health(s), PlatformHealth(active_sessions=0, api_requests_today=0, database_status="unknown", avg_response_ms=0.0, error_rate_pct=0.0, uptime_pct=0.0))
             pending_actions = await _safe(self._get_pending_actions(s), {"vendor_approvals": 0, "booking_confirmations": 0, "support_tickets": 0, "media_moderation": 0})
-            memberships = await _safe(self._get_membership_metrics(s), MembershipMetrics(total_active=0, expired_this_month=0, renewed_this_month=0, new_subscriptions_this_month=0, conversion_rate=0.0, monthly_recurring_revenue=_z, churn_rate=0.0, plan_breakdown=[]))
             referrals = await _safe(self._get_referral_metrics(s), ReferralMetrics(total_referrals=0, successful_referrals=0, pending_referrals=0, referral_conversion_rate=0.0, total_referral_revenue=_z, total_rewards_issued=_z))
             occasions = await _safe(self._get_occasion_metrics(s), OccasionMetrics(total_celebrations=0, celebrations_this_month=0, most_popular_occasion=None, most_popular_occasion_count=0, occasion_breakdown=[], trending_packages=[]))
             support = await _safe(self._get_support_metrics(s), SupportMetrics(total_tickets=0, open_tickets=0, in_progress_tickets=0, resolved_tickets=0, closed_tickets=0, avg_resolution_hours=0.0, sla_breach_count=0, priority_breakdown=[]))
@@ -986,7 +889,6 @@ class AnalyticsService(BaseService):
             users=users,
             vendors=vendors,
             payments=payments,
-            memberships=memberships,
             referrals=referrals,
             occasions=occasions,
             support=support,

@@ -63,7 +63,6 @@ class _FakeUow:
         self.bookings = SimpleNamespace(
             bookings=_Repo(get_by_id=booking)
         )
-        self.memberships = SimpleNamespace(memberships=_Repo(), plans=_Repo())
         self.referrals = SimpleNamespace(milestone_grants=_Repo())
         self.payments = SimpleNamespace(
             payments=payments_repo, attempts=_Repo(), ledger=_Repo()

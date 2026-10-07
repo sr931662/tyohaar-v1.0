@@ -92,7 +92,7 @@ class NotificationTemplate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment=(
             "Machine-readable identifier for this notification event. "
             "Same key across all channels and languages. "
-            "Examples: booking_confirmed, payment_successful, membership_activated."
+            "Examples: booking_confirmed, payment_successful, booking_cancelled."
         ),
     )
 

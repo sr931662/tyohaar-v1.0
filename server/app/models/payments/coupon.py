@@ -64,7 +64,6 @@ class Coupon(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
     Eligibility rules (all conditions must be met simultaneously):
     - `min_order_value`: order subtotal must be ≥ this amount.
     - `first_booking_only`: customer must have zero prior completed bookings.
-    - `eligible_membership_tiers`: only customers on listed membership tiers.
     - `applicable_vendor_ids`: only for bookings with these specific vendors.
     - `applicable_package_ids`: only for these specific packages.
     - `applicable_occasion_categories`: only for these occasion types.
@@ -272,15 +271,6 @@ class Coupon(UUIDPrimaryKeyMixin, TimestampMixin, NotesMixin, Base):
         nullable=False,
         default=False,
         comment="If True, only customers with zero prior completed bookings can redeem.",
-    )
-
-    eligible_membership_tiers: Mapped[list[str] | None] = mapped_column(
-        JSONB,
-        nullable=True,
-        comment=(
-            "MembershipTier values allowed to use this coupon. "
-            "NULL means all tiers. Example: ['gold', 'platinum']."
-        ),
     )
 
     applicable_vendor_ids: Mapped[list[str] | None] = mapped_column(

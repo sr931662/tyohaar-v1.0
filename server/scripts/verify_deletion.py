@@ -393,10 +393,6 @@ async def main() -> int:
         tickets = (await s.execute(select(SupportTicket).where(SupportTicket.customer_id == uid))).scalars().all()
         check("support tickets purged", tickets == [])
 
-        memberships = (await s.execute(text(
-            "SELECT count(*) FROM user_memberships WHERE user_id = :u"), {"u": uid})).scalar()
-        check("membership records purged", memberships == 0)
-
         rev = (await s.execute(select(PackageReview).where(PackageReview.customer_id == uid))).scalars().all()
         check("review retained under the configured 'tombstone' strategy", len(rev) == 1)
         check("review free text scrubbed of contact details",

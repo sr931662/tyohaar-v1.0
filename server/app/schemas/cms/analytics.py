@@ -117,19 +117,6 @@ class PaymentMetrics(_Base):
     avg_transaction_value: Decimal
 
 
-# ── Memberships ───────────────────────────────────────────────────────────────
-
-class MembershipMetrics(_Base):
-    total_active: int
-    expired_this_month: int
-    renewed_this_month: int
-    new_subscriptions_this_month: int
-    conversion_rate: float
-    monthly_recurring_revenue: Decimal
-    churn_rate: float
-    plan_breakdown: list[CategoryBreakdown]
-
-
 # ── Referrals ─────────────────────────────────────────────────────────────────
 
 class ReferralMetrics(_Base):
@@ -238,7 +225,6 @@ class ExecutiveDashboard(_Base):
     users: UserMetrics
     vendors: VendorMetrics
     payments: PaymentMetrics
-    memberships: MembershipMetrics
     referrals: ReferralMetrics
     occasions: OccasionMetrics
     support: SupportMetrics

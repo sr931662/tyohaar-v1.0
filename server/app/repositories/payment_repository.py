@@ -422,16 +422,6 @@ class InvoiceRepository(BaseRepository[Invoice]):
             limit=limit,
         )
 
-    async def find_membership_invoices_for_customer(
-        self,
-        customer_id: uuid.UUID,
-    ) -> list[Invoice]:
-        return await self.find_many(
-            Invoice.customer_id == customer_id,
-            Invoice.entity_type == InvoiceEntityType.MEMBERSHIP,
-            order_by=Invoice.created_at.desc(),
-        )
-
 
 class PlatformTransactionRepository(BaseRepository[Transaction]):
     """

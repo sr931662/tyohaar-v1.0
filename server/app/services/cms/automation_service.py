@@ -12,7 +12,7 @@ Architecture:
 
 Built-in action types:
   send_notification, send_email, send_sms,
-  generate_invoice, assign_membership, log_event, trigger_webhook
+  generate_invoice, log_event, trigger_webhook
 """
 
 from __future__ import annotations

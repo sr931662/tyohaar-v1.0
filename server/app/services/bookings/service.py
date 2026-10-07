@@ -1106,17 +1106,7 @@ class BookingService(BaseService):
             # Validate that the booking can be cancelled from its current status
             validate_status_transition_allowed(booking, "cancelled")
 
-            waive_fee = False
-            membership = await uow.memberships.memberships.get_active_for_user(customer_id)
-            if membership is not None:
-                plan = await uow.memberships.plans.get_by_id(membership.plan_id)
-                waive_fee = bool(plan and plan.cancellation_protection)
-
-            fee = (
-                Decimal("0.00")
-                if waive_fee
-                else calculate_cancellation_fee(booking.total_amount, CANCELLATION_FEE_PERCENTAGE)
-            )
+            fee = calculate_cancellation_fee(booking.total_amount, CANCELLATION_FEE_PERCENTAGE)
             refund = calculate_refund_amount(booking.total_amount, fee)
 
             now = datetime.now(tz=timezone.utc)
@@ -1155,7 +1145,6 @@ class BookingService(BaseService):
                     "reason": str(data.reason),
                     "cancellation_fee": str(fee),
                     "refund_amount": str(refund),
-                    "fee_waived_by_membership": waive_fee,
                 },
             )
 

@@ -7,8 +7,8 @@ SECURITY GUARANTEES (enforced by field exclusion — not runtime filtering):
 - gateway_signature: NEVER included in any response schema (HMAC secret)
 - PaymentWebhookResponse.payload: excluded (can be megabytes of raw JSON)
 - PaymentWebhookResponse.signature: excluded (security-sensitive)
-- CouponResponse: excludes internal_notes, eligible_membership_tiers,
-  applicable_vendor_ids, applicable_package_ids (internal targeting data)
+- CouponResponse: excludes internal_notes, applicable_vendor_ids,
+  applicable_package_ids (internal targeting data)
 """
 
 from __future__ import annotations
@@ -112,8 +112,8 @@ class CouponResponse(BaseSchema):
 
     Excluded fields:
     - internal_notes (admin-only)
-    - eligible_membership_tiers, applicable_vendor_ids,
-      applicable_package_ids, applicable_occasion_categories
+    - applicable_vendor_ids, applicable_package_ids,
+      applicable_occasion_categories
       (internal targeting data — exposes business logic to customers)
 
     remaining_uses is included as a computed field so customers can see

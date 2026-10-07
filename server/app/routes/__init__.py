@@ -20,7 +20,6 @@ from app.routes.common.routes import router as common_router
 from app.routes.deletion.routes import router as deletion_router
 from app.routes.feedback.routes import router as feedback_router
 from app.routes.media.routes import router as media_router
-from app.routes.memberships.routes import router as memberships_router
 from app.routes.notifications.routes import router as notifications_router
 from app.routes.occasions.routes import router as occasions_router
 from app.routes.packages.routes import router as packages_router
@@ -39,7 +38,6 @@ all_routers = [
     packages_router,
     bookings_router,
     payments_router,
-    memberships_router,
     notifications_router,
     support_router,
     feedback_router,
@@ -60,7 +58,6 @@ __all__ = [
     "packages_router",
     "bookings_router",
     "payments_router",
-    "memberships_router",
     "notifications_router",
     "support_router",
     "feedback_router",

@@ -13,7 +13,6 @@ from app.schemas.cms.bulk import (
     BulkCouponGenerateRequest,
     BulkDeleteRequest,
     BulkDiscountActionRequest,
-    BulkMembershipAssignRequest,
     BulkNotificationRequest,
     BulkOperationResult,
     BulkPackageActionRequest,
@@ -124,16 +123,6 @@ async def archive_discounts(
     return SuccessResponse(data=await svc.archive_discounts(request), message="Discounts archived")
 
 
-async def assign_memberships(
-    request: BulkMembershipAssignRequest,
-    svc: BulkServiceDep,
-) -> SuccessResponse[BulkOperationResult]:
-    return SuccessResponse(
-        data=await svc.assign_memberships(request),
-        message="Memberships assigned",
-    )
-
-
 # ── Bulk Delete ──────────────────────────────────────────────────────────────
 
 
@@ -222,10 +211,3 @@ async def bulk_delete_faqs(
     return SuccessResponse(data=await svc.bulk_delete_faqs(request), message="FAQs deleted")
 
 
-async def bulk_deactivate_membership_plans(
-    request: BulkDeleteRequest,
-    svc: BulkServiceDep,
-) -> SuccessResponse[BulkOperationResult]:
-    return SuccessResponse(
-        data=await svc.bulk_deactivate_membership_plans(request), message="Membership plans deactivated"
-    )

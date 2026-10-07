@@ -29,7 +29,6 @@ const NAV = [
     section: 'Finance',
     items: [
       { to: '/admin/payments', label: 'Payments', icon: '💳' },
-      { to: '/admin/memberships', label: 'Memberships', icon: '⭐' },
       { to: '/admin/discounts', label: 'Discounts', icon: '🏷️' },
     ],
   },

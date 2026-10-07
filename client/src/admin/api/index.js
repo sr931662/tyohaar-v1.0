@@ -6,7 +6,6 @@ export { customersApi } from './endpoints/customers';
 export { bookingsApi } from './endpoints/bookings';
 export { packagesApi } from './endpoints/packages';
 export { paymentsApi } from './endpoints/payments';
-export { membershipsApi } from './endpoints/memberships';
 export { notificationsApi } from './endpoints/notifications';
 export { occasionsApi } from './endpoints/occasions';
 export { supportApi } from './endpoints/support';

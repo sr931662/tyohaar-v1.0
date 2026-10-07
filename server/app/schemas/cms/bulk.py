@@ -72,13 +72,6 @@ class BulkCouponGenerateRequest(_Base):
     min_order_value: Decimal = Field(default=Decimal("0"))
 
 
-class BulkMembershipAssignRequest(_Base):
-    user_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=500)
-    plan_id: uuid.UUID
-    duration_days: int = Field(default=30, ge=1)
-    reason: str | None = None
-
-
 class BulkOperationResult(_Base):
     operation: str
     total_requested: int

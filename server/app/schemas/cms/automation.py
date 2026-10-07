@@ -17,7 +17,6 @@ TRIGGER_EVENTS = [
     "vendor.registered", "vendor.approved", "vendor.rejected",
     "booking.created", "booking.confirmed", "booking.completed", "booking.cancelled",
     "payment.completed", "payment.failed", "payment.refunded",
-    "membership.expiring", "membership.expired", "membership.renewed",
     "user.registered", "user.inactive", "referral.completed",
     "support.ticket_opened", "support.ticket_resolved",
 ]
@@ -25,7 +24,7 @@ TRIGGER_EVENTS = [
 ACTION_TYPES = [
     "send_notification", "send_email", "send_sms",
     "generate_invoice",
-    "assign_membership", "apply_coupon", "create_support_ticket",
+    "apply_coupon", "create_support_ticket",
     "update_vendor_status", "update_user_status",
     "trigger_webhook", "log_event",
 ]

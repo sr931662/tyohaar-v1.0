@@ -42,9 +42,6 @@ export const bulkApi = {
   archiveDiscounts: (ids) =>
     apiClient.post(`${BASE}/coupons/archive`, { ids }).then(extractData),
 
-  assignMemberships: (body) =>
-    apiClient.post(`${BASE}/memberships/assign`, body).then(extractData),
-
   // ── Delete ──────────────────────────────────────────────────────────────
   deleteVendors: (ids, reason) =>
     apiClient.post(`${BASE}/vendors/delete`, { ids, reason }).then(extractData),
@@ -78,7 +75,4 @@ export const bulkApi = {
 
   deleteFaqs: (ids) =>
     apiClient.post(`${BASE}/faqs/delete`, { ids }).then(extractData),
-
-  deactivateMembershipPlans: (ids) =>
-    apiClient.post(`${BASE}/memberships/plans/deactivate`, { ids }).then(extractData),
 };

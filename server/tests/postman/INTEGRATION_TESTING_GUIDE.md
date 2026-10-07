@@ -72,7 +72,6 @@ Tyohaar API — Complete Integration Suite
 ├── 📅 Bookings                 (14 requests)  — lifecycle, cancellations, invoices
 ├── 💳 Payments                 (14 requests)  — initiate, verify, refunds, splits
 ├── 💰 Wallets                  (11 requests)  — balance, transactions, rewards
-├── 🎫 Memberships              (12 requests)  — plans, subscribe, features
 ├── 🔔 Notifications            (9 requests)   — preferences, send, broadcast
 ├── 🎫 Support                  (9 requests)   — tickets, messages, assignments
 ├── 🖼️ Media                    (15 requests)  — images, videos, memories
@@ -125,7 +124,6 @@ Tokens and resource IDs are automatically saved to environment variables by test
 | Add Address | `TEST_ADDRESS_ID` |
 | Register Image | `TEST_IMAGE_ID` |
 | Create Memory | `TEST_MEMORY_ID` |
-| Subscribe Membership | `TEST_MEMBERSHIP_ID` |
 | Create Ticket | `TEST_TICKET_ID` |
 
 ---

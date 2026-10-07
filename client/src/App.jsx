@@ -62,7 +62,6 @@ const PackagesPage          = lazy(() => import('./admin/pages/packages/Packages
 const PackageDetailPage     = lazy(() => import('./admin/pages/packages/PackageDetailPage.jsx'));
 const PackageCategoriesPage = lazy(() => import('./admin/pages/packages/PackageCategoriesPage.jsx'));
 const PaymentsPage          = lazy(() => import('./admin/pages/payments/PaymentsPage.jsx'));
-const MembershipsPage       = lazy(() => import('./admin/pages/memberships/MembershipsPage.jsx'));
 const OccasionsPage         = lazy(() => import('./admin/pages/occasions/OccasionsPage.jsx'));
 const NotificationsPage     = lazy(() => import('./admin/pages/notifications/NotificationsPage.jsx'));
 const SupportPage           = lazy(() => import('./admin/pages/support/SupportPage.jsx'));
@@ -233,7 +232,6 @@ export default function App() {
                 <Route path="packages/categories" element={<PackageCategoriesPage />} />
                 <Route path="packages/:packageId" element={<PackageDetailPage />} />
                 <Route path="payments" element={<PaymentsPage />} />
-                <Route path="memberships" element={<MembershipsPage />} />
                 <Route path="occasions" element={<OccasionsPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="support" element={<SupportPage />} />

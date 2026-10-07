@@ -15,7 +15,6 @@ Domain structure (16 domains × 8 files each = 128 schema files):
     bookings/       — Booking, BookingItem, BookingCancellation, etc.
     payments/       — Payment, Refund, Coupon, PaymentWebhook
     wallets/        — Wallet, WalletTransaction, UserReward
-    memberships/    — MembershipPlan, UserMembership
     notifications/  — Notification, NotificationTemplate
     support/        — SupportTicket, SupportMessage, SupportAttachment
     media/          — Image, Video, Memory

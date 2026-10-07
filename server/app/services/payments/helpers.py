@@ -120,8 +120,8 @@ def calculate_discount_amount(
     return max(Decimal("0.00"), min(raw_discount, amount))
 
 
-def apply_membership_discount(subtotal: Decimal, discount_percentage: Decimal) -> Decimal:
-    """Return the monetary discount from an active membership's discount_percentage (0-100)."""
+def apply_percentage_discount(subtotal: Decimal, discount_percentage: Decimal) -> Decimal:
+    """Return the monetary discount for a percentage (0-100) of subtotal, rounded down."""
     return (subtotal * discount_percentage / Decimal("100")).quantize(
         Decimal("0.01"), rounding=ROUND_DOWN
     )

@@ -26,7 +26,6 @@ from app.schemas.cms.bulk import (
     BulkCouponGenerateRequest,
     BulkDeleteRequest,
     BulkIDsRequest,
-    BulkMembershipAssignRequest,
     BulkNotificationRequest,
     BulkOperationResult,
     BulkPriceUpdateRequest,
@@ -451,46 +450,6 @@ class BulkService(BaseService):
             "archive_discounts",
         )
 
-    # ── Membership Bulk Assign ────────────────────────────────────────────────
-
-    async def assign_memberships(self, request: BulkMembershipAssignRequest) -> BulkOperationResult:
-        from datetime import timedelta
-
-        from app.models.enums import MembershipBillingCycle, MembershipStatus
-        from app.models.memberships.membership_plan import MembershipPlan
-        from app.models.memberships.user_membership import UserMembership
-
-        succeeded: list[str] = []
-        failed: list[dict[str, Any]] = []
-        now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
-
-        async with self._uow() as uow:
-            plan = await uow.session.get(MembershipPlan, request.plan_id)
-            if not plan:
-                return self._make_result("assign_memberships", request.user_ids, [], [
-                    {"id": str(uid), "error": "Plan not found"} for uid in request.user_ids
-                ])
-
-            for user_id in request.user_ids:
-                try:
-                    membership = UserMembership(
-                        user_id=user_id,
-                        plan_id=request.plan_id,
-                        membership_status=MembershipStatus.ACTIVE,
-                        billing_cycle=MembershipBillingCycle.MONTHLY,
-                        activated_at=now,
-                        expires_at=now + timedelta(days=request.duration_days),
-                    )
-                    uow.session.add(membership)
-                    await uow.session.flush()
-                    succeeded.append(str(user_id))
-                except Exception as exc:
-                    failed.append({"id": str(user_id), "error": str(exc)})
-
-            await uow.commit()
-
-        return self._make_result("assign_memberships", request.user_ids, succeeded, failed)
-
     # ── Generic Bulk Delete Helpers ───────────────────────────────────────────
 
     async def _bulk_hard_delete(
@@ -683,30 +642,6 @@ class BulkService(BaseService):
         from app.models.common.faq import FAQ
 
         return await self._bulk_hard_delete(request, FAQ, "bulk_delete_faqs")
-
-    async def bulk_deactivate_membership_plans(self, request: BulkDeleteRequest) -> BulkOperationResult:
-        from app.models.memberships.membership_plan import MembershipPlan
-
-        succeeded: list[str] = []
-        failed: list[dict[str, Any]] = []
-        async with self._uow() as uow:
-            for item_id in request.ids:
-                try:
-                    stmt = (
-                        update(MembershipPlan)
-                        .where(MembershipPlan.id == item_id)
-                        .values(is_active=False)
-                        .returning(MembershipPlan.id)
-                    )
-                    result = await uow.session.execute(stmt)
-                    if result.fetchone():
-                        succeeded.append(str(item_id))
-                    else:
-                        failed.append({"id": str(item_id), "error": "MembershipPlan not found"})
-                except Exception as exc:
-                    failed.append({"id": str(item_id), "error": str(exc)})
-            await uow.commit()
-        return self._make_result("bulk_deactivate_membership_plans", request.ids, succeeded, failed)
 
     # ── Category / City Assignment ────────────────────────────────────────────
 

@@ -366,7 +366,6 @@ class CRMService(BaseService):
         return CustomerCRMProfile(
             summary=summary,
             financials=financials,
-            active_membership=None,
             recent_bookings=recent_bookings,
             recent_payments=[],
             addresses=addresses,

@@ -195,10 +195,6 @@ class CouponCreate(BaseSchema):
         default=False,
         description="Restrict to users who signed up via a referral",
     )
-    eligible_membership_tiers: list[str] | None = Field(
-        default=None,
-        description="Membership tier names eligible for this coupon (MEMBERSHIP_ONLY type)",
-    )
     eligible_customer_group_ids: list[uuid.UUID] | None = Field(
         default=None,
         description="Reserved for future use — no customer-group entity exists yet",

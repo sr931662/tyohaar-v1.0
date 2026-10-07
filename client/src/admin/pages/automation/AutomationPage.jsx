@@ -7,8 +7,8 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
 
-const TRIGGER_TYPES = ['booking_created', 'booking_confirmed', 'booking_completed', 'booking_cancelled', 'payment_received', 'user_registered', 'vendor_approved', 'membership_expired'];
-const ACTION_TYPES = ['send_notification', 'send_email', 'assign_membership', 'update_status'];
+const TRIGGER_TYPES = ['booking_created', 'booking_confirmed', 'booking_completed', 'booking_cancelled', 'payment_received', 'user_registered', 'vendor_approved'];
+const ACTION_TYPES = ['send_notification', 'send_email', 'update_status'];
 
 export default function AutomationPage() {
   const qc = useQueryClient();

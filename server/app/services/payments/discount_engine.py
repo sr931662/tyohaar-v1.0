@@ -66,7 +66,6 @@ class DiscountEngine(BaseService):
         vendor_id = package.vendor_id if package is not None else None
         occasion = await uow.occasions.occasions.get_by_id(occasion_id) if occasion_id else None
 
-        membership_tier = await self._resolve_membership_tier(uow, customer_id)
         is_first_booking = await self._is_first_booking(uow, customer_id)
         is_referred_user = await self._is_referred_user(uow, customer_id)
 
@@ -101,7 +100,6 @@ class DiscountEngine(BaseService):
                 package=package,
                 vendor_id=vendor_id,
                 occasion=occasion,
-                membership_tier=membership_tier,
                 is_first_booking=is_first_booking,
                 is_referred_user=is_referred_user,
             )
@@ -185,7 +183,6 @@ class DiscountEngine(BaseService):
         package,
         vendor_id: UUID | None,
         occasion,
-        membership_tier: str | None,
         is_first_booking: bool,
         is_referred_user: bool,
     ) -> tuple[bool, str | None]:
@@ -215,10 +212,6 @@ class DiscountEngine(BaseService):
             return False, "This offer is only available to returning customers."
         if coupon.referral_users_only and not is_referred_user:
             return False, "This offer is only available to customers who joined via referral."
-
-        if coupon.eligible_membership_tiers:
-            if membership_tier is None or membership_tier not in coupon.eligible_membership_tiers:
-                return False, "This offer requires an eligible membership tier."
 
         if coupon.applicable_vendor_ids:
             if vendor_id is None or str(vendor_id) not in coupon.applicable_vendor_ids:
@@ -263,20 +256,12 @@ class DiscountEngine(BaseService):
                 "hour_of_day": now.hour,
                 "is_first_booking": is_first_booking,
                 "is_referred_user": is_referred_user,
-                "membership_tier": membership_tier,
                 "subtotal": float(subtotal),
             }
             if not evaluate_conditions(coupon.condition_rules, payload):
                 return False, "This offer's conditions are not currently met."
 
         return True, None
-
-    async def _resolve_membership_tier(self, uow: UnitOfWork, customer_id: UUID) -> str | None:
-        membership = await uow.memberships.memberships.get_active_or_grace_for_user(customer_id)
-        if membership is None:
-            return None
-        plan = await uow.memberships.plans.get_by_id(membership.plan_id)
-        return plan.tier if plan is not None else None
 
     async def _is_first_booking(self, uow: UnitOfWork, customer_id: UUID) -> bool:
         existing = await uow.bookings.bookings.find_many(

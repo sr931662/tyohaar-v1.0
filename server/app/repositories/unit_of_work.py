@@ -27,7 +27,6 @@ from app.repositories.cms_repository import CMSRepositoryAggregate
 from app.repositories.common_repository import CommonRepositoryAggregate
 from app.repositories.feedback_repository import FeedbackRepositoryAggregate
 from app.repositories.media_repository import MediaRepositoryAggregate
-from app.repositories.membership_repository import MembershipRepositoryAggregate
 from app.repositories.notification_repository import NotificationRepositoryAggregate
 from app.repositories.occasion_repository import OccasionRepositoryAggregate
 from app.repositories.package_repository import PackageRepositoryAggregate
@@ -67,7 +66,6 @@ class UnitOfWork:
         self._packages: PackageRepositoryAggregate | None = None
         self._bookings: BookingRepositoryAggregate | None = None
         self._payments: PaymentRepositoryAggregate | None = None
-        self._memberships: MembershipRepositoryAggregate | None = None
         self._notifications: NotificationRepositoryAggregate | None = None
         self._support: SupportRepositoryAggregate | None = None
         self._feedback: FeedbackRepositoryAggregate | None = None
@@ -165,13 +163,6 @@ class UnitOfWork:
         if self._payments is None:
             self._payments = PaymentRepositoryAggregate(self.session)
         return self._payments
-
-    @property
-    def memberships(self) -> MembershipRepositoryAggregate:
-        assert self.session is not None, "UnitOfWork must be used as an async context manager."
-        if self._memberships is None:
-            self._memberships = MembershipRepositoryAggregate(self.session)
-        return self._memberships
 
     @property
     def notifications(self) -> NotificationRepositoryAggregate:

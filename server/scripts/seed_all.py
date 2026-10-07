@@ -12,7 +12,6 @@ Seeds (in dependency order):
   5.  Vendor categories
   6.  Package categories
   7.  Budget expense categories
-  8.  Membership plans
   9.  Notification templates
   10. Demo users  (1 superadmin, 2 customers, 2 vendors, 1 support agent)
   11. Admin record for superadmin
@@ -50,7 +49,6 @@ from app.models.common.privacy_policy import PrivacyPolicy
 from app.models.common.cancellation_policy import CancellationRefundPolicy
 from app.models.common.state import State
 from app.models.common.terms import TermsAndConditions
-from app.models.memberships.membership_plan import MembershipPlan
 from app.models.notifications.template import NotificationTemplate
 from app.models.occasions.celebration import Celebration
 from app.models.occasions.occasion import Occasion
@@ -79,8 +77,6 @@ from app.models.enums import (
     FAQCategory,
     Language,
     LoginMethod,
-    MembershipBillingCycle,
-    MembershipTier,
     NotificationChannel,
     NotificationType,
     OccasionCategory as OccasionCategoryEnum,
@@ -295,7 +291,6 @@ async def seed_banners(session) -> None:
         dict(title="Celebrate Every Moment", subtitle="India's #1 event planning platform", banner_type=BannerType.HERO, target_audience=BannerTargetAudience.ALL, image_url="https://cdn.tyohaar.com/banners/hero-01.jpg", cta_label="Explore Packages", display_order=1, status=ContentStatus.PUBLISHED, is_active=True),
         dict(title="Book Your Dream Wedding", subtitle="Verified vendors. Transparent pricing.", banner_type=BannerType.HERO, target_audience=BannerTargetAudience.ALL, image_url="https://cdn.tyohaar.com/banners/hero-02.jpg", cta_label="Plan Now", display_order=2, status=ContentStatus.PUBLISHED, is_active=True),
         dict(title="Diwali Special 15% Off", subtitle="On all decoration packages. Limited time.", banner_type=BannerType.PROMOTIONAL, target_audience=BannerTargetAudience.ALL, image_url="https://cdn.tyohaar.com/banners/diwali-sale.jpg", cta_label="Grab Deal", display_order=1, status=ContentStatus.PUBLISHED, is_active=True),
-        dict(title="Premium Member Offer", subtitle="Exclusive packages for Gold & Platinum members.", banner_type=BannerType.PROMOTIONAL, target_audience=BannerTargetAudience.PREMIUM_MEMBERS, image_url="https://cdn.tyohaar.com/banners/premium-offer.jpg", cta_label="Unlock Now", display_order=1, status=ContentStatus.PUBLISHED, is_active=True),
         dict(title="Spotlight: Raj Decorators", subtitle="Rated 4.9 stars across 500+ events.", banner_type=BannerType.VENDOR_SPOTLIGHT, target_audience=BannerTargetAudience.ALL, image_url="https://cdn.tyohaar.com/banners/vendor-spot.jpg", cta_label="View Profile", display_order=1, status=ContentStatus.PUBLISHED, is_active=True),
         dict(title="New: AI Budget Planner", subtitle="Get smart spending suggestions instantly.", banner_type=BannerType.ANNOUNCEMENT, target_audience=BannerTargetAudience.ALL, image_url="https://cdn.tyohaar.com/banners/ai-planner.jpg", cta_label="Try It", display_order=1, status=ContentStatus.PUBLISHED, is_active=True),
     ]
@@ -319,8 +314,6 @@ async def seed_faqs(session) -> None:
         (FAQCategory.CANCELLATION, "Refund kab aata hai?",                          "Refund 5-7 business days mein aapke original payment method pe wapas aa jaata hai."),
         (FAQCategory.VENDOR,       "Vendors verified hain?",                        "Haan, har vendor ka KYC, GST verification, aur quality check kiya jaata hai."),
         (FAQCategory.VENDOR,       "Main khud vendor ban sakta hoon?",              "Bilkul! Vendor portal pe register karein, documents upload karein, aur verification ke baad aap live ho jaoge."),
-        (FAQCategory.MEMBERSHIP,   "Membership ke kya fayde hain?",                 "Cashback, priority booking, exclusive packages, free digital invitations aur dedicated support — tier ke hisaab se."),
-        (FAQCategory.MEMBERSHIP,   "Membership cancel kar sakte hain?",             "Haan, anytime cancel kar sakte hain. Remaining period ka pro-rated refund milega."),
         (FAQCategory.ACCOUNT,      "Password bhool gaya — kya karein?",             "Login page pe 'Forgot Password' click karein. OTP aapke registered phone/email pe aayega."),
         (FAQCategory.REFERRAL,     "Referral program kaise kaam karta hai?",        "Apna unique referral code share karein. Jab koi friend pehli booking kare, aap dono ko wallet credit milega."),
         (FAQCategory.TECHNICAL,    "App crash ho raha hai — kya karein?",          "App update karein ya reinstall karein. Problem persist kare toh support@tyohaar.com pe contact karein."),
@@ -348,9 +341,6 @@ async def seed_app_settings(session) -> None:
         ("gst_rate_pct",                "payments",     "GST Rate (%)",                      AppSettingDataType.FLOAT,   "18.0",  "GST rate applied on platform fees"),
         ("support_sla_hours",           "support",      "Support SLA (hours)",               AppSettingDataType.INTEGER, "24",    "Ticket response ka SLA in hours"),
         ("max_images_per_vendor",       "media",        "Max Images per Vendor",             AppSettingDataType.INTEGER, "50",    "Vendor gallery mein maximum images"),
-        ("invitation_credits_silver",   "memberships",  "Silver Invitation Credits",         AppSettingDataType.INTEGER, "5",     "Silver plan: free digital invitations per cycle"),
-        ("invitation_credits_gold",     "memberships",  "Gold Invitation Credits",           AppSettingDataType.INTEGER, "15",    "Gold plan: free digital invitations per cycle"),
-        ("invitation_credits_platinum", "memberships",  "Platinum Invitation Credits",       AppSettingDataType.INTEGER, "50",    "Platinum plan: free digital invitations per cycle"),
         ("maintenance_mode",            "system",       "Maintenance Mode",                  AppSettingDataType.BOOLEAN, "false", "True hone pe app read-only mode mein aa jaata hai"),
         ("allowed_origins",             "system",       "Allowed CORS Origins",              AppSettingDataType.LIST,    '["https://tyohaar.com","https://app.tyohaar.com"]', "Allowed CORS origins"),
     ]
@@ -781,73 +771,6 @@ async def seed_budget_categories(session) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 8. MEMBERSHIP PLANS
-# ─────────────────────────────────────────────────────────────────────────────
-
-PLANS = [
-    dict(
-        tier=MembershipTier.FREE, name="Free",  slug="free",
-        tagline="Get started for free",
-        description="Access to basic event planning features and standard vendor catalog.",
-        monthly_price=Decimal("0"),    yearly_price=Decimal("0"),
-        cashback_percentage=Decimal("0"),   discount_percentage=Decimal("0"),
-        reward_multiplier=Decimal("1.0"),   wallet_bonus=Decimal("0"),
-        free_invitations_count=0, customer_support_priority=1,
-        priority_booking=False, has_exclusive_packages=False, cancellation_protection=False,
-        is_active=True, display_order=1,
-        can_upgrade_to_tier=MembershipTier.SILVER,
-    ),
-    dict(
-        tier=MembershipTier.SILVER, name="Silver", slug="silver",
-        tagline="For frequent celebrators",
-        description="Cashback on bookings, 5 free digital invitations, and priority support.",
-        monthly_price=Decimal("199"),  yearly_price=Decimal("1999"),
-        cashback_percentage=Decimal("3"),    discount_percentage=Decimal("5"),
-        reward_multiplier=Decimal("1.5"),   wallet_bonus=Decimal("100"),
-        free_invitations_count=5, customer_support_priority=2,
-        priority_booking=False, has_exclusive_packages=False, cancellation_protection=False,
-        is_active=True, display_order=1,
-        can_upgrade_to_tier=MembershipTier.GOLD,
-        can_downgrade_to_tier=MembershipTier.FREE,
-    ),
-    dict(
-        tier=MembershipTier.GOLD, name="Gold", slug="gold",
-        tagline="For the true celebration enthusiast",
-        description="5% cashback, exclusive packages, 15 free invitations, and double rewards.",
-        monthly_price=Decimal("499"),  yearly_price=Decimal("4999"),
-        cashback_percentage=Decimal("5"),    discount_percentage=Decimal("10"),
-        reward_multiplier=Decimal("2.0"),   wallet_bonus=Decimal("250"),
-        free_invitations_count=15, customer_support_priority=2,
-        priority_booking=True, has_exclusive_packages=True, cancellation_protection=False,
-        is_active=True, display_order=2,
-        can_upgrade_to_tier=MembershipTier.PLATINUM,
-        can_downgrade_to_tier=MembershipTier.SILVER,
-    ),
-    dict(
-        tier=MembershipTier.PLATINUM, name="Platinum", slug="platinum",
-        tagline="The ultimate celebration experience",
-        description="10% cashback, dedicated CSR, unlimited invitations, and cancellation protection.",
-        monthly_price=Decimal("999"),  yearly_price=Decimal("9999"),
-        cashback_percentage=Decimal("10"),   discount_percentage=Decimal("15"),
-        reward_multiplier=Decimal("3.0"),   wallet_bonus=Decimal("500"),
-        free_invitations_count=50, customer_support_priority=3,
-        priority_booking=True, has_exclusive_packages=True, cancellation_protection=True,
-        is_active=True, display_order=1,
-        can_downgrade_to_tier=MembershipTier.GOLD,
-    ),
-]
-
-
-async def seed_membership_plans(session) -> None:
-    for plan_data in PLANS:
-        res = await session.execute(select(MembershipPlan).where(MembershipPlan.slug == plan_data["slug"]))
-        if not res.scalar_one_or_none():
-            session.add(MembershipPlan(**plan_data))
-    await session.flush()
-    print(f"  [+] Membership plans: {len(PLANS)} seeded (Free / Silver / Gold / Platinum)")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # 9. NOTIFICATION TEMPLATES
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -869,8 +792,6 @@ NOTIF_TEMPLATES = [
     ("refund_initiated", NotificationChannel.EMAIL,    "en", NotificationType.REFUND_INITIATED, "Refund Initiated",            "Hi {{name}}, refund of {{refund_amount}} for booking #{{booking_number}} has been initiated. Expected: 5-7 business days."),
     ("wallet_credit",    NotificationChannel.PUSH,     "en", NotificationType.WALLET_CREDIT,    "Wallet Credited!",            "{{amount}} added to your Tyohaar Wallet. New balance: {{balance}}."),
     ("celebration_upcoming",NotificationChannel.PUSH,  "en", NotificationType.CELEBRATION_UPCOMING,"Celebration Coming Up!",  "{{occasion}} is in {{days}} days! Check your bookings and make sure everything is set."),
-    ("membership_expiring",NotificationChannel.EMAIL,  "en", NotificationType.MEMBERSHIP_EXPIRING,"Your Membership is Expiring","Hi {{name}}, your {{tier}} membership expires on {{expiry_date}}. Renew now to keep your benefits."),
-    ("membership_expiring",NotificationChannel.PUSH,   "en", NotificationType.MEMBERSHIP_EXPIRING,"Membership Expiring Soon",  "Your {{tier}} plan expires in {{days}} days. Renew now!"),
     ("support_update",   NotificationChannel.EMAIL,    "en", NotificationType.SUPPORT_UPDATE,   "Support Ticket Updated",      "Hi {{name}}, your support ticket #{{ticket_number}} has been updated. Status: {{status}}. Reply: {{agent_message}}."),
     ("support_update",   NotificationChannel.PUSH,     "en", NotificationType.SUPPORT_UPDATE,   "Ticket Update",               "Ticket #{{ticket_number}}: {{status}}. Tap to view."),
     ("vendor_assigned",  NotificationChannel.PUSH,     "en", NotificationType.VENDOR_ASSIGNED,  "Vendor Assigned!",            "{{vendor_name}} has been assigned to your {{occasion}} on {{event_date}}."),
@@ -1133,9 +1054,6 @@ async def main() -> None:
 
             print("\n>> Budget expense categories")
             await seed_budget_categories(session)
-
-            print("\n>> Membership plans")
-            await seed_membership_plans(session)
 
             print("\n>> Notification templates")
             await seed_notification_templates(session)

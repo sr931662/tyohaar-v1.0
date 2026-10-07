@@ -34,7 +34,6 @@ class AutomationRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "'vendor.registered','vendor.approved','vendor.rejected',"
             "'booking.created','booking.confirmed','booking.completed','booking.cancelled',"
             "'payment.completed','payment.failed','payment.refunded',"
-            "'membership.expiring','membership.expired','membership.renewed',"
             "'user.registered','user.inactive','referral.completed',"
             "'support.ticket_opened','support.ticket_resolved'"
             ")",

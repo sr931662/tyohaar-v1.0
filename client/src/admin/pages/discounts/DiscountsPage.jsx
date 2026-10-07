@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { discountsApi, bulkApi, vendorsApi, packagesApi, occasionsApi, membershipsApi } from '../../api';
+import { discountsApi, bulkApi, vendorsApi, packagesApi, occasionsApi } from '../../api';
 import { formatCurrency, formatNumber } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Pagination from '../../components/ui/Pagination';
@@ -30,7 +30,6 @@ const APPLICABILITY_OPTIONS = [
   { value: 'specific_category', label: 'Specific Occasion Category' },
   { value: 'specific_vendor', label: 'Specific Vendor(s)' },
   { value: 'specific_package', label: 'Specific Package(s)' },
-  { value: 'membership_only', label: 'Membership Tier' },
 ];
 
 const OCCASION_CATEGORY_OPTIONS = [
@@ -69,7 +68,6 @@ const EMPTY_FORM = {
   first_booking_only: false,
   repeat_customers_only: false,
   referral_users_only: false,
-  eligible_membership_tiers: [],
   applicable_vendor_ids: [],
   applicable_package_ids: [],
   applicable_occasion_ids: [],
@@ -233,20 +231,6 @@ export default function DiscountsPage() {
     enabled: formOpen,
     staleTime: 60_000,
   });
-  const { data: membershipTierOptions = [] } = useQuery({
-    queryKey: ['discounts', 'membership-tier-options'],
-    queryFn: async () => {
-      const plans = await membershipsApi.listPlans();
-      const seen = new Set();
-      return (plans ?? []).filter((p) => {
-        if (seen.has(p.tier)) return false;
-        seen.add(p.tier);
-        return true;
-      }).map((p) => ({ value: p.tier, label: p.tier }));
-    },
-    enabled: formOpen,
-    staleTime: 60_000,
-  });
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -272,7 +256,6 @@ export default function DiscountsPage() {
     first_booking_only: f.first_booking_only,
     repeat_customers_only: f.repeat_customers_only,
     referral_users_only: f.referral_users_only,
-    eligible_membership_tiers: f.eligible_membership_tiers.length ? f.eligible_membership_tiers : undefined,
     applicable_vendor_ids: f.applicable_vendor_ids.length ? f.applicable_vendor_ids : undefined,
     applicable_package_ids: f.applicable_package_ids.length ? f.applicable_package_ids : undefined,
     applicable_occasion_ids: f.applicable_occasion_ids.length ? f.applicable_occasion_ids : undefined,
@@ -380,7 +363,6 @@ export default function DiscountsPage() {
       first_booking_only: !!item.first_booking_only,
       repeat_customers_only: !!item.repeat_customers_only,
       referral_users_only: !!item.referral_users_only,
-      eligible_membership_tiers: item.eligible_membership_tiers ?? [],
       applicable_vendor_ids: item.applicable_vendor_ids ?? [],
       applicable_package_ids: item.applicable_package_ids ?? [],
       applicable_occasion_ids: item.applicable_occasion_ids ?? [],
@@ -615,10 +597,6 @@ export default function DiscountsPage() {
             <label className="form-label">Occasion Categories</label>
             <MultiSelect options={OCCASION_CATEGORY_OPTIONS} value={form.applicable_occasion_categories} onChange={setList('applicable_occasion_categories')} placeholder="Select categories…" />
           </div>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Membership Tier(s)</label>
-          <MultiSelect options={membershipTierOptions} value={form.eligible_membership_tiers} onChange={setList('eligible_membership_tiers')} placeholder="Select tiers…" />
         </div>
 
         <div className="form-check">

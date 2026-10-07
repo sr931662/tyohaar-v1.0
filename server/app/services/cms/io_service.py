@@ -50,7 +50,6 @@ _ENTITY_COLUMNS: dict[str, list[str]] = {
     "faqs": ["question", "answer", "category", "display_order"],
     "notification_templates": ["template_key", "channel", "notification_category", "title_template", "body_template"],
     "settings": ["key", "value", "description"],
-    "memberships": ["tier", "name", "monthly_price", "yearly_price", "validity_days", "features"],
     "vendor_services": ["vendor_phone", "category", "name", "description", "base_price", "pricing_type"],
     "themes": [
         "name", "slug", "description", "cover_image_url", "thumbnail_url",
@@ -93,7 +92,6 @@ _REQUIRED_COLUMNS: dict[str, list[str]] = {
     "faqs": ["question", "answer"],
     "notification_templates": ["template_key", "channel", "notification_category", "title_template", "body_template"],
     "settings": ["key", "value"],
-    "memberships": ["tier", "name", "monthly_price"],
     "vendor_services": ["vendor_phone", "category", "name", "base_price"],
     "themes": ["name"],
     "common_items": ["vendor_phone", "name", "base_price"],
@@ -105,7 +103,7 @@ _REQUIRED_COLUMNS: dict[str, list[str]] = {
 # Entity types with a real bulk-insert implementation in _insert_row().
 EXECUTABLE_ENTITY_TYPES = {
     "faqs", "settings", "packages", "vendors", "customers", "package_categories",
-    "cities", "states", "coupons", "notification_templates", "memberships", "vendor_services",
+    "cities", "states", "coupons", "notification_templates", "vendor_services",
     "themes", "package_items", "common_items", "package_services", "common_services",
 }
 
@@ -821,55 +819,6 @@ class IOService(BaseService):
             session.add(obj)
             await session.flush()
             return obj.id
-        elif entity_type == "memberships":
-            import re
-            from decimal import Decimal, InvalidOperation
-
-            from app.models.enums import MembershipTier
-            from app.models.memberships.membership_plan import MembershipPlan
-            from sqlalchemy import select
-
-            name = (row.get("name") or "").strip()
-            if not name:
-                raise ValueError("'name' is required")
-
-            raw_tier = (row.get("tier") or "").strip().lower()
-            try:
-                tier = MembershipTier(raw_tier)
-            except ValueError:
-                raise ValueError(
-                    f"Invalid tier '{raw_tier}'. Must be one of: {', '.join(t.value for t in MembershipTier)}"
-                )
-
-            existing = (await session.execute(
-                select(MembershipPlan).where(MembershipPlan.tier == tier)
-            )).scalars().first()
-            if existing is not None:
-                raise ValueError(f"A membership plan for tier '{raw_tier}' already exists")
-
-            try:
-                monthly_price = Decimal(str(row.get("monthly_price")))
-            except (InvalidOperation, TypeError, ValueError):
-                raise ValueError(f"Invalid monthly_price: {row.get('monthly_price')!r}")
-
-            yearly_raw = (row.get("yearly_price") or "").strip()
-            validity_raw = (row.get("validity_days") or "").strip()
-            features_raw = (row.get("features") or "").strip()
-
-            slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-
-            obj = MembershipPlan(
-                tier=tier,
-                name=name,
-                slug=slug,
-                monthly_price=monthly_price,
-                yearly_price=Decimal(yearly_raw) if yearly_raw else Decimal("0.00"),
-                validity_days=int(validity_raw) if validity_raw else None,
-                benefits={"features": [f.strip() for f in features_raw.split(",") if f.strip()]} if features_raw else None,
-            )
-            session.add(obj)
-            await session.flush()
-            return obj.id
         elif entity_type == "vendor_services":
             from decimal import Decimal, InvalidOperation
 
@@ -1155,16 +1104,6 @@ class IOService(BaseService):
                 for template_id in inserted_ids:
                     try:
                         stmt = delete(NotificationTemplate).where(NotificationTemplate.id == uuid.UUID(template_id))
-                        await uow.session.execute(stmt)
-                        deleted_count += 1
-                    except Exception:
-                        pass
-            elif inserted_ids and log.entity_type == "memberships":
-                from app.models.memberships.membership_plan import MembershipPlan
-                from sqlalchemy import delete
-                for plan_id in inserted_ids:
-                    try:
-                        stmt = delete(MembershipPlan).where(MembershipPlan.id == uuid.UUID(plan_id))
                         await uow.session.execute(stmt)
                         deleted_count += 1
                     except Exception:
@@ -1584,24 +1523,6 @@ class IOService(BaseService):
                         "created_at": str(t.created_at),
                     }
                     for t in rows
-                ]
-
-            elif entity_type == "memberships":
-                from app.models.memberships.membership_plan import MembershipPlan
-                stmt = select(MembershipPlan).limit(10000)
-                rows = (await session.execute(stmt)).scalars().all()
-                return [
-                    {
-                        "id": str(m.id),
-                        "tier": m.tier.value if hasattr(m.tier, "value") else str(m.tier),
-                        "name": m.name,
-                        "monthly_price": str(m.monthly_price),
-                        "yearly_price": str(m.yearly_price),
-                        "validity_days": m.validity_days if m.validity_days is not None else "",
-                        "features": ",".join((m.benefits or {}).get("features", [])) if m.benefits else "",
-                        "created_at": str(m.created_at),
-                    }
-                    for m in rows
                 ]
 
             elif entity_type == "vendor_services":

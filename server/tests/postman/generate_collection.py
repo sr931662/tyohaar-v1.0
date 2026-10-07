@@ -606,49 +606,6 @@ def wallets_folder():
     ]
     return folder("💰 Wallets", items)
 
-def memberships_folder():
-    items = [
-        req("List Plans (Public)", "GET", "memberships/plans", events=tests(200)),
-        req("Create Plan (Admin)", "POST", "memberships/plans",
-            hdrs=[*json_header(), *bearer("ADMIN_TOKEN")],
-            bd=body({
-                "name": "Premium", "slug": "premium",
-                "description": "Access all premium features",
-                "price": 999, "currency": "INR",
-                "duration_days": 30,
-                "features": ["unlimited_bookings", "priority_support", "discount_10"]
-            }),
-            events=tests(201, save={"TEST_PLAN_ID": "data.id"})),
-        req("Get Plan by ID", "GET", "memberships/plans/{{TEST_PLAN_ID}}", events=tests(200)),
-        req("Update Plan (Admin)", "PUT", "memberships/plans/{{TEST_PLAN_ID}}",
-            hdrs=[*json_header(), *bearer("ADMIN_TOKEN")],
-            bd=body({"price": 1099, "description": "Updated premium plan"}),
-            events=tests(200)),
-        req("Subscribe to Plan", "POST", "memberships/subscribe",
-            hdrs=[*json_header(), *bearer()],
-            bd=body({"plan_id": "{{TEST_PLAN_ID}}", "payment_method": "WALLET"}),
-            events=tests(201, save={"TEST_MEMBERSHIP_ID": "data.id"})),
-        req("Get Active Membership", "GET", "memberships/active",
-            hdrs=bearer(),
-            events=tests(200, extra=["pm.test('[Membership] Has plan', () => pm.expect(res.data).to.have.property('plan'));"])),
-        req("List My Memberships", "GET", "memberships",
-            hdrs=bearer(), query={"page": "1"}, events=tests(200)),
-        req("Get Membership by ID", "GET", "memberships/{{TEST_MEMBERSHIP_ID}}",
-            hdrs=bearer(), events=tests(200)),
-        req("Check Feature Access", "GET", "memberships/features/priority_support/access",
-            hdrs=bearer(),
-            events=tests(200, extra=["pm.test('[Feature] Has has_access', () => pm.expect(res.data).to.have.property('has_access'));"])),
-        req("Cancel Membership", "POST", "memberships/{{TEST_MEMBERSHIP_ID}}/cancel",
-            hdrs=[*json_header(), *bearer()],
-            bd=body({"reason": "No longer needed"}),
-            events=tests(200)),
-        req("List All Memberships (Admin)", "GET", "memberships/admin/all",
-            hdrs=bearer("ADMIN_TOKEN"), query={"page": "1"}, events=tests(200)),
-        req("Deactivate Plan (Admin)", "DELETE", "memberships/plans/{{TEST_PLAN_ID}}",
-            hdrs=bearer("ADMIN_TOKEN"), events=tests(200)),
-    ]
-    return folder("🎫 Memberships", items)
-
 def notifications_folder():
     items = [
         req("Get Notification Preferences", "GET", "notifications/preferences",
@@ -1299,7 +1256,6 @@ def build_collection():
             bookings_folder(),
             payments_folder(),
             wallets_folder(),
-            memberships_folder(),
             notifications_folder(),
             support_folder(),
             media_folder(),

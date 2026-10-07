@@ -98,13 +98,6 @@ class CouponInternal(CouponResponse):
     )
 
     # Eligibility targeting — internal only
-    eligible_membership_tiers: list[str] | None = Field(
-        default=None,
-        description=(
-            "Membership tier names that can use this coupon. "
-            "Internal — exposes pricing strategy if leaked."
-        ),
-    )
     applicable_vendor_ids: list[uuid.UUID] | None = Field(
         default=None,
         description=(

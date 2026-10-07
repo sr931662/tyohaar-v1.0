@@ -16,7 +16,7 @@ A banner is active when:
     AND deleted_at IS NULL
 
 `target_audience` gates which user segment sees the banner.  The app queries
-the appropriate segment based on the authenticated user's role and membership tier.
+the appropriate segment based on the authenticated user's role and booking history.
 
 `target_occasion_id` and `target_vendor_id` allow deep-linking banners to
 specific occasions or vendor profile pages within the app.

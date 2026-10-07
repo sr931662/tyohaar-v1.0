@@ -26,7 +26,7 @@ Design:
 
 Sections:
     Authentication · Users · Devices · Vendors · Occasions · Packages
-    Bookings · Payments · Wallets · Memberships · Invitations
+    Bookings · Payments · Wallets · Invitations
     Notifications · Support · Media · Referrals · Budgets · Common · Admin
 """
 
@@ -461,7 +461,6 @@ class CouponApplicability(str, enum.Enum):
     SPECIFIC_CATEGORY = "specific_category"
     SPECIFIC_VENDOR = "specific_vendor"
     SPECIFIC_PACKAGE = "specific_package"
-    MEMBERSHIP_ONLY = "membership_only"
 
 
 class CouponAdminStatus(str, enum.Enum):
@@ -495,32 +494,6 @@ class RewardType(str, enum.Enum):
     ANNIVERSARY_BONUS = "anniversary_bonus"
     WELCOME_BONUS = "welcome_bonus"
     REVIEW_REWARD = "review_reward"
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Memberships
-# ──────────────────────────────────────────────────────────────────────────────
-
-class MembershipTier(str, enum.Enum):
-    FREE = "free"
-    SILVER = "silver"
-    GOLD = "gold"
-    PLATINUM = "platinum"
-
-
-class MembershipStatus(str, enum.Enum):
-    ACTIVE = "active"
-    EXPIRED = "expired"
-    CANCELLED = "cancelled"
-    PAUSED = "paused"
-    PENDING = "pending"
-    GRACE_PERIOD = "grace_period"   # Post-expiry window before tier downgrade
-
-
-class MembershipBillingCycle(str, enum.Enum):
-    MONTHLY = "monthly"
-    QUARTERLY = "quarterly"
-    ANNUAL = "annual"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -570,7 +543,6 @@ class NotificationType(str, enum.Enum):
     VENDOR_ASSIGNED = "vendor_assigned"
     RSVP_UPDATE = "rsvp_update"
     CELEBRATION_UPCOMING = "celebration_upcoming"
-    MEMBERSHIP_EXPIRING = "membership_expiring"
     SUPPORT_UPDATE = "support_update"
 
 
@@ -626,7 +598,6 @@ class TicketCategory(str, enum.Enum):
     VENDOR = "vendor"
     TECHNICAL = "technical"
     ACCOUNT = "account"
-    MEMBERSHIP = "membership"
     REFUND = "refund"
     GENERAL = "general"
 
@@ -810,7 +781,6 @@ class BannerTargetAudience(str, enum.Enum):
     ALL = "all"
     CUSTOMERS = "customers"
     VENDORS = "vendors"
-    PREMIUM_MEMBERS = "premium_members"     # Gold / Platinum tier members only
     NEW_USERS = "new_users"                 # Registered within the last 30 days
     RETURNING_USERS = "returning_users"     # Have at least one past booking
 
@@ -822,7 +792,6 @@ class FAQCategory(str, enum.Enum):
     PAYMENT = "payment"
     VENDOR = "vendor"
     ACCOUNT = "account"
-    MEMBERSHIP = "membership"
     CANCELLATION = "cancellation"
     REFERRAL = "referral"
     TECHNICAL = "technical"
@@ -911,7 +880,6 @@ class PermissionResource(str, enum.Enum):
     PAYMENTS = "payments"
     PACKAGES = "packages"
     OCCASIONS = "occasions"
-    MEMBERSHIPS = "memberships"
     NOTIFICATIONS = "notifications"
     SUPPORT_TICKETS = "support_tickets"
     MEDIA = "media"

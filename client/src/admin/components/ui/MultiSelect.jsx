@@ -4,8 +4,7 @@ import { useMemo, useRef, useState } from 'react';
  * Searchable multi-select with removable chips. Options: [{value, label}].
  * value: array of selected option values (strings). onChange(newArray).
  *
- * Built for entity-scope pickers (vendors/packages/occasions/membership
- * tiers) where options come from an existing list endpoint — this
+ * Built for entity-scope pickers (vendors/packages/occasions) where options come from an existing list endpoint — this
  * component only handles selection UI, callers own fetching `options`.
  */
 export default function MultiSelect({ options = [], value = [], onChange, placeholder = 'Search…', loading = false, disabled = false }) {

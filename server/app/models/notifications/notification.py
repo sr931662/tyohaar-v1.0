@@ -74,7 +74,6 @@ class Notification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         - "booking"     → bookings.id
         - "payment"     → payments.id
         - "celebration" → celebrations.id
-        - "membership"  → user_memberships.id
         - "system"      → NULL
     """
 

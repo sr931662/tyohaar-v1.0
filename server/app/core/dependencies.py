@@ -29,7 +29,6 @@ from app.services.budgets.service import BudgetService
 from app.services.common.service import CommonService
 from app.services.feedback.service import FeedbackService
 from app.services.media.service import MediaService
-from app.services.memberships.service import MembershipService
 from app.services.notifications.service import NotificationService
 from app.services.occasions.service import OccasionService
 from app.services.packages.service import PackageService
@@ -99,11 +98,6 @@ def get_payment_service() -> PaymentService:
     return PaymentService(AsyncSessionLocal)
 
 
-def get_membership_service() -> MembershipService:
-    """Dependency factory — returns a MembershipService bound to the default session factory."""
-    return MembershipService(AsyncSessionLocal)
-
-
 def get_notification_service() -> NotificationService:
     """Dependency factory — returns a NotificationService bound to the default session factory."""
     return NotificationService(AsyncSessionLocal)
@@ -155,7 +149,6 @@ OccasionServiceDep = Annotated[OccasionService, Depends(get_occasion_service)]
 PackageServiceDep = Annotated[PackageService, Depends(get_package_service)]
 BookingServiceDep = Annotated[BookingService, Depends(get_booking_service)]
 PaymentServiceDep = Annotated[PaymentService, Depends(get_payment_service)]
-MembershipServiceDep = Annotated[MembershipService, Depends(get_membership_service)]
 NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
 SupportServiceDep = Annotated[SupportService, Depends(get_support_service)]
 FeedbackServiceDep = Annotated[FeedbackService, Depends(get_feedback_service)]

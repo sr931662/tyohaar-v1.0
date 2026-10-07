@@ -17,7 +17,7 @@ class _Base(BaseModel):
 
 IMPORTABLE_ENTITIES = [
     "vendors", "customers", "packages", "services", "categories",
-    "cities", "states", "memberships", "coupons", "faqs",
+    "cities", "states", "coupons", "faqs",
     "notification_templates", "settings",
 ]
 

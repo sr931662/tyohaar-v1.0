@@ -14,7 +14,7 @@ Domain services (16 domains × 6 files each = 96 files):
     auth/           bookings/       media/
     users/          payments/       referrals/
     vendors/        wallets/        budgets/
-    occasions/      memberships/    admin/
+    occasions/      admin/
     packages/       notifications/  common/
                     support/
 
