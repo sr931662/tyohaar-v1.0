@@ -62,6 +62,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/images/tyohaar-mark.png
+    - assets/images/logo_anim/
     - assets/images/Landing page image.png
     - assets/images/onboarding 1.png
     - assets/images/onboarding 2.png
