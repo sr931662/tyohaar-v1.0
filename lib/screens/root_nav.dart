@@ -29,8 +29,8 @@ import 'help_screen.dart';
 import 'privacy_policy_screen.dart';
 import '../l10n/generated/app_localizations.dart';
 
-/// The app's primary shell: Home, Plans, a raised central "Manage
-/// Invitations" button, and Account. Packages are reached only through the
+/// The app's primary shell: Home, Plans, Invitations and Account, all
+/// styled alike in one dock. Packages are reached only through the
 /// Home tab's occasion cards (occasion -> packages -> ...), so there is no
 /// standalone packages tab.
 class RootNav extends StatefulWidget {
@@ -770,9 +770,14 @@ class _BottomBar extends StatelessWidget {
                   label: l10n.rootNavPlansLabel,
                   onTap: () => onTap(1),
                 ),
-                SizedBox(
-                  width: resp.w(72),
-                  child: Center(child: _CenterButton(onTap: onInvitations)),
+                // Opens a pushed screen rather than switching tabs, so it is
+                // never the selected item.
+                _DockItem(
+                  selected: false,
+                  icon: Icons.mail_outline_rounded,
+                  activeIcon: Icons.mail_rounded,
+                  label: l10n.rootNavInvitationsLabel,
+                  onTap: onInvitations,
                 ),
                 _DockItem(
                   selected: index == 2,
@@ -880,85 +885,6 @@ class _DockItem extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The raised "Manage Invitations" button — a warm gradient disc with a
-/// slow breathing glow so it keeps drawing the eye without being loud.
-class _CenterButton extends StatefulWidget {
-  final VoidCallback onTap;
-  const _CenterButton({required this.onTap});
-
-  @override
-  State<_CenterButton> createState() => _CenterButtonState();
-}
-
-class _CenterButtonState extends State<_CenterButton> with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2000),
-  )..repeat(reverse: true);
-  bool _pressed = false;
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ty = context.ty;
-    final resp = context.resp;
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        widget.onTap();
-      },
-      child: AnimatedBuilder(
-        animation: _pulse,
-        builder: (context, child) {
-          final glow = 0.35 + (_pulse.value * 0.25);
-          return Container(
-            width: resp.w(60),
-            height: resp.w(60),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: ty.saffron.withValues(alpha: glow),
-                  blurRadius: resp.w(24 + _pulse.value * 8),
-                  spreadRadius: resp.w(1 + _pulse.value * 2),
-                ),
-              ],
-            ),
-            child: child,
-          );
-        },
-        child: AnimatedScale(
-          scale: _pressed ? 0.92 : 1.0,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
-          child: Container(
-            width: resp.w(50),
-            height: resp.w(50),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [ty.saffron, ty.gold],
-              ),
-            ),
-            child: Icon(Icons.mail_outline_rounded, color: ty.onPrimary, size: resp.sp(24)),
-          ),
         ),
       ),
     );
