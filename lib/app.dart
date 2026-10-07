@@ -6,7 +6,6 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'theme/theme.dart';
-import 'widgets/ios_launch_animation.dart';
 import 'theme/theme_controller.dart';
 import 'data/app_state.dart';
 import 'data/auth_manager.dart';
@@ -145,10 +144,6 @@ class _AppStartupState extends State<_AppStartup> {
 
   @override
   Widget build(BuildContext context) {
-    return IosLaunchAnimation(child: _buildContent());
-  }
-
-  Widget _buildContent() {
     return ListenableBuilder(
       listenable: AuthManager.instance,
       builder: (context, _) {
