@@ -17,6 +17,7 @@ import '../utils/log.dart';
 import '../data/services/package_service.dart';
 import '../utils/currency.dart';
 import '../utils/gallery_album.dart';
+import '../widgets/image_viewer.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
@@ -327,19 +328,23 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
           controller: _imagePageController,
           itemCount: urls.length,
           onPageChanged: (i) => setState(() => _currentImageIndex = i),
-          itemBuilder: (context, i) => CachedNetworkImage(
-            imageUrl: urls[i],
-            fit: BoxFit.cover,
-            memCacheWidth: 1080,
-            placeholder: (context, url) => PhotoPlaceholder(
-                tint: _fullPackage.tint,
-                height: resp.h(300),
-                arch: false,
-                radius: BorderRadius.zero),
-            errorWidget: (context, url, error) => OccasionAssets.getFallback(
-                _fullPackage.name,
-                tint: _fullPackage.tint,
-                arch: false),
+          itemBuilder: (context, i) => GestureDetector(
+            onTap: () => ImageViewer.open(context,
+                images: urls, initialIndex: i, title: _fullPackage.name),
+            child: CachedNetworkImage(
+              imageUrl: urls[i],
+              fit: BoxFit.cover,
+              memCacheWidth: 1080,
+              placeholder: (context, url) => PhotoPlaceholder(
+                  tint: _fullPackage.tint,
+                  height: resp.h(300),
+                  arch: false,
+                  radius: BorderRadius.zero),
+              errorWidget: (context, url, error) => OccasionAssets.getFallback(
+                  _fullPackage.name,
+                  tint: _fullPackage.tint,
+                  arch: false),
+            ),
           ),
         ),
         IgnorePointer(
@@ -529,86 +534,10 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
     );
   }
 
-  /// Bottom-sheet swipeable gallery for one item — cover first, then its
-  /// gallery images (same viewing pattern as the package image slider).
+  /// Full-screen zoomable viewer for one item — cover first, then its
+  /// gallery images.
   void _showItemGallery(BuildContext context, PackageItem item) {
-    final urls = item.allImageUrls;
-    if (urls.isEmpty) return;
-    final ty = context.ty;
-    final resp = context.resp;
-    int current = 0;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: ty.paper,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(resp.w(24)))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(16), resp.w(18),
-              MediaQuery.of(ctx).padding.bottom + resp.h(20)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(item.name,
-                  style: TyType.sans(resp.sp(17),
-                      color: ty.ink, weight: FontWeight.w700)),
-              if (item.description != null && item.description!.isNotEmpty) ...[
-                SizedBox(height: resp.h(4)),
-                Text(item.description!,
-                    style: TyType.sans(resp.sp(12.5), color: ty.ink3)),
-              ],
-              SizedBox(height: resp.h(14)),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(resp.w(18)),
-                child: SizedBox(
-                  height: resp.h(300),
-                  width: double.infinity,
-                  child: PageView.builder(
-                    itemCount: urls.length,
-                    onPageChanged: (i) => setSheetState(() => current = i),
-                    itemBuilder: (_, i) => CachedNetworkImage(
-                      imageUrl: urls[i],
-                      fit: BoxFit.cover,
-                      memCacheWidth: 600,
-                      placeholder: (_, __) => Container(color: ty.surface),
-                      errorWidget: (_, __, ___) => Container(
-                        color: ty.surface,
-                        child: Icon(Icons.image_not_supported_outlined,
-                            color: ty.ink3, size: resp.sp(32)),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              if (urls.length > 1) ...[
-                SizedBox(height: resp.h(12)),
-                Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(
-                      urls.length,
-                      (i) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: EdgeInsets.symmetric(horizontal: resp.w(3)),
-                        width: current == i ? resp.w(18) : resp.w(6),
-                        height: resp.w(6),
-                        decoration: BoxDecoration(
-                          color: current == i ? ty.saffron : ty.ink3,
-                          borderRadius: BorderRadius.circular(resp.w(3)),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
+    ImageViewer.open(context, images: item.allImageUrls, title: item.name);
   }
 
   Widget _guestStepper(BuildContext context) {

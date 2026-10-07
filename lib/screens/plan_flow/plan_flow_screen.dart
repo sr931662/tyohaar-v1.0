@@ -18,6 +18,7 @@ import '../../utils/log.dart';
 import 'package:tyohaar/screens/email_verification_screen.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
 import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
+import '../../widgets/image_viewer.dart';
 import '../../widgets/photo_placeholder.dart';
 import '../../widgets/state_screens.dart';
 import '../../widgets/ty_button.dart';
@@ -1054,64 +1055,34 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   void _openPackageDetail(BuildContext context, Package p) {
-    final ty = context.ty;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
+        initialChildSize: 0.8,
+        minChildSize: 0.4,
         maxChildSize: 0.95,
         expand: false,
-        builder: (ctx, scrollCtrl) => Container(
-          decoration: BoxDecoration(color: ty.paper, borderRadius: const BorderRadius.vertical(top: Radius.circular(32))),
-          child: ListView(
-            controller: scrollCtrl,
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: ty.line, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: CachedNetworkImage(
-                  imageUrl: p.coverImageUrl ?? '',
-                  height: 180, width: double.infinity, fit: BoxFit.cover,
-                  placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, height: 180, arch: false),
-                  errorWidget: (context, url, error) => PhotoPlaceholder(tint: p.tint, height: 180, arch: false),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(p.name, style: TyType.display(24, color: ty.ink)),
-              const SizedBox(height: 6),
-              Text('₹${p.price.toStringAsFixed(0)}', style: TyType.sans(16, color: ty.saffron, weight: FontWeight.w800)),
-              const SizedBox(height: 12),
-              Text(p.description ?? '', style: TyType.sans(14, color: ty.ink2, height: 1.5)),
-              const SizedBox(height: 24),
-              TyButton(
-                _pkg?.id == p.id ? AppLocalizations.of(ctx)!.planFlowSelectedLabel : AppLocalizations.of(ctx)!.planFlowSelectThisPackageLabel,
-                full: true,
-                enabled: _pkg?.id != p.id,
-                onTap: () {
-                  setState(() {
-                    _pkg = p;
-                    _packageItems = [];
-                    _itemsLoadAttempted = false;
-                    _packageServices = [];
-                    // A previously-picked theme or colour pair is meaningless
-                    // if the newly-selected package isn't customizable, so
-                    // always start fresh on reselection.
-                                _balloonColors.clear();
-                  });
-                  Navigator.pop(ctx);
-                },
-              ),
-            ],
-          ),
+        builder: (ctx, scrollCtrl) => _PackagePreviewSheet(
+          package: p,
+          scrollController: scrollCtrl,
+          packageService: _packageService,
+          isSelected: _pkg?.id == p.id,
+          onSelect: () {
+            setState(() {
+              _pkg = p;
+              _packageItems = [];
+              _itemsLoadAttempted = false;
+              _packageServices = [];
+              // A previously-picked theme or colour pair is meaningless
+              // if the newly-selected package isn't customizable, so
+              // always start fresh on reselection.
+              _balloonColors.clear();
+            });
+            Navigator.pop(ctx);
+          },
         ),
       ),
     );
@@ -1448,8 +1419,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           Row(
             children: [
               GestureDetector(
-                onTap: images.length > 1 ? () => _openItemGallery(context, item) : null,
-                child: _lineThumbnail(context, imageUrl: thumbnail, name: item.name, hasGallery: images.length > 1),
+                onTap: images.isNotEmpty ? () => _openItemGallery(context, item) : null,
+                child: _lineThumbnail(context, imageUrl: thumbnail, name: item.name, hasGallery: images.isNotEmpty),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1628,8 +1599,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           Row(
             children: [
               GestureDetector(
-                onTap: images.length > 1 ? () => _openServiceGallery(context, service) : null,
-                child: _lineThumbnail(context, imageUrl: thumbnail, name: service.name, hasGallery: images.length > 1),
+                onTap: images.isNotEmpty ? () => _openServiceGallery(context, service) : null,
+                child: _lineThumbnail(context, imageUrl: thumbnail, name: service.name, hasGallery: images.isNotEmpty),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1709,10 +1680,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   void _openServiceGallery(BuildContext context, PackageServiceLine service) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => _ItemImageGalleryScreen(images: service.allImageUrls, title: service.name),
-      fullscreenDialog: true,
-    ));
+    ImageViewer.open(context, images: service.allImageUrls, title: service.name);
   }
 
   Widget _qtyStepper(BuildContext context, {required int value, required int min, required int max, required ValueChanged<int> onChanged}) {
@@ -1747,10 +1715,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   }
 
   void _openItemGallery(BuildContext context, PackageItem item) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => _ItemImageGalleryScreen(images: item.allImageUrls, title: item.name),
-      fullscreenDialog: true,
-    ));
+    ImageViewer.open(context, images: item.allImageUrls, title: item.name);
   }
 
   // ── Step 5: Summary ─────────────────────────────────────────────────────
@@ -2029,71 +1994,245 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 // The address add/edit form now lives in manage_address_screen.dart
 // (AddressFormSheet) and is reused here to avoid two divergent copies.
 
-// ── Package item photo viewer ────────────────────────────────────────────────
-// Same swipeable-slider pattern as the package detail screen's image
-// gallery, scoped to a single package item's photos.
+// ── Package preview sheet ────────────────────────────────────────────────────
+// Swipe-up preview of a package from the package step: a photo carousel
+// (cover + gallery, tap to open the zoomable viewer), price, description, and
+// photo tiles for the package's own items and services so the customer can
+// see what they get before selecting it.
 
-class _ItemImageGalleryScreen extends StatefulWidget {
-  final List<String> images;
-  final String title;
-  const _ItemImageGalleryScreen({required this.images, required this.title});
+class _PackagePreviewSheet extends StatefulWidget {
+  final Package package;
+  final ScrollController scrollController;
+  final PackageService packageService;
+  final bool isSelected;
+  final VoidCallback onSelect;
+
+  const _PackagePreviewSheet({
+    required this.package,
+    required this.scrollController,
+    required this.packageService,
+    required this.isSelected,
+    required this.onSelect,
+  });
 
   @override
-  State<_ItemImageGalleryScreen> createState() => _ItemImageGalleryScreenState();
+  State<_PackagePreviewSheet> createState() => _PackagePreviewSheetState();
 }
 
-class _ItemImageGalleryScreenState extends State<_ItemImageGalleryScreen> {
-  int _index = 0;
+class _PackagePreviewSheetState extends State<_PackagePreviewSheet> {
+  late Package _package = widget.package;
+  List<PackageItem> _items = const [];
+  List<PackageServiceLine> _services = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  static Future<T?> _quiet<T>(Future<T> f, String what) async {
+    try {
+      return await f;
+    } catch (e) {
+      logDebug('Package preview: $what failed: $e');
+      return null;
+    }
+  }
+
+  // The list endpoint carries only the cover; the gallery and line items come
+  // from their own endpoints. Each is best-effort so one failing never hides
+  // what did load.
+  Future<void> _load() async {
+    final svc = widget.packageService;
+    final id = widget.package.id;
+    final detailsF = _quiet(svc.getPackageDetails(id), 'details');
+    final itemsF = _quiet(svc.listPackageItems(id), 'items');
+    final servicesF = _quiet(svc.listPackageServices(id), 'services');
+    final details = await detailsF;
+    final items = await itemsF;
+    final services = await servicesF;
+    if (!mounted) return;
+    setState(() {
+      if (details != null) _package = details;
+      if (items != null) _items = items;
+      if (services != null) _services = services;
+      _loading = false;
+    });
+  }
+
+  List<String> get _images {
+    final cover = _package.coverImageUrl ?? widget.package.coverImageUrl;
+    return [
+      if (cover != null && cover.isNotEmpty) cover,
+      ..._package.galleryImageUrls.where((u) => u.isNotEmpty && u != cover),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(widget.title),
-      ),
-      body: Stack(
+    final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
+    final p = _package;
+    final included = _items.where((i) => !i.isCommon && i.isMandatory).toList();
+    final optional = _items.where((i) => !i.isCommon && !i.isMandatory).toList();
+    final services = _services.where((s) => !s.isCommon).toList();
+
+    return Container(
+      decoration: BoxDecoration(color: ty.paper, borderRadius: const BorderRadius.vertical(top: Radius.circular(32))),
+      child: ListView(
+        controller: widget.scrollController,
+        padding: EdgeInsets.fromLTRB(20, 14, 20, MediaQuery.paddingOf(context).bottom + 24),
         children: [
-          PageView.builder(
-            itemCount: widget.images.length,
-            onPageChanged: (i) => setState(() => _index = i),
-            itemBuilder: (context, i) => InteractiveViewer(
-              child: CachedNetworkImage(
-                imageUrl: widget.images[i],
-                fit: BoxFit.contain,
-                width: double.infinity,
-                height: double.infinity,
-              ),
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: ty.line, borderRadius: BorderRadius.circular(2)),
             ),
           ),
-          if (widget.images.length > 1)
-            Positioned(
-              bottom: 24,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(widget.images.length, (i) {
-                  final active = i == _index;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: active ? 18 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: active ? Colors.white : Colors.white.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  );
-                }),
-              ),
-            ),
+          const SizedBox(height: 16),
+          ImageCarousel(
+            images: _images,
+            height: 240,
+            title: p.name,
+            placeholder: (_) => PhotoPlaceholder(tint: p.tint, height: 240, arch: false),
+          ),
+          const SizedBox(height: 16),
+          Text(p.name, style: TyType.display(24, color: ty.ink)),
+          const SizedBox(height: 6),
+          Text('₹${p.price.toStringAsFixed(0)}', style: TyType.sans(16, color: ty.saffron, weight: FontWeight.w800)),
+          if ((p.description ?? '').isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(p.description!, style: TyType.sans(14, color: ty.ink2, height: 1.5)),
+          ],
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+            )
+          else ...[
+            _lineStrip(context, l10n.packageDetailCoreInclusionsLabel,
+                [for (final i in included) _PreviewLine(i.name, i.allImageUrls, i.iconUrl, i.quantity)]),
+            _lineStrip(context, l10n.planFlowPackageSpecificServicesHeading,
+                [for (final s in services) _PreviewLine(s.name, s.allImageUrls, s.iconUrl, s.quantity)]),
+            _lineStrip(context, l10n.packageDetailOptionalAddOnsLabel,
+                [for (final i in optional) _PreviewLine(i.name, i.allImageUrls, i.iconUrl, i.quantity)]),
+          ],
+          const SizedBox(height: 24),
+          TyButton(
+            widget.isSelected ? l10n.planFlowSelectedLabel : l10n.planFlowSelectThisPackageLabel,
+            full: true,
+            enabled: !widget.isSelected,
+            onTap: widget.onSelect,
+          ),
         ],
       ),
     );
   }
+
+  Widget _lineStrip(BuildContext context, String heading, List<_PreviewLine> lines) {
+    if (lines.isEmpty) return const SizedBox.shrink();
+    final ty = context.ty;
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(heading.toUpperCase(), style: TyType.eyebrow(11, color: ty.ink3)),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 136,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: lines.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, i) {
+                final line = lines[i];
+                final thumb = line.images.isNotEmpty ? line.images.first : line.iconUrl;
+                final fallback = Icon(Icons.auto_awesome_rounded, color: ty.saffronDeep, size: 28);
+                return GestureDetector(
+                  onTap: line.images.isNotEmpty
+                      ? () => ImageViewer.open(context, images: line.images, title: line.name)
+                      : null,
+                  child: SizedBox(
+                    width: 96,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                width: 96,
+                                height: 96,
+                                color: ty.saffronSoft,
+                                alignment: Alignment.center,
+                                child: (thumb != null && thumb.isNotEmpty)
+                                    ? CachedNetworkImage(
+                                        imageUrl: thumb,
+                                        width: 96,
+                                        height: 96,
+                                        fit: BoxFit.cover,
+                                        memCacheWidth: 300,
+                                        placeholder: (_, __) => fallback,
+                                        errorWidget: (_, __, ___) => fallback,
+                                      )
+                                    : fallback,
+                              ),
+                            ),
+                            if (line.images.length > 1)
+                              Positioned(
+                                right: 6,
+                                bottom: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.photo_library_rounded, size: 11, color: Colors.white),
+                                      const SizedBox(width: 3),
+                                      Text('${line.images.length}',
+                                          style: const TextStyle(
+                                              color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          line.quantity > 1
+                              ? AppLocalizations.of(context)!.packageDetailQuantityItemNameLabel(line.quantity, line.name)
+                              : line.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TyType.sans(11.5, color: ty.ink, weight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewLine {
+  final String name;
+  final List<String> images;
+  final String? iconUrl;
+  final int quantity;
+  const _PreviewLine(this.name, this.images, this.iconUrl, this.quantity);
 }
 
 /// Number wheels for a marquee-style line — one wheel per physical character

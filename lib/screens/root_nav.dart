@@ -19,7 +19,6 @@ import '../data/services/push_service.dart';
 import '../data/services/location_service.dart';
 import 'home_screen.dart';
 import 'plans_screen.dart';
-import 'explore_screen.dart';
 import 'account_screen.dart';
 import 'invitation_management_screen.dart';
 
@@ -30,9 +29,10 @@ import 'help_screen.dart';
 import 'privacy_policy_screen.dart';
 import '../l10n/generated/app_localizations.dart';
 
-/// The app's primary shell: five destinations + a raised central
-/// "Manage Invitations" button. Starting a celebration now happens by
-/// tapping an occasion card on the Home tab.
+/// The app's primary shell: Home, Plans, a raised central "Manage
+/// Invitations" button, and Account. Packages are reached only through the
+/// Home tab's occasion cards (occasion -> packages -> ...), so there is no
+/// standalone packages tab.
 class RootNav extends StatefulWidget {
   const RootNav({super.key});
 
@@ -52,7 +52,7 @@ class _RootNavState extends State<RootNav> {
 
   /// Tabs that have been opened at least once.
   ///
-  /// IndexedStack builds every child eagerly, so all four tabs used to run
+  /// IndexedStack builds every child eagerly, so all the tabs used to run
   /// initState on launch and fire their own network calls before the customer
   /// had touched anything but Home — four screens' worth of requests
   /// competing for the connection that Home itself needed. Only Home starts
@@ -63,8 +63,7 @@ class _RootNavState extends State<RootNav> {
   List<Widget> _buildPages() => [
         HomeScreen(scrollController: _homeScrollController),
         _builtTabs.contains(1) ? const PlansScreen() : const SizedBox.shrink(),
-        _builtTabs.contains(2) ? const ExploreScreen() : const SizedBox.shrink(),
-        _builtTabs.contains(3) ? const AccountScreen() : const SizedBox.shrink(),
+        _builtTabs.contains(2) ? const AccountScreen() : const SizedBox.shrink(),
       ];
 
   @override
@@ -190,7 +189,7 @@ class _RootNavState extends State<RootNav> {
         user: AuthManager.instance.currentUser,
         onUseCurrentLocation: _resolveLocation,
         onNavigate: (i) {
-          if (i == 1 || i == 3) {
+          if (i == 1 || i == 2) {
              AuthManager.instance.checkAuth(
               context,
               action: i == 1 ? AppLocalizations.of(context)!.rootNavActionViewPlans : AppLocalizations.of(context)!.rootNavActionAccessAccount,
@@ -229,7 +228,7 @@ class _RootNavState extends State<RootNav> {
                 isScrolled: _isScrolled,
                 onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
                 onOpenNotifications: () => _push(context, const NotificationsScreen()).then((_) => _loadUnreadCount()),
-                onOpenProfile: () => _setIndex(3),
+                onOpenProfile: () => _setIndex(2),
                 user: AuthManager.instance.currentUser,
                 unreadCount: _unreadNotifs,
                 currentCity: CityPreference.instance.activeCity ?? _currentCity,
@@ -246,7 +245,7 @@ class _RootNavState extends State<RootNav> {
             // TODO: Scroll to top or refresh
             return;
           }
-          if (i == 1 || i == 3) {
+          if (i == 1 || i == 2) {
             AuthManager.instance.checkAuth(
               context,
               action: i == 1 ? AppLocalizations.of(context)!.rootNavActionViewPlans : AppLocalizations.of(context)!.rootNavActionAccessAccount,
@@ -500,8 +499,7 @@ class _AppSidebar extends StatelessWidget {
               children: [
                 _drawerItem(context, Icons.home_outlined, l10n.rootNavHomeLabel, 0),
                 _drawerItem(context, Icons.event_note_outlined, l10n.rootNavMyPlansLabel, 1),
-                _drawerItem(context, Icons.storefront_outlined, l10n.rootNavPackagesLabel, 2),
-                _drawerItem(context, Icons.person_outline_rounded, l10n.rootNavAccountLabel, 3),
+                _drawerItem(context, Icons.person_outline_rounded, l10n.rootNavAccountLabel, 2),
                 const Divider(height: 32, indent: 20, endIndent: 20, color: Colors.black12),
                 ListenableBuilder(
                   listenable: CityPreference.instance,
@@ -535,8 +533,7 @@ class _AppSidebar extends StatelessWidget {
   }
 
   /// Manual city picker for users without (or overriding) GPS — sourced
-  /// live from the same admin-managed city list Explore uses, never
-  /// hardcoded client-side.
+  /// live from the admin-managed city list, never hardcoded client-side.
   void _showCityPicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -729,12 +726,19 @@ class _BottomBar extends StatelessWidget {
     final ty = context.ty;
     final resp = context.resp;
     final l10n = AppLocalizations.of(context)!;
+    // Hugs the bottom with a sleek gap from the screen's side edges and from
+    // whatever the device reserves at the bottom — the iOS home indicator,
+    // Android's gesture pill or its 3-button bar. viewPadding reports that
+    // reserved height on every device (0 when the system bar sits outside the
+    // app window), and unlike padding it doesn't collapse while the keyboard
+    // is open.
+    const edgeGap = 3.0;
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        resp.w(14),
+        edgeGap,
         0,
-        resp.w(14),
-        MediaQuery.of(context).padding.bottom + resp.h(16),
+        edgeGap,
+        MediaQuery.viewPaddingOf(context).bottom + edgeGap,
       ),
       child: Container(
             height: resp.h(72),
@@ -772,17 +776,10 @@ class _BottomBar extends StatelessWidget {
                 ),
                 _DockItem(
                   selected: index == 2,
-                  icon: Icons.storefront_outlined,
-                  activeIcon: Icons.storefront_rounded,
-                  label: l10n.rootNavPackagesLabel,
-                  onTap: () => onTap(2),
-                ),
-                _DockItem(
-                  selected: index == 3,
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
                   label: l10n.rootNavAccountLabel,
-                  onTap: () => onTap(3),
+                  onTap: () => onTap(2),
                 ),
               ],
             ),

@@ -75,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// The city to filter packages by: the user's confirmed preference (from
-  /// a GPS suggestion or Explore's picker) if set, otherwise their default
+  /// a GPS suggestion or the sidebar's city picker) if set, otherwise their default
   /// (or first) saved address.
   Future<String?> _loadCity() async {
     if (CityPreference.instance.activeCity != null) {
