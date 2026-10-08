@@ -94,7 +94,7 @@ export default function VendorReviewsPage() {
                 ))}
               </div>
               <div style={{ marginTop: 16 }}>
-                <Pagination page={page} pages={pages} total={total} perPage={perPage} onPageChange={setPage} />
+                <Pagination page={page} pages={pages} total={data?.cursor_mode ? null : total} hasNext={data?.has_next} perPage={perPage} onPageChange={setPage} />
               </div>
             </>
           )}

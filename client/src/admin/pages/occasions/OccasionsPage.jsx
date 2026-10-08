@@ -410,7 +410,7 @@ export default function OccasionsPage() {
                 {!items.length && <tr><td colSpan={7} className="admin-table-empty">No occasions</td></tr>}
               </tbody>
             </table>
-            <Pagination page={page} pages={pages} total={total} perPage={perPage} onChange={setPage} />
+            <Pagination page={page} pages={pages} total={data?.cursor_mode ? null : total} hasNext={data?.has_next} perPage={perPage} onChange={setPage} />
           </div>
           </>
         )

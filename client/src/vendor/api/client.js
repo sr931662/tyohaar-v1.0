@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { extractPaginated, preparePagination } from '../../admin/api/pagination';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -29,7 +30,7 @@ vendorClient.interceptors.request.use((config) => {
   // multipart boundary, so the server sees an unparseable body (missing
   // `file`/`usage` fields → 422). Let the browser set it instead.
   if (config.data instanceof FormData) delete config.headers['Content-Type'];
-  return config;
+  return preparePagination(config);
 });
 
 // Single shared in-flight refresh so concurrent 401s only trigger one refresh call.
@@ -104,30 +105,4 @@ export function extractList(res) {
   return [];
 }
 
-export function extractPaginated(res) {
-  const raw = res.data;
-
-  // Cursor-paginated: { data: [...], meta: { cursor, has_next, page_size } }
-  if (Array.isArray(raw?.data) && raw?.meta !== undefined) {
-    return {
-      items: raw.data,
-      total: raw.data.length,
-      page: 1,
-      per_page: raw.meta?.page_size ?? 20,
-      pages: raw.meta?.has_next ? 2 : 1,
-      next_cursor: raw.meta?.cursor ?? null,
-      has_next: raw.meta?.has_next ?? false,
-    };
-  }
-
-  // Offset-paginated (SuccessResponse-wrapped): { data: { items, total, pages, ... } }
-  const d = raw?.data;
-  return {
-    items: d?.items ?? d?.data ?? [],
-    total: d?.total ?? 0,
-    page: d?.page ?? 1,
-    per_page: d?.per_page ?? 20,
-    pages: d?.pages ?? 1,
-    next_cursor: d?.next_cursor ?? null,
-  };
-}
+export { extractPaginated };

@@ -261,7 +261,7 @@ export default function ReferralsPage() {
             </div>
             {totalPages > 1 && (
               <div style={{ padding: '16px 24px', borderTop: '1px solid var(--line)' }}>
-                <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+                <Pagination page={page} pages={data?.pages ?? totalPages} total={data?.cursor_mode ? null : total} hasNext={data?.has_next} perPage={perPage} onChange={setPage} />
               </div>
             )}
           </>

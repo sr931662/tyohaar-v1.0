@@ -187,7 +187,7 @@ export default function PaymentsPage() {
                   ))}
                 </tbody>
               </table>
-              <Pagination page={page} pages={pages} total={total} perPage={perPage} onChange={setPage} />
+              <Pagination page={page} pages={pages} total={data?.cursor_mode ? null : total} hasNext={data?.has_next} perPage={perPage} onChange={setPage} />
             </div>
           )}
         </>

@@ -79,7 +79,7 @@ function AdminsTab() {
               {!items.length && <tr><td colSpan={6} className="admin-table-empty">No admins</td></tr>}
             </tbody>
           </table>
-          <Pagination page={page} pages={pages} total={total} perPage={perPage} onChange={setPage} />
+          <Pagination page={page} pages={pages} total={data?.cursor_mode ? null : total} hasNext={data?.has_next} perPage={perPage} onChange={setPage} />
         </div>
       )}
 
@@ -259,7 +259,7 @@ function AuditLogsTab() {
             {!items.length && <tr><td colSpan={5} className="admin-table-empty">No audit logs</td></tr>}
           </tbody>
         </table>
-        <Pagination page={page} pages={pages} total={total} perPage={perPage} onChange={setPage} />
+        <Pagination page={page} pages={pages} total={data?.cursor_mode ? null : total} hasNext={data?.has_next} perPage={perPage} onChange={setPage} />
       </div>
     )
   );

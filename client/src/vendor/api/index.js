@@ -274,8 +274,8 @@ export const vendorThemesApi = {
 // ── Bookings ──────────────────────────────────────────────────────────────────
 
 export const vendorBookingsApi = {
-  list: ({ page, per_page, ...rest } = {}) =>
-    vendorClient.get('/bookings/vendor', { params: { page_size: per_page, ...rest } }).then(extractPaginated),
+  list: (params) =>
+    vendorClient.get('/bookings/vendor', { params }).then(extractPaginated),
   get: (bookingId) =>
     vendorClient.get(`/bookings/${bookingId}`).then(extractData),
   start: (bookingId) =>
