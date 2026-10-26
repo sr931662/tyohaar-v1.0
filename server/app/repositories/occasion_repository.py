@@ -21,6 +21,8 @@ from app.models.occasions.celebration_budget import CelebrationBudget
 from app.models.occasions.celebration_checklist import CelebrationChecklist
 from app.models.occasions.celebration_guest import CelebrationGuest
 from app.models.occasions.celebration_guest_history import CelebrationGuestHistory
+from app.models.occasions.gate_access import CelebrationGateAccess
+from app.models.occasions.guest_entry_log import GuestEntryLog
 from app.models.occasions.celebration_note import CelebrationNote
 from app.models.occasions.celebration_timeline import CelebrationTimeline
 from app.models.occasions.occasion import Occasion
@@ -167,8 +169,24 @@ class CelebrationGuestRepository(BaseRepository[CelebrationGuest]):
     async def count_for_celebration(self, celebration_id: uuid.UUID) -> int:
         return await self.count(CelebrationGuest.celebration_id == celebration_id)
 
-    async def find_by_rsvp_token(self, token: str) -> CelebrationGuest | None:
-        return await self.find_one(CelebrationGuest.rsvp_token == token)
+    async def find_by_link_hash(self, token_hash: str) -> CelebrationGuest | None:
+        return await self.find_one(CelebrationGuest.link_token_hash == token_hash)
+
+    async def find_by_code_hash(self, code_hash: str) -> CelebrationGuest | None:
+        return await self.find_one(CelebrationGuest.entry_code_hash == code_hash)
+
+
+class GuestEntryLogRepository(BaseRepository[GuestEntryLog]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, GuestEntryLog)
+
+
+class CelebrationGateAccessRepository(BaseRepository[CelebrationGateAccess]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, CelebrationGateAccess)
+
+    async def find_by_token_hash(self, token_hash: str) -> CelebrationGateAccess | None:
+        return await self.find_one(CelebrationGateAccess.token_hash == token_hash)
 
 
 class CelebrationGuestHistoryRepository(BaseRepository[CelebrationGuestHistory]):
@@ -284,6 +302,8 @@ class OccasionRepositoryAggregate:
         self.celebrations = CelebrationRepository(session)
         self.guests = CelebrationGuestRepository(session)
         self.guest_history = CelebrationGuestHistoryRepository(session)
+        self.entry_logs = GuestEntryLogRepository(session)
+        self.gate_accesses = CelebrationGateAccessRepository(session)
         self.timeline = CelebrationTimelineRepository(session)
         self.notes = CelebrationNoteRepository(session)
         self.budgets = CelebrationBudgetRepository(session)

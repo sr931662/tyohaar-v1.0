@@ -12,12 +12,16 @@ import '../../data/auth_manager.dart';
 import '../../data/services/package_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/booking_service.dart';
+import '../../data/services/color_service.dart';
 import '../../data/services/payment_service.dart';
 import '../../utils/currency.dart';
 import '../../utils/log.dart';
 import 'package:tyohaar/screens/email_verification_screen.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
 import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
+import 'plan_logic.dart';
+import 'marquee_sheet.dart';
+import '../../widgets/line_kind_badge.dart';
 import '../../widgets/image_viewer.dart';
 import '../../widgets/photo_placeholder.dart';
 import '../../widgets/state_screens.dart';
@@ -54,28 +58,13 @@ class PlanFlowScreen extends StatefulWidget {
   State<PlanFlowScreen> createState() => _PlanFlowScreenState();
 }
 
-// Curated, reliably-stockable balloon colours — must match the backend's
-// BALLOON_COLOR_PALETTE (app/core/constants.py) exactly by hex value, since
-// the server only accepts booking colours drawn from that same list.
-const _balloonColorPalette = <String, String>{
-  'Red': '#E63946',
-  'Gold': '#D4AF37',
-  'Rose Gold': '#E8B4B8',
-  'Pink': '#F48FB1',
-  'Sky Blue': '#87CEEB',
-  'Navy Blue': '#1E3A5F',
-  'White': '#FFFFFF',
-  'Black': '#1C1C1C',
-  'Silver': '#C0C0C0',
-  'Purple': '#8E44AD',
-  'Green': '#2ECC71',
-  'Orange': '#F39C12',
-  'Yellow': '#F1C40F',
-};
+// The balloon palette is managed by admins and fetched from the server
+// (ColorService); [fallbackBalloonPalette] only covers a failed fetch. The
+// server validates every booking against the live palette either way.
 
-// Display label for a balloon colour name. The map keys above stay in
-// English — they're used as stable identifiers (selection state, hex
-// lookup at booking submission) — only the rendered label is localized.
+// Display label for a balloon colour name. Colours are identified by their
+// name (selection state, hex lookup at booking submission); the built-in
+// names get a translated label, admin-added ones show as entered.
 String _balloonColorLabel(BuildContext context, String name) {
   final l10n = AppLocalizations.of(context)!;
   switch (name) {
@@ -120,6 +109,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   final UserService _userService = UserService();
   final BookingService _bookingService = BookingService();
   final PaymentService _paymentService = PaymentService();
+  final ColorService _colorService = ColorService();
   bool _isSubmitting = false;
 
   // Coupon entry — automatic discounts need no UI (applied silently by the
@@ -128,6 +118,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   DiscountPreview? _discountPreview;
   bool _couponLoading = false;
   String? _couponError;
+  // The code the server last accepted, re-sent whenever the preview refreshes.
+  String? _appliedCoupon;
+  // Subtotal (paise) the current [_discountPreview] was computed for. A preview
+  // for a different subtotal is stale and ignored until it is refreshed.
+  int? _previewForPaise;
+  // Last subtotal a refresh was started for — stops a failed request from
+  // being retried on every rebuild.
+  int? _previewRequestedFor;
 
   // Step list is built dynamically by _steps (occasion is skipped when
   // initialOccasion is supplied; customize is skipped when the package
@@ -151,6 +149,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // _maxCustomColours: the backend accepts a single balloon colour or a
   // 2/3/4-colour combination (BookingCreate.validate_balloon_colors).
   final List<String> _balloonColors = [];
+  List<BalloonColorOption> _palette = fallbackBalloonPalette;
+  // Admin-managed finishes (matte / pastel / chrome …). Empty until fetched,
+  // and the section stays hidden then: a finish the server has never heard
+  // of would make the booking fail.
+  List<String> _finishes = const [];
+  String? _balloonFinish;
   static const int _maxCustomColours = 4;
   Address? _address;
   DateTime _eventDate = DateTime.now().add(const Duration(days: 30));
@@ -170,6 +174,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   /// exactly the numbers the API will accept. Each digit is a physical
   /// character the vendor brings, so this is also the per-line quantity cap.
   static const int _maxCustomizationDigits = 4;
+
+  /// Mirrors MAX_CUSTOMIZATION_CHARACTERS: the most letters/numbers a name
+  /// line takes. Spaces between words don't count and aren't billed.
+  static const int _maxCustomizationCharacters = 20;
 
   // item.id -> what the customer picked or typed for that item (the
   // characters wanted on a marquee letter set, say). Only ever holds ids of
@@ -252,9 +260,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // priced) here as opt-in add-ons, regardless of the backend's
   // is_mandatory flag. Only package-specific items can be genuinely
   // included in the price.
-  /// One physical character per digit, so the number the customer dialled
-  /// *is* the line's quantity — "20" is two characters at the line's unit
-  /// price. Kept in `_itemQuantities` so every running total, coupon preview
+  /// One physical character per digit or letter, so what the customer set
+  /// *is* the line's quantity — "20" is two characters and "ANITA 30" is
+  /// seven (spaces are free), each at the line's unit price. Kept in `_itemQuantities` so every running total, coupon preview
   /// and the booking payload price it the one way. The server recomputes the
   /// same count from the customisation it stores, so this is the display
   /// half of the rule, not the authority for it.
@@ -262,14 +270,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     if (!item.needsNumericCustomization) return;
     if (!_itemQuantities.containsKey(item.id)) return;
     _itemQuantities[item.id] =
-        (value == null || value.isEmpty) ? item.quantity : value.length;
+        (value == null || value.isEmpty) ? item.quantity : countBillableCharacters(value);
   }
 
   void _syncNumericServiceQuantity(PackageServiceLine service, String? value) {
     if (!service.needsNumericCustomization) return;
     if (!_serviceQuantities.containsKey(service.id)) return;
     _serviceQuantities[service.id] =
-        (value == null || value.isEmpty) ? service.quantity : value.length;
+        (value == null || value.isEmpty) ? service.quantity : countBillableCharacters(value);
   }
 
   bool _isIncludedItem(PackageItem i) => i.isMandatory && !i.isCommon;
@@ -320,6 +328,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       // even on a fresh install where nothing has been cached yet.
       _precacheOccasionImages(_occasions);
       if (_occasion != null) _loadPackagesForOccasion(_occasion!.id);
+      _loadPalette();
     } catch (e, st) {
       logError('plan_flow.loadData', e, st);
       setState(() { _isLoading = false; _loadError = true; });
@@ -356,6 +365,103 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         // Non-fatal — the card falls back to its bundled local asset image.
       }
     }
+  }
+
+  /// Opens the marquee sheet for a character line and reports what the
+  /// customer confirmed. Returns false if they backed out.
+  Future<bool> _editCharacters({
+    required String title,
+    String? prompt,
+    required double unitPrice,
+    required String characterSet,
+    required int? maxQuantity,
+    required String? current,
+    required ValueChanged<String?> onChanged,
+  }) async {
+    final kind = CharSetKind.parse(characterSet);
+    final platformCap = kind == CharSetKind.digits ? _maxCustomizationDigits : _maxCustomizationCharacters;
+    final cap = maxQuantity == null ? platformCap : maxQuantity.clamp(1, platformCap);
+    final result = await showMarqueeSheet(
+      context,
+      title: title,
+      prompt: prompt,
+      unitPrice: unitPrice,
+      charSet: kind,
+      maxChars: cap,
+      initial: current,
+    );
+    if (result == null || !mounted) return false;
+    onChanged(result);
+    return true;
+  }
+
+  /// Switching a character add-on on opens the sheet straight away. Backing
+  /// out leaves it off — an add-on with no characters can't be fulfilled.
+  Future<void> _promptItemCharacters(PackageItem item) async {
+    if (!item.needsNumericCustomization || (_itemChoices[item.id] ?? '').isNotEmpty) return;
+    final chosen = await _editCharacters(
+      title: item.name,
+      prompt: item.customizationPrompt,
+      unitPrice: item.unitPrice,
+      characterSet: item.characterSet,
+      maxQuantity: item.maxQuantity,
+      current: null,
+      onChanged: (v) => setState(() {
+        _itemChoices[item.id] = v!;
+        _syncNumericQuantity(item, v);
+      }),
+    );
+    if (!chosen && mounted) setState(() => _itemQuantities.remove(item.id));
+  }
+
+  Future<void> _promptServiceCharacters(PackageServiceLine service) async {
+    if (!service.needsNumericCustomization || (_serviceChoices[service.id] ?? '').isNotEmpty) return;
+    final chosen = await _editCharacters(
+      title: service.name,
+      prompt: service.customizationPrompt,
+      unitPrice: service.unitPrice,
+      characterSet: service.characterSet,
+      maxQuantity: service.maxQuantity,
+      current: null,
+      onChanged: (v) => setState(() {
+        _serviceChoices[service.id] = v!;
+        _syncNumericServiceQuantity(service, v);
+      }),
+    );
+    if (!chosen && mounted) setState(() => _serviceQuantities.remove(service.id));
+  }
+
+  /// The admin-managed colour palette. A failed fetch keeps the built-in list.
+  Future<void> _loadPalette() async {
+    try {
+      final colours = await _colorService.balloonColors();
+      if (!mounted || colours.isEmpty) return;
+      setState(() {
+        _palette = colours;
+        // A colour an admin has since removed can no longer be ordered.
+        _balloonColors.removeWhere((n) => !colours.any((c) => c.name == n));
+      });
+    } catch (e) {
+      logDebug('Error loading balloon palette: $e');
+    }
+    try {
+      final finishes = await _colorService.balloonFinishes();
+      if (!mounted) return;
+      setState(() {
+        _finishes = finishes;
+        // Keep a still-valid pick; otherwise the first (most common) one.
+        if (!finishes.contains(_balloonFinish)) _balloonFinish = finishes.isEmpty ? null : finishes.first;
+      });
+    } catch (e) {
+      logDebug('Error loading balloon finishes: $e');
+    }
+  }
+
+  String? _hexForColour(String name) {
+    for (final c in _palette) {
+      if (c.name == name) return c.hex;
+    }
+    return null;
   }
 
   Future<void> _loadPackageItems() async {
@@ -395,45 +501,96 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
   // Mandatory items and services are charged on top of Package.price by the
   // backend, so every subtotal shown to (or previewed for) the customer has
-  // to count them.
-  double get _includedLinesTotal {
-    final items = _packageItems.where(_isIncludedItem).fold<double>(
-      0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
-    );
-    final services = _packageServices.where(_isIncludedService).fold<double>(
-      0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
-    );
+  // to count them. Common lines are never "included" — they are opt-in
+  // add-ons (see _isIncludedItem), matching what the server bills.
+  int get _includedPaise {
+    final items = _packageItems
+        .where(_isIncludedItem)
+        .fold<int>(0, (s, i) => s + toPaise(i.unitPrice) * (_itemQuantities[i.id] ?? i.quantity));
+    final services = _packageServices
+        .where(_isIncludedService)
+        .fold<int>(0, (s, v) => s + toPaise(v.unitPrice) * (_serviceQuantities[v.id] ?? v.quantity));
     return items + services;
+  }
+
+  int get _addOnsPaise {
+    final items = _packageItems
+        .where((i) => !_isIncludedItem(i) && _itemQuantities.containsKey(i.id))
+        .fold<int>(0, (s, i) => s + toPaise(i.unitPrice) * (_itemQuantities[i.id] ?? i.quantity));
+    final services = _packageServices
+        .where((v) => !_isIncludedService(v) && _serviceQuantities.containsKey(v.id))
+        .fold<int>(0, (s, v) => s + toPaise(v.unitPrice) * (_serviceQuantities[v.id] ?? v.quantity));
+    return items + services;
+  }
+
+  int get _subtotalPaise => toPaise(_pkg?.price ?? 0) + _includedPaise + _addOnsPaise;
+
+  /// The discount preview, but only if it was computed for the selection the
+  /// customer has now — changing an add-on after applying a code used to
+  /// leave the old discount on screen.
+  DiscountPreview? get _activePreview => _previewForPaise == _subtotalPaise ? _discountPreview : null;
+
+  PlanPricing get _pricing {
+    final subtotal = _subtotalPaise;
+    final preview = _activePreview;
+    final discount = (preview != null && _couponError == null)
+        ? toPaise(preview.totalDiscount).clamp(0, subtotal)
+        : 0;
+    return PlanPricing(
+      basePaise: toPaise(_pkg?.price ?? 0),
+      includedPaise: _includedPaise,
+      addOnsPaise: _addOnsPaise,
+      discountPaise: discount,
+    );
   }
 
   Future<void> _applyCoupon() async {
     final code = _couponCtrl.text.trim();
     if (code.isEmpty) return;
-    setState(() { _couponLoading = true; _couponError = null; });
+    await _refreshDiscount(code: code);
+  }
+
+  /// Asks the server what discounts apply to the current selection —
+  /// automatic ones plus [code] (or the last accepted code). Called when the
+  /// customer applies a code and whenever the summary is showing a subtotal
+  /// the preview wasn't computed for. The server stays the authority; this
+  /// is what keeps the number on screen equal to the one charged.
+  Future<void> _refreshDiscount({String? code}) async {
+    final forPaise = _subtotalPaise;
+    setState(() {
+      _previewRequestedFor = forPaise;
+      if (code != null) {
+        _couponLoading = true;
+        _couponError = null;
+      }
+    });
     try {
-      final basePrice = _pkg?.price ?? 0;
-      final selectedOptional = _packageItems.where((i) => !_isIncludedItem(i) && _itemQuantities.containsKey(i.id));
-      final itemsTotal = selectedOptional.fold<double>(
-        0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
-      );
-      final selectedOptionalServices = _packageServices.where((s) => !_isIncludedService(s) && _serviceQuantities.containsKey(s.id));
-      final servicesTotal = selectedOptionalServices.fold<double>(
-        0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
-      );
       final preview = await _paymentService.previewDiscount(
-        subtotal: basePrice + _includedLinesTotal + itemsTotal + servicesTotal,
+        subtotal: forPaise / 100,
         packageId: _pkg?.id,
         occasionId: _occasion?.id,
-        couponCode: code,
+        couponCode: code ?? _appliedCoupon,
       );
+      if (!mounted) return;
       setState(() {
         _discountPreview = preview;
-        _couponError = preview.couponError;
+        _previewForPaise = forPaise;
+        if (code != null) {
+          _couponError = preview.couponError;
+          _appliedCoupon = preview.couponError == null ? code : null;
+        } else if (preview.couponError != null) {
+          // A code that was accepted earlier stopped applying (for example
+          // the order fell below its minimum) — say so instead of dropping it.
+          _couponError = preview.couponError;
+          _appliedCoupon = null;
+        }
       });
     } catch (e) {
-      setState(() => _couponError = AppLocalizations.of(context)!.planFlowCouponValidationError);
+      if (mounted && code != null) {
+        setState(() => _couponError = AppLocalizations.of(context)!.planFlowCouponValidationError);
+      }
     } finally {
-      if (mounted) setState(() => _couponLoading = false);
+      if (mounted && code != null) setState(() => _couponLoading = false);
     }
   }
 
@@ -526,7 +683,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       // 1-4 colours: single, dual, triple, or quad), so there is no separate
       // switch for the count to get wrong.
       final usingCustomColours = _showBalloonTheme && _balloonColors.isNotEmpty;
-      final balloonColorsHex = _balloonColors.map((name) => _balloonColorPalette[name]!).toList();
+      // (hex list is built from the live palette; a colour removed since it
+      // was picked is dropped by _loadPalette, so it never reaches the API.)
+      final balloonColorsHex = _balloonColors.map(_hexForColour).whereType<String>().toList();
       const balloonModeByCount = {1: 'single', 2: 'dual', 3: 'triple', 4: 'quad'};
 
       final booking = await _bookingService.createBooking({
@@ -562,6 +721,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         if (usingCustomColours) ...{
           'balloon_color_mode': balloonModeByCount[balloonColorsHex.length] ?? 'single',
           'balloon_colors': balloonColorsHex,
+          if (_balloonFinish != null) 'balloon_finish': _balloonFinish,
         },
         if (_couponCtrl.text.trim().isNotEmpty && _couponError == null)
           'coupon_code': _couponCtrl.text.trim(),
@@ -996,7 +1156,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 ),
                 Positioned(
                   top: 8, right: 8,
-                  child: TyPill(formatPrice(p.price)),
+                  child: TyPill(formatRupees(p.price)),
                 ),
                 Positioned(
                   top: 8, left: 8,
@@ -1110,9 +1270,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
 
 
 
-  // One palette, one selection — pick a single accent colour or a two-colour
-  // combination. There is no separate single/dual switch: the mode follows
-  // from how many colours are picked.
+  // One palette, one selection — pick 1 to 4 colours. There is no separate
+  // single/dual switch: the mode follows from how many colours are picked, and
+  // the order they are tapped in is the order they are used (shown as 1, 2…).
   Widget _customColourSection(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
@@ -1120,61 +1280,155 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(l10n.planFlowCustomColourHint, style: TyType.sans(12.5, color: ty.ink2)),
+        const SizedBox(height: 4),
+        Text(l10n.planFlowColourOrderHint, style: TyType.sans(12, color: ty.ink3)),
         const SizedBox(height: 14),
         Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: _balloonColorPalette.entries.map((entry) {
-            final name = entry.key;
-            final color = _hexToColor(entry.value);
-            final on = _balloonColors.contains(name);
-            return GestureDetector(
-              onTap: () => setState(() {
-                if (on) {
-                  _balloonColors.remove(name);
-                } else {
-                  // At the cap, the oldest pick makes way for the new one so
-                  // tapping a colour always visibly does something.
-                  if (_balloonColors.length >= _maxCustomColours) {
-                    _balloonColors.removeAt(0);
+          children: _palette.map((entry) {
+            final name = entry.name;
+            final color = _hexToColor(entry.hex);
+            final position = _balloonColors.indexOf(name);
+            final on = position >= 0;
+            return Semantics(
+              button: true,
+              selected: on,
+              label: on ? '${position + 1}. ${_balloonColorLabel(context, name)}' : _balloonColorLabel(context, name),
+              child: GestureDetector(
+                onTap: () => setState(() {
+                  if (on) {
+                    _balloonColors.remove(name);
+                  } else {
+                    // At the cap, the oldest pick makes way for the new one so
+                    // tapping a colour always visibly does something.
+                    if (_balloonColors.length >= _maxCustomColours) {
+                      _balloonColors.removeAt(0);
+                    }
+                    _balloonColors.add(name);
                   }
-                  _balloonColors.add(name);
-                }
-              }),
-              child: Column(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 3 : 1),
-                      boxShadow: on
-                          ? [BoxShadow(color: ty.saffron.withValues(alpha: 0.35), blurRadius: 6, offset: const Offset(0, 2))]
+                }),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: on ? ty.saffron : ty.line, width: on ? 3 : 1),
+                        boxShadow: on
+                            ? [BoxShadow(color: ty.saffron.withValues(alpha: 0.35), blurRadius: 6, offset: const Offset(0, 2))]
+                            : null,
+                      ),
+                      // The pick order, so the sequence is visible on the swatch.
+                      child: on
+                          ? Text('${position + 1}',
+                              style: TextStyle(
+                                  color: color.computeLuminance() > 0.6 ? Colors.black87 : Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15))
                           : null,
                     ),
-                    child: on
-                        ? Icon(Icons.check_rounded,
-                            color: color.computeLuminance() > 0.6 ? Colors.black87 : Colors.white, size: 18)
-                        : null,
-                  ),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: 56,
-                    child: Text(
-                      _balloonColorLabel(context, name),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TyType.sans(10.5, color: ty.ink2),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      width: 56,
+                      child: Text(
+                        _balloonColorLabel(context, name),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TyType.sans(10.5, color: ty.ink2),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           }).toList(),
+        ),
+        if (_finishes.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          Text(l10n.planFlowBalloonFinishHeading, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          RadioGroup<String>(
+            groupValue: _balloonFinish,
+            onChanged: (v) => setState(() => _balloonFinish = v),
+            child: Column(
+              children: [
+                for (final f in _finishes)
+                  RadioListTile<String>(
+                    value: f,
+                    dense: true,
+                    activeColor: ty.saffron,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(f, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w600)),
+                  ),
+              ],
+            ),
+          ),
+          Text(l10n.planFlowBalloonFinishHint, style: TyType.sans(12, color: ty.ink3)),
+        ],
+        const SizedBox(height: 18),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: ty.surface2,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: ty.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.planFlowYourSelectionHeading, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              if (_balloonColors.isEmpty)
+                Text(l10n.planFlowNoColoursPicked, style: TyType.sans(13, color: ty.ink3))
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (var i = 0; i < _balloonColors.length; i++)
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(8, 6, 14, 6),
+                        decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(999)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: _hexToColor(_hexForColour(_balloonColors[i]) ?? '#888888'),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: ty.line),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('${i + 1}. ${_balloonColorLabel(context, _balloonColors[i])}',
+                              style: TyType.sans(13.5, color: ty.ink, weight: FontWeight.w600)),
+                        ]),
+                      ),
+                  ],
+                ),
+              if (_balloonFinish != null) ...[
+                const SizedBox(height: 10),
+                Text(l10n.planFlowFinishLabel(_balloonFinish!), style: TyType.sans(13, color: ty.ink2)),
+              ],
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: ty.saffronDeep, foregroundColor: Colors.white),
+                  onPressed: _next,
+                  child: Text(l10n.planFlowContinueWithSelection,
+                      style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -1298,9 +1552,29 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       );
     }
 
+    // Only the labels that actually appear in this package.
+    final kindsPresent = <LineKind>{
+      for (final i in _packageItems) LineKind.forItem(isReturnable: i.isReturnable),
+      if (_packageServices.isNotEmpty) LineKind.service,
+    };
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (kindsPresent.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: 18),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
+            decoration: _cardDeco(ty),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(l10n.lineKindLegendHeading, style: TyType.eyebrow(10.5, color: ty.ink3)),
+              const SizedBox(height: 8),
+              DefaultTextStyle(
+                style: TextStyle(color: ty.ink),
+                child: LineKindLegend(kinds: [for (final k in LineKind.values) if (kindsPresent.contains(k)) k]),
+              ),
+            ]),
+          ),
         section(l10n.planFlowPackageSpecificItemsHeading, specificItems),
         section(l10n.planFlowCommonItemsHeading, commonItems, isCommonGroup: true),
         serviceSection(l10n.planFlowPackageSpecificServicesHeading, specificServices),
@@ -1427,7 +1701,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                    Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                      Text(item.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                      // RENTAL goes back after the event; KEEP is the customer's.
+                      LineKindBadge(LineKind.forItem(isReturnable: item.isReturnable)),
+                    ]),
                     if (item.description != null)
                       Text(item.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
                     // Priced on every row, mandatory ones included: they are
@@ -1437,8 +1715,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                       // Singular: the price is for one of them, so a "sets"
                       // line must read "₹500 / set", not "₹500 / sets".
                       locked
-                          ? l10n.planFlowItemPriceLabel(formatPrice(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback))
-                          : l10n.planFlowAddOnPriceLabel(formatPrice(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback)),
+                          ? l10n.planFlowItemPriceLabel(formatRupees(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback))
+                          : l10n.planFlowAddOnPriceLabel(formatRupees(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback)),
                       style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
                     ),
                   ],
@@ -1453,12 +1731,13 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                   onChanged: (v) => setState(() {
                     if (v) {
                       _itemQuantities[item.id] = item.quantity;
-                      // Switching a numeric line back on restores the number
-                      // the customer had already dialled, and its price with it.
+                      // Switching a character line back on restores what the
+                      // customer had already chosen, and its price with it.
                       _syncNumericQuantity(item, _itemChoices[item.id]);
                     } else {
                       _itemQuantities.remove(item.id);
                     }
+                    if (v) WidgetsBinding.instance.addPostFrameCallback((_) => _promptItemCharacters(item));
                   }),
                 ),
             ],
@@ -1472,6 +1751,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               value: _itemChoices[item.id],
               unitPrice: item.unitPrice,
               maxQuantity: item.maxQuantity,
+              characterSet: item.characterSet,
+              title: item.name,
               onChanged: (v) => setState(() {
                 if (v == null) {
                   _itemChoices.remove(item.id);
@@ -1523,6 +1804,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     required String? value,
     required double unitPrice,
     required int? maxQuantity,
+    required String characterSet,
+    required String title,
     required ValueChanged<String?> onChanged,
   }) {
     final ty = context.ty;
@@ -1565,19 +1848,20 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       );
     }
 
-    // A vendor may cap the line (max_quantity) — one character per digit
-    // means that cap is also the digit cap, so the wheels never let a
-    // customer build a number the vendor cannot physically supply.
-    final digitCap = maxQuantity == null
-        ? _maxCustomizationDigits
-        : maxQuantity.clamp(1, _maxCustomizationDigits);
-
-    return _NumberWheelField(
-      prompt: prompt?.trim().isNotEmpty == true ? prompt!.trim() : l10n.planFlowCustomizationDefaultPrompt,
+    // No fixed choices: the customer builds the characters in the marquee
+    // sheet (numbers, letters or both, per the line's character set).
+    return _CharacterCard(
       value: value,
       unitPrice: unitPrice,
-      maxDigits: digitCap,
-      onChanged: onChanged,
+      onEdit: () => _editCharacters(
+        title: title,
+        prompt: prompt,
+        unitPrice: unitPrice,
+        characterSet: characterSet,
+        maxQuantity: maxQuantity,
+        current: value,
+        onChanged: onChanged,
+      ),
     );
   }
 
@@ -1607,13 +1891,16 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(service.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                    Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                      Text(service.name, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+                      const LineKindBadge(LineKind.service),
+                    ]),
                     if (service.description != null)
                       Text(service.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
                     Text(
                       locked
-                          ? l10n.planFlowItemPriceLabel(formatPrice(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback))
-                          : l10n.planFlowAddOnPriceLabel(formatPrice(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback)),
+                          ? l10n.planFlowItemPriceLabel(formatRupees(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback))
+                          : l10n.planFlowAddOnPriceLabel(formatRupees(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback)),
                       style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
                     ),
                   ],
@@ -1632,6 +1919,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                     } else {
                       _serviceQuantities.remove(service.id);
                     }
+                    if (v) WidgetsBinding.instance.addPostFrameCallback((_) => _promptServiceCharacters(service));
                   }),
                 ),
             ],
@@ -1644,6 +1932,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               prompt: service.customizationPrompt,
               unitPrice: service.unitPrice,
               maxQuantity: service.maxQuantity,
+              characterSet: service.characterSet,
+              title: service.name,
               value: _serviceChoices[service.id],
               onChanged: (v) => setState(() {
                 if (v == null) {
@@ -1725,20 +2015,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     final l10n = AppLocalizations.of(context)!;
     final mandatoryItems = _packageItems.where(_isIncludedItem).toList();
     final selectedOptional = _packageItems.where((i) => !_isIncludedItem(i) && _itemQuantities.containsKey(i.id)).toList();
-    final itemsTotal = selectedOptional.fold<double>(
-      0, (s, i) => s + i.unitPrice * (_itemQuantities[i.id] ?? i.quantity),
-    );
     final mandatoryServices = _packageServices.where(_isIncludedService).toList();
     final selectedOptionalServices = _packageServices.where((s) => !_isIncludedService(s) && _serviceQuantities.containsKey(s.id)).toList();
-    final servicesTotal = selectedOptionalServices.fold<double>(
-      0, (s, svc) => s + svc.unitPrice * (_serviceQuantities[svc.id] ?? svc.quantity),
-    );
-    final addOnsTotal = itemsTotal + servicesTotal;
-    // Mandatory lines are billed on top of the package base price server-side
-    // (BookingService: subtotal = package + mandatory + selected optional), so
-    // they belong in the breakdown too — leaving them out made the total shown
-    // here smaller than the amount charged at payment.
-    final includedTotal = _includedLinesTotal;
+    // Every figure below comes from one place (_pricing, integer paise) and
+    // the discount is refreshed whenever the selection changes, so the rows
+    // always add up to the total — and the total to what is charged.
+    final pricing = _pricing;
+    if (_pkg != null && _previewRequestedFor != _subtotalPaise && !_couponLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _previewRequestedFor != _subtotalPaise) _refreshDiscount();
+      });
+    }
     final occasionIdx = _indexOf(_StepKind.occasion);
     final packageIdx = _indexOf(_StepKind.package);
     final itemsIdx = _indexOf(_StepKind.items);
@@ -1755,24 +2042,30 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           _summaryCard(
             context,
             l10n.planFlowSummaryBalloonColoursLabel,
-            _balloonColors.map((n) => _balloonColorLabel(context, n)).join(', '),
+            _balloonColors.map((n) => _balloonColorLabel(context, n)).join(', ') +
+                (_balloonFinish != null ? ' · $_balloonFinish' : ''),
             onEdit: () => _jumpTo(customizeIdx),
           ),
         if (mandatoryItems.isNotEmpty)
           _summaryCard(context, l10n.planFlowSummaryIncludedItemsLabel,
-              mandatoryItems.map((i) => i.name).join(', '), onEdit: () => _jumpTo(itemsIdx)),
+              mandatoryItems.map((i) => '${i.name} (${LineKind.forItem(isReturnable: i.isReturnable).label(l10n)})').join(', '),
+              onEdit: () => _jumpTo(itemsIdx)),
         if (mandatoryServices.isNotEmpty)
           _summaryCard(context, l10n.planFlowSummaryIncludedServicesLabel,
-              mandatoryServices.map((s) => s.name).join(', '), onEdit: () => _jumpTo(itemsIdx)),
+              mandatoryServices.map((s) => '${s.name} (${LineKind.service.label(l10n)})').join(', '),
+              onEdit: () => _jumpTo(itemsIdx)),
         if (selectedOptional.isNotEmpty || selectedOptionalServices.isNotEmpty)
           _summaryCard(context, l10n.planFlowSummaryAddOnsLabel, [
             ...selectedOptional.map((i) {
               final qty = _itemQuantities[i.id] ?? i.quantity;
-              return qty > 1 ? l10n.planFlowAddOnQuantityLabel(i.name, qty) : i.name;
+              final custom = (_itemChoices[i.id] ?? '').isNotEmpty ? ' "${_itemChoices[i.id]}"' : '';
+              final tag = LineKind.forItem(isReturnable: i.isReturnable).label(l10n);
+              return '${qty > 1 ? l10n.planFlowAddOnQuantityLabel(i.name, qty) : i.name}$custom ($tag)';
             }),
             ...selectedOptionalServices.map((s) {
               final qty = _serviceQuantities[s.id] ?? s.quantity;
-              return qty > 1 ? l10n.planFlowAddOnQuantityLabel(s.name, qty) : s.name;
+              final custom = (_serviceChoices[s.id] ?? '').isNotEmpty ? ' "${_serviceChoices[s.id]}"' : '';
+              return '${qty > 1 ? l10n.planFlowAddOnQuantityLabel(s.name, qty) : s.name}$custom (${LineKind.service.label(l10n)})';
             }),
           ].join(', '), onEdit: () => _jumpTo(itemsIdx)),
         _summaryCard(context, l10n.planFlowSummaryDateTimeLabel,
@@ -1837,11 +2130,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 const SizedBox(height: 8),
                 Text(_couponError!, style: TyType.sans(12.5, color: Colors.red.shade700)),
               ],
-              if (_discountPreview != null && _couponError == null && _discountPreview!.appliedDiscounts.isNotEmpty) ...[
+              if (_activePreview != null && _couponError == null && _activePreview!.appliedDiscounts.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
                   l10n.planFlowAppliedDiscountsLabel(
-                      _discountPreview!.appliedDiscounts.map((d) => d.publicOfferTitle ?? d.title).join(', ')),
+                      _activePreview!.appliedDiscounts.map((d) => d.publicOfferTitle ?? d.title).join(', ')),
                   style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
                 ),
               ],
@@ -1854,25 +2147,16 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
           padding: const EdgeInsets.all(16),
           decoration: _cardDeco(ty),
           child: Builder(builder: (context) {
-            // Automatic discounts already reflect in the preview once a
-            // customer reaches this step (evaluated as soon as a coupon is
-            // applied); the authoritative amount is always recomputed
-            // server-side at booking creation regardless of what's shown here.
             final l10n = AppLocalizations.of(context)!;
-            final preview = _discountPreview;
-            final hasDiscount = preview != null && _couponError == null && preview.totalDiscount > 0;
-            final subtotal = (_pkg?.price ?? 0) + includedTotal + addOnsTotal;
-            final tax = (hasDiscount ? (subtotal - preview.totalDiscount) : subtotal) * 0.18;
-            final total = hasDiscount ? (subtotal - preview.totalDiscount) + tax : subtotal + tax;
             return Column(
               children: [
-                _priceRow(l10n.planFlowPackageBasePriceLabel, _pkg?.price.toInt() ?? 0),
-                if (includedTotal > 0) _priceRow(l10n.planFlowSummaryIncludedItemsLabel, includedTotal.toInt()),
-                if (addOnsTotal > 0) _priceRow(l10n.planFlowSummaryAddOnsLabel, addOnsTotal.toInt()),
-                if (hasDiscount) _priceRow(l10n.planFlowDiscountLabel, -preview.totalDiscount.toInt()),
-                _priceRow(l10n.planFlowGstLabel, tax.toInt()),
+                _priceRow(l10n.planFlowPackageBasePriceLabel, pricing.basePaise),
+                if (pricing.includedPaise > 0) _priceRow(l10n.planFlowSummaryIncludedItemsLabel, pricing.includedPaise),
+                if (pricing.addOnsPaise > 0) _priceRow(l10n.planFlowSummaryAddOnsLabel, pricing.addOnsPaise),
+                if (pricing.discountPaise > 0) _priceRow(l10n.planFlowDiscountLabel, -pricing.discountPaise),
+                _priceRow(l10n.planFlowGstLabel, pricing.taxPaise),
                 const Divider(height: 24),
-                _priceRow(l10n.planFlowTotalAmountLabel, total.toInt(), bold: true),
+                _priceRow(l10n.planFlowTotalAmountLabel, pricing.totalPaise, bold: true),
               ],
             );
           }),
@@ -1908,7 +2192,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     );
   }
 
-  Widget _priceRow(String label, int amount, {bool bold = false}) {
+  /// [paise] is signed: a discount row passes a negative amount.
+  Widget _priceRow(String label, int paise, {bool bold = false}) {
     final ty = context.ty;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1922,7 +2207,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 style: TyType.sans(13, color: bold ? ty.ink : ty.ink2, weight: bold ? FontWeight.w700 : FontWeight.w500)),
           ),
           const SizedBox(width: 8),
-          Text('₹$amount', style: TyType.sans(14, color: ty.ink, weight: bold ? FontWeight.w800 : FontWeight.w600)),
+          Text(paise < 0 ? '-${formatPaise(-paise)}' : formatPaise(paise),
+              style: TyType.sans(14, color: ty.ink, weight: bold ? FontWeight.w800 : FontWeight.w600)),
         ],
       ),
     );
@@ -2235,232 +2521,81 @@ class _PreviewLine {
   const _PreviewLine(this.name, this.images, this.iconUrl, this.quantity);
 }
 
-/// Number wheels for a marquee-style line — one wheel per physical character
-/// the vendor will bring.
-///
-/// Numbers only: the characters are stocked digits, and the price follows the
-/// count of them, so "20" is two characters and costs 2 x the line's unit
-/// price. The customer adds or drops a digit with the -/+ control and dials
-/// each one on its own wheel, and the running cost is spelled out underneath
-/// rather than left to appear in the total later.
-///
-/// Reports null until a wheel is actually touched: the wheels have to show
-/// something, and a silent default of "00" would price two characters nobody
-/// chose. While it is null the items step refuses to advance, same as an
-/// unpicked dropdown.
-class _NumberWheelField extends StatefulWidget {
-  final String prompt;
+/// The inline summary of a character line: what was chosen, as lit pieces,
+/// with the count and price, and a button to (re)open the sheet. Empty is the
+/// loud state — the items step won't advance until it's filled.
+class _CharacterCard extends StatelessWidget {
   final String? value;
   final double unitPrice;
-  final int maxDigits;
-  final ValueChanged<String?> onChanged;
-
-  const _NumberWheelField({
-    required this.prompt,
-    required this.value,
-    required this.unitPrice,
-    required this.maxDigits,
-    required this.onChanged,
-  });
-
-  @override
-  State<_NumberWheelField> createState() => _NumberWheelFieldState();
-}
-
-class _NumberWheelFieldState extends State<_NumberWheelField> {
-  static const double _wheelItemExtent = 34;
-  static const double _wheelHeight = 108;
-
-  late List<int> _digits;
-  late List<FixedExtentScrollController> _controllers;
-  // The wheels start on 0 whether or not the customer has chosen anything, so
-  // "has 0 been chosen or merely shown?" is tracked here rather than inferred
-  // from the digits.
-  late bool _touched;
-
-  @override
-  void initState() {
-    super.initState();
-    final existing = (widget.value ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-    _touched = existing.isNotEmpty;
-    _digits = existing.isEmpty
-        ? List.filled(widget.maxDigits >= 2 ? 2 : 1, 0)
-        : existing.split('').take(widget.maxDigits).map(int.parse).toList();
-    _controllers = [
-      for (final d in _digits) FixedExtentScrollController(initialItem: d),
-    ];
-  }
-
-  // Deliberately no didUpdateWidget resync: the parent rebuilds on every
-  // scroll with the value this widget just reported, and re-seeding the
-  // controllers from it would fight the wheel mid-fling.
-
-  @override
-  void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  void _report() => widget.onChanged(_touched ? _digits.join() : null);
-
-  void _setDigit(int index, int digit) {
-    setState(() {
-      _digits[index] = digit;
-      _touched = true;
-    });
-    _report();
-  }
-
-  void _changeDigitCount(int delta) {
-    final next = _digits.length + delta;
-    if (next < 1 || next > widget.maxDigits) return;
-    setState(() {
-      if (delta > 0) {
-        _digits.add(0);
-        _controllers.add(FixedExtentScrollController(initialItem: 0));
-      } else {
-        _digits.removeLast();
-        _controllers.removeLast().dispose();
-      }
-      _touched = true;
-    });
-    _report();
-  }
+  final VoidCallback onEdit;
+  const _CharacterCard({required this.value, required this.unitPrice, required this.onEdit});
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
-    final total = widget.unitPrice * _digits.length;
+    final text = (value ?? '').trim();
+    final count = countBillableCharacters(text);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(widget.prompt, style: TyType.sans(12, color: ty.ink3)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: ty.surface2,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _touched ? ty.line : ty.saffron),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < _digits.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 4),
-                    _wheel(context, i),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(l10n.planFlowNumberDigitCountLabel, style: TyType.sans(11, color: ty.ink3)),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _digitCountButton(
-                      context,
-                      icon: Icons.remove_rounded,
-                      enabled: _digits.length > 1,
-                      onTap: () => _changeDigitCount(-1),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(
-                        '${_digits.length}',
-                        style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700),
-                      ),
-                    ),
-                    _digitCountButton(
-                      context,
-                      icon: Icons.add_rounded,
-                      enabled: _digits.length < widget.maxDigits,
-                      onTap: () => _changeDigitCount(1),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _touched
-              ? l10n.planFlowNumberPriceLabel(
-                  _digits.length,
-                  formatPrice(widget.unitPrice),
-                  formatPrice(total),
-                )
-              : l10n.planFlowNumberUnsetHint,
-          style: TyType.sans(
-            11.5,
-            color: _touched ? ty.saffron : ty.ink3,
-            weight: _touched ? FontWeight.w700 : FontWeight.w400,
+    if (count == 0) {
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_note_rounded),
+          label: Text(l10n.marqueeCardChoose),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: ty.saffronDeep,
+            side: BorderSide(color: ty.saffron, width: 1.5),
+            minimumSize: const Size.fromHeight(46),
           ),
         ),
-      ],
-    );
-  }
+      );
+    }
 
-  Widget _wheel(BuildContext context, int index) {
-    final ty = context.ty;
-    return SizedBox(
-      width: 38,
-      height: _wheelHeight,
-      child: ListWheelScrollView.useDelegate(
-        controller: _controllers[index],
-        itemExtent: _wheelItemExtent,
-        physics: const FixedExtentScrollPhysics(),
-        // Dims the neighbours rather than hiding them, so it reads as a dial
-        // the customer can turn instead of a box showing one fixed digit.
-        overAndUnderCenterOpacity: 0.32,
-        diameterRatio: 1.5,
-        onSelectedItemChanged: (v) => _setDigit(index, v),
-        childDelegate: ListWheelChildLoopingListDelegate(
-          children: [
-            for (var d = 0; d <= 9; d++)
-              Center(
-                child: Text(
-                  '$d',
-                  style: TyType.sans(22, color: ty.ink, weight: FontWeight.w700),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _digitCountButton(
-    BuildContext context, {
-    required IconData icon,
-    required bool enabled,
-    required VoidCallback onTap,
-  }) {
-    final ty = context.ty;
     return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(14),
+      onTap: onEdit,
       child: Container(
-        width: 28,
-        height: 28,
+        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
         decoration: BoxDecoration(
           color: ty.surface2,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: ty.line),
         ),
-        child: Icon(icon, size: 16, color: enabled ? ty.ink : ty.ink3),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Wrap(spacing: 4, runSpacing: 4, children: [
+                for (final ch in text.split(''))
+                  ch == ' '
+                      ? const SizedBox(width: 10, height: 30)
+                      : Container(
+                          width: 26,
+                          height: 30,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2A1E18),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(ch,
+                              style: const TextStyle(
+                                color: Color(0xFFFFF4D6),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                shadows: [Shadow(color: Color(0xFFFFC857), blurRadius: 8)],
+                              )),
+                        ),
+              ]),
+              const SizedBox(height: 6),
+              Text(
+                l10n.marqueeCardSummary(text, count, formatRupees(unitPrice * count)),
+                style: TyType.sans(12.5, color: ty.saffronDeep, weight: FontWeight.w800),
+              ),
+            ]),
+          ),
+          TextButton(onPressed: onEdit, child: Text(l10n.marqueeCardEdit)),
+        ]),
       ),
     );
   }

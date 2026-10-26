@@ -33,7 +33,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Tyohaar lets you choose photos from your library, for example to set your profile picture, and saves photos you download.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Tyohaar uses the camera only if you choose to take a photo, for example for your profile picture.</string>
+	<string>Tyohaar uses the camera when you choose to take a photo, for example for your profile picture, or to scan guest passes at your event entrance.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Tyohaar uses the microphone only if you choose to record a video to upload.</string>
 	<key>NSContactsUsageDescription</key>

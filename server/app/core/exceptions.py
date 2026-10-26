@@ -41,6 +41,23 @@ def _err(code: str, message: str, detail: Any = None) -> dict:
     return body
 
 
+def _json_safe_errors(errors: list[dict]) -> list[dict]:
+    """
+    Pydantic puts the raised exception object itself in `ctx["error"]` when a
+    validator raises ValueError, which JSONResponse cannot serialise — the
+    client got a 500 instead of the 422 describing what was wrong.
+    """
+    safe = []
+    for error in errors:
+        error = dict(error)
+        if isinstance(error.get("ctx"), dict):
+            error["ctx"] = {k: v if isinstance(v, (str, int, float, bool, type(None))) else str(v)
+                            for k, v in error["ctx"].items()}
+        error.pop("input", None) if isinstance(error.get("input"), bytes) else None
+        safe.append(error)
+    return safe
+
+
 def _add_cors(response: JSONResponse, request: Request) -> JSONResponse:
     """Inject CORS headers so browsers never see a CORS error on top of a real error."""
     origin = request.headers.get("origin")
@@ -67,7 +84,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         return _add_cors(JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=_err("VALIDATION_ERROR", "Request validation failed.", exc.errors()),
+            content=_err("VALIDATION_ERROR", "Request validation failed.", _json_safe_errors(exc.errors())),
         ), request)
 
     # ── Service: NotFoundError — 404 ──────────────────────────────────────────

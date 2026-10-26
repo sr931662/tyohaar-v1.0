@@ -476,6 +476,17 @@ class Package {
 // PACKAGE ITEM  →  PackageItemResponse
 // ---------------------------------------------------------------------------
 
+/// API value -> one of 'digits' | 'letters' | 'alphanumeric'. Anything
+/// unrecognised (an older server, a typo) behaves as digits, the original rule.
+String _parseCharacterSet(Object? raw) {
+  final v = raw?.toString().toLowerCase();
+  return (v == 'letters' || v == 'alphanumeric') ? v! : 'digits';
+}
+
+/// Characters billed on a customisable line: everything except spaces. The
+/// server counts the same way, so a quantity derived here matches the invoice.
+int countBillableCharacters(String? value) => (value ?? '').replaceAll(' ', '').length;
+
 class PackageItem {
   final String id;
   final String name;
@@ -498,9 +509,15 @@ class PackageItem {
   // Question to put above a free-text customisation box — "Which characters
   // do you need?" on a marquee letter set. Used when [choices] is empty.
   final String? customizationPrompt;
+  // What a free-text customisation may contain: 'digits' (a marquee number),
+  // 'letters' (a name) or 'alphanumeric'. One billable unit per non-space
+  // character. Only meaningful when [choices] is empty.
+  final String characterSet;
   // True for a vendor-wide reusable item attached to the package rather than
   // one defined specifically for it — see VendorCommonItemsScreen.
   final bool isCommon;
+  // True = a RENTAL the customer hands back after the event; false = theirs to keep.
+  final bool isReturnable;
   final String? iconUrl;
   // Item's cover/thumbnail image (mirrors Package.coverImageUrl).
   final String? coverImageUrl;
@@ -524,7 +541,9 @@ class PackageItem {
     this.isCustomizable = false,
     this.choices = const [],
     this.customizationPrompt,
+    this.characterSet = 'digits',
     this.isCommon = false,
+    this.isReturnable = false,
     this.iconUrl,
     this.coverImageUrl,
     this.imageUrls = const [],
@@ -548,7 +567,9 @@ class PackageItem {
         isCustomizable: isCustomizable,
         choices: choices,
         customizationPrompt: customizationPrompt,
+        characterSet: characterSet,
         isCommon: isCommon,
+        isReturnable: isReturnable,
         iconUrl: iconUrl,
         coverImageUrl: coverImageUrl,
         imageUrls: imageUrls,
@@ -574,6 +595,10 @@ class PackageItem {
   /// physical character the vendor brings and bills for. The digit count
   /// drives the line's quantity, so "20" costs 2 x [unitPrice].
   bool get needsNumericCustomization => choices.isEmpty && isCustomizable;
+
+  /// True when the customer types letters (alone or with digits) instead of
+  /// dialling a number.
+  bool get takesLetters => needsNumericCustomization && characterSet != 'digits';
 
   /// Cover first, then gallery images deduped against it — the list a
   /// gallery viewer should page through.
@@ -603,7 +628,9 @@ class PackageItem {
           .where((c) => c.isNotEmpty)
           .toList(),
       customizationPrompt: json['customization_prompt'] as String?,
+      characterSet: _parseCharacterSet(json['character_set']),
       isCommon: json['is_common'] as bool? ?? false,
+      isReturnable: json['is_returnable'] as bool? ?? false,
       iconUrl: asUrl(json['icon_url']),
       coverImageUrl: asUrl(json['cover_image_url']),
       imageUrls: (json['images'] as List?)
@@ -650,6 +677,10 @@ class PackageServiceLine {
   // Question to put above a free-text customisation box — "Which characters
   // do you need?" on a marquee letter set. Used when [choices] is empty.
   final String? customizationPrompt;
+  // What a free-text customisation may contain: 'digits' (a marquee number),
+  // 'letters' (a name) or 'alphanumeric'. One billable unit per non-space
+  // character. Only meaningful when [choices] is empty.
+  final String characterSet;
   final bool isCommon;
   final String? iconUrl;
   final String? coverImageUrl;
@@ -669,6 +700,7 @@ class PackageServiceLine {
     this.isCustomizable = false,
     this.choices = const [],
     this.customizationPrompt,
+    this.characterSet = 'digits',
     this.isCommon = false,
     this.iconUrl,
     this.coverImageUrl,
@@ -691,6 +723,10 @@ class PackageServiceLine {
   /// physical character the vendor brings and bills for. The digit count
   /// drives the line's quantity, so "20" costs 2 x [unitPrice].
   bool get needsNumericCustomization => choices.isEmpty && isCustomizable;
+
+  /// True when the customer types letters (alone or with digits) instead of
+  /// dialling a number.
+  bool get takesLetters => needsNumericCustomization && characterSet != 'digits';
 
   /// Cover first, then gallery images deduped against it — the list a
   /// gallery viewer should page through.
@@ -717,6 +753,7 @@ class PackageServiceLine {
           .where((c) => c.isNotEmpty)
           .toList(),
       customizationPrompt: json['customization_prompt'] as String?,
+      characterSet: _parseCharacterSet(json['character_set']),
       isCommon: json['is_common'] as bool? ?? false,
       iconUrl: asUrl(json['icon_url']),
       coverImageUrl: asUrl(json['cover_image_url']),

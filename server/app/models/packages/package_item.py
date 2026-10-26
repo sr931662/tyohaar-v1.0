@@ -17,6 +17,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
+    Enum as SAEnum,
     ForeignKey,
     Index,
     Integer,
@@ -31,6 +32,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+from app.models.enums import CharacterSet
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
@@ -202,11 +204,21 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=True,
         comment="Question shown to the customer above the number picker — "
                 "e.g. 'Which number should we set?' on a marquee letter set. "
-                "Used when `choices` is empty, in which case the line takes a "
-                "number (digits only, max 4) and is billed one unit per digit, "
-                "so '20' is two characters at base_price each. With choices "
+                "Used when `choices` is empty, in which case the line takes "
+                "characters from `character_set` and is billed one unit per "
+                "character, so '20' is two characters at base_price each. With choices "
                 "set, the customer picks from that list instead and the "
                 "quantity is unaffected.",
+    )
+
+    character_set: Mapped[CharacterSet] = mapped_column(
+        SAEnum(CharacterSet, name="character_set", native_enum=False),
+        nullable=False,
+        default=CharacterSet.DIGITS,
+        server_default="DIGITS",
+        comment="Characters accepted when is_customizable and `choices` is empty: "
+                "digits (a number), letters (a name) or alphanumeric. Each "
+                "non-space character is one billable unit.",
     )
 
     # ── Display ───────────────────────────────────────────────────────────────

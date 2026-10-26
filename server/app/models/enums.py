@@ -368,9 +368,28 @@ class CancellationReason(str, enum.Enum):
 
 
 class BalloonColorMode(str, enum.Enum):
-    """Whether the customer chose one accent balloon colour or a two-colour combo."""
+    """How many accent balloon colours the customer chose (1 to 4)."""
     SINGLE = "single"
     DUAL = "dual"
+    TRIPLE = "triple"
+    QUAD = "quad"
+
+    @property
+    def colour_count(self) -> int:
+        return {"single": 1, "dual": 2, "triple": 3, "quad": 4}[self.value]
+
+
+class CharacterSet(str, enum.Enum):
+    """
+    Which characters a customisable line accepts when it has no fixed choices.
+
+    The vendor stocks physical characters (marquee letters, foil balloon
+    letters/numbers), and the customer is billed one unit per character, so
+    the set decides what can be ordered at all.
+    """
+    DIGITS = "digits"                # 0-9 — a marquee number ("25", "2026")
+    LETTERS = "letters"              # A-Z — a name or word ("ANITA")
+    ALPHANUMERIC = "alphanumeric"    # A-Z and 0-9 — "ANITA 30"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -521,6 +540,63 @@ class GuestHistoryEventType(str, enum.Enum):
     INVITATION_OPENED = "invitation_opened"
     RSVP_CHANGED = "rsvp_changed"
     CHECKED_IN = "checked_in"
+    CHECKED_OUT = "checked_out"
+    DETAILS_UPDATED = "details_updated"
+    SHARED = "shared"
+    EMAIL_SENT = "email_sent"
+    EMAIL_FAILED = "email_failed"
+    LINK_ROTATED = "link_rotated"
+    REVOKED = "revoked"
+
+
+class GuestPassStatus(str, enum.Enum):
+    """
+    Whether a guest's invitation still grants anything.
+
+    Deliberately two-valued: "expired" and "event cancelled" are *derived* at
+    read time from the celebration's current date/status, so a reschedule
+    moves every pass with it instead of leaving stale stored states behind.
+    REVOKED is terminal — re-inviting someone creates a fresh invitation.
+    """
+    ACTIVE = "active"
+    REVOKED = "revoked"
+
+
+class GuestEntryStatus(str, enum.Enum):
+    """Physical presence at the gate, independent of RSVP and pass status."""
+    NOT_ARRIVED = "not_arrived"
+    CHECKED_IN = "checked_in"
+    CHECKED_OUT = "checked_out"
+
+
+class GuestEntryAction(str, enum.Enum):
+    VERIFY = "verify"
+    CHECK_IN = "check_in"
+    CHECK_OUT = "check_out"
+
+
+class GuestVerificationResult(str, enum.Enum):
+    """Outcome of a gate verification / check-in / check-out attempt."""
+    VALID = "valid"                          # verify only: would be admitted
+    CHECKED_IN = "checked_in"                # entry recorded
+    CHECKED_OUT = "checked_out"              # exit recorded
+    ALREADY_CHECKED_IN = "already_checked_in"
+    ALREADY_USED = "already_used"            # checked out, re-entry not allowed
+    NOT_CHECKED_IN = "not_checked_in"        # check-out without a check-in
+    INVALID = "invalid"                      # unknown / out-of-scope code
+    EXPIRED = "expired"
+    NOT_YET_VALID = "not_yet_valid"
+    REVOKED = "revoked"
+    EVENT_CANCELLED = "event_cancelled"
+    DENIED = "denied"                        # e.g. event postponed
+    PARTY_SIZE_EXCEEDED = "party_size_exceeded"
+
+
+class EntryOperatorType(str, enum.Enum):
+    """Who performed a gate action — recorded on every entry log row."""
+    HOST = "host"
+    GATE_ACCESS = "gate_access"
+    ADMIN = "admin"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -542,6 +618,7 @@ class NotificationType(str, enum.Enum):
     REVIEW_REQUEST = "review_request"
     VENDOR_ASSIGNED = "vendor_assigned"
     RSVP_UPDATE = "rsvp_update"
+    GUEST_CHECKED_IN = "guest_checked_in"
     CELEBRATION_UPCOMING = "celebration_upcoming"
     SUPPORT_UPDATE = "support_update"
 

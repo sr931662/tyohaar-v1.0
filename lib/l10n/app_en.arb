@@ -1035,8 +1035,6 @@
     }
   },
   "guestsShareInviteSubject": "You're invited!",
-  "guestsQrCheckinTitle": "Digital Check-in",
-  "guestsQrCheckinMessage": "Share this QR with your guests for quick entry and live RSVP tracking at the venue.",
   "guestsCloseButtonLabel": "Close",
 
   "helpTitle": "Help & Support",
@@ -1846,5 +1844,370 @@
     }
   },
   "authGateSignInSignUpButtonLabel": "Sign In / Sign Up",
-  "authGateMaybeLaterButtonLabel": "Maybe Later"
+  "authGateMaybeLaterButtonLabel": "Maybe Later",
+  "invActivityHeading": "ACTIVITY",
+  "invAddGuest": "Add guest",
+  "invAllowanceLess": "Fewer guests",
+  "invAllowanceMore": "More guests",
+  "invAllowancePlus": "Guest + {count}",
+  "@invAllowancePlus": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "invAllowanceSolo": "Guest only",
+  "invArrivalClear": "Clear arrival window",
+  "invArrivalFrom": "From",
+  "invArrivalHelp": "Shown to the gate as the expected time. Entry is allowed throughout the event.",
+  "invArrivalNotSet": "Not set",
+  "invArrivalTo": "To",
+  "invBulkAddContact": "Add contact",
+  "invBulkAddLines": "Add lines",
+  "invBulkAllowance": "Accompanying guests for everyone",
+  "invBulkCount": "{count} OF {max} GUESTS",
+  "@invBulkCount": {
+    "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } }
+  },
+  "invBulkDone": "{created} invited · {skipped} skipped",
+  "@invBulkDone": {
+    "placeholders": { "created": { "type": "int" }, "skipped": { "type": "int" } }
+  },
+  "invBulkIntro": "Paste one guest per line as \"Name, phone\" (phone optional), or add contacts one by one. Each guest gets their own pass and link.",
+  "invBulkNoPhone": "No phone",
+  "invBulkPasteHint": "Asha Rao, +91 98765 43210\nBimal Sen",
+  "invBulkRemove": "Remove",
+  "invBulkRowCreated": "Invitation created",
+  "invBulkRowExisting": "Already created earlier",
+  "invBulkRowSkipped": "Skipped",
+  "invBulkSubmit": "Invite {count} guests",
+  "@invBulkSubmit": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "invBulkTitle": "Invite many",
+  "invCameraDenied": "Camera access is off. Allow it in Settings, or type the pass code below.",
+  "invCameraOff": "Turn camera off",
+  "invCameraOn": "Turn camera on",
+  "invCameraUnavailable": "The camera isn't available. Type the pass code below instead.",
+  "invCardTileTitle": "Invitation card",
+  "invChannelCopy": "copied link",
+  "invChannelEmail": "email",
+  "invChannelShareSheet": "share sheet",
+  "invChannelWhatsapp": "WhatsApp",
+  "invCheckedInAt": "Checked in",
+  "invCheckedOutAt": "Checked out",
+  "invContactsPermissionDenied": "Contacts permission is off. You can type the details instead.",
+  "invContactsUnavailable": "Couldn't open contacts.",
+  "invCopyLink": "Copy link",
+  "invCreateButton": "Create invitation",
+  "invCreateTitle": "New invitation",
+  "invDetailTitle": "Invitation",
+  "invDetailsHeading": "DETAILS",
+  "invDone": "Done",
+  "invEditButton": "Edit details",
+  "invEditTitle": "Edit invitation",
+  "invEmptyFiltered": "No guests match.",
+  "invEmptyMessage": "Add a guest to create their personal pass and invite link.",
+  "invEmptyTitle": "No invitations yet",
+  "invFieldAllowance": "Accompanying guests",
+  "invFieldArrival": "Expected arrival",
+  "invFieldEmail": "Email",
+  "invFieldEmailInvalid": "Enter a valid email address.",
+  "invFieldGroup": "Group",
+  "invFieldGroupHint": "Family, Office…",
+  "invFieldName": "Guest name",
+  "invFieldNotes": "Private note",
+  "invFieldNotesHint": "Only you can see this",
+  "invFieldPhone": "Phone",
+  "invFieldPhoneHint": "+91 98765 43210",
+  "invFieldPhoneInvalid": "Enter a valid phone number.",
+  "invFieldRequired": "Required",
+  "invFieldVehicle": "Vehicle number",
+  "invFilterAll": "All",
+  "invFilterArrived": "Arrived",
+  "invFilterCancelled": "Cancelled",
+  "invFilterComing": "Coming",
+  "invFilterDeclined": "Declined",
+  "invFilterExpected": "Still expected",
+  "invFilterNoReply": "No reply",
+  "invFilterNotOpened": "Not opened",
+  "invGateAccessActiveUntil": "Active until {time}",
+  "@invGateAccessActiveUntil": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "invGateAccessCreate": "Create link",
+  "invGateAccessCreateTitle": "New gate link",
+  "invGateAccessEmpty": "No gate links yet.",
+  "invGateAccessExpired": "Expired",
+  "invGateAccessExpiryNote": "It also stops working when the event's entry window closes.",
+  "invGateAccessIntro": "Give entry staff a link that opens a gate console for this celebration only. They can check passes and record arrivals — nothing else — without a Tyohaar account. Revoke it anytime.",
+  "invGateAccessLabel": "Who or which gate",
+  "invGateAccessLabelHint": "Main gate — Ramesh",
+  "invGateAccessLastUsed": "Last used {time}",
+  "@invGateAccessLastUsed": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "invGateAccessNew": "New gate link",
+  "invGateAccessReadyMessage": "Send this link to {label}. For security it is shown only once — create a new one if it's lost.",
+  "@invGateAccessReadyMessage": {
+    "placeholders": { "label": { "type": "String" } }
+  },
+  "invGateAccessReadyTitle": "Gate link ready",
+  "invGateAccessRevoke": "Revoke",
+  "invGateAccessRevokeMessage": "{label} will no longer be able to check guests in.",
+  "@invGateAccessRevokeMessage": {
+    "placeholders": { "label": { "type": "String" } }
+  },
+  "invGateAccessRevokeTitle": "Revoke gate link?",
+  "invGateAccessRevoked": "Revoked",
+  "invGateAccessShareMessage": "Gate console for {title}. Open on the phone you'll use at the entrance: {link}",
+  "@invGateAccessShareMessage": {
+    "placeholders": { "title": { "type": "String" }, "link": { "type": "String" } }
+  },
+  "invGateAccessTileSubtitle": "Links for guards or family at the door",
+  "invGateAccessTitle": "Gate staff access",
+  "invGateAccessValidFor": "Valid for",
+  "invGateAlreadyIn": "Already inside",
+  "invGateAlreadyUsed": "Pass already used",
+  "invGateAttempt": "Gate: {result}",
+  "@invGateAttempt": {
+    "placeholders": { "result": { "type": "String" } }
+  },
+  "invGateCheck": "Check",
+  "invGateCheckIn": "Check in",
+  "invGateCheckOut": "Check out",
+  "invGateCheckedIn": "Checked in",
+  "invGateCheckedOut": "Checked out",
+  "invGateCodeLabel": "Pass code",
+  "invGateDenied": "Entry denied",
+  "invGateEventCancelled": "Event cancelled",
+  "invGateExpectedAt": "Expected {window}",
+  "@invGateExpectedAt": {
+    "placeholders": { "window": { "type": "String" } }
+  },
+  "invGateExpired": "Pass expired",
+  "invGateInSince": "Inside since {time}",
+  "@invGateInSince": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "invGateInvalid": "Invalid pass",
+  "invGateNext": "Next guest",
+  "invGateNoConnectionRecord": "No connection — the entry was NOT recorded. Tap again to retry; it will only be saved once.",
+  "invGateNoConnectionVerify": "No connection — the pass couldn't be checked. Try again.",
+  "invGateNoMatches": "No matching guests.",
+  "invGateNotCheckedIn": "Not checked in",
+  "invGateNotYetValid": "Not valid yet",
+  "invGatePartyExceeded": "Too many people",
+  "invGatePeopleEntering": "People entering",
+  "invGateReplayed": "{result} (already recorded)",
+  "@invGateReplayed": {
+    "placeholders": { "result": { "type": "String" } }
+  },
+  "invGateRevoked": "Invitation cancelled",
+  "invGateRsvpParty": "RSVP: {count} coming",
+  "@invGateRsvpParty": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "invGateSearchHint": "Name or last 4 phone digits",
+  "invGateSearchLabel": "Find guest",
+  "invGateTitle": "Gate check-in",
+  "invGateValid": "Valid pass",
+  "invGateVehicle": "Vehicle {number}",
+  "@invGateVehicle": {
+    "placeholders": { "number": { "type": "String" } }
+  },
+  "invGuestNote": "Guest's note",
+  "invHistCheckedIn": "Checked in",
+  "invHistCheckedOut": "Checked out",
+  "invHistEdited": "Details edited",
+  "invHistEmailFailed": "Email could not be sent",
+  "invHistEmailed": "Emailed to guest",
+  "invHistInvited": "Invitation created",
+  "invHistOpened": "Guest opened the invitation",
+  "invHistRevoked": "Invitation cancelled",
+  "invHistRotated": "New link and pass issued",
+  "invHistRsvp": "RSVP: {status}",
+  "@invHistRsvp": {
+    "placeholders": { "status": { "type": "String" } }
+  },
+  "invHistShared": "Shared via {channel}",
+  "@invHistShared": {
+    "placeholders": { "channel": { "type": "String" } }
+  },
+  "invHours": "{count} h",
+  "@invHours": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "invInviteMany": "Invite many",
+  "invLastShared": "Last shared via {channel} · {time}. Delivery isn't tracked.",
+  "@invLastShared": {
+    "placeholders": { "channel": { "type": "String" }, "time": { "type": "String" } }
+  },
+  "invLinkCopied": "Link copied",
+  "invListError": "Couldn't load guests.",
+  "invNeverShared": "Not shared yet.",
+  "invNoActivity": "No activity yet.",
+  "invNotOpened": "Not opened",
+  "invPassCheckedOut": "Checked out",
+  "invPassEventCancelled": "Event cancelled",
+  "invPassExpired": "Expired",
+  "invPassHint": "The guest shows this at the entrance. It only works for this celebration.",
+  "invPassInside": "Inside",
+  "invPassPostponed": "Postponed",
+  "invPassReady": "Pass ready",
+  "invPassRevoked": "Cancelled",
+  "invPassUsed": "Pass used",
+  "invPassValid": "Pass active",
+  "invPeopleSummary": "{arrived} people arrived of {expected} expected · {inside} guests inside now",
+  "@invPeopleSummary": {
+    "placeholders": { "arrived": { "type": "int" }, "expected": { "type": "int" }, "inside": { "type": "int" } }
+  },
+  "invPickContact": "Pick from contacts",
+  "invQrSemantics": "Entry pass QR code for {name}",
+  "@invQrSemantics": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "invRevokeButton": "Cancel invitation",
+  "invRevokeConfirm": "Cancel invitation",
+  "invRevokeMessage": "{name}'s link and pass will stop working immediately. This can't be undone — you can invite them again later.",
+  "@invRevokeMessage": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "invRevokeReason": "Reason (optional, private)",
+  "invRevokeTitle": "Cancel this invitation?",
+  "invRevoked": "Invitation cancelled",
+  "invRevokedBanner": "This invitation was cancelled. Its link and pass no longer work.",
+  "invRevokedBannerReason": "This invitation was cancelled ({reason}). Its link and pass no longer work.",
+  "@invRevokedBannerReason": {
+    "placeholders": { "reason": { "type": "String" } }
+  },
+  "invRotateButton": "Issue new link & pass",
+  "invRotateConfirm": "Issue new",
+  "invRotateMessage": "The current link and QR stop working immediately. Use this if they were shared with the wrong person. Remember to send the new link.",
+  "invRotateTitle": "Replace link and pass?",
+  "invRotated": "New link and pass issued — share it again.",
+  "invRsvpAttending": "Coming",
+  "invRsvpDeclined": "Declined",
+  "invRsvpMaybe": "Maybe",
+  "invRsvpParty": "RSVP party",
+  "invRsvpPending": "No reply yet",
+  "invSaveChanges": "Save changes",
+  "invSaveUncertain": "No response from the server, so we can't confirm it was saved. Tap again — it won't create a duplicate.",
+  "invSaving": "Saving…",
+  "invScanPasses": "Scan passes",
+  "invSearchHint": "Search name, phone, vehicle or pass code",
+  "invSendEmail": "Send by email",
+  "invShareHeading": "SEND THE INVITATION",
+  "invShareMessage": "Hi {name}! You're invited to {title} 🎉\n\nYour personal invitation and entry pass: {link}\n\nPlease don't forward this link.",
+  "@invShareMessage": {
+    "placeholders": { "name": { "type": "String" }, "title": { "type": "String" }, "link": { "type": "String" } }
+  },
+  "invShareSheet": "Share",
+  "invShareSubject": "You're invited to {title}",
+  "@invShareSubject": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "invShowingCount": "Showing {shown} of {total}",
+  "@invShowingCount": {
+    "placeholders": { "shown": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "invStatArrived": "Arrived",
+  "invStatComing": "Coming",
+  "invStatExpected": "Expected",
+  "invStatPeopleIn": "People in",
+  "invUpdated": "Invitation updated",
+  "invWarnDeclined": "Guest had declined the RSVP",
+  "invWarnReentry": "Re-entry",
+  "invWhatsappUnavailable": "WhatsApp couldn't be opened. Use Share or Copy link instead.",
+  "planFlowCharacterDefaultPrompt": "What should it say?",
+  "planFlowCharacterHintLetters": "Letters only, e.g. ANITA",
+  "planFlowCharacterHintAlphanumeric": "Letters and numbers, e.g. ANITA 30",
+  "planFlowCharacterUnsetHint": "Up to {max} characters — spaces between words are free",
+  "@planFlowCharacterUnsetHint": {
+    "placeholders": { "max": { "type": "int" } }
+  },
+  "planFlowCharacterPriceLabel": "{count} characters × {unit} = {total} · spaces are free",
+  "@planFlowCharacterPriceLabel": {
+    "placeholders": { "count": { "type": "int" }, "unit": { "type": "String" }, "total": { "type": "String" } }
+  },
+  "planFlowColourOrderHint": "Colours are used in the order you pick them — 1 is the main colour.",
+  "planFlowBalloonFinishHeading": "Balloon finish",
+  "planFlowBalloonFinishHint": "Finish options depend on the selected package and actual stock.",
+  "planFlowYourSelectionHeading": "Your selection",
+  "planFlowNoColoursPicked": "No colours picked yet — you can skip this and let the vendor suggest.",
+  "planFlowFinishLabel": "Finish: {finish}",
+  "@planFlowFinishLabel": {
+    "placeholders": { "finish": { "type": "String" } }
+  },
+  "planFlowContinueWithSelection": "Continue with selection",
+  "lineKindRental": "RENTAL",
+  "lineKindKeep": "KEEP",
+  "lineKindService": "SERVICE",
+  "lineKindRentalMeaning": "Returnable item — you hand it back after the event",
+  "lineKindKeepMeaning": "Yours to keep",
+  "lineKindServiceMeaning": "A service, not a product",
+  "lineKindLegendHeading": "WHAT THE LABELS MEAN",
+  "marqueeTitle": "Customise your {name}",
+  "@marqueeTitle": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "marqueeSubtitleDigits": "Choose the numbers you want displayed.",
+  "marqueeSubtitleLetters": "Choose the letters you want displayed.",
+  "marqueeSubtitleAlphanumeric": "Choose the letters or numbers you want displayed.",
+  "marqueeAllowedDigits": "Numbers (0–9)",
+  "marqueeAllowedLetters": "Letters (A–Z)",
+  "marqueeAllowedAlphanumeric": "Numbers (0–9) and letters (A–Z)",
+  "marqueePlaceholderDigits": "e.g. 25",
+  "marqueePlaceholderLetters": "e.g. LOVE",
+  "marqueePlaceholderAlphanumeric": "e.g. 25, 18, LOVE",
+  "marqueePreviewLabel": "Preview of selected characters",
+  "marqueeEmptyPreview": "Nothing selected yet",
+  "marqueeLimit": "Up to {max} characters",
+  "@marqueeLimit": {
+    "placeholders": { "max": { "type": "int" } }
+  },
+  "marqueeTapToRemove": "Tap a character to remove it",
+  "marqueeSelectHeading": "Select characters",
+  "marqueeRepeatsHint": "Allow multiple selections, including repeated characters.",
+  "marqueeSpace": "Space",
+  "marqueeBackspace": "Delete last character",
+  "marqueeTypeLabel": "Or type it here",
+  "marqueeSelectedCount": "Selected characters",
+  "marqueePricePerChar": "Price per character",
+  "marqueeTotal": "Total add-on price",
+  "marqueeConfirm": "Confirm selection",
+  "marqueeClear": "Clear all",
+  "marqueeCardChoose": "Choose characters",
+  "marqueeCardEdit": "Edit",
+  "marqueeCardSummary": "{text} · {count} characters · {total}",
+  "@marqueeCardSummary": {
+    "placeholders": { "text": { "type": "String" }, "count": { "type": "int" }, "total": { "type": "String" } }
+  },
+  "bookingDetailTitle": "Booking details",
+  "bookingDetailBookingNo": "Booking no.",
+  "bookingDetailPayment": "Payment {status}",
+  "@bookingDetailPayment": {
+    "placeholders": { "status": { "type": "String" } }
+  },
+  "bookingDetailBalloonHeading": "BALLOON DÉCOR",
+  "bookingDetailFinish": "Finish: {finish}",
+  "@bookingDetailFinish": {
+    "placeholders": { "finish": { "type": "String" } }
+  },
+  "bookingDetailItemsHeading": "WHAT'S IN YOUR BOOKING",
+  "bookingDetailPackageOnly": "Package base price only — no extra items or services.",
+  "bookingDetailPriceHeading": "PRICE",
+  "bookingDetailSubtotal": "Package & items",
+  "bookingDetailDiscount": "Discount",
+  "bookingDetailGst": "GST (18%)",
+  "bookingDetailTotal": "Total",
+  "bookingDetailPaid": "Paid",
+  "bookingDetailDue": "Balance due",
+  "bookingDetailDownload": "Download invoice (PDF)",
+  "bookingDetailDownloading": "Preparing your invoice…",
+  "bookingDetailDownloadHint": "Includes every booking detail and each item labelled rental, keep or service.",
+  "bookingDetailDownloadError": "Couldn't download the invoice. Check your connection and try again.",
+  "bookingDetailAddOn": "Add-on",
+  "bookingDetailCustom": "Custom: {note}",
+  "@bookingDetailCustom": {
+    "placeholders": { "note": { "type": "String" } }
+  },
+  "bookingDetailLink": "Details & invoice"
 }

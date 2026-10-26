@@ -19,6 +19,8 @@ from app.schemas.base import BaseSchema
 from app.models.enums import (
     CelebrationStatus,
     Currency,
+    GuestEntryStatus,
+    GuestPassStatus,
     RSVPStatus,
 )
 
@@ -191,21 +193,11 @@ class CelebrationGuestResponse(BaseSchema):
         description="Opaque token for the public RSVP link — only meaningful to the celebration owner sharing an invite.",
     )
     invitation_opened_at: datetime | None = None
+    pass_status: GuestPassStatus = GuestPassStatus.ACTIVE
+    entry_status: GuestEntryStatus = GuestEntryStatus.NOT_ARRIVED
+    plus_ones_allowed: int = 0
+    checked_in_at: datetime | None = None
     created_at: datetime
-
-
-class CelebrationGuestHistoryResponse(BaseSchema):
-    """A single guest lifecycle event (invited, opened, RSVP changed, checked in)."""
-
-    model_config = _ORM
-
-    id: uuid.UUID
-    celebration_guest_id: uuid.UUID
-    celebration_id: uuid.UUID
-    event_type: str
-    previous_status: RSVPStatus | None = None
-    new_status: RSVPStatus | None = None
-    occurred_at: datetime
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -221,6 +213,22 @@ class CelebrationGuestHistoryResponse(BaseSchema):
         if self.rsvp_status != RSVPStatus.PENDING:
             return self.rsvp_status.value
         return "ignored" if self.invitation_opened_at is not None else "pending"
+
+
+class CelebrationGuestHistoryResponse(BaseSchema):
+    """A single guest lifecycle event (invited, opened, RSVP changed, checked in)."""
+
+    model_config = _ORM
+
+    id: uuid.UUID
+    celebration_guest_id: uuid.UUID
+    celebration_id: uuid.UUID
+    event_type: str
+    previous_status: RSVPStatus | None = None
+    new_status: RSVPStatus | None = None
+    occurred_at: datetime
+    actor_type: str | None = None
+    actor_label: str | None = None
 
 
 class GuestRSVPPublicResponse(BaseSchema):

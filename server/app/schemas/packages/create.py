@@ -16,7 +16,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
-from app.models.enums import Currency, PackagePricingType, PackageStatus, PackageUnit, ReviewModerationStatus
+from app.models.enums import CharacterSet, Currency, PackagePricingType, PackageStatus, PackageUnit, ReviewModerationStatus
 from app.schemas.packages.common import PriceTierSchema
 
 
@@ -167,6 +167,10 @@ class PackageItemCreate(BaseSchema):
                     "(e.g. 'Which characters do you need?' on a marquee letter set). "
                     "Used when `choices` is empty.",
     )
+    character_set: CharacterSet = Field(
+        default=CharacterSet.DIGITS,
+        description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
+    )
 
 
 class CommonPackageItemCreate(BaseSchema):
@@ -220,6 +224,10 @@ class CommonPackageItemCreate(BaseSchema):
         description="Question shown to the customer for a free-text customisation "
                     "(e.g. 'Which characters do you need?' on a marquee letter set). "
                     "Used when `choices` is empty.",
+    )
+    character_set: CharacterSet = Field(
+        default=CharacterSet.DIGITS,
+        description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
     )
 
 
@@ -278,6 +286,10 @@ class PackageServiceCreate(BaseSchema):
                     "(e.g. 'Which characters do you need?' on a marquee letter set). "
                     "Used when `choices` is empty.",
     )
+    character_set: CharacterSet = Field(
+        default=CharacterSet.DIGITS,
+        description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
+    )
 
 
 class CommonPackageServiceCreate(BaseSchema):
@@ -328,6 +340,10 @@ class CommonPackageServiceCreate(BaseSchema):
         description="Question shown to the customer for a free-text customisation "
                     "(e.g. 'Which characters do you need?' on a marquee letter set). "
                     "Used when `choices` is empty.",
+    )
+    character_set: CharacterSet = Field(
+        default=CharacterSet.DIGITS,
+        description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
     )
 
 

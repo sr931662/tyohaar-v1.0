@@ -102,6 +102,7 @@ class BookingResponse(BaseSchema):
                     "customer's own custom palette (theme_name is null in that case).",
     )
     balloon_color_mode: BalloonColorMode | None = Field(default=None, description="Single or dual balloon colour choice")
+    balloon_finish: str | None = Field(default=None, description="Chosen balloon finish, e.g. Pastel")
     balloon_colors: list[str] | None = Field(default=None, description="Hex code(s) of the chosen balloon colour(s)")
     address_id: uuid.UUID | None
     scheduled_date: date
@@ -151,6 +152,7 @@ class BookingItemResponse(BaseSchema):
     unit_price: MoneyAmount
     final_price: MoneyAmount
     is_addon: bool = False
+    is_returnable: bool = False
     notes: str | None
     scheduled_start_at: datetime | None = Field(
         default=None, description="When this specific service is scheduled to start"
@@ -310,3 +312,21 @@ class BookingMediaSummary(BaseSchema):
     image_count: int = 0
     video_count: int = 0
     thumbnail_url: str | None = None
+
+
+class BookingLineResponse(BaseSchema):
+    """
+    One priced line on a booking — an item or a service — with the label that
+    tells the customer what it is: `rental` (returned after the event), `keep`
+    (theirs to keep) or `service`. Snapshotted at booking time.
+    """
+
+    kind: str = Field(description="rental | keep | service")
+    name: str
+    description: str | None = None
+    quantity: int
+    unit: str | None = None
+    unit_price: MoneyAmount
+    final_price: MoneyAmount
+    is_addon: bool = False
+    note: str | None = Field(default=None, description="What the customer asked for, e.g. 'ANITA 30'")

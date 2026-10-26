@@ -339,6 +339,13 @@ export const vendorBulkApi = {
     vendorClient.post('/notifications/bulk-delete', { ids }).then(extractData),
 };
 
+// ── Balloon colours (read-only: Tyohaar manages the palette) ─────────────────
+
+export const vendorColorsApi = {
+  list: () => vendorClient.get('/balloon-colors').then(extractList),
+  listFinishes: () => vendorClient.get('/balloon-finishes').then(extractList),
+};
+
 // ── Support ───────────────────────────────────────────────────────────────────
 
 export const vendorSupportApi = {

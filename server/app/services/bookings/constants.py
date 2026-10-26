@@ -31,3 +31,9 @@ MAX_CUSTOMIZATION_LENGTH = 100
 # is the line's quantity, so this is both the digit cap and the quantity cap
 # for such a line — kept in step with _maxCustomizationDigits in the app.
 MAX_CUSTOMIZATION_DIGITS = 4
+
+# Letters / alphanumeric lines (a name on foil balloons or marquee letters) are
+# longer than a dialled number, so they get their own cap. Counts billable
+# characters only — spaces between words are free and not stocked. Kept in
+# step with _maxCustomizationCharacters in the app.
+MAX_CUSTOMIZATION_CHARACTERS = 20

@@ -14,6 +14,7 @@ import '../widgets/avatar.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/ty_chip.dart';
 import '../widgets/common.dart';
+import 'invitations/gate_scan_screen.dart';
 
 class GuestsScreen extends StatefulWidget {
   final String? celebrationId;
@@ -223,7 +224,7 @@ class _GuestsScreenState extends State<GuestsScreen> {
           padding: EdgeInsets.only(right: resp.w(16)),
           child: ChromeIconButton(
             icon: Icons.qr_code_rounded,
-            onTap: () => _showQRCheckin(context),
+            onTap: () => _openGateScanner(context),
           ),
         ),
       ]),
@@ -439,44 +440,20 @@ class _GuestsScreenState extends State<GuestsScreen> {
     );
   }
 
-  void _showQRCheckin(BuildContext context) {
-    final ty = context.ty;
-    final resp = context.resp;
+  /// Opens the real gate scanner for this celebration (verify passes and
+  /// record entry against the server).
+  void _openGateScanner(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: ty.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(resp.w(28))),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(resp.w(20)),
-              decoration: BoxDecoration(
-                color: ty.saffron.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(resp.w(24)),
-              ),
-              child: Icon(Icons.qr_code_2_rounded, size: resp.w(200), color: ty.ink),
-            ),
-            SizedBox(height: resp.h(24)),
-            Text(l10n.guestsQrCheckinTitle, style: TyType.display(resp.sp(24), color: ty.ink)),
-            SizedBox(height: resp.h(12)),
-            Text(
-              l10n.guestsQrCheckinMessage,
-              textAlign: TextAlign.center,
-              style: TyType.sans(resp.sp(14), color: ty.ink2, height: 1.5),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.guestsCloseButtonLabel, style: TyType.sans(resp.sp(14), color: ty.saffron, weight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
+    final celebrationId = _activeCelebrationId;
+    if (celebrationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.guestsCreateCelebrationFirstMessage)),
+      );
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => GateScanScreen(celebrationId: celebrationId, celebrationTitle: l10n.guestsTitle),
+    ));
   }
 
   BoxDecoration _card(TyColors ty, TyResponsive resp) => BoxDecoration(

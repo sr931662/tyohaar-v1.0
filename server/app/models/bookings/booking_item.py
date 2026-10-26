@@ -176,6 +176,17 @@ class BookingItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment="Copied from PackageItem.is_mandatory at booking time",
     )
 
+    is_returnable: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment="Copied from PackageItem.is_returnable at booking time: True = a "
+                "RENTAL the customer returns after the event, False = an item "
+                "the customer keeps. Snapshotted so later package edits can't "
+                "change what an issued invoice says.",
+    )
+
     # ── Scheduling ────────────────────────────────────────────────────────────
 
     scheduled_start_at: Mapped[datetime | None] = mapped_column(

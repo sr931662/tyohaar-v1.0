@@ -4,7 +4,7 @@ Bookings Routes — booking lifecycle, assignments, cancellations, reschedules, 
 
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from app.controllers.bookings import controller as ctrl
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
@@ -13,6 +13,7 @@ from app.schemas.bookings import (
     BookingCancellationResponse,
     BookingDetailResponse,
     BookingInvoiceResponse,
+    BookingLineResponse,
     BookingItemResponse,
     BookingMediaSummary,
     BookingRescheduleResponse,
@@ -271,6 +272,28 @@ router.add_api_route(
 )
 
 # ── Invoice ───────────────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/{booking_id}/lines",
+    ctrl.get_booking_lines,
+    methods=["GET"],
+    response_model=SuccessResponse[list[BookingLineResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Get Booking Lines",
+    description="Every priced item and service on the booking, labelled rental / keep / service. Owner or admin.",
+    operation_id="bookings_get_booking_lines",
+)
+
+router.add_api_route(
+    "/{booking_id}/invoice.pdf",
+    ctrl.download_invoice_pdf,
+    methods=["GET"],
+    status_code=status.HTTP_200_OK,
+    summary="Download Invoice (PDF)",
+    description="The booking's invoice as a PDF — all booking details, lines labelled rental/keep/service, and totals. Owner or admin.",
+    operation_id="bookings_download_invoice_pdf",
+    response_class=Response,
+)
 
 router.add_api_route(
     "/{booking_id}/invoice",

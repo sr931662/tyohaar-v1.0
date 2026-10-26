@@ -8,12 +8,13 @@ computed server-side and are not accepted on create.
 
 from __future__ import annotations
 
+import re
+
 import uuid
 from datetime import date, datetime, time
 
 from pydantic import Field, model_validator
 
-from app.core.constants import BALLOON_COLOR_PALETTE
 from app.schemas.base import BaseSchema
 from app.models.enums import (
     BalloonColorMode,
@@ -151,12 +152,19 @@ class BookingCreate(BaseSchema):
     )
     balloon_color_mode: BalloonColorMode | None = Field(
         default=None,
-        description="Whether the customer wants a single accent balloon colour or a two-colour combination.",
+        description="How many accent balloon colours the customer chose: single, dual, triple or quad (1-4).",
+    )
+    balloon_finish: str | None = Field(
+        default=None,
+        max_length=60,
+        description="Balloon finish chosen from GET /balloon-finishes (e.g. matte, pastel, chrome). "
+                    "Only meaningful with balloon colours.",
     )
     balloon_colors: list[str] | None = Field(
         default=None,
         description="Hex code(s) of the chosen balloon colour(s) — must be drawn from "
-                    "BALLOON_COLOR_PALETTE. Exactly 1 value for SINGLE mode, exactly 2 for DUAL.",
+                    "the managed palette (GET /balloon-colors). The count must match the mode "
+                    "(1 single, 2 dual, 3 triple, 4 quad), all different.",
     )
 
     @model_validator(mode="after")
@@ -171,6 +179,12 @@ class BookingCreate(BaseSchema):
 
     @model_validator(mode="after")
     def validate_balloon_colors(self) -> "BookingCreate":
+        """
+        Structure only: a mode needs exactly that many distinct, well-formed
+        colours. Whether each colour is currently *offered* depends on the
+        admin-managed palette, so create_booking checks that against the
+        database.
+        """
         if self.balloon_color_mode is None:
             if self.balloon_colors:
                 raise ValueError("balloon_colors requires balloon_color_mode to be set")
@@ -179,23 +193,19 @@ class BookingCreate(BaseSchema):
         if not self.balloon_colors:
             raise ValueError("balloon_colors is required when balloon_color_mode is set")
 
-        expected_count = 1 if self.balloon_color_mode == BalloonColorMode.SINGLE else 2
+        expected_count = self.balloon_color_mode.colour_count
         if len(self.balloon_colors) != expected_count:
             raise ValueError(
                 f"balloon_color_mode='{self.balloon_color_mode.value}' requires exactly "
                 f"{expected_count} colour(s), got {len(self.balloon_colors)}"
             )
 
-        allowed_hex = {hex_code.lower() for hex_code in BALLOON_COLOR_PALETTE.values()}
         normalized = [c.strip().lower() for c in self.balloon_colors]
-        invalid = [c for c in normalized if c not in allowed_hex]
-        if invalid:
-            raise ValueError(
-                f"Invalid balloon colour(s): {invalid}. Must be one of the curated "
-                f"balloon palette: {list(BALLOON_COLOR_PALETTE.values())}"
-            )
-        if self.balloon_color_mode == BalloonColorMode.DUAL and normalized[0] == normalized[1]:
-            raise ValueError("Dual balloon colour mode requires two different colours")
+        malformed = [c for c in normalized if not re.fullmatch(r"#[0-9a-f]{6}", c)]
+        if malformed:
+            raise ValueError(f"Invalid balloon colour(s): {malformed}. Use #RRGGBB hex codes.")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("Balloon colours in a combination must all be different")
 
         self.balloon_colors = normalized
         return self

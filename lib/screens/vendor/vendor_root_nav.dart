@@ -1,13 +1,14 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../theme/colors.dart';
-import '../../theme/responsive.dart';
 import '../../theme/typography.dart';
 import '../../theme/theme_controller.dart';
 import '../../data/app_state.dart';
 import '../../data/auth_manager.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/push_service.dart';
+import '../../widgets/adaptive_nav_bar.dart';
 import '../../widgets/avatar.dart';
 import '../auth_screen.dart';
 import 'dashboard/vendor_dashboard_screen.dart';
@@ -101,7 +102,14 @@ class _VendorRootNavState extends State<VendorRootNav> {
     final destinations = _destinations(context);
     final current = destinations[_index];
 
-    return Scaffold(
+    // Back steps to the dashboard before leaving the app (Android); an open
+    // drawer still closes first.
+    return PopScope(
+      canPop: _index == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _setIndex(0);
+      },
+      child: Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
         backgroundColor: ty.paper,
@@ -123,65 +131,33 @@ class _VendorRootNavState extends State<VendorRootNav> {
         onLogout: _handleLogout,
       ),
       body: IndexedStack(index: _index, children: destinations.map((e) => e.screen).toList()),
-      bottomNavigationBar: _VendorBottomBar(index: _index, onTap: _setIndex),
-    );
-  }
-}
-
-class _VendorBottomBar extends StatelessWidget {
-  final int index;
-  final ValueChanged<int> onTap;
-  const _VendorBottomBar({required this.index, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final ty = context.ty;
-    final resp = context.resp;
-    final destinations = _destinations(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: ty.paper,
-        border: Border(top: BorderSide(color: ty.line2)),
-      ),
-      padding: EdgeInsets.only(top: 10, bottom: MediaQuery.of(context).padding.bottom + 18),
-      child: Row(
-        children: [
-          for (var i = 0; i < 5; i++)
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => onTap(i),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      index == i ? destinations[i].activeIcon : destinations[i].icon,
-                      color: index == i ? ty.saffron : ty.ink3,
-                      size: 24,
-                    ),
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: resp.w(2)),
-                      child: Text(
-                        destinations[i].title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: resp.sp(10.5),
-                          fontWeight: index == i ? FontWeight.w700 : FontWeight.w600,
-                          color: index == i ? ty.saffron : ty.ink3,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      bottomNavigationBar: TyAdaptiveNavBar(
+        destinations: [
+          for (var i = 0; i < _dockCupertinoIcons.length; i++)
+            TyNavDestination(
+              label: destinations[i].title,
+              icon: destinations[i].icon,
+              activeIcon: destinations[i].activeIcon,
+              cupertinoIcon: _dockCupertinoIcons[i].$1,
+              cupertinoActiveIcon: _dockCupertinoIcons[i].$2,
             ),
         ],
+        // Drawer-only destinations (index 5+) leave the dock unselected.
+        selectedIndex: _index < _dockCupertinoIcons.length ? _index : null,
+        onDestinationSelected: _setIndex,
+      ),
       ),
     );
   }
+
+  /// iOS glyphs for the five dock destinations, in [_destinations] order.
+  static const List<(IconData, IconData)> _dockCupertinoIcons = [
+    (CupertinoIcons.square_grid_2x2, CupertinoIcons.square_grid_2x2_fill),
+    (CupertinoIcons.square_list, CupertinoIcons.square_list_fill),
+    (CupertinoIcons.plus_square, CupertinoIcons.plus_square_fill),
+    (CupertinoIcons.creditcard, CupertinoIcons.creditcard_fill),
+    (CupertinoIcons.person, CupertinoIcons.person_fill),
+  ];
 }
 
 class _VendorDrawer extends StatelessWidget {

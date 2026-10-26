@@ -305,16 +305,24 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
     balloon_color_mode: Mapped[BalloonColorMode | None] = mapped_column(
         SAEnum(BalloonColorMode, name="balloon_color_mode", native_enum=False),
         nullable=True,
-        comment="Customer's chosen balloon décor style: a single accent colour or a two-colour combination.",
+        comment="Customer's chosen balloon décor style: how many accent colours (single, dual, triple or quad).",
     )
 
     balloon_colors: Mapped[list[str] | None] = mapped_column(
         JSONB,
         nullable=True,
         comment=(
-            "Hex codes of the chosen balloon colour(s) — 1 item for SINGLE mode, "
-            "2 for DUAL. Values are drawn from app.core.constants.BALLOON_COLOR_PALETTE."
+            "Hex codes of the chosen balloon colour(s) — 1 to 4, matching "
+            "balloon_color_mode. Values were drawn from the managed palette "
+            "(balloon_colors table) at booking time and are kept as a snapshot."
         ),
+    )
+
+    balloon_finish: Mapped[str | None] = mapped_column(
+        String(60),
+        nullable=True,
+        comment="Name of the balloon finish the customer chose (e.g. 'Pastel'), "
+                "from the managed finishes list; a snapshot, like balloon_colors.",
     )
 
     cancellation_reason: Mapped[CancellationReason | None] = mapped_column(

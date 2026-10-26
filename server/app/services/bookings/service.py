@@ -27,6 +27,7 @@ from app.schemas.bookings import (
     BookingFilters,
     BookingInvoiceResponse,
     BookingItemResponse,
+    BookingLineResponse,
     BookingResponse,
     BookingRescheduleCreate,
     BookingRescheduleResponse,
@@ -38,10 +39,12 @@ from app.services.exceptions import BusinessRuleError
 from app.services.bookings.constants import (
     CANCELLATION_FEE_PERCENTAGE,
     CANCELLATION_WINDOW_HOURS,
+    MAX_CUSTOMIZATION_CHARACTERS,
     MAX_CUSTOMIZATION_DIGITS,
     MAX_CUSTOMIZATION_LENGTH,
 )
 from app.services.bookings.helpers import (
+    compute_booking_amounts,
     digit_quantity,
     is_numeric_line,
     resolve_customization,
@@ -208,13 +211,42 @@ class BookingService(BaseService):
                 })
                 celebration_id = celebration.id
 
+            if data.balloon_colors:
+                from app.services.colors.service import BalloonColorService
+
+                offered = await BalloonColorService.active_hex_codes(uow)
+                unavailable = [c for c in data.balloon_colors if c not in offered]
+                if unavailable:
+                    raise BusinessRuleError(
+                        "These balloon colours aren't available any more: "
+                        + ", ".join(unavailable) + ". Please pick from the current palette."
+                    )
+
+            balloon_finish = None
+            if data.balloon_finish and data.balloon_colors:
+                from app.services.colors.service import BalloonColorService
+
+                balloon_finish = await BalloonColorService.resolve_finish(uow, data.balloon_finish)
+                if balloon_finish is None:
+                    raise BusinessRuleError(
+                        "That balloon finish isn't available any more. Please pick one from the current list."
+                    )
+
             # 1. Fetch mandatory items from package
             package_items = await uow.packages.items.find_by_package_including_common(data.package_id)
-            selected_items = [i for i in package_items if i.is_mandatory]
+            # Common items are vendor-wide reusable add-ons, never bundled
+            # into one package's price — the app always presents them as
+            # opt-in, whatever their is_mandatory flag says. Billing them
+            # here whenever the flag was set charged customers for lines the
+            # app never showed as included.
+            selected_items = [i for i in package_items if i.is_mandatory and not i.is_common]
 
             # 2. Fetch selected optional items (add-ons)
             if data.item_ids:
-                optional_items = [i for i in package_items if not i.is_mandatory and i.id in data.item_ids]
+                optional_items = [
+                    i for i in package_items
+                    if (not i.is_mandatory or i.is_common) and i.id in data.item_ids
+                ]
                 selected_items.extend(optional_items)
 
             # 3. Resolve the customer's pick for each customisable line.
@@ -232,6 +264,7 @@ class BookingService(BaseService):
                     supplied,
                     max_length=MAX_CUSTOMIZATION_LENGTH,
                     max_digits=MAX_CUSTOMIZATION_DIGITS,
+                    max_chars=MAX_CUSTOMIZATION_CHARACTERS,
                 )
 
             # 3b. Resolve per-item quantities — customer may request more than
@@ -261,9 +294,12 @@ class BookingService(BaseService):
             # 1b. Fetch mandatory services from package, plus any selected
             # optional services (add-ons) — mirrors items 1-3 above.
             package_services = await uow.packages.services.find_by_package_including_common(data.package_id)
-            selected_services = [s for s in package_services if s.is_mandatory]
+            selected_services = [s for s in package_services if s.is_mandatory and not s.is_common]
             if data.service_ids:
-                optional_services = [s for s in package_services if not s.is_mandatory and s.id in data.service_ids]
+                optional_services = [
+                    s for s in package_services
+                    if (not s.is_mandatory or s.is_common) and s.id in data.service_ids
+                ]
                 selected_services.extend(optional_services)
 
             service_quantities = data.service_quantities or {}
@@ -313,10 +349,12 @@ class BookingService(BaseService):
             # Tax is computed on the post-discount taxable base, matching what
             # invoice generation already assumes (taxable_amount = subtotal -
             # discount_amount) — see verify_payment's invoice block.
-            taxable_amount = subtotal - discount_amount
-            tax_rate = Decimal("0.18")
-            tax_amount = (taxable_amount * tax_rate).quantize(Decimal("0.01"))
-            total_amount = taxable_amount + tax_amount + platform_fee
+            amounts = compute_booking_amounts(subtotal, discount_amount, platform_fee=platform_fee)
+            subtotal = amounts["subtotal"]
+            discount_amount = amounts["discount"]
+            taxable_amount = amounts["taxable"]
+            tax_amount = amounts["tax"]
+            total_amount = amounts["total"]
 
             booking_ref = generate_booking_reference()
 
@@ -347,6 +385,7 @@ class BookingService(BaseService):
                 customization_note=data.customization_note,
                 balloon_color_mode=data.balloon_color_mode,
                 balloon_colors=data.balloon_colors,
+                balloon_finish=balloon_finish,
             )
             booking = await uow.bookings.bookings.create(booking)
 
@@ -363,6 +402,7 @@ class BookingService(BaseService):
                     unit_price=pi.base_price,
                     final_price=pi.base_price * qty,
                     is_mandatory=pi.is_mandatory,
+                    is_returnable=bool(pi.is_returnable),
                     is_addon=not pi.is_mandatory,
                     display_order=idx,
                     prep_time_minutes=pi.prep_time_minutes,
@@ -1380,6 +1420,126 @@ class BookingService(BaseService):
             return [BookingStatusHistoryResponse.model_validate(r) for r in records]
 
     # ── Invoice ───────────────────────────────────────────────────────────────
+
+    # ── Lines + invoice PDF ──────────────────────────────────────────────────
+
+    @staticmethod
+    async def _booking_for_reader(uow, booking_id: UUID, requester_id: UUID, requester_role: str):
+        """Owner or admin only — vendors don't see the customer's invoice."""
+        booking = await validate_booking_exists(booking_id, uow)
+        if requester_role not in ("admin", "super_admin") and booking.customer_id != requester_id:
+            raise BookingOwnershipError(
+                f"Booking {booking_id} does not belong to customer {requester_id}."
+            )
+        return booking
+
+    @staticmethod
+    def _line_kind(item) -> str:
+        return "service" if not hasattr(item, "is_returnable") else ("rental" if item.is_returnable else "keep")
+
+    async def _booking_lines(self, uow, booking) -> list:
+        items = await uow.bookings.items.find_by_booking(booking.id)
+        services = await uow.bookings.service_items.find_by_booking(booking.id)
+        ordered = sorted(items, key=lambda i: i.display_order) + sorted(services, key=lambda s: s.display_order)
+        return ordered
+
+    async def get_booking_lines(
+        self, booking_id: UUID, requester_id: UUID, requester_role: str
+    ) -> list[BookingLineResponse]:
+        async with self._uow() as uow:
+            booking = await self._booking_for_reader(uow, booking_id, requester_id, requester_role)
+            return [
+                BookingLineResponse(
+                    kind=self._line_kind(line),
+                    name=line.name,
+                    description=line.description,
+                    quantity=line.quantity,
+                    unit=line.unit,
+                    unit_price=line.unit_price,
+                    final_price=line.final_price,
+                    is_addon=bool(line.is_addon),
+                    note=line.notes,
+                )
+                for line in await self._booking_lines(uow, booking)
+            ]
+
+    async def get_invoice_pdf(
+        self, booking_id: UUID, requester_id: UUID, requester_role: str
+    ) -> tuple[bytes, str]:
+        """(pdf bytes, suggested filename) for the booking's invoice."""
+        from sqlalchemy import select
+
+        from app.models.common.balloon_color import BalloonColor
+        from app.services.bookings.invoice_pdf import InvoiceData, InvoiceLine, build_invoice_pdf
+
+        async with self._uow() as uow:
+            booking = await self._booking_for_reader(uow, booking_id, requester_id, requester_role)
+            lines = await self._booking_lines(uow, booking)
+            info = await self._attach_package_info(uow, [booking])
+            package_name, _cover = info.get(booking.package_id, (None, None))
+            celebration = await uow.occasions.celebrations.get_by_id(booking.celebration_id)
+            customer = await uow.users.users.get_by_id(booking.customer_id)
+            address = await uow.users.addresses.get_by_id(booking.address_id) if booking.address_id else None
+            existing = await uow.bookings.invoices.find_by_booking(booking.id)
+
+            venue: list[str] = []
+            if address is not None:
+                venue = [address.address_line_1, address.address_line_2, address.landmark, address.locality,
+                         address.city, address.state, address.postal_code]
+            elif celebration is not None and celebration.venue_address:
+                venue = [celebration.venue_address]
+
+            names: dict[str, str] = {}
+            if booking.balloon_colors:
+                rows = (await uow.session.execute(select(BalloonColor.hex_code, BalloonColor.name))).all()
+                names = {h.lower(): n for h, n in rows}
+            colours = [(names.get(h.lower(), h.upper()), h) for h in (booking.balloon_colors or [])]
+
+            subtotal = Decimal(booking.subtotal)
+            discount = Decimal(booking.discount_amount or 0)
+            number = existing.invoice_number if existing is not None else f"INV-{booking.booking_number}"
+            data = InvoiceData(
+                invoice_number=number,
+                issued_on=(booking.created_at or datetime.now(tz=timezone.utc)).date(),
+                booking_number=booking.booking_number,
+                booking_status=booking.booking_status.value,
+                payment_status=booking.payment_status.value,
+                package_name=package_name,
+                celebration_title=celebration.title if celebration else None,
+                event_date=booking.scheduled_date,
+                start_time=booking.scheduled_start_time,
+                end_time=booking.scheduled_end_time,
+                venue=[v for v in venue if v],
+                customer_name=customer.display_name if customer else None,
+                customer_phone=customer.phone if customer else None,
+                customer_email=customer.email if customer else None,
+                lines=[
+                    InvoiceLine(
+                        kind=self._line_kind(line),
+                        name=line.name,
+                        quantity=line.quantity,
+                        unit=line.unit,
+                        unit_price=Decimal(line.unit_price),
+                        total=Decimal(line.final_price),
+                        note=line.notes,
+                        is_addon=bool(line.is_addon),
+                    )
+                    for line in lines
+                ],
+                subtotal=subtotal,
+                discount=discount,
+                taxable=subtotal - discount,
+                tax=Decimal(booking.tax_amount),
+                platform_fee=Decimal(booking.platform_fee or 0),
+                total=Decimal(booking.total_amount),
+                amount_paid=Decimal(booking.amount_paid or 0),
+                amount_due=Decimal(booking.amount_due or 0),
+                balloon_colors=colours,
+                balloon_finish=booking.balloon_finish,
+                customization_note=booking.customization_note,
+                special_instructions=booking.special_instructions,
+            )
+        return build_invoice_pdf(data), f"{number}.pdf"
 
     async def get_booking_invoice(
         self,

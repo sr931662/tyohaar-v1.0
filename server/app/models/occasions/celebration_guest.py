@@ -5,7 +5,7 @@ CelebrationGuest — guest record for a celebration with RSVP and check-in track
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
@@ -14,15 +14,18 @@ from sqlalchemy import (
     Enum as SAEnum,
     ForeignKey,
     Index,
+    Integer,
+    SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
-from app.models.enums import RSVPStatus
+from app.models.enums import GuestEntryStatus, GuestPassStatus, RSVPStatus
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
@@ -57,6 +60,13 @@ class CelebrationGuest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_celebration_guests_celebration_id", "celebration_id"),
         Index("ix_celebration_guests_user_id", "user_id"),
         Index("ix_celebration_guests_rsvp", "celebration_id", "rsvp_status"),
+        Index("ix_celebration_guests_entry", "celebration_id", "entry_status"),
+        Index("ix_celebration_guests_pass", "celebration_id", "pass_status"),
+        UniqueConstraint(
+            "celebration_id",
+            "client_request_id",
+            name="uq_celebration_guests_client_request",
+        ),
     )
 
     # ── Ownership ─────────────────────────────────────────────────────────────
@@ -141,13 +151,83 @@ class CelebrationGuest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment="True if this guest was added as a companion (+1) by another guest",
     )
 
-    # ── Public RSVP Link ──────────────────────────────────────────────────────
+    # ── Invitation credentials ────────────────────────────────────────────────
+    # Two independent secrets per guest (see services/invitations/credentials):
+    #  * the *link token* — 32 random bytes in the guest's personal invite URL;
+    #    whoever holds it can view the invite, RSVP and display the pass.
+    #  * the *entry code* — 8 characters, shown on the pass and encoded in its
+    #    QR. Useless on its own: only an authorised gate operator can verify it.
+    # Neither is stored in the clear. *_hash is a keyed HMAC used for lookup;
+    # *_enc is a reversible encryption so the host can re-share the same link.
 
-    rsvp_token: Mapped[str | None] = mapped_column(
-        String(64),
-        nullable=True,
-        unique=True,
-        comment="Opaque token for the guest's public (no-auth) RSVP link, shared via WhatsApp/email.",
+    link_token_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True,
+        comment="HMAC-SHA256 of the guest's invite-link token (lookup key).",
+    )
+    link_token_enc: Mapped[str | None] = mapped_column(
+        Text, nullable=True,
+        comment="Fernet-encrypted invite-link token, decryptable for the host only.",
+    )
+    entry_code_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True,
+        comment="HMAC-SHA256 of the normalised gate entry code (lookup key).",
+    )
+    entry_code_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    credentials_rotated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    client_request_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True,
+        comment="Idempotency key from the creating client — a retried create returns the same guest.",
+    )
+
+    # ── Access rules ──────────────────────────────────────────────────────────
+
+    pass_status: Mapped[GuestPassStatus] = mapped_column(
+        SAEnum(GuestPassStatus, name="guest_pass_status", native_enum=False, length=20),
+        nullable=False, default=GuestPassStatus.ACTIVE, server_default="ACTIVE",
+    )
+    plus_ones_allowed: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, default=0, server_default="0",
+        comment="Accompanying guests admitted on this pass in addition to the invitee.",
+    )
+    arrival_window_start: Mapped[time | None] = mapped_column(
+        Time(timezone=False), nullable=True,
+        comment="Expected arrival (time of day on the event date) — informational for the gate.",
+    )
+    arrival_window_end: Mapped[time | None] = mapped_column(Time(timezone=False), nullable=True)
+    vehicle_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
+    # ── Guest's own response (kept apart from the host's private `notes`) ─────
+
+    rsvp_party_size: Mapped[int | None] = mapped_column(
+        SmallInteger, nullable=True,
+        comment="How many people (invitee included) the guest said are coming.",
+    )
+    guest_note: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="Free-text note the guest left with their RSVP."
+    )
+
+    # ── Gate entry ────────────────────────────────────────────────────────────
+
+    entry_status: Mapped[GuestEntryStatus] = mapped_column(
+        SAEnum(GuestEntryStatus, name="guest_entry_status", native_enum=False, length=20),
+        nullable=False, default=GuestEntryStatus.NOT_ARRIVED, server_default="NOT_ARRIVED",
+    )
+    checked_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    checked_in_party_size: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    entry_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+
+    # ── Sharing (only what the host's device confirmed) ───────────────────────
+
+    last_shared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_shared_channel: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    share_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
     )
 
     invitation_opened_at: Mapped[datetime | None] = mapped_column(

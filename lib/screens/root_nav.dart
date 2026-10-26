@@ -1,6 +1,6 @@
 import 'dart:ui';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -26,6 +26,7 @@ import 'notifications_screen.dart';
 import 'manage_address_screen.dart';
 import 'help_screen.dart';
 import 'privacy_policy_screen.dart';
+import '../widgets/adaptive_nav_bar.dart';
 import '../l10n/generated/app_localizations.dart';
 
 /// The app's primary shell: Home, Plans, Invitations and Account, all
@@ -177,7 +178,14 @@ class _RootNavState extends State<RootNav> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // Android's back gesture/button steps back to Home before leaving the
+    // app; an open drawer still closes first (it pops as local history).
+    return PopScope(
+      canPop: _index == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _setIndex(0);
+      },
+      child: Scaffold(
       key: _scaffoldKey,
       // Content flows under the floating dock so the gaps around it show
       // the page behind; each tab's scroll view adds bottom clearance
@@ -237,26 +245,82 @@ class _RootNavState extends State<RootNav> {
           ),
         ],
       ),
-      bottomNavigationBar: _BottomBar(
-        index: _index,
-        onTap: (i) {
-          if (_index == i) {
-            // TODO: Scroll to top or refresh
+      bottomNavigationBar: TyAdaptiveNavBar(
+        destinations: _dockDestinations(AppLocalizations.of(context)!),
+        selectedIndex: _dockSlotForTab(_index),
+        onDestinationSelected: (slot) {
+          if (slot == _invitationsSlot) {
+            _openInvitations();
             return;
           }
-          if (i == 1 || i == 2) {
-            AuthManager.instance.checkAuth(
-              context,
-              action: i == 1 ? AppLocalizations.of(context)!.rootNavActionViewPlans : AppLocalizations.of(context)!.rootNavActionAccessAccount,
-              onAuthenticated: () => _setIndex(i),
-            );
-          } else {
-            _setIndex(i);
-          }
+          _onTabTapped(_tabForDockSlot(slot));
         },
-        onInvitations: _openInvitations,
+      ),
       ),
     );
+  }
+
+  // The dock shows Home, Plans, Invitations, Account. Invitations opens a
+  // pushed screen rather than a tab, so dock slots and IndexedStack pages
+  // differ from slot 2 onwards.
+  static const int _invitationsSlot = 2;
+
+  static int _dockSlotForTab(int tab) => tab >= _invitationsSlot ? tab + 1 : tab;
+
+  static int _tabForDockSlot(int slot) => slot > _invitationsSlot ? slot - 1 : slot;
+
+  static List<TyNavDestination> _dockDestinations(AppLocalizations l10n) => [
+        TyNavDestination(
+          label: l10n.rootNavHomeLabel,
+          icon: Icons.home_outlined,
+          activeIcon: Icons.home_rounded,
+          cupertinoIcon: CupertinoIcons.house,
+          cupertinoActiveIcon: CupertinoIcons.house_fill,
+        ),
+        TyNavDestination(
+          label: l10n.rootNavPlansLabel,
+          icon: Icons.event_note_outlined,
+          activeIcon: Icons.event_note_rounded,
+          cupertinoIcon: CupertinoIcons.square_list,
+          cupertinoActiveIcon: CupertinoIcons.square_list_fill,
+        ),
+        TyNavDestination(
+          label: l10n.rootNavInvitationsLabel,
+          icon: Icons.mail_outline_rounded,
+          activeIcon: Icons.mail_rounded,
+          cupertinoIcon: CupertinoIcons.envelope,
+          cupertinoActiveIcon: CupertinoIcons.envelope_fill,
+        ),
+        TyNavDestination(
+          label: l10n.rootNavAccountLabel,
+          icon: Icons.person_outline_rounded,
+          activeIcon: Icons.person_rounded,
+          cupertinoIcon: CupertinoIcons.person,
+          cupertinoActiveIcon: CupertinoIcons.person_fill,
+        ),
+      ];
+
+  void _onTabTapped(int i) {
+    if (_index == i) {
+      // Re-tapping Home returns it to the top, as both platforms' tab bars do.
+      if (i == 0 && _homeScrollController.hasClients) {
+        _homeScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      return;
+    }
+    if (i == 1 || i == 2) {
+      AuthManager.instance.checkAuth(
+        context,
+        action: i == 1 ? AppLocalizations.of(context)!.rootNavActionViewPlans : AppLocalizations.of(context)!.rootNavActionAccessAccount,
+        onAuthenticated: () => _setIndex(i),
+      );
+    } else {
+      _setIndex(i);
+    }
   }
 }
 
@@ -703,186 +767,6 @@ class _AppSidebar extends StatelessWidget {
             onChanged: (_) => themeController.toggle(),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BottomBar extends StatelessWidget {
-  final int index;
-  final ValueChanged<int> onTap;
-  final VoidCallback onInvitations;
-  const _BottomBar({
-    required this.index,
-    required this.onTap,
-    required this.onInvitations,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final ty = context.ty;
-    final resp = context.resp;
-    final l10n = AppLocalizations.of(context)!;
-    // Hugs the bottom with a sleek gap from the screen's side edges and from
-    // whatever the device reserves at the bottom — the iOS home indicator,
-    // Android's gesture pill or its 3-button bar. viewPadding reports that
-    // reserved height on every device (0 when the system bar sits outside the
-    // app window), and unlike padding it doesn't collapse while the keyboard
-    // is open.
-    const edgeGap = 3.0;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        edgeGap,
-        0,
-        edgeGap,
-        MediaQuery.viewPaddingOf(context).bottom + edgeGap,
-      ),
-      child: Container(
-            height: resp.h(72),
-            decoration: BoxDecoration(
-              color: ty.surface,
-              borderRadius: BorderRadius.circular(resp.w(28)),
-              border: Border.all(color: ty.line2),
-              boxShadow: [
-                BoxShadow(
-                  color: ty.isDark ? Colors.black.withValues(alpha: 0.35) : ty.ink.withValues(alpha: 0.08),
-                  blurRadius: resp.w(20),
-                  offset: Offset(0, resp.h(8)),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                _DockItem(
-                  selected: index == 0,
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home_rounded,
-                  label: l10n.rootNavHomeLabel,
-                  onTap: () => onTap(0),
-                ),
-                _DockItem(
-                  selected: index == 1,
-                  icon: Icons.event_note_outlined,
-                  activeIcon: Icons.event_note_rounded,
-                  label: l10n.rootNavPlansLabel,
-                  onTap: () => onTap(1),
-                ),
-                // Opens a pushed screen rather than switching tabs, so it is
-                // never the selected item.
-                _DockItem(
-                  selected: false,
-                  icon: Icons.mail_outline_rounded,
-                  activeIcon: Icons.mail_rounded,
-                  label: l10n.rootNavInvitationsLabel,
-                  onTap: onInvitations,
-                ),
-                _DockItem(
-                  selected: index == 2,
-                  icon: Icons.person_outline_rounded,
-                  activeIcon: Icons.person_rounded,
-                  label: l10n.rootNavAccountLabel,
-                  onTap: () => onTap(2),
-                ),
-              ],
-            ),
-      ),
-    );
-  }
-}
-
-/// A single dock destination: icon over an always-visible label, with a
-/// "diya glow" halo, gentle icon lift, and a marigold dot when active.
-/// Fixed column layout — nothing expands horizontally, so long labels
-/// simply ellipsize instead of wrapping.
-class _DockItem extends StatelessWidget {
-  final bool selected;
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _DockItem({
-    required this.selected,
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final ty = context.ty;
-    final resp = context.resp;
-    final activeColor = ty.isDark ? ty.saffron : ty.saffronDeep;
-    final color = selected ? activeColor : ty.ink3;
-
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          if (!selected) HapticFeedback.selectionClick();
-          onTap();
-        },
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              height: resp.h(30),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Diya glow halo behind the active icon.
-                  AnimatedScale(
-                    scale: selected ? 1.0 : 0.4,
-                    duration: const Duration(milliseconds: 350),
-                    curve: Curves.easeOutCubic,
-                    child: AnimatedOpacity(
-                      opacity: selected ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 350),
-                      child: Container(
-                        width: resp.w(40),
-                        height: resp.w(40),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              ty.saffron.withValues(alpha: 0.28),
-                              ty.saffron.withValues(alpha: 0.0),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  AnimatedSlide(
-                    offset: selected ? Offset(0, resp.h(-3) / resp.h(30)) : Offset.zero,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                    child: Icon(
-                      selected ? activeIcon : icon,
-                      size: resp.sp(22),
-                      color: color,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: resp.w(2)),
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: resp.sp(9.5),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color: color,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

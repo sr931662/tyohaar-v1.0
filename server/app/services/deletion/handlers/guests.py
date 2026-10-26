@@ -36,6 +36,8 @@ from app.models.invitations.invitation_guest import InvitationGuest
 from app.models.occasions.celebration import Celebration
 from app.models.occasions.celebration_guest import CelebrationGuest
 from app.models.occasions.celebration_guest_history import CelebrationGuestHistory
+from app.models.occasions.gate_access import CelebrationGateAccess
+from app.models.occasions.guest_entry_log import GuestEntryLog
 from app.services.deletion.registry import (
     TIER_LEAF,
     PurgeReport,
@@ -70,6 +72,18 @@ async def purge_guests(
     )
 
     if celebration_ids:
+        # Entry logs carry gate-operator labels (often a person's name) and
+        # gate accesses are the host's own credentials — both go with the list.
+        result = await session.execute(
+            delete(GuestEntryLog).where(GuestEntryLog.celebration_id.in_(celebration_ids))
+        )
+        report.count("guest_entry_logs", result.rowcount or 0)
+        result = await session.execute(
+            delete(CelebrationGateAccess).where(
+                CelebrationGateAccess.celebration_id.in_(celebration_ids)
+            )
+        )
+        report.count("celebration_gate_accesses", result.rowcount or 0)
         # History rows reference the guest — clear them first.
         result = await session.execute(
             delete(CelebrationGuestHistory).where(
@@ -137,6 +151,16 @@ async def purge_expired_guest_pii(
         .all()
     )
     if expired_celebrations:
+        result = await session.execute(
+            delete(GuestEntryLog).where(GuestEntryLog.celebration_id.in_(expired_celebrations))
+        )
+        counts["guest_entry_logs"] = result.rowcount or 0
+        result = await session.execute(
+            delete(CelebrationGateAccess).where(
+                CelebrationGateAccess.celebration_id.in_(expired_celebrations)
+            )
+        )
+        counts["celebration_gate_accesses"] = result.rowcount or 0
         result = await session.execute(
             delete(CelebrationGuestHistory).where(
                 CelebrationGuestHistory.celebration_id.in_(expired_celebrations)

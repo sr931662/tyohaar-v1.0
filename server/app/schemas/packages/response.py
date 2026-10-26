@@ -17,6 +17,7 @@ from decimal import Decimal
 
 from pydantic import ConfigDict, Field
 
+from app.models.enums import CharacterSet
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
     Currency,
@@ -168,6 +169,10 @@ class PackageItemResponse(BaseSchema):
         description="Question shown to the customer for a free-text customisation. "
                     "Used when `choices` is empty.",
     )
+    character_set: CharacterSet = Field(
+        default=CharacterSet.DIGITS,
+        description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
+    )
 
 
 class AttachAllResponse(BaseSchema):
@@ -225,6 +230,10 @@ class PackageServiceResponse(BaseSchema):
         default=None,
         description="Question shown to the customer for a free-text customisation. "
                     "Used when `choices` is empty.",
+    )
+    character_set: CharacterSet = Field(
+        default=CharacterSet.DIGITS,
+        description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
     )
 
 

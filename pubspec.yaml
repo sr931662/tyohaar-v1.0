@@ -45,6 +45,8 @@ dependencies:
   # not just the `dart run flutter_native_splash:create` codegen tool.
   flutter_native_splash: ^2.4.4
   google_sign_in: ^7.2.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.4.2
 
 dev_dependencies:
   flutter_test:

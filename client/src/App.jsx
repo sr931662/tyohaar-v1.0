@@ -67,6 +67,9 @@ const NotificationsPage     = lazy(() => import('./admin/pages/notifications/Not
 const SupportPage           = lazy(() => import('./admin/pages/support/SupportPage.jsx'));
 const SupportDetailPage     = lazy(() => import('./admin/pages/support/SupportDetailPage.jsx'));
 const FeedbackPage          = lazy(() => import('./admin/pages/feedback/FeedbackPage.jsx'));
+const InvitationsPage       = lazy(() => import('./admin/pages/invitations/InvitationsPage.jsx'));
+const ColorsPage            = lazy(() => import('./admin/pages/colors/ColorsPage.jsx'));
+const VendorColorsPage      = lazy(() => import('./vendor/pages/colors/VendorColorsPage.jsx'));
 const MediaPage             = lazy(() => import('./admin/pages/media/MediaPage.jsx'));
 const MultimediaPage        = lazy(() => import('./admin/pages/multimedia/MultimediaPage.jsx'));
 const AdminManagementPage   = lazy(() => import('./admin/pages/admin-mgmt/AdminManagementPage.jsx'));
@@ -201,6 +204,7 @@ export default function App() {
                 <Route path="availability" element={<VendorAvailabilityPage />} />
                 <Route path="multimedia" element={<VendorMultimediaPage />} />
                 <Route path="earnings" element={<VendorEarningsPage />} />
+                <Route path="colors" element={<VendorColorsPage />} />
                 <Route path="reviews" element={<VendorReviewsPage />} />
                 <Route path="reviews/packages" element={<VendorPackageReviewsPage />} />
                 <Route path="notifications" element={<VendorNotificationsPage />} />
@@ -237,6 +241,8 @@ export default function App() {
                 <Route path="support" element={<SupportPage />} />
                 <Route path="support/:id" element={<SupportDetailPage />} />
                 <Route path="feedback" element={<FeedbackPage />} />
+                <Route path="invitations" element={<InvitationsPage />} />
+                <Route path="colors" element={<ColorsPage />} />
                 <Route path="media" element={<MediaPage />} />
                 <Route path="multimedia" element={<MultimediaPage />} />
                 <Route path="admin-management" element={<AdminManagementPage />} />

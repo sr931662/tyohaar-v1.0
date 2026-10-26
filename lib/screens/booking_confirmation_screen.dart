@@ -3,6 +3,7 @@ import '../l10n/generated/app_localizations.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
+import 'booking_detail_screen.dart';
 import 'root_nav.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
@@ -86,6 +87,17 @@ class BookingConfirmationScreen extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              // The same screen the booking list opens: what was booked, the
+              // price breakdown and the PDF invoice.
+              TyButton(
+                l10n.bookingDetailLink,
+                full: true,
+                kind: TyButtonKind.soft,
+                leadingIcon: Icons.receipt_long_rounded,
+                onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => BookingDetailScreen(bookingId: bookingId))),
+              ),
+              const SizedBox(height: 10),
               TyButton(l10n.bookingConfirmationGoToEventHubButtonLabel, full: true, onTap: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const RootNav()),

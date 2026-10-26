@@ -26,6 +26,7 @@ from app.schemas.bookings import (
     BookingDetailResponse,
     BookingFilters,
     BookingInvoiceResponse,
+    BookingLineResponse,
     BookingItemPrepTimeUpdate,
     BookingItemResponse,
     BookingMediaSummary,
@@ -275,6 +276,38 @@ async def get_booking_status_history(
 ) -> SuccessResponse[list[BookingStatusHistoryResponse]]:
     records = await service.get_booking_status_history(booking_id=booking_id)
     return SuccessResponse(data=records, message="Status history retrieved.")
+
+
+async def get_booking_lines(
+    booking_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: BookingServiceDep,
+) -> SuccessResponse[list[BookingLineResponse]]:
+    result = await service.get_booking_lines(
+        booking_id=booking_id, requester_id=current_user.id, requester_role=current_user.role.value
+    )
+    return SuccessResponse(data=result, message="Booking lines retrieved.")
+
+
+async def download_invoice_pdf(
+    booking_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    service: BookingServiceDep,
+):
+    from fastapi import Response
+
+    pdf, filename = await service.get_invoice_pdf(
+        booking_id=booking_id, requester_id=current_user.id, requester_role=current_user.role.value
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # A personal financial document: never cached by a shared proxy.
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 async def get_booking_invoice(

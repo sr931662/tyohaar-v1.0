@@ -32,14 +32,11 @@ VENDOR_ROLES: frozenset[str] = frozenset({"vendor"})
 CUSTOMER_ROLES: frozenset[str] = frozenset({"customer"})
 STAFF_ROLES: frozenset[str] = frozenset({"admin", "super_admin", "support"})
 
-# ── Balloon décor colour palette ──────────────────────────────────────────────
-# Curated list of real, reliably-stockable balloon colours. Deliberately
-# separate from OccasionTheme.colors (which are decor/backdrop styling
-# palettes, not balloon-specific) — a customer picks ONE of these for
-# BookingCreate.balloon_color_mode=SINGLE, or exactly TWO for DUAL. Both the
-# admin/customer Flutter UI and BookingCreate's server-side validation must
-# only ever offer/accept hex values from this list, keeping every choice
-# actually deliverable by a vendor.
+# ── Balloon décor colour palette (seed data) ──────────────────────────────────
+# The palette is managed in the admin portal and lives in the `balloon_colors`
+# table; this list is only the initial seed written by the migration (and a
+# fallback for tests). Booking validation and the app read the table, so edit
+# colours in the portal, not here.
 BALLOON_COLOR_PALETTE: dict[str, str] = {
     "Red": "#E63946",
     "Gold": "#D4AF37",

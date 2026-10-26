@@ -146,6 +146,19 @@ class Settings(BaseSettings):
     # until this is set, matching the existing SMS/email/WhatsApp behavior.
     FIREBASE_CREDENTIALS_JSON: str = ""
 
+    # ── Guest invitations & gate entry ───────────────────────────────────────
+    # Origin the guest invite / gate console links are built on, e.g.
+    # "https://api.tyohaar.co". Blank → derived from the incoming request
+    # (honouring X-Forwarded-Proto/Host), which is right behind most proxies.
+    PUBLIC_BASE_URL: str = ""
+    # Celebrations store a naive date + time-of-day; this is the zone they are
+    # interpreted in when deciding whether a pass is inside its entry window.
+    EVENT_TIMEZONE: str = "Asia/Kolkata"
+    # Optional dedicated key for encrypting stored invite links / entry codes
+    # and keying their lookup hashes. Blank → derived from SECRET_KEY. Changing
+    # it invalidates every outstanding guest link and entry code.
+    INVITATION_TOKEN_KEY: str = ""
+
     # ── Properties ───────────────────────────────────────────────────────────
 
     @property

@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/api_client.dart';
+import '../utils/whatsapp.dart';
 import '../data/models.dart';
 import '../data/services/celebration_service.dart';
 import '../widgets/avatar.dart';
@@ -90,11 +91,13 @@ class _SendInvitationsScreenState extends State<SendInvitationsScreen> {
   }
 
   Future<void> _sendWhatsApp(Guest g) async {
-    final message = Uri.encodeComponent(_inviteMessage(context, g));
-    final phone = g.phone?.replaceAll(RegExp(r'[^0-9+]'), '');
-    if (phone != null && phone.isNotEmpty) {
-      final uri = Uri.parse('https://wa.me/$phone?text=$message');
-      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // wa.me needs a digits-only international number — a '+' or a bare local
+    // number makes WhatsApp reject the link. whatsAppNumber() normalises it.
+    if (whatsAppNumber(g.phone) != null) {
+      final opened = await launchUrl(
+        whatsAppLink(g.phone, _inviteMessage(context, g)),
+        mode: LaunchMode.externalApplication,
+      );
       if (opened) {
         setState(() => _sent.add(g.id));
         return;

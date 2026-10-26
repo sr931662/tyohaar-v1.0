@@ -87,8 +87,8 @@ class BookingService {
   }
 
   Future<List<Booking>> listByCelebration(String celebrationId) async {
-    final response = await _api.dio
-        .get('bookings', queryParameters: {'celebration_id': celebrationId});
+    final response =
+        await _api.dio.get('bookings', queryParameters: {'celebration_id': celebrationId});
     final List list = (response.data['data'] ?? []) as List;
     return list.map((item) => Booking.fromJson(item)).toList();
   }
@@ -101,6 +101,35 @@ class BookingService {
   Future<Booking> getBookingDetails(String id) async {
     final response = await _api.dio.get('bookings/$id');
     return Booking.fromJson(response.data['data']);
+  }
+
+  /// The booking exactly as the API returns it — includes subtotal, discount,
+  /// tax, balloon colours and finish, which the lighter [Booking] model skips.
+  Future<Map<String, dynamic>> getBookingDetailJson(String id) async {
+    final response = await _api.dio.get('bookings/$id');
+    return Map<String, dynamic>.from(response.data['data'] as Map);
+  }
+
+  /// Every priced item/service, labelled rental / keep / service.
+  Future<List<BookingLine>> getBookingLines(String id) async {
+    final response = await _api.dio.get('bookings/$id/lines');
+    return ((response.data['data'] ?? []) as List)
+        .map((e) => BookingLine.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// The invoice as PDF bytes plus the server's suggested file name.
+  Future<InvoiceFile> downloadInvoicePdf(String id) async {
+    final response = await _api.dio.get<List<int>>(
+      'bookings/$id/invoice.pdf',
+      options: Options(responseType: ResponseType.bytes, headers: {'Accept': 'application/pdf'}),
+    );
+    final disposition = response.headers.value('content-disposition') ?? '';
+    final match = RegExp(r'filename="?([^";]+)"?').firstMatch(disposition);
+    return InvoiceFile(
+      bytes: response.data ?? const [],
+      filename: match?.group(1) ?? 'invoice.pdf',
+    );
   }
 
   Future<BookingCancellation> requestCancellation({
@@ -139,12 +168,50 @@ class BookingCancellation {
       id: json['id'] as String,
       bookingId: json['booking_id'] as String,
       reason: json['reason'] as String,
-      cancellationFee: json['cancellation_fee'] != null
-          ? asDouble(json['cancellation_fee'])
-          : null,
-      refundAmount: json['refund_amount'] != null
-          ? asDouble(json['refund_amount'])
-          : null,
+      cancellationFee: json['cancellation_fee'] != null ? asDouble(json['cancellation_fee']) : null,
+      refundAmount: json['refund_amount'] != null ? asDouble(json['refund_amount']) : null,
     );
   }
+}
+
+class InvoiceFile {
+  final List<int> bytes;
+  final String filename;
+  const InvoiceFile({required this.bytes, required this.filename});
+}
+
+/// One priced line on a booking, as snapshotted when it was booked.
+class BookingLine {
+  /// "rental" | "keep" | "service"
+  final String kind;
+  final String name;
+  final int quantity;
+  final String? unit;
+  final double unitPrice;
+  final double finalPrice;
+  final bool isAddon;
+  // What the customer asked for on a customisable line, e.g. "ANITA 30".
+  final String? note;
+
+  const BookingLine({
+    required this.kind,
+    required this.name,
+    required this.quantity,
+    this.unit,
+    required this.unitPrice,
+    required this.finalPrice,
+    this.isAddon = false,
+    this.note,
+  });
+
+  factory BookingLine.fromJson(Map<String, dynamic> json) => BookingLine(
+        kind: json['kind'] as String? ?? 'keep',
+        name: json['name'] as String? ?? '',
+        quantity: json['quantity'] as int? ?? 1,
+        unit: json['unit'] as String?,
+        unitPrice: asDouble(json['unit_price']),
+        finalPrice: asDouble(json['final_price']),
+        isAddon: json['is_addon'] as bool? ?? false,
+        note: json['note'] as String?,
+      );
 }

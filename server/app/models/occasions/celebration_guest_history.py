@@ -13,7 +13,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Index, func
+from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Index, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -65,6 +66,21 @@ class CelebrationGuestHistory(UUIDPrimaryKeyMixin, Base):
 
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    # ── Who did it (NULL on rows written before actors were recorded) ─────────
+    # actor_type is "host" | "guest" | "gate_access" | "admin" | "system".
+    actor_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    actor_label: Mapped[str | None] = mapped_column(
+        String(120), nullable=True,
+        comment="Human label for the actor, e.g. a gate access name — never a secret.",
+    )
+    details: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True,
+        comment="Event specifics: changed field names, share channel, revoke reason, party size.",
     )
 
     def __repr__(self) -> str:

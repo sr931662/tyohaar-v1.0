@@ -8,6 +8,7 @@ from app.core.config import settings
 
 # HSTS header value — 1 year, include subdomains.
 _HSTS_VALUE = "max-age=31536000; includeSubDomains"
+_CAMERA_PAGE_SUFFIX = "/public/gate/page"
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -34,8 +35,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # The gate console scans pass QR codes with the device camera; it is
+        # the one page allowed to ask for it (same-origin only).
+        camera = "(self)" if request.url.path.endswith(_CAMERA_PAGE_SUFFIX) else "()"
         response.headers["Permissions-Policy"] = (
-            "geolocation=(), microphone=(), camera=()"
+            f"geolocation=(), microphone=(), camera={camera}"
         )
 
         if self._is_production:

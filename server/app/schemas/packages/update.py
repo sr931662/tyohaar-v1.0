@@ -15,7 +15,7 @@ from typing import Annotated
 from pydantic import Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
-from app.models.enums import Currency, PackagePricingType, PackageStatus, PackageUnit
+from app.models.enums import CharacterSet, Currency, PackagePricingType, PackageStatus, PackageUnit
 from app.schemas.packages.common import PriceTierSchema
 
 
@@ -127,6 +127,10 @@ class PackageItemUpdate(BaseSchema):
                     "(e.g. 'Which characters do you need?' on a marquee letter set). "
                     "Used when `choices` is empty.",
     )
+    character_set: CharacterSet | None = Field(
+        default=None,
+        description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
+    )
 
 
 class PackageServiceUpdate(BaseSchema):
@@ -155,6 +159,10 @@ class PackageServiceUpdate(BaseSchema):
         description="Question shown to the customer for a free-text customisation "
                     "(e.g. 'Which characters do you need?' on a marquee letter set). "
                     "Used when `choices` is empty.",
+    )
+    character_set: CharacterSet | None = Field(
+        default=None,
+        description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
     )
 
 

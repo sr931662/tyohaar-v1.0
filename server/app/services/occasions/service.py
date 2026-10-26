@@ -205,6 +205,32 @@ class CelebrationNoteResponse(_BaseSchema):
     created_at: _datetime
 
 
+def _guest_response(guest) -> CelebrationGuestResponse:
+    """
+    Owner-facing guest view. The link token is no longer stored in the clear;
+    it is decrypted here so existing app builds that assemble the invite link
+    from `rsvp_token` keep working (the legacy link route resolves it).
+    """
+    from app.services.invitations.credentials import decrypt
+
+    response = CelebrationGuestResponse.model_validate(guest)
+    response.rsvp_token = decrypt(guest.link_token_enc)
+    return response
+
+
+def _legacy_rsvp_view(view) -> GuestRSVPPublicResponse:
+    return GuestRSVPPublicResponse(
+        guest_name=view.guest_name,
+        rsvp_status=view.rsvp_status,
+        can_still_respond=view.can_respond,
+        celebration_title=view.celebration_title,
+        celebration_date=view.celebration_date,
+        venue_name=view.venue_name,
+        venue_address=view.venue_address,
+        theme_colors=view.theme_colors,
+    )
+
+
 class OccasionService(BaseService):
     def __init__(self, session_factory=AsyncSessionLocal) -> None:
         super().__init__(session_factory)
@@ -513,22 +539,22 @@ class OccasionService(BaseService):
         user_id: UUID,
         data: CelebrationGuestCreate,
     ) -> CelebrationGuestResponse:
-        import secrets
         from app.models.enums import GuestHistoryEventType
+        from app.services.invitations.credentials import issue_guest_credentials
 
         async with self._uow() as uow:
             await validate_celebration_ownership(celebration_id, user_id, uow)
             await validate_guest_limit(celebration_id, uow)
             payload = data.model_dump(exclude_unset=True)
             payload["celebration_id"] = celebration_id
-            payload["rsvp_token"] = secrets.token_urlsafe(24)
+            payload.update(issue_guest_credentials())
             guest = await uow.occasions.guests.create_from_dict(payload)
             await self._write_guest_history(
                 uow, guest_id=guest.id, celebration_id=celebration_id,
                 event_type=GuestHistoryEventType.INVITED,
             )
             await uow.commit()
-            return CelebrationGuestResponse.model_validate(guest)
+            return _guest_response(guest)
 
     async def update_guest(
         self,
@@ -553,7 +579,7 @@ class OccasionService(BaseService):
                     previous_status=previous_status, new_status=guest.rsvp_status,
                 )
             await uow.commit()
-            return CelebrationGuestResponse.model_validate(guest)
+            return _guest_response(guest)
 
     async def remove_guest(
         self,
@@ -576,7 +602,7 @@ class OccasionService(BaseService):
         async with self._uow() as uow:
             await validate_celebration_ownership(celebration_id, user_id, uow)
             guests = await uow.occasions.guests.find_by_celebration(celebration_id)
-            return [CelebrationGuestResponse.model_validate(g) for g in guests]
+            return [_guest_response(g) for g in guests]
 
     async def list_guest_history(
         self,
@@ -591,100 +617,20 @@ class OccasionService(BaseService):
     # ── Public RSVP (no auth — reached via the guest's shared link) ────────────
 
     async def get_guest_rsvp(self, token: str) -> GuestRSVPPublicResponse:
-        from datetime import date, datetime, timezone
+        """Legacy JSON endpoint behind links shared before guest passes existed."""
+        from app.services.invitations.service import InvitationService
 
-        from app.services.occasions.exceptions import GuestNotFoundError
-
-        async with self._uow() as uow:
-            guest = await uow.occasions.guests.find_by_rsvp_token(token)
-            if guest is None:
-                raise GuestNotFoundError(token)
-
-            celebration = await uow.occasions.celebrations.get_by_id(guest.celebration_id)
-            if celebration is None:
-                raise GuestNotFoundError(token)
-
-            if guest.invitation_opened_at is None:
-                guest = await uow.occasions.guests.update(
-                    guest, {"invitation_opened_at": datetime.now(tz=timezone.utc)}
-                )
-                from app.models.enums import GuestHistoryEventType
-                await self._write_guest_history(
-                    uow, guest_id=guest.id, celebration_id=guest.celebration_id,
-                    event_type=GuestHistoryEventType.INVITATION_OPENED,
-                )
-                await uow.commit()
-
-            can_still_respond = date.today() < celebration.celebration_date
-
-            theme_colors = celebration.custom_theme_colors
-            if celebration.theme_id:
-                theme = await uow.occasions.themes.get_by_id(celebration.theme_id)
-                if theme:
-                    theme_colors = theme.colors
-
-            return GuestRSVPPublicResponse(
-                guest_name=guest.name,
-                rsvp_status=guest.rsvp_status,
-                can_still_respond=can_still_respond,
-                celebration_title=celebration.title,
-                celebration_date=celebration.celebration_date,
-                venue_name=celebration.venue_name,
-                venue_address=celebration.venue_address,
-                theme_colors=theme_colors,
-            )
+        view = await InvitationService(self._session_factory).public_view(token)
+        return _legacy_rsvp_view(view)
 
     async def submit_guest_rsvp(self, token: str, data: GuestRSVPSubmit) -> GuestRSVPPublicResponse:
-        from datetime import date, datetime, timezone
+        from app.schemas.invitations import PublicRSVPSubmit
+        from app.services.invitations.service import InvitationService
 
-        from app.services.exceptions import BusinessRuleError
-        from app.services.occasions.exceptions import GuestNotFoundError
-
-        async with self._uow() as uow:
-            guest = await uow.occasions.guests.find_by_rsvp_token(token)
-            if guest is None:
-                raise GuestNotFoundError(token)
-
-            celebration = await uow.occasions.celebrations.get_by_id(guest.celebration_id)
-            if celebration is None:
-                raise GuestNotFoundError(token)
-
-            # Guests may respond (or change their response) up to the day
-            # before the event — matches the "coming/maybe/pending/ignored,
-            # changeable up to a day before" requirement.
-            if date.today() >= celebration.celebration_date:
-                raise BusinessRuleError("The RSVP window for this event has closed.")
-
-            now = datetime.now(tz=timezone.utc)
-            previous_status = guest.rsvp_status
-            update_payload = {
-                "rsvp_status": data.rsvp_status,
-                "rsvp_responded_at": now,
-            }
-            if data.notes:
-                update_payload["notes"] = data.notes
-            if guest.invitation_opened_at is None:
-                update_payload["invitation_opened_at"] = now
-
-            guest = await uow.occasions.guests.update(guest, update_payload)
-
-            from app.models.enums import GuestHistoryEventType
-            await self._write_guest_history(
-                uow, guest_id=guest.id, celebration_id=guest.celebration_id,
-                event_type=GuestHistoryEventType.RSVP_CHANGED,
-                previous_status=previous_status, new_status=guest.rsvp_status,
-            )
-            await uow.commit()
-
-            return GuestRSVPPublicResponse(
-                guest_name=guest.name,
-                rsvp_status=guest.rsvp_status,
-                can_still_respond=date.today() < celebration.celebration_date,
-                celebration_title=celebration.title,
-                celebration_date=celebration.celebration_date,
-                venue_name=celebration.venue_name,
-                venue_address=celebration.venue_address,
-            )
+        view = await InvitationService(self._session_factory).public_rsvp(
+            token, PublicRSVPSubmit(rsvp_status=data.rsvp_status, note=data.notes)
+        )
+        return _legacy_rsvp_view(view)
 
     # ── 5. Celebration Checklist ───────────────────────────────────────────────
 

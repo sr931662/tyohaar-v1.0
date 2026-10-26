@@ -14,6 +14,7 @@ import '../widgets/state_screens.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
 import 'event_hub_screen.dart';
 import 'cancel_booking_screen.dart';
+import 'booking_detail_screen.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -235,21 +236,41 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               ],
             ),
           ),
-          if (isCancellable) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () async {
-                  final cancelled = await Navigator.of(context).push<bool>(
-                      MaterialPageRoute(builder: (_) => CancelBookingScreen(booking: b)));
-                  if (cancelled == true) _loadBookings();
-                },
-                child: Text(l10n.cancelBookingTitle,
-                    style: TyType.sans(12.5, color: ty.rose, weight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // What was booked (rental / keep / service) and the PDF invoice.
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => BookingDetailScreen(bookingId: b.id))),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.receipt_long_rounded, size: 16, color: ty.saffronDeep),
+                    const SizedBox(width: 6),
+                    Text(l10n.bookingDetailLink,
+                        style: TyType.sans(12.5, color: ty.saffronDeep, weight: FontWeight.w700)),
+                  ]),
+                ),
               ),
-            ),
-          ],
+              if (isCancellable)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () async {
+                    final cancelled = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(builder: (_) => CancelBookingScreen(booking: b)));
+                    if (cancelled == true) _loadBookings();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(l10n.cancelBookingTitle,
+                        style: TyType.sans(12.5, color: ty.rose, weight: FontWeight.w700)),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
