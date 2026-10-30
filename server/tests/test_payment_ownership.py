@@ -94,6 +94,8 @@ def _make(monkeypatch, status=PaymentStatus.PENDING):
         id=payment.booking_id,
         booking_status=None,
         payment_status=PaymentStatus.PENDING,
+        amount_paid=Decimal("0.00"),
+        amount_due=Decimal("500.00"),
         applied_coupon_ids=None,
     )
     attempt = SimpleNamespace(id=uuid.uuid4())

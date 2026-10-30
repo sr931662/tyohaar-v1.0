@@ -48,6 +48,7 @@ from app.services.payments.constants import (
     WEBHOOK_FAILURE_EVENTS,
     WEBHOOK_SUCCESS_EVENTS,
 )
+from app.services.common.finance_settings import read_gst_enabled
 from app.services.payments.exceptions import (
     CouponNotFoundError,
     InvalidGatewaySignatureError,
@@ -196,6 +197,28 @@ def _rupees_to_paise(amount: Decimal) -> int:
     return int((amount * 100).to_integral_value())
 
 
+def _booking_settled_by_capture(booking, payment, now: datetime) -> dict:
+    """
+    The booking columns a captured payment changes — shared by the webhook and
+    the client-verify path so a booking reads the same whichever lands first.
+
+    Besides flipping payment_status and confirming a PENDING booking, this
+    records the money: amount_paid grows by what was captured and amount_due
+    drops to zero, since the payment is the charge for the whole booking. These
+    two used to stay at 0 / total after a successful payment, so a paid
+    booking still showed its full amount as outstanding.
+    """
+    updates: dict = {
+        "payment_status": PaymentStatus.COMPLETED,
+        "amount_paid": Decimal(booking.amount_paid or 0) + Decimal(payment.final_amount),
+        "amount_due": Decimal("0.00"),
+    }
+    if booking.booking_status == BookingStatus.PENDING:
+        updates["booking_status"] = BookingStatus.CONFIRMED
+        updates["confirmed_at"] = now
+    return updates
+
+
 async def _notify_payment_outcome(
     payer_id: uuid.UUID,
     is_success: bool,
@@ -289,6 +312,12 @@ class PaymentService(BaseService):
         )
         validate_gateway_supported(gateway_value)
 
+        # Build the gateway client before anything is written: with the
+        # credentials unset this raises straight away, instead of leaving a
+        # PENDING payment, a ledger row and a consumed referral grant behind
+        # for an order that can never be created.
+        razorpay_client = _razorpay_client() if gateway_value == "razorpay" else None
+
         payment_number = generate_payment_reference()
 
         payment_obj: object = None
@@ -299,6 +328,8 @@ class PaymentService(BaseService):
                 raise NotFoundError("Booking", str(booking_id))
             if booking.customer_id != customer_id:
                 raise BusinessRuleError("Booking does not belong to this customer.")
+            if booking.payment_status == PaymentStatus.COMPLETED:
+                raise BusinessRuleError("This booking has already been paid.")
 
             # booking.total_amount is already subtotal − discount + tax + fee,
             # i.e. the full charge, so it is the base here.
@@ -324,7 +355,10 @@ class PaymentService(BaseService):
                 )
 
             platform_fee = calculate_platform_fee(base_amount)
-            gst = calculate_gst(platform_fee)
+            # GST on the platform fee follows the admin finance switch too.
+            gst = Decimal("0.00")
+            if platform_fee > 0 and await read_gst_enabled(uow):
+                gst = calculate_gst(platform_fee)
             tax_amount = gst
 
             discount_amount = Decimal("0.00")
@@ -391,10 +425,9 @@ class PaymentService(BaseService):
         # Side effect (real gateway order creation) happens after commit so a
         # gateway outage never rolls back the Payment/ledger rows above.
         gateway_order_id = f"order_{payment_number.lower()}"
-        if gateway_value == "razorpay":
-            client = _razorpay_client()
+        if razorpay_client is not None:
             try:
-                order = client.order.create({
+                order = razorpay_client.order.create({
                     "amount": _rupees_to_paise(payment_obj.final_amount),
                     "currency": payment_obj.currency.value if hasattr(payment_obj.currency, "value") else str(payment_obj.currency),
                     "receipt": payment_number,
@@ -591,12 +624,9 @@ class PaymentService(BaseService):
 
                     booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
                     if booking is not None:
-                        updates = {"payment_status": PaymentStatus.COMPLETED}
-                        # Auto-confirm booking if it was PENDING
-                        if booking.booking_status == BookingStatus.PENDING:
-                            updates["booking_status"] = BookingStatus.CONFIRMED
-                            updates["confirmed_at"] = now
-                        await uow.bookings.bookings.update(booking, updates)
+                        await uow.bookings.bookings.update(
+                            booking, _booking_settled_by_capture(booking, payment, now)
+                        )
 
                     payment_outcome = (payment.payer_id, True, payment.payment_number, payment.final_amount)
                     referral_trigger = (payment.payer_id, payment.final_amount, payment.booking_id)
@@ -702,6 +732,10 @@ class PaymentService(BaseService):
 
             # For Razorpay: HMAC is over "order_id|payment_id"
             order_id = payment.gateway_order_id or ""
+            if not order_id:
+                # No gateway order was ever created for this payment, so there
+                # is nothing a signature could be a signature of.
+                raise InvalidGatewaySignatureError()
             raw = f"{order_id}|{gateway_payment_id}".encode("utf-8")
             if not verify_webhook_signature(raw, gateway_signature, secret, gateway):
                 # Only now is a FAILED row the final word: without a valid
@@ -758,12 +792,9 @@ class PaymentService(BaseService):
 
             booking = await uow.bookings.bookings.get_by_id(payment.booking_id)
             if booking is not None:
-                updates = {"payment_status": PaymentStatus.COMPLETED}
-                # Auto-confirm booking if it was PENDING
-                if booking.booking_status == BookingStatus.PENDING:
-                    updates["booking_status"] = BookingStatus.CONFIRMED
-                    updates["confirmed_at"] = now
-                await uow.bookings.bookings.update(booking, updates)
+                await uow.bookings.bookings.update(
+                    booking, _booking_settled_by_capture(booking, payment, now)
+                )
 
             payer_id = payment.payer_id
             payment_number = payment.payment_number

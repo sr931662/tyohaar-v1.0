@@ -144,6 +144,12 @@ def verify_webhook_signature(
     bypass signature checking entirely.
     """
     if gateway.lower() == "razorpay":
+        # An unset secret is a valid HMAC key (b""), so without this guard
+        # anyone could sign a forged "payment.captured" with an empty key
+        # while the Razorpay credentials are still blank and mark a booking
+        # paid. No secret, or no signature, means nothing can be verified.
+        if not secret or not signature:
+            return False
         expected = hmac.new(
             secret.encode("utf-8"),
             payload,

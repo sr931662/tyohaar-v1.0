@@ -216,7 +216,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             child: Column(children: [
               _money(ty, l10n.bookingDetailSubtotal, _n('subtotal')),
               if (discount > 0) _money(ty, l10n.bookingDetailDiscount, -discount),
-              _money(ty, l10n.bookingDetailGst, _n('tax_amount')),
+              if (_n('tax_amount') > 0) _money(ty, l10n.bookingDetailGst, _n('tax_amount')),
               const Divider(height: 20),
               _money(ty, l10n.bookingDetailTotal, _n('total_amount'), bold: true),
               if (_n('amount_paid') > 0) _money(ty, l10n.bookingDetailPaid, _n('amount_paid')),

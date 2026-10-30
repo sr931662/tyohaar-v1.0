@@ -11,6 +11,7 @@ from fastapi import Depends
 
 from app.core.dependencies import CommonServiceDep
 from app.core.pagination import CursorPaginationParams, get_cursor_pagination
+from app.schemas.common.response import FinanceSettingsResponse, FinanceSettingsUpdate
 from app.core.permissions import AdminDep
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
@@ -313,6 +314,26 @@ async def delete_setting(
 ) -> SuccessResponse[None]:
     await service.delete_setting(key=key, admin_id=admin.id)
     return SuccessResponse(data=None, message="Setting deleted.")
+
+
+# ── Finance settings ──────────────────────────────────────────────────────────
+
+async def get_finance_settings(
+    service: CommonServiceDep,
+) -> SuccessResponse[FinanceSettingsResponse]:
+    result = await service.get_finance_settings()
+    return SuccessResponse(data=result, message="Finance settings retrieved.")
+
+
+async def update_finance_settings(
+    body: FinanceSettingsUpdate,
+    admin: AdminDep,
+    service: CommonServiceDep,
+) -> SuccessResponse[FinanceSettingsResponse]:
+    result = await service.update_finance_settings(
+        gst_enabled=body.gst_enabled, admin_id=admin.id
+    )
+    return SuccessResponse(data=result, message="Finance settings saved.")
 
 
 # ── Terms & Privacy ───────────────────────────────────────────────────────────

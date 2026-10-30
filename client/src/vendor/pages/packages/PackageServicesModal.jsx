@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
 import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
+import { EMPTY_SERVICE, buildServiceBody, serviceToForm, apiErrorMessage, ServiceCustomizationFields } from './serviceForm';
 
 // ── Package Services Modal ──────────────────────────────────────────────────────
 // Mirrors PackageItemsModal exactly, minus the returnable flag (doesn't apply
@@ -15,7 +16,7 @@ export default function PackageServicesModal({ pkg, onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newService, setNewService] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' });
+  const [newService, setNewService] = useState({ ...EMPTY_SERVICE });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [managingImagesFor, setManagingImagesFor] = useState(null);
   const [attachingId, setAttachingId] = useState('');
@@ -34,37 +35,37 @@ export default function PackageServicesModal({ pkg, onClose }) {
 
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.addService(pkg.id, { ...body, package_id: pkg.id }),
-    onSuccess: () => { toast.success('Service added.'); invalidate(); setNewService({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' }); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add service.'),
+    onSuccess: () => { toast.success('Service added.'); invalidate(); setNewService({ ...EMPTY_SERVICE }); },
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to add service.')),
   });
 
   const attachMutation = useMutation({
     mutationFn: (serviceId) => vendorPackagesApi.attachCommonService(pkg.id, serviceId),
     onSuccess: () => { toast.success('Common service attached.'); invalidate(); setAttachingId(''); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to attach service.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to attach service.')),
   });
 
   const detachMutation = useMutation({
     mutationFn: (serviceId) => vendorPackagesApi.detachCommonService(pkg.id, serviceId),
     onSuccess: () => { toast.success('Common service detached.'); invalidate(); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to detach service.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to detach service.')),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ serviceId, body }) => vendorPackagesApi.updateService(pkg.id, serviceId, body),
     onSuccess: () => { toast.success('Service updated.'); invalidate(); setEditingId(null); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to update service.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update service.')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (serviceId) => vendorPackagesApi.deleteService(pkg.id, serviceId),
     onSuccess: () => { toast.success('Service removed.'); invalidate(); setConfirmDelete(null); },
-    onError: () => toast.error('Failed to remove service.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to remove service.')),
   });
 
   const startEdit = (service) => {
     setEditingId(service.id);
-    setEditForm({ name: service.name, description: service.description ?? '', quantity: service.quantity, max_quantity: service.max_quantity ?? '', unit: service.unit ?? '', base_price: service.base_price, is_mandatory: service.is_mandatory, cover_image_url: service.cover_image_url ?? '' });
+    setEditForm(serviceToForm(service));
   };
 
   const setNF = (k, v) => setNewService((f) => ({ ...f, [k]: v }));
@@ -74,31 +75,12 @@ export default function PackageServicesModal({ pkg, onClose }) {
     e.preventDefault();
     if (!newService.name.trim()) return toast.error('Service name is required.');
     if (!newService.base_price || isNaN(Number(newService.base_price))) return toast.error('Enter a valid price.');
-    addMutation.mutate({
-      ...newService,
-      quantity: Number(newService.quantity),
-      max_quantity: newService.max_quantity !== '' ? Number(newService.max_quantity) : undefined,
-      base_price: Number(newService.base_price),
-      unit: newService.unit || undefined,
-      description: newService.description || undefined,
-      cover_image_url: newService.cover_image_url || undefined,
-    });
+    addMutation.mutate(buildServiceBody(newService, { isUpdate: false }));
   };
 
   const handleUpdate = (serviceId) => {
     if (!editForm.name.trim()) return toast.error('Service name is required.');
-    updateMutation.mutate({
-      serviceId,
-      body: {
-        ...editForm,
-        quantity: Number(editForm.quantity),
-        max_quantity: editForm.max_quantity !== '' ? Number(editForm.max_quantity) : null,
-        base_price: Number(editForm.base_price),
-        unit: editForm.unit || undefined,
-        description: editForm.description || undefined,
-        cover_image_url: editForm.cover_image_url || null,
-      },
-    });
+    updateMutation.mutate({ serviceId, body: buildServiceBody(editForm, { isUpdate: true }) });
   };
 
   const isLocked = pkg.status === 'pending_review';
@@ -150,6 +132,7 @@ export default function PackageServicesModal({ pkg, onClose }) {
                   </div>
                   <div>
                     <input className="admin-input" type="number" min={editForm.quantity || 1} value={editForm.max_quantity} onChange={(e) => setEF('max_quantity', e.target.value)} placeholder="Max customer can pick (optional)" />
+                  <ServiceCustomizationFields form={editForm} set={setEF} />
                     <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>Leave blank for no cap — e.g. cap photographers at 3.</p>
                   </div>
                   <input className="admin-input" value={editForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
@@ -263,6 +246,7 @@ export default function PackageServicesModal({ pkg, onClose }) {
                 </div>
                 <div>
                   <input className="admin-input" type="number" min={newService.quantity || 1} value={newService.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max customer can pick (optional)" />
+            <ServiceCustomizationFields form={newService} set={setNF} />
                   <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>Leave blank for no cap. More gallery photos can be added after creating the service.</p>
                 </div>
                 <input className="admin-input" value={newService.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />
@@ -330,7 +314,7 @@ function PackageServiceImagesModal({ pkgId, service, onClose, onChanged }) {
   const addMutation = useMutation({
     mutationFn: (imageUrl) => vendorPackagesApi.addServiceImage(pkgId, service.id, { image_url: imageUrl }),
     onSuccess: () => { toast.success('Image added.'); invalidate(); setUploadUrl(''); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add image.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to add image.')),
   });
 
   const deleteMutation = useMutation({

@@ -43,6 +43,7 @@ from app.services.bookings.constants import (
     MAX_CUSTOMIZATION_DIGITS,
     MAX_CUSTOMIZATION_LENGTH,
 )
+from app.services.common.finance_settings import GST_RATE, read_gst_enabled
 from app.services.bookings.helpers import (
     compute_booking_amounts,
     digit_quantity,
@@ -349,7 +350,17 @@ class BookingService(BaseService):
             # Tax is computed on the post-discount taxable base, matching what
             # invoice generation already assumes (taxable_amount = subtotal -
             # discount_amount) — see verify_payment's invoice block.
-            amounts = compute_booking_amounts(subtotal, discount_amount, platform_fee=platform_fee)
+            #
+            # GST is charged only while the admin's finance switch is on; with
+            # it off the rate is zero, so tax_amount is 0 and the total is the
+            # post-discount subtotal.
+            gst_on = await read_gst_enabled(uow)
+            amounts = compute_booking_amounts(
+                subtotal,
+                discount_amount,
+                platform_fee=platform_fee,
+                tax_rate=GST_RATE if gst_on else Decimal("0"),
+            )
             subtotal = amounts["subtotal"]
             discount_amount = amounts["discount"]
             taxable_amount = amounts["taxable"]

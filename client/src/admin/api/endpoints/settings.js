@@ -14,6 +14,13 @@ export const settingsApi = {
   deleteSetting: (key) =>
     apiClient.delete(`/common/settings/${key}`).then(extractData),
 
+  // Finance switches (GST). GET is public — the apps read it to price a plan.
+  getFinanceSettings: () =>
+    apiClient.get('/common/finance-settings').then(extractData),
+
+  updateFinanceSettings: (body) =>
+    apiClient.put('/common/finance-settings', body).then(extractData),
+
   // Banners
   listAllBanners: () =>
     apiClient.get('/common/banners/admin/all').then(extractList),

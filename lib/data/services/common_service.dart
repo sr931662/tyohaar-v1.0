@@ -138,6 +138,20 @@ class FaqItem {
 class CommonService {
   final ApiClient _api = ApiClient();
 
+  /// Whether the admin has switched GST on (Settings → Finance). The backend
+  /// is the authority on what a booking is charged; this only lets the plan
+  /// preview agree with it. Off when unreachable, matching the server default.
+  Future<bool> isGstEnabled() async {
+    try {
+      final response = await _api.dio
+          .get('common/finance-settings', options: _cacheable(ttl: const Duration(minutes: 2)));
+      final data = response.data['data'] as Map<String, dynamic>?;
+      return data?['gst_enabled'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<TermsVersion> getTerms() async {
     final response = await _api.dio.get('common/terms', options: _cacheable());
     return TermsVersion.fromJson(response.data['data'] as Map<String, dynamic>);

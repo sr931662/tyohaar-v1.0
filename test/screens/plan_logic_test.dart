@@ -8,13 +8,27 @@ import 'package:tyohaar/utils/currency.dart';
 /// rounding, the other side's test fails too.
 void main() {
   group('PlanPricing matches the server', () {
-    PlanPricing p({int base = 0, int included = 0, int addOns = 0, int discount = 0}) =>
+    PlanPricing p({int base = 0, int included = 0, int addOns = 0, int discount = 0, bool gst = true}) =>
         PlanPricing(
           basePaise: base,
           includedPaise: included,
           addOnsPaise: addOns,
           discountPaise: discount,
+          gstEnabled: gst,
         );
+
+    test('no tax is charged while the admin has GST off', () {
+      final r = p(base: toPaise(10000), discount: toPaise(1000), gst: false);
+      expect(r.taxablePaise, 900000);
+      expect(r.taxPaise, 0);
+      expect(r.totalPaise, 900000);
+    });
+
+    test('GST is off unless asked for', () {
+      const r = PlanPricing(basePaise: 100000, includedPaise: 0, addOnsPaise: 0, discountPaise: 0);
+      expect(r.gstEnabled, isFalse);
+      expect(r.totalPaise, 100000);
+    });
 
     test('tax is on the post-discount base', () {
       final r = p(base: toPaise(10000), discount: toPaise(1000));

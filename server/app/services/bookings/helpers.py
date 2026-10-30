@@ -204,7 +204,7 @@ def digit_quantity(line, digits: str) -> int:
 
 # ── Booking totals ────────────────────────────────────────────────────────────
 
-GST_RATE = Decimal("0.18")
+from app.services.common.finance_settings import GST_RATE  # noqa: E402  (single source for the rate)
 _PAISE = Decimal("0.01")
 
 

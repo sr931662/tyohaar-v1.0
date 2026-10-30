@@ -277,7 +277,10 @@ def build_invoice_pdf(d: InvoiceData) -> bytes:
     tot = [("Package &amp; items", d.subtotal, False)]
     if d.discount > 0:
         tot.append(("Discount", -d.discount, False))
-    tot.append((f"GST @ {d.gst_rate_percent}%", d.tax, False))
+    # GST is an admin switch: a booking made while it was off carries no tax,
+    # and shows no GST row rather than a misleading "GST @ 18%: ₹0".
+    if d.tax > 0:
+        tot.append((f"GST @ {d.gst_rate_percent}%", d.tax, False))
     if d.platform_fee > 0:
         tot.append(("Platform fee", d.platform_fee, False))
     tot.append(("Total", d.total, True))

@@ -24,9 +24,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.models import *  # noqa: F401,F403 - registers every table on Base
 from app.models.base import Base
 from app.models.bookings.booking_item import BookingItem
+from app.models.common.app_setting import AppSetting
 from app.models.common.balloon_color import BalloonColor
 from app.models.common.balloon_finish import BalloonFinish
 from app.models.enums import (
+    AppSettingDataType,
     AccountStatus,
     CharacterSet,
     Currency,
@@ -107,6 +109,16 @@ async def seed_palette(sf, names=PALETTE):
     async with sf() as s:
         for i, (name, hex_code) in enumerate(names):
             s.add(BalloonColor(name=name, hex_code=hex_code, sort_order=i, is_active=True))
+        await s.commit()
+
+
+async def set_gst(sf, enabled: bool):
+    """The admin's Finance switch. Without this row GST reads as off."""
+    from app.services.common.finance_settings import GST_ENABLED_KEY
+    async with sf() as s:
+        s.add(AppSetting(key=GST_ENABLED_KEY, group="finance", label="Charge GST on bookings",
+                         value="true" if enabled else "false", default_value="false",
+                         data_type=AppSettingDataType.BOOLEAN))
         await s.commit()
 
 
@@ -232,6 +244,7 @@ async def run_booking(sf, customer, data):
 
 async def test_included_and_optional_lines_sum_correctly(sf):
     await seed_palette(sf)
+    await set_gst(sf, True)
     customer = await make_user(sf)
     package, occasion = await make_package(sf)
     included = await add_item(sf, package, name="Backdrop", base_price=Decimal("100"), quantity=2, is_mandatory=True)
@@ -242,6 +255,17 @@ async def test_included_and_optional_lines_sum_correctly(sf):
     assert Decimal(str(result.tax_amount)) == Decimal("261.09")  # 18% of 1450.50 = 261.09
     assert Decimal(str(result.total_amount)) == Decimal("1711.59")
     assert included.id and optional.id
+
+
+async def test_no_gst_is_charged_until_the_admin_switches_it_on(sf):
+    await seed_palette(sf)  # no finance row at all: a fresh database
+    customer = await make_user(sf)
+    package, occasion = await make_package(sf)
+    await add_item(sf, package, name="Backdrop", base_price=Decimal("100"), quantity=2, is_mandatory=True)
+    result = await run_booking(sf, customer, booking(package, occasion))
+    assert Decimal(str(result.subtotal)) == Decimal("1200.00")
+    assert Decimal(str(result.tax_amount)) == Decimal("0.00")
+    assert Decimal(str(result.total_amount)) == Decimal("1200.00")
 
 
 async def test_common_items_are_never_billed_unless_the_customer_adds_them(sf):
@@ -335,8 +359,10 @@ async def add_service(sf, package, **kw):
         return line
 
 
-async def labelled_booking(sf, *, finish=None):
+async def labelled_booking(sf, *, finish=None, gst=False):
     await seed_palette(sf)
+    if gst:
+        await set_gst(sf, True)
     await seed_finishes(sf)
     customer = await make_user(sf)
     package, occasion = await make_package(sf)
@@ -390,7 +416,7 @@ async def test_invoice_pdf_reads_correctly_end_to_end(sf):
     import io
     from pypdf import PdfReader
 
-    customer, result = await labelled_booking(sf, finish="pastel")
+    customer, result = await labelled_booking(sf, finish="pastel", gst=True)
     pdf, _ = await BookingService(sf).get_invoice_pdf(result.id, customer.id, "customer")
     text_ = " ".join(" ".join(p.extract_text().split()) for p in PdfReader(io.BytesIO(pdf)).pages)
     for expected in ["RENTAL", "KEEP", "SERVICE", "LED letters", "Party banner", "Setup & dismantling",

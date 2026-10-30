@@ -133,6 +133,15 @@ class PackageItemUpdate(BaseSchema):
     )
 
 
+# Columns that are NOT NULL. An explicit `null` for one of these means "no value
+# sent", not "clear it", so it is treated as not provided. Without this the
+# null reached the UPDATE and surfaced as a 500.
+_REQUIRED_SERVICE_COLUMNS = frozenset({
+    "name", "quantity", "base_price", "is_mandatory",
+    "is_customizable", "display_order", "character_set",
+})
+
+
 class PackageServiceUpdate(BaseSchema):
     """Partial update payload for a PackageService (shared by both package-specific and common services)."""
 
@@ -164,6 +173,13 @@ class PackageServiceUpdate(BaseSchema):
         default=None,
         description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _ignore_null_for_required_columns(cls, values):
+        if isinstance(values, dict):
+            return {k: v for k, v in values.items() if not (v is None and k in _REQUIRED_SERVICE_COLUMNS)}
+        return values
 
 
 class PackagePricingUpdate(BaseSchema):

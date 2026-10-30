@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
 from app.models.enums import ContentStatus
+from app.schemas.common.response import FinanceSettingsResponse
 from app.schemas.common import (
     AppSettingAdminResponse,
     AppSettingCreate,
@@ -51,6 +52,11 @@ from app.schemas.common import (
 from app.schemas.base import CursorPage
 from app.services.base import BaseService
 from app.services.common.constants import MAX_FAQ_ITEMS
+from app.services.common.finance_settings import (
+    GST_RATE_PERCENT,
+    read_gst_enabled,
+    write_gst_enabled,
+)
 from app.services.common.exceptions import (
     AppSettingNotFoundError,
     BannerNotFoundError,
@@ -440,6 +446,24 @@ class CommonService(BaseService):
                 )
             await uow.common.settings.delete(setting)
             await uow.commit()
+
+    # ── Finance settings ──────────────────────────────────────────────────────
+
+    async def get_finance_settings(self) -> FinanceSettingsResponse:
+        async with self._uow() as uow:
+            return FinanceSettingsResponse(
+                gst_enabled=await read_gst_enabled(uow), gst_rate_pct=GST_RATE_PERCENT
+            )
+
+    async def update_finance_settings(
+        self, gst_enabled: bool, admin_id: UUID
+    ) -> FinanceSettingsResponse:
+        async with self._uow() as uow:
+            await write_gst_enabled(uow, gst_enabled, admin_id)
+            await uow.commit()
+            return FinanceSettingsResponse(
+                gst_enabled=gst_enabled, gst_rate_pct=GST_RATE_PERCENT
+            )
 
     # ── Terms & Conditions ────────────────────────────────────────────────────
 

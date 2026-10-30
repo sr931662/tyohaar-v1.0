@@ -6,24 +6,28 @@ int toPaise(num rupees) => (rupees * 100).round();
 /// Every amount the customer is shown, in integer paise so nothing drifts
 /// between rows and total. Mirrors the server's booking maths exactly:
 /// tax is 18% of (subtotal - discount), rounded half-up to the paisa, and the
-/// discount can never exceed the subtotal.
+/// discount can never exceed the subtotal. Tax is only charged while the admin
+/// has GST switched on ([gstEnabled]); with it off the total is the taxable
+/// amount.
 class PlanPricing {
   final int basePaise;
   final int includedPaise;
   final int addOnsPaise;
   final int discountPaise;
+  final bool gstEnabled;
 
   const PlanPricing({
     required this.basePaise,
     required this.includedPaise,
     required this.addOnsPaise,
     required int discountPaise,
+    this.gstEnabled = false,
   }) : discountPaise = discountPaise < 0 ? 0 : discountPaise;
 
   int get subtotalPaise => basePaise + includedPaise + addOnsPaise;
   int get _clampedDiscount => discountPaise > subtotalPaise ? subtotalPaise : discountPaise;
   int get taxablePaise => subtotalPaise - _clampedDiscount;
-  int get taxPaise => (taxablePaise * 18 + 50) ~/ 100;
+  int get taxPaise => gstEnabled ? (taxablePaise * 18 + 50) ~/ 100 : 0;
   int get totalPaise => taxablePaise + taxPaise;
 }
 

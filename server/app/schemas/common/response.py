@@ -161,3 +161,16 @@ class CancellationPolicyResponse(BaseSchema):
 
 # Alias consumed by the common controller
 TermsVersionResponse = TermsResponse
+
+
+class FinanceSettingsResponse(BaseSchema):
+    """Platform finance switches. Public: the apps need them to price a plan."""
+
+    gst_enabled: bool = False
+    gst_rate_pct: int = 18
+
+
+class FinanceSettingsUpdate(BaseSchema):
+    """Admin: change the finance switches."""
+
+    gst_enabled: bool

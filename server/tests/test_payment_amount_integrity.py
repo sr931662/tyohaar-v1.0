@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.models.enums import Currency
+from app.models.enums import Currency, PaymentStatus
 from app.schemas.payments.create import PaymentCreate
 from app.services.payments import service as payments_service
 from app.services.payments.service import PaymentService
@@ -105,6 +105,7 @@ def service(monkeypatch, customer_id):
         id=uuid.uuid4(),
         customer_id=customer_id,
         total_amount=BOOKING_TOTAL,
+        payment_status=PaymentStatus.PENDING,
     )
     payments_repo = _Repo()
     svc = PaymentService()
@@ -178,3 +179,44 @@ async def test_rejects_a_booking_owned_by_someone_else(service, gateway):
             data=_payload(BOOKING_TOTAL),
         )
     assert gateway.orders == []
+
+
+@pytest.mark.asyncio
+async def test_unconfigured_gateway_writes_nothing(service, monkeypatch, customer_id):
+    """
+    With the Razorpay credentials unset, initiating must fail before any row
+    exists. It used to commit a PENDING payment and a ledger entry first and
+    only then discover it could not create the order.
+    """
+    from app.services.exceptions import ExternalServiceError
+
+    def _unconfigured():
+        raise ExternalServiceError("razorpay", "Razorpay is not configured yet.")
+
+    monkeypatch.setattr(payments_service, "_razorpay_client", _unconfigured)
+
+    with pytest.raises(ExternalServiceError):
+        await service.initiate_payment(
+            booking_id=service._test_booking.id,
+            customer_id=customer_id,
+            data=_payload(BOOKING_TOTAL),
+        )
+    assert service._test_payments_repo.created == []
+
+
+@pytest.mark.asyncio
+async def test_an_already_paid_booking_cannot_be_charged_again(
+    service, gateway, customer_id
+):
+    from app.services.exceptions import BusinessRuleError
+
+    service._test_booking.payment_status = PaymentStatus.COMPLETED
+
+    with pytest.raises(BusinessRuleError):
+        await service.initiate_payment(
+            booking_id=service._test_booking.id,
+            customer_id=customer_id,
+            data=_payload(BOOKING_TOTAL),
+        )
+    assert gateway.orders == []
+    assert service._test_payments_repo.created == []

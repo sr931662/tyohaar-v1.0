@@ -132,3 +132,9 @@ def test_user_text_cannot_inject_markup():
 ])
 def test_indian_grouping(amount, expected):
     assert inr(amount) == expected
+
+
+def test_no_gst_row_when_the_booking_carries_no_tax():
+    text_ = _text(build_invoice_pdf(_data(tax=Decimal("0.00"), total=Decimal("2448.50"), amount_due=Decimal("0.00"))))
+    assert "GST" not in text_
+    assert "Total" in text_

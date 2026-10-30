@@ -568,6 +568,82 @@ function LegalTab() {
   );
 }
 
+// ── Finance ───────────────────────────────────────────────────────────────────
+// GST is off until switched on here. It applies to bookings created from then
+// on; bookings that already exist keep the amounts they were made with.
+function FinanceTab() {
+  const qc = useQueryClient();
+  const [pending, setPending] = useState(null);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['finance-settings'],
+    queryFn: () => settingsApi.getFinanceSettings(),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (gst_enabled) => settingsApi.updateFinanceSettings({ gst_enabled }),
+    onSuccess: (saved) => {
+      qc.setQueryData(['finance-settings'], saved);
+      toast.success(saved.gst_enabled ? 'GST is now charged on new bookings.' : 'GST is now off for new bookings.');
+      setPending(null);
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.error?.message ?? 'Failed to save finance settings.');
+      setPending(null);
+    },
+  });
+
+  const enabled = !!data?.gst_enabled;
+  const rate = data?.gst_rate_pct ?? 18;
+
+  return (
+    <div className="admin-card" style={{ maxWidth: 640 }}>
+      <div className="admin-card-header"><h3>Finance Settings</h3></div>
+      <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {isLoading ? (
+          <div className="skeleton skeleton-card" style={{ height: 64 }} />
+        ) : isError ? (
+          <p style={{ color: '#ef4444', fontSize: 13, margin: 0 }}>Could not load finance settings. Refresh to try again.</p>
+        ) : (
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 14, cursor: saveMutation.isPending ? 'wait' : 'pointer' }}>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={enabled}
+              disabled={saveMutation.isPending}
+              onChange={(e) => setPending(e.target.checked)}
+              style={{ width: 38, height: 20, marginTop: 2, accentColor: 'var(--primary, #7c3aed)', flexShrink: 0 }}
+            />
+            <span>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Charge GST ({rate}%) on bookings
+                <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: enabled ? '#16a34a' : 'var(--text-tertiary)' }}>
+                  {enabled ? 'ON' : 'OFF'}
+                </span>
+              </span>
+              <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.5 }}>
+                When on, {rate}% GST is added to new bookings on the amount after discounts and shown to customers and on invoices.
+                When off, no tax is charged or shown. Bookings that already exist keep the amounts they were made with.
+              </span>
+            </span>
+          </label>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={pending !== null}
+        onClose={() => setPending(null)}
+        onConfirm={() => saveMutation.mutate(pending)}
+        title={pending ? 'Turn GST on?' : 'Turn GST off?'}
+        message={pending
+          ? `New bookings will be charged ${rate}% GST on top of the discounted amount.`
+          : 'New bookings will no longer include GST. Existing bookings are not changed.'}
+        loading={saveMutation.isPending}
+      />
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('faqs');
 
@@ -576,12 +652,12 @@ export default function SettingsPage() {
       <div className="admin-page-header">
         <div className="admin-page-header-left">
           <h1>Platform Settings</h1>
-          <p>Configure FAQs, locations, and legal documents</p>
+          <p>Configure FAQs, locations, legal documents, and finance</p>
         </div>
       </div>
 
       <div className="admin-tabs">
-        {[['faqs', 'FAQs'], ['locations', 'States & Cities'], ['legal', 'Terms & Privacy']].map(([key, label]) => (
+        {[['faqs', 'FAQs'], ['locations', 'States & Cities'], ['legal', 'Terms & Privacy'], ['finance', 'Finance']].map(([key, label]) => (
           <button key={key} className={`admin-tab${activeTab === key ? ' active' : ''}`} onClick={() => setActiveTab(key)}>
             {label}
           </button>
@@ -591,6 +667,7 @@ export default function SettingsPage() {
       {activeTab === 'faqs' && <FAQsTab />}
       {activeTab === 'locations' && <StatesTab />}
       {activeTab === 'legal' && <LegalTab />}
+      {activeTab === 'finance' && <FinanceTab />}
     </div>
   );
 }

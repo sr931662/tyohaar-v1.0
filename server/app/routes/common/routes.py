@@ -8,6 +8,7 @@ from fastapi import APIRouter, status
 
 from app.controllers.common import controller as ctrl
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
+from app.schemas.common.response import FinanceSettingsResponse
 from app.schemas.common.response import (
     AppSettingResponse,
     BannerResponse,
@@ -291,6 +292,30 @@ router.add_api_route(
     summary="Delete FAQ (Admin)",
     description="Soft-delete a FAQ entry. Admin access required.",
     operation_id="common_delete_faq",
+)
+
+# ── Finance settings ──────────────────────────────────────────────────────────
+
+router.add_api_route(
+    "/finance-settings",
+    ctrl.get_finance_settings,
+    methods=["GET"],
+    response_model=SuccessResponse[FinanceSettingsResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get Finance Settings",
+    description="Public finance switches (whether GST is charged). The apps read this to price a plan.",
+    operation_id="common_get_finance_settings",
+)
+
+router.add_api_route(
+    "/finance-settings",
+    ctrl.update_finance_settings,
+    methods=["PUT"],
+    response_model=SuccessResponse[FinanceSettingsResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Finance Settings (Admin)",
+    description="Turn GST on or off for new bookings. Admin access required.",
+    operation_id="common_update_finance_settings",
 )
 
 # ── App settings ──────────────────────────────────────────────────────────────

@@ -114,6 +114,8 @@ def service(monkeypatch, payment):
         id=payment.booking_id,
         booking_status=None,
         payment_status=PaymentStatus.PENDING,
+        amount_paid=Decimal("0.00"),
+        amount_due=Decimal("500.00"),
         applied_coupon_ids=None,
     )
     svc = PaymentService()
@@ -252,3 +254,49 @@ async def test_capture_never_rewrites_a_refunded_payment(service, payment):
     )
 
     assert payment.payment_status == PaymentStatus.REFUNDED
+
+
+@pytest.mark.asyncio
+async def test_capture_records_the_money_on_the_booking(service, payment):
+    """A paid booking must read as paid in full, not as still fully due."""
+    payload, signature = _event("payment.captured")
+    await service.handle_webhook(
+        gateway="razorpay", payload=payload, signature=signature, secret=SECRET
+    )
+    booking = service._test_booking
+    assert booking.payment_status == PaymentStatus.COMPLETED
+    assert booking.amount_paid == payment.final_amount
+    assert booking.amount_due == Decimal("0.00")
+
+
+@pytest.mark.asyncio
+async def test_repeated_capture_does_not_double_count(service, payment):
+    for event_id in ("evt_a", "evt_b"):
+        payload, signature = _event("payment.captured", event_id=event_id)
+        await service.handle_webhook(
+            gateway="razorpay", payload=payload, signature=signature, secret=SECRET
+        )
+    assert service._test_booking.amount_paid == payment.final_amount
+
+
+@pytest.mark.asyncio
+async def test_blank_webhook_secret_rejects_a_forged_capture(service, payment):
+    """
+    HMAC with an empty key is perfectly computable, so before the Razorpay
+    credentials are connected anyone could post a self-signed "captured" event.
+    """
+    from app.services.payments.exceptions import InvalidGatewaySignatureError
+
+    body = {
+        "id": "evt_forged",
+        "event": "payment.captured",
+        "payload": {"payment": {"entity": {"id": "pay_x", "order_id": ORDER_ID}}},
+    }
+    payload = json.dumps(body).encode()
+    forged = hmac.new(b"", payload, hashlib.sha256).hexdigest()
+
+    with pytest.raises(InvalidGatewaySignatureError):
+        await service.handle_webhook(
+            gateway="razorpay", payload=payload, signature=forged, secret=""
+        )
+    assert payment.payment_status == PaymentStatus.PENDING

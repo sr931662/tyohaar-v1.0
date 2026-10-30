@@ -7,6 +7,7 @@ import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
 import AttachPackagesModal from '../../components/AttachPackagesModal';
 import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
+import { EMPTY_SERVICE, buildServiceBody, serviceToForm, apiErrorMessage, ServiceCustomizationFields } from './serviceForm';
 
 // ── Common Services Modal (vendor-wide service templates) ──────────────────────
 // Reusable services (Photography, DJ, Makeup, etc.) owned by the vendor, not
@@ -18,7 +19,7 @@ export default function CommonServicesModal({ onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newService, setNewService] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' });
+  const [newService, setNewService] = useState({ ...EMPTY_SERVICE });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [attachTarget, setAttachTarget] = useState(null);
 
@@ -35,32 +36,32 @@ export default function CommonServicesModal({ onClose }) {
       toast.success('Service added.');
       toast.message('Remember to attach it to a package — customers won\'t see it until you do.');
       invalidate();
-      setNewService({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, cover_image_url: '' });
+      setNewService({ ...EMPTY_SERVICE });
     },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add service.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to add service.')),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ serviceId, body }) => vendorPackagesApi.updateCommonService(serviceId, body),
     onSuccess: () => { toast.success('Service updated.'); invalidate(); setEditingId(null); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to update service.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update service.')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (serviceId) => vendorPackagesApi.deleteCommonService(serviceId),
     onSuccess: () => { toast.success('Service deleted.'); invalidate(); setConfirmDelete(null); },
-    onError: () => toast.error('Failed to delete service.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete service.')),
   });
 
   const attachMutation = useMutation({
     mutationFn: ({ serviceId, packageIds }) => vendorPackagesApi.attachAllCommonService(serviceId, packageIds),
     onSuccess: (result) => { toast.success(`Attached to ${result.attached_count} package(s).`); invalidate(); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to attach to packages.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to attach to packages.')),
   });
 
   const startEdit = (service) => {
     setEditingId(service.id);
-    setEditForm({ name: service.name, description: service.description ?? '', quantity: service.quantity, max_quantity: service.max_quantity ?? '', unit: service.unit ?? '', base_price: service.base_price, is_mandatory: service.is_mandatory, cover_image_url: service.cover_image_url ?? '' });
+    setEditForm(serviceToForm(service));
   };
 
   const setNF = (k, v) => setNewService((f) => ({ ...f, [k]: v }));
@@ -70,31 +71,12 @@ export default function CommonServicesModal({ onClose }) {
     e.preventDefault();
     if (!newService.name.trim()) return toast.error('Service name is required.');
     if (!newService.base_price || isNaN(Number(newService.base_price))) return toast.error('Enter a valid price.');
-    addMutation.mutate({
-      ...newService,
-      quantity: Number(newService.quantity),
-      max_quantity: newService.max_quantity !== '' ? Number(newService.max_quantity) : undefined,
-      base_price: Number(newService.base_price),
-      unit: newService.unit || undefined,
-      description: newService.description || undefined,
-      cover_image_url: newService.cover_image_url || undefined,
-    });
+    addMutation.mutate(buildServiceBody(newService, { isUpdate: false }));
   };
 
   const handleUpdate = (serviceId) => {
     if (!editForm.name.trim()) return toast.error('Service name is required.');
-    updateMutation.mutate({
-      serviceId,
-      body: {
-        ...editForm,
-        quantity: Number(editForm.quantity),
-        max_quantity: editForm.max_quantity !== '' ? Number(editForm.max_quantity) : null,
-        base_price: Number(editForm.base_price),
-        unit: editForm.unit || undefined,
-        description: editForm.description || undefined,
-        cover_image_url: editForm.cover_image_url || null,
-      },
-    });
+    updateMutation.mutate({ serviceId, body: buildServiceBody(editForm, { isUpdate: true }) });
   };
 
   return (
@@ -137,6 +119,7 @@ export default function CommonServicesModal({ onClose }) {
                     </label>
                   </div>
                   <input className="admin-input" type="number" min={editForm.quantity || 1} value={editForm.max_quantity} onChange={(e) => setEF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
+                  <ServiceCustomizationFields form={editForm} set={setEF} />
                   <input className="admin-input" value={editForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
                   <ImageUploadField
                     label="Cover image"
@@ -205,6 +188,7 @@ export default function CommonServicesModal({ onClose }) {
               </label>
             </div>
             <input className="admin-input" type="number" min={newService.quantity || 1} value={newService.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
+            <ServiceCustomizationFields form={newService} set={setNF} />
             <input className="admin-input" value={newService.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />
             <ImageUploadField
               label="Cover image (optional)"

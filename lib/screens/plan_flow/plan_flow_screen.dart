@@ -9,6 +9,7 @@ import '../../theme/typography.dart';
 import '../../data/models.dart';
 import '../../data/package_units.dart';
 import '../../data/auth_manager.dart';
+import '../../data/services/common_service.dart';
 import '../../data/services/package_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/booking_service.dart';
@@ -107,6 +108,8 @@ Color _hexToColor(String hex) {
 class _PlanFlowScreenState extends State<PlanFlowScreen> {
   final PackageService _packageService = PackageService();
   final UserService _userService = UserService();
+  final CommonService _commonService = CommonService();
+  bool _gstEnabled = false;
   final BookingService _bookingService = BookingService();
   final PaymentService _paymentService = PaymentService();
   final ColorService _colorService = ColorService();
@@ -295,6 +298,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       _loadError = false;
     });
     try {
+      // Off if it can't be read; the server decides the real charge anyway.
+      _commonService.isGstEnabled().then((on) {
+        if (mounted && on != _gstEnabled) setState(() => _gstEnabled = on);
+      });
       final results = await Future.wait([
         _packageService.listOccasions(),
         // Addresses are per-user. A guest has none and the endpoint 401s,
@@ -541,6 +548,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       includedPaise: _includedPaise,
       addOnsPaise: _addOnsPaise,
       discountPaise: discount,
+      gstEnabled: _gstEnabled,
     );
   }
 
@@ -2154,7 +2162,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 if (pricing.includedPaise > 0) _priceRow(l10n.planFlowSummaryIncludedItemsLabel, pricing.includedPaise),
                 if (pricing.addOnsPaise > 0) _priceRow(l10n.planFlowSummaryAddOnsLabel, pricing.addOnsPaise),
                 if (pricing.discountPaise > 0) _priceRow(l10n.planFlowDiscountLabel, -pricing.discountPaise),
-                _priceRow(l10n.planFlowGstLabel, pricing.taxPaise),
+                if (pricing.gstEnabled) _priceRow(l10n.planFlowGstLabel, pricing.taxPaise),
                 const Divider(height: 24),
                 _priceRow(l10n.planFlowTotalAmountLabel, pricing.totalPaise, bold: true),
               ],

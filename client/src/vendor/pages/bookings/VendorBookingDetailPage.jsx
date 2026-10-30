@@ -217,7 +217,7 @@ export default function VendorBookingDetailPage() {
             <Section title="Financial">
               <Row label="Subtotal" value={formatCurrency(b.subtotal ?? 0)} />
               <Row label="Discount" value={b.discount_amount ? formatCurrency(b.discount_amount) : '—'} />
-              <Row label="Tax" value={formatCurrency(b.tax_amount ?? 0)} />
+              {Number(b.tax_amount) > 0 && <Row label="Tax" value={formatCurrency(b.tax_amount)} />}
               <Row
                 label="Total"
                 value={<strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(b.total_amount ?? 0)}</strong>}
