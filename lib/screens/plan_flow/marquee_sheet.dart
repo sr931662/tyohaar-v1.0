@@ -25,6 +25,32 @@ enum CharSetKind {
   bool get allowsSpaces => this != CharSetKind.digits;
 }
 
+/// How a character line is drawn. Presentation only: pricing, caps and the
+/// character set behave identically for both.
+enum MarqueeStyleKind {
+  led,
+  balloon;
+
+  static MarqueeStyleKind parse(String? raw) =>
+      raw == 'balloon' ? MarqueeStyleKind.balloon : MarqueeStyleKind.led;
+}
+
+/// Colours a balloon marquee falls back to when the customer hasn't picked
+/// balloon colours (or the package has no colour step).
+const List<Color> kDefaultBalloonLetterColours = [
+  Color(0xFFD62839),
+  Color(0xFFE0A526),
+  Color(0xFFE8739A),
+  Color(0xFF3F8FD2),
+];
+
+/// The colour of the [index]-th lettered balloon: the customer's colours in
+/// the order they chose them, repeating.
+Color balloonLetterColour(List<Color> picked, int index) {
+  final palette = picked.isEmpty ? kDefaultBalloonLetterColours : picked;
+  return palette[index % palette.length];
+}
+
 /// Opens the "Customise your marquee" sheet and resolves to the confirmed
 /// text, or null if the customer backed out.
 ///
@@ -40,6 +66,8 @@ Future<String?> showMarqueeSheet(
   required CharSetKind charSet,
   required int maxChars,
   String? initial,
+  MarqueeStyleKind style = MarqueeStyleKind.led,
+  List<Color> balloonColors = const [],
 }) {
   return showModalBottomSheet<String>(
     context: context,
@@ -54,6 +82,8 @@ Future<String?> showMarqueeSheet(
       charSet: charSet,
       maxChars: maxChars,
       initial: initial,
+      style: style,
+      balloonColors: balloonColors,
     ),
   );
 }
@@ -65,6 +95,8 @@ class MarqueeSheet extends StatefulWidget {
   final CharSetKind charSet;
   final int maxChars;
   final String? initial;
+  final MarqueeStyleKind style;
+  final List<Color> balloonColors;
 
   const MarqueeSheet({
     super.key,
@@ -74,6 +106,8 @@ class MarqueeSheet extends StatefulWidget {
     required this.charSet,
     required this.maxChars,
     this.initial,
+    this.style = MarqueeStyleKind.led,
+    this.balloonColors = const [],
   });
 
   @override
@@ -113,6 +147,12 @@ class _MarqueeSheetState extends State<MarqueeSheet> {
           text: cleaned, selection: TextSelection.collapsed(offset: cleaned.length));
     }
   }
+
+  bool get _isBalloon => widget.style == MarqueeStyleKind.balloon;
+
+  /// Position among the non-space characters, so colours cycle per balloon
+  /// letter and a space between words doesn't skip one.
+  int _billableIndex(int i) => countBillableCharacters(_value.substring(0, i));
 
   int get _count => countBillableCharacters(_value);
   bool get _atLimit => _count >= widget.maxChars;
@@ -180,14 +220,14 @@ class _MarqueeSheetState extends State<MarqueeSheet> {
               constraints: const BoxConstraints(minHeight: 84),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF1C1411),
+                color: _isBalloon ? ty.surface2 : const Color(0xFF1C1411),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: ty.line),
               ),
               child: trimmed.isEmpty
                   ? Center(
                       child: Text(l10n.marqueeEmptyPreview,
-                          style: TyType.sans(13, color: Colors.white54)))
+                          style: TyType.sans(13, color: _isBalloon ? ty.ink3 : Colors.white54)))
                   : Wrap(
                       spacing: 6,
                       runSpacing: 8,
@@ -196,10 +236,26 @@ class _MarqueeSheetState extends State<MarqueeSheet> {
                         for (var i = 0; i < _value.length; i++)
                           _value[i] == ' '
                               ? const SizedBox(width: 18, height: 54)
-                              : _Piece(char: _value[i], onTap: () => _removeAt(i)),
+                              : _isBalloon
+                                  ? BalloonLetter(
+                                      char: _value[i],
+                                      color: balloonLetterColour(
+                                          widget.balloonColors, _billableIndex(i)),
+                                      onTap: () => _removeAt(i),
+                                    )
+                                  : _Piece(char: _value[i], onTap: () => _removeAt(i)),
                       ],
                     ),
             ),
+            if (_isBalloon) ...[
+              const SizedBox(height: 6),
+              Text(
+                widget.balloonColors.isEmpty
+                    ? l10n.marqueeBalloonColourNoteDefault
+                    : l10n.marqueeBalloonColourNote,
+                style: TyType.sans(11.5, color: ty.ink3),
+              ),
+            ],
             const SizedBox(height: 6),
             Text(
               trimmed.isEmpty ? l10n.marqueeLimit(widget.maxChars) : l10n.marqueeTapToRemove,
@@ -317,6 +373,80 @@ class _MarqueeSheetState extends State<MarqueeSheet> {
           ),
         ]),
       );
+}
+
+/// One balloon letter or number: a glossy balloon in [color] with the
+/// character on it. Used for the balloon-style preview and summary card.
+class BalloonLetter extends StatelessWidget {
+  final String char;
+  final Color color;
+  final double size;
+  final VoidCallback? onTap;
+  const BalloonLetter({
+    super.key,
+    required this.char,
+    required this.color,
+    this.size = 38,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hsl = HSLColor.fromColor(color);
+    final light = hsl.withLightness((hsl.lightness + 0.22).clamp(0.0, 1.0)).toColor();
+    final dark = hsl.withLightness((hsl.lightness - 0.16).clamp(0.0, 1.0)).toColor();
+    // Dark text on pale balloons (white, gold, silver), white on the rest.
+    final onBalloon = color.computeLuminance() > 0.55 ? const Color(0xFF3A2A20) : Colors.white;
+    final body = SizedBox(
+      width: size,
+      height: size * 1.42,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: size,
+            height: size * 1.2,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.all(Radius.elliptical(size, size * 1.2)),
+              gradient: RadialGradient(
+                center: const Alignment(-0.35, -0.45),
+                radius: 0.95,
+                colors: [light, color, dark],
+                stops: const [0.0, 0.55, 1.0],
+              ),
+              boxShadow: const [
+                BoxShadow(color: Color(0x33000000), blurRadius: 4, offset: Offset(0, 2)),
+              ],
+            ),
+            child: Text(
+              char,
+              style: TextStyle(
+                fontSize: size * 0.58,
+                fontWeight: FontWeight.w900,
+                color: onBalloon,
+              ),
+            ),
+          ),
+          // The tied knot.
+          Container(
+            width: size * 0.16,
+            height: size * 0.12,
+            decoration: BoxDecoration(
+              color: dark,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(3)),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (onTap == null) return ExcludeSemantics(child: body);
+    return Semantics(
+      button: true,
+      label: char,
+      child: GestureDetector(onTap: onTap, child: body),
+    );
+  }
 }
 
 /// One lit marquee piece in the preview. Tap to remove it.

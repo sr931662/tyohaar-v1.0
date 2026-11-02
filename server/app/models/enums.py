@@ -392,6 +392,16 @@ class CharacterSet(str, enum.Enum):
     ALPHANUMERIC = "alphanumeric"    # A-Z and 0-9 — "ANITA 30"
 
 
+class MarqueeStyle(str, enum.Enum):
+    """
+    How a character line is presented to the customer. Presentation only: the
+    billing (one unit per character), the character set and the caps are the
+    same for both, so a style never changes what a booking costs.
+    """
+    LED = "led"          # lit marquee letters / numbers
+    BALLOON = "balloon"  # balloon (foil) letters / numbers, shown in the customer's balloon colours
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Payments
 # ──────────────────────────────────────────────────────────────────────────────

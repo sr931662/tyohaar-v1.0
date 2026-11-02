@@ -13,7 +13,7 @@ export const formatChoices = (choices) => (Array.isArray(choices) ? choices.join
 export const EMPTY_SERVICE = {
   name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '',
   is_mandatory: true, cover_image_url: '',
-  choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits',
+  choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits', marquee_style: 'led',
 };
 
 export const serviceToForm = (service) => ({
@@ -29,6 +29,7 @@ export const serviceToForm = (service) => ({
   is_customizable: service.is_customizable ?? false,
   customization_prompt: service.customization_prompt ?? '',
   character_set: service.character_set ?? 'digits',
+  marquee_style: service.marquee_style ?? 'led',
 });
 
 /**
@@ -55,12 +56,31 @@ export function buildServiceBody(form, { isUpdate }) {
     choices: choices.length ? choices : blank,
     customization_prompt: form.is_customizable && !choices.length ? (form.customization_prompt?.trim() || blank) : blank,
     character_set: form.character_set || 'digits',
+    marquee_style: form.marquee_style || 'led',
   };
 }
 
 /** The server replies { error: { message } }; there is no top-level `detail`. */
 export const apiErrorMessage = (err, fallback) =>
   err?.response?.data?.error?.message ?? err?.response?.data?.detail?.toString?.() ?? fallback;
+
+/**
+ * How a character line looks to the customer: lit LED pieces or balloon
+ * letters. Presentation only; pricing is per character either way.
+ */
+export function MarqueeStyleSelect({ value, onChange }) {
+  return (
+    <select
+      className="admin-input"
+      value={value || 'led'}
+      onChange={(e) => onChange(e.target.value)}
+      title="How the customer sees their letters or numbers. LED: lit marquee pieces. Balloon: balloon letters shown in the balloon colours they pick. Pricing is the same."
+    >
+      <option value="led">Style: LED marquee</option>
+      <option value="balloon">Style: Balloon marquee</option>
+    </select>
+  );
+}
 
 /** "Ask the customer for details" block, same wording as the item forms. */
 export function ServiceCustomizationFields({ form, set }) {
@@ -86,6 +106,7 @@ export function ServiceCustomizationFields({ form, set }) {
             onChange={(e) => set('customization_prompt', e.target.value)}
             placeholder="Question to ask, e.g. Which name should we set?"
           />
+          <MarqueeStyleSelect value={form.marquee_style} onChange={(v) => set('marquee_style', v)} />
           <select className="admin-input" value={form.character_set || 'digits'} onChange={(e) => set('character_set', e.target.value)}>
             <option value="digits">Numbers only (digit picker)</option>
             <option value="letters">Letters only (type a name)</option>

@@ -374,6 +374,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     }
   }
 
+  /// The balloon colours the customer has picked so far, for a balloon-style
+  /// marquee preview. Empty when they haven't chosen any (or the package has
+  /// no colour step); the sheet then falls back to a default balloon palette.
+  List<Color> get _marqueeBalloonColours => [
+        for (final name in _balloonColors)
+          if (_hexForColour(name) case final hex?) _hexToColor(hex),
+      ];
+
   /// Opens the marquee sheet for a character line and reports what the
   /// customer confirmed. Returns false if they backed out.
   Future<bool> _editCharacters({
@@ -381,6 +389,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     String? prompt,
     required double unitPrice,
     required String characterSet,
+    String marqueeStyle = 'led',
     required int? maxQuantity,
     required String? current,
     required ValueChanged<String?> onChanged,
@@ -396,6 +405,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       charSet: kind,
       maxChars: cap,
       initial: current,
+      style: MarqueeStyleKind.parse(marqueeStyle),
+      balloonColors: _marqueeBalloonColours,
     );
     if (result == null || !mounted) return false;
     onChanged(result);
@@ -411,6 +422,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       prompt: item.customizationPrompt,
       unitPrice: item.unitPrice,
       characterSet: item.characterSet,
+      marqueeStyle: item.marqueeStyle,
       maxQuantity: item.maxQuantity,
       current: null,
       onChanged: (v) => setState(() {
@@ -428,6 +440,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       prompt: service.customizationPrompt,
       unitPrice: service.unitPrice,
       characterSet: service.characterSet,
+      marqueeStyle: service.marqueeStyle,
       maxQuantity: service.maxQuantity,
       current: null,
       onChanged: (v) => setState(() {
@@ -1760,6 +1773,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               unitPrice: item.unitPrice,
               maxQuantity: item.maxQuantity,
               characterSet: item.characterSet,
+              marqueeStyle: item.marqueeStyle,
               title: item.name,
               onChanged: (v) => setState(() {
                 if (v == null) {
@@ -1813,6 +1827,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     required double unitPrice,
     required int? maxQuantity,
     required String characterSet,
+    String marqueeStyle = 'led',
     required String title,
     required ValueChanged<String?> onChanged,
   }) {
@@ -1861,11 +1876,14 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     return _CharacterCard(
       value: value,
       unitPrice: unitPrice,
+      style: MarqueeStyleKind.parse(marqueeStyle),
+      balloonColors: _marqueeBalloonColours,
       onEdit: () => _editCharacters(
         title: title,
         prompt: prompt,
         unitPrice: unitPrice,
         characterSet: characterSet,
+        marqueeStyle: marqueeStyle,
         maxQuantity: maxQuantity,
         current: value,
         onChanged: onChanged,
@@ -1941,6 +1959,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               unitPrice: service.unitPrice,
               maxQuantity: service.maxQuantity,
               characterSet: service.characterSet,
+              marqueeStyle: service.marqueeStyle,
               title: service.name,
               value: _serviceChoices[service.id],
               onChanged: (v) => setState(() {
@@ -2536,7 +2555,15 @@ class _CharacterCard extends StatelessWidget {
   final String? value;
   final double unitPrice;
   final VoidCallback onEdit;
-  const _CharacterCard({required this.value, required this.unitPrice, required this.onEdit});
+  final MarqueeStyleKind style;
+  final List<Color> balloonColors;
+  const _CharacterCard({
+    required this.value,
+    required this.unitPrice,
+    required this.onEdit,
+    this.style = MarqueeStyleKind.led,
+    this.balloonColors = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2575,10 +2602,17 @@ class _CharacterCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Wrap(spacing: 4, runSpacing: 4, children: [
-                for (final ch in text.split(''))
+                for (final (i, ch) in text.split('').indexed)
                   ch == ' '
                       ? const SizedBox(width: 10, height: 30)
-                      : Container(
+                      : style == MarqueeStyleKind.balloon
+                          ? BalloonLetter(
+                              char: ch,
+                              size: 26,
+                              color: balloonLetterColour(
+                                  balloonColors, countBillableCharacters(text.substring(0, i))),
+                            )
+                          : Container(
                           width: 26,
                           height: 30,
                           alignment: Alignment.center,

@@ -32,7 +32,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
-from app.models.enums import CharacterSet
+from app.models.enums import CharacterSet, MarqueeStyle
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
@@ -219,6 +219,16 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment="Characters accepted when is_customizable and `choices` is empty: "
                 "digits (a number), letters (a name) or alphanumeric. Each "
                 "non-space character is one billable unit.",
+    )
+
+    marquee_style: Mapped[MarqueeStyle] = mapped_column(
+        SAEnum(MarqueeStyle, name="marquee_style", native_enum=False),
+        nullable=False,
+        default=MarqueeStyle.LED,
+        server_default="LED",
+        comment="How a character line is shown to the customer: led (lit marquee "
+                "pieces) or balloon (balloon letters in the booking's colours). "
+                "Presentation only; billing is unaffected.",
     )
 
     # ── Display ───────────────────────────────────────────────────────────────

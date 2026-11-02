@@ -16,7 +16,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
-from app.models.enums import CharacterSet, Currency, PackagePricingType, PackageStatus, PackageUnit, ReviewModerationStatus
+from app.models.enums import CharacterSet, Currency, MarqueeStyle, PackagePricingType, PackageStatus, PackageUnit, ReviewModerationStatus
 from app.schemas.packages.common import PriceTierSchema
 
 
@@ -171,6 +171,10 @@ class PackageItemCreate(BaseSchema):
         default=CharacterSet.DIGITS,
         description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
     )
+    marquee_style: MarqueeStyle = Field(
+        default=MarqueeStyle.LED,
+        description='How a character line is shown to the customer: "led" (lit marquee pieces) or "balloon" (balloon letters in the colours the customer chose). Presentation only; billing is unchanged.',
+    )
 
 
 class CommonPackageItemCreate(BaseSchema):
@@ -228,6 +232,10 @@ class CommonPackageItemCreate(BaseSchema):
     character_set: CharacterSet = Field(
         default=CharacterSet.DIGITS,
         description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
+    )
+    marquee_style: MarqueeStyle = Field(
+        default=MarqueeStyle.LED,
+        description='How a character line is shown to the customer: "led" (lit marquee pieces) or "balloon" (balloon letters in the colours the customer chose). Presentation only; billing is unchanged.',
     )
 
 
@@ -290,6 +298,10 @@ class PackageServiceCreate(BaseSchema):
         default=CharacterSet.DIGITS,
         description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
     )
+    marquee_style: MarqueeStyle = Field(
+        default=MarqueeStyle.LED,
+        description='How a character line is shown to the customer: "led" (lit marquee pieces) or "balloon" (balloon letters in the colours the customer chose). Presentation only; billing is unchanged.',
+    )
 
 
 class CommonPackageServiceCreate(BaseSchema):
@@ -344,6 +356,10 @@ class CommonPackageServiceCreate(BaseSchema):
     character_set: CharacterSet = Field(
         default=CharacterSet.DIGITS,
         description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
+    )
+    marquee_style: MarqueeStyle = Field(
+        default=MarqueeStyle.LED,
+        description='How a character line is shown to the customer: "led" (lit marquee pieces) or "balloon" (balloon letters in the colours the customer chose). Presentation only; billing is unchanged.',
     )
 
 

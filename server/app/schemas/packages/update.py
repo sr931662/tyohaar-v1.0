@@ -15,7 +15,7 @@ from typing import Annotated
 from pydantic import Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
-from app.models.enums import CharacterSet, Currency, PackagePricingType, PackageStatus, PackageUnit
+from app.models.enums import CharacterSet, Currency, MarqueeStyle, PackagePricingType, PackageStatus, PackageUnit
 from app.schemas.packages.common import PriceTierSchema
 
 
@@ -131,6 +131,10 @@ class PackageItemUpdate(BaseSchema):
         default=None,
         description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
     )
+    marquee_style: MarqueeStyle | None = Field(
+        default=None,
+        description='How a character line is shown to the customer: "led" or "balloon". Presentation only.',
+    )
 
 
 # Columns that are NOT NULL. An explicit `null` for one of these means "no value
@@ -138,7 +142,7 @@ class PackageItemUpdate(BaseSchema):
 # null reached the UPDATE and surfaced as a 500.
 _REQUIRED_SERVICE_COLUMNS = frozenset({
     "name", "quantity", "base_price", "is_mandatory",
-    "is_customizable", "display_order", "character_set",
+    "is_customizable", "display_order", "character_set", "marquee_style",
 })
 
 
@@ -172,6 +176,10 @@ class PackageServiceUpdate(BaseSchema):
     character_set: CharacterSet | None = Field(
         default=None,
         description='Characters a free-text customisation accepts when `choices` is empty: "digits", "letters" or "alphanumeric". Each non-space character is billed as one unit.',
+    )
+    marquee_style: MarqueeStyle | None = Field(
+        default=None,
+        description='How a character line is shown to the customer: "led" or "balloon". Presentation only.',
     )
 
     @model_validator(mode="before")

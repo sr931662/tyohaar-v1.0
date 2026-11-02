@@ -2164,6 +2164,8 @@
     "placeholders": { "max": { "type": "int" } }
   },
   "marqueeTapToRemove": "Tap a character to remove it",
+  "marqueeBalloonColourNote": "Your letters are made in the balloon colours you picked.",
+  "marqueeBalloonColourNoteDefault": "Sample colours shown. Your balloon colours will be used if you pick them.",
   "marqueeSelectHeading": "Select characters",
   "marqueeRepeatsHint": "Allow multiple selections, including repeated characters.",
   "marqueeSpace": "Space",

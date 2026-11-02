@@ -483,6 +483,11 @@ String _parseCharacterSet(Object? raw) {
   return (v == 'letters' || v == 'alphanumeric') ? v! : 'digits';
 }
 
+/// API value -> 'led' | 'balloon'. Presentation only; anything unrecognised
+/// (an older server) keeps the original LED look.
+String _parseMarqueeStyle(Object? raw) =>
+    raw?.toString().toLowerCase() == 'balloon' ? 'balloon' : 'led';
+
 /// Characters billed on a customisable line: everything except spaces. The
 /// server counts the same way, so a quantity derived here matches the invoice.
 int countBillableCharacters(String? value) => (value ?? '').replaceAll(' ', '').length;
@@ -513,6 +518,9 @@ class PackageItem {
   // 'letters' (a name) or 'alphanumeric'. One billable unit per non-space
   // character. Only meaningful when [choices] is empty.
   final String characterSet;
+  // How a character line is shown: 'led' (lit marquee pieces) or 'balloon'
+  // (balloon letters in the customer's balloon colours). Presentation only.
+  final String marqueeStyle;
   // True for a vendor-wide reusable item attached to the package rather than
   // one defined specifically for it — see VendorCommonItemsScreen.
   final bool isCommon;
@@ -542,6 +550,7 @@ class PackageItem {
     this.choices = const [],
     this.customizationPrompt,
     this.characterSet = 'digits',
+    this.marqueeStyle = 'led',
     this.isCommon = false,
     this.isReturnable = false,
     this.iconUrl,
@@ -568,6 +577,7 @@ class PackageItem {
         choices: choices,
         customizationPrompt: customizationPrompt,
         characterSet: characterSet,
+        marqueeStyle: marqueeStyle,
         isCommon: isCommon,
         isReturnable: isReturnable,
         iconUrl: iconUrl,
@@ -629,6 +639,7 @@ class PackageItem {
           .toList(),
       customizationPrompt: json['customization_prompt'] as String?,
       characterSet: _parseCharacterSet(json['character_set']),
+      marqueeStyle: _parseMarqueeStyle(json['marquee_style']),
       isCommon: json['is_common'] as bool? ?? false,
       isReturnable: json['is_returnable'] as bool? ?? false,
       iconUrl: asUrl(json['icon_url']),
@@ -681,6 +692,9 @@ class PackageServiceLine {
   // 'letters' (a name) or 'alphanumeric'. One billable unit per non-space
   // character. Only meaningful when [choices] is empty.
   final String characterSet;
+  // How a character line is shown: 'led' (lit marquee pieces) or 'balloon'
+  // (balloon letters in the customer's balloon colours). Presentation only.
+  final String marqueeStyle;
   final bool isCommon;
   final String? iconUrl;
   final String? coverImageUrl;
@@ -701,6 +715,7 @@ class PackageServiceLine {
     this.choices = const [],
     this.customizationPrompt,
     this.characterSet = 'digits',
+    this.marqueeStyle = 'led',
     this.isCommon = false,
     this.iconUrl,
     this.coverImageUrl,
@@ -754,6 +769,7 @@ class PackageServiceLine {
           .toList(),
       customizationPrompt: json['customization_prompt'] as String?,
       characterSet: _parseCharacterSet(json['character_set']),
+      marqueeStyle: _parseMarqueeStyle(json['marquee_style']),
       isCommon: json['is_common'] as bool? ?? false,
       iconUrl: asUrl(json['icon_url']),
       coverImageUrl: asUrl(json['cover_image_url']),

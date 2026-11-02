@@ -13,6 +13,7 @@ import AttachPackagesModal from '../../components/AttachPackagesModal';
 import CommonServicesModal from './CommonServicesModal';
 import PackageServicesModal from './PackageServicesModal';
 import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
+import { MarqueeStyleSelect } from './serviceForm';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -258,7 +259,7 @@ function CommonItemsModal({ onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits' });
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits', marquee_style: 'led' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [attachTarget, setAttachTarget] = useState(null);
 
@@ -275,7 +276,7 @@ function CommonItemsModal({ onClose }) {
       toast.success('Common item created.');
       toast.message('Remember to attach it to a package — customers won\'t see it until you do.');
       invalidate();
-      setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits' });
+      setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits', marquee_style: 'led' });
     },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to create item.'),
   });
@@ -300,7 +301,7 @@ function CommonItemsModal({ onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '', character_set: item.character_set ?? 'digits' });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '', character_set: item.character_set ?? 'digits', marquee_style: item.marquee_style ?? 'led' });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -322,6 +323,7 @@ function CommonItemsModal({ onClose }) {
       is_customizable: !!newItem.is_customizable,
       customization_prompt: newItem.customization_prompt || undefined,
       character_set: newItem.character_set || 'digits',
+      marquee_style: newItem.marquee_style || 'led',
     });
   };
 
@@ -341,6 +343,7 @@ function CommonItemsModal({ onClose }) {
         is_customizable: !!editForm.is_customizable,
         customization_prompt: editForm.customization_prompt || null,
         character_set: editForm.character_set || 'digits',
+        marquee_style: editForm.marquee_style || 'led',
       },
     });
   };
@@ -379,6 +382,7 @@ function CommonItemsModal({ onClose }) {
                     {editForm.is_customizable && parseChoices(editForm.choices).length === 0 && (
                       <>
                       <input className="admin-input" value={editForm.customization_prompt} onChange={(e) => setEF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which number should we set?" />
+                      <MarqueeStyleSelect value={editForm.marquee_style} onChange={(v) => setEF('marquee_style', v)} />
                       <select className="admin-input" value={editForm.character_set || 'digits'} onChange={(e) => setEF('character_set', e.target.value)} title="What the customer may type. Numbers: a digit picker (a marquee '25'). Letters: a name or word (foil balloon letters). Letters &amp; numbers: both. Each letter or number is charged at the item's price; spaces between words are free.">
                         <option value="digits">Numbers only (digit picker)</option>
                         <option value="letters">Letters only (type a name)</option>
@@ -467,6 +471,7 @@ function CommonItemsModal({ onClose }) {
               {newItem.is_customizable && parseChoices(newItem.choices).length === 0 && (
                 <>
                 <input className="admin-input" value={newItem.customization_prompt} onChange={(e) => setNF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which number should we set?" />
+                <MarqueeStyleSelect value={newItem.marquee_style} onChange={(v) => setNF('marquee_style', v)} />
                 <select className="admin-input" value={newItem.character_set || 'digits'} onChange={(e) => setNF('character_set', e.target.value)} title="What the customer may type. Numbers: a digit picker (a marquee '25'). Letters: a name or word (foil balloon letters). Letters &amp; numbers: both. Each letter or number is charged at the item's price; spaces between words are free.">
                   <option value="digits">Numbers only (digit picker)</option>
                   <option value="letters">Letters only (type a name)</option>
@@ -539,7 +544,7 @@ function PackageItemsModal({ pkg, onClose }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits' });
+  const [newItem, setNewItem] = useState({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits', marquee_style: 'led' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [managingImagesFor, setManagingImagesFor] = useState(null);
   const [attachingId, setAttachingId] = useState('');
@@ -558,7 +563,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.addItem(pkg.id, { ...body, package_id: pkg.id }),
-    onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits' }); },
+    onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits', marquee_style: 'led' }); },
     onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add item.'),
   });
 
@@ -588,7 +593,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '', character_set: item.character_set ?? 'digits' });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '', character_set: item.character_set ?? 'digits', marquee_style: item.marquee_style ?? 'led' });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -610,6 +615,7 @@ function PackageItemsModal({ pkg, onClose }) {
       is_customizable: !!newItem.is_customizable,
       customization_prompt: newItem.customization_prompt || undefined,
       character_set: newItem.character_set || 'digits',
+      marquee_style: newItem.marquee_style || 'led',
     });
   };
 
@@ -629,6 +635,7 @@ function PackageItemsModal({ pkg, onClose }) {
         is_customizable: !!editForm.is_customizable,
         customization_prompt: editForm.customization_prompt || null,
         character_set: editForm.character_set || 'digits',
+        marquee_style: editForm.marquee_style || 'led',
       },
     });
   };
@@ -675,6 +682,7 @@ function PackageItemsModal({ pkg, onClose }) {
                     {editForm.is_customizable && parseChoices(editForm.choices).length === 0 && (
                       <>
                       <input className="admin-input" value={editForm.customization_prompt} onChange={(e) => setEF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which number should we set?" />
+                      <MarqueeStyleSelect value={editForm.marquee_style} onChange={(v) => setEF('marquee_style', v)} />
                       <select className="admin-input" value={editForm.character_set || 'digits'} onChange={(e) => setEF('character_set', e.target.value)} title="What the customer may type. Numbers: a digit picker (a marquee '25'). Letters: a name or word (foil balloon letters). Letters &amp; numbers: both. Each letter or number is charged at the item's price; spaces between words are free.">
                         <option value="digits">Numbers only (digit picker)</option>
                         <option value="letters">Letters only (type a name)</option>
@@ -808,6 +816,7 @@ function PackageItemsModal({ pkg, onClose }) {
                   {newItem.is_customizable && parseChoices(newItem.choices).length === 0 && (
                     <>
                     <input className="admin-input" value={newItem.customization_prompt} onChange={(e) => setNF('customization_prompt', e.target.value)} placeholder="Question to ask, e.g. Which number should we set?" />
+                    <MarqueeStyleSelect value={newItem.marquee_style} onChange={(v) => setNF('marquee_style', v)} />
                     <select className="admin-input" value={newItem.character_set || 'digits'} onChange={(e) => setNF('character_set', e.target.value)} title="What the customer may type. Numbers: a digit picker (a marquee '25'). Letters: a name or word (foil balloon letters). Letters &amp; numbers: both. Each letter or number is charged at the item's price; spaces between words are free.">
                       <option value="digits">Numbers only (digit picker)</option>
                       <option value="letters">Letters only (type a name)</option>

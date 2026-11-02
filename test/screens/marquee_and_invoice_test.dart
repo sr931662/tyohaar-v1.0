@@ -29,7 +29,13 @@ class _Host extends StatefulWidget {
   final CharSetKind kind;
   final int max;
   final String? initial;
-  const _Host({required this.kind, this.max = 20, this.initial});
+  final MarqueeStyleKind style;
+  const _Host({
+    required this.kind,
+    this.max = 20,
+    this.initial,
+    this.style = MarqueeStyleKind.led,
+  });
   @override
   State<_Host> createState() => _HostState();
 }
@@ -48,6 +54,7 @@ class _HostState extends State<_Host> {
                 charSet: widget.kind,
                 maxChars: widget.max,
                 initial: widget.initial,
+                style: widget.style,
               );
               setState(() => result = r);
             },
@@ -71,6 +78,7 @@ Future<void> tapKey(WidgetTester tester, String label) async {
 }
 
 void main() {
+  balloonMarqueeTests();
   group('marquee sheet', () {
     testWidgets('numbers: two pieces cost 2 x the unit price and confirm returns them',
         (tester) async {
@@ -325,4 +333,61 @@ class _Adapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+void balloonMarqueeTests() {
+  group('Balloon marquee', () {
+    testWidgets('draws balloon letters, not LED pieces, and prices like LED', (tester) async {
+      phone(tester);
+      await tester.pumpWidget(app(const _Host(
+        kind: CharSetKind.alphanumeric,
+        style: MarqueeStyleKind.balloon,
+        initial: 'ANITA 30',
+      )));
+      await openSheet(tester);
+
+      // 7 billable characters, one balloon each; the space draws none.
+      expect(find.byType(BalloonLetter), findsNWidgets(7));
+      // 7 x 399 -- the same per-character billing as the LED style.
+      expect(find.textContaining('2,793'), findsWidgets);
+    });
+
+    testWidgets('LED style still draws no balloons', (tester) async {
+      phone(tester);
+      await tester.pumpWidget(app(const _Host(kind: CharSetKind.digits, initial: '25')));
+      await openSheet(tester);
+      expect(find.byType(BalloonLetter), findsNothing);
+    });
+
+    testWidgets('confirming returns the text unchanged', (tester) async {
+      phone(tester);
+      await tester.pumpWidget(app(const _Host(
+        kind: CharSetKind.letters,
+        style: MarqueeStyleKind.balloon,
+        initial: 'LOVE',
+      )));
+      await openSheet(tester);
+      await tester.tap(find.text('Confirm selection'));
+      await tester.pumpAndSettle();
+      expect(find.text('result:LOVE'), findsOneWidget);
+    });
+
+    test('colours cycle through the picked balloon colours per character', () {
+      const picked = [Color(0xFFFF0000), Color(0xFF00FF00)];
+      expect(balloonLetterColour(picked, 0), picked[0]);
+      expect(balloonLetterColour(picked, 1), picked[1]);
+      expect(balloonLetterColour(picked, 2), picked[0]);
+    });
+
+    test('falls back to a default palette when none are picked', () {
+      expect(balloonLetterColour(const [], 0), kDefaultBalloonLetterColours[0]);
+      expect(balloonLetterColour(const [], 5), kDefaultBalloonLetterColours[1]);
+    });
+
+    test('an unknown style from an older server is LED', () {
+      expect(MarqueeStyleKind.parse(null), MarqueeStyleKind.led);
+      expect(MarqueeStyleKind.parse('neon'), MarqueeStyleKind.led);
+      expect(MarqueeStyleKind.parse('balloon'), MarqueeStyleKind.balloon);
+    });
+  });
 }
