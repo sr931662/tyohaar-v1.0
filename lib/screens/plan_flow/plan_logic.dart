@@ -73,3 +73,48 @@ class CharacterFormatter extends TextInputFormatter {
     return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
   }
 }
+
+// ── Balloon colour proportions ───────────────────────────────────────────────
+//
+// A customer with 2-4 balloon colours can say how much of each they want. The
+// bars move in steps of [kBalloonRatioStep]%, no colour goes below
+// [kBalloonRatioMin]%, and the LAST colour is never set directly: it is always
+// whatever is left, so the mix adds up to 100 by construction. The server
+// enforces the same rules (BookingCreate.validate_balloon_colors).
+
+const int kBalloonRatioStep = 5;
+const int kBalloonRatioMin = 5;
+
+/// An even starting mix: 2 -> [50, 50], 3 -> [30, 30, 40], 4 -> [25 x 4].
+/// Fewer than two colours have nothing to proportion.
+List<int> evenBalloonProportions(int count) {
+  if (count < 2) return const [];
+  final share = (100 ~/ count) ~/ kBalloonRatioStep * kBalloonRatioStep;
+  return [for (var i = 0; i < count - 1; i++) share, 100 - share * (count - 1)];
+}
+
+/// The highest value colour [index] may take while every other adjustable
+/// colour keeps its share and the last colour keeps at least the minimum.
+int maxBalloonProportion(List<int> ratios, int index) {
+  var others = 0;
+  for (var i = 0; i < ratios.length - 1; i++) {
+    if (i != index) others += ratios[i];
+  }
+  return 100 - others - kBalloonRatioMin;
+}
+
+/// [ratios] with colour [index] set to [value] (snapped to the step and
+/// clamped), and the last colour recomputed as the remainder. Asking to set
+/// the last colour, or an index out of range, returns [ratios] unchanged.
+List<int> setBalloonProportion(List<int> ratios, int index, int value) {
+  if (ratios.length < 2 || index < 0 || index >= ratios.length - 1) return ratios;
+  final snapped = ((value / kBalloonRatioStep).round() * kBalloonRatioStep)
+      .clamp(kBalloonRatioMin, maxBalloonProportion(ratios, index));
+  final next = List<int>.of(ratios)..[index] = snapped;
+  var used = 0;
+  for (var i = 0; i < next.length - 1; i++) {
+    used += next[i];
+  }
+  next[next.length - 1] = 100 - used;
+  return next;
+}

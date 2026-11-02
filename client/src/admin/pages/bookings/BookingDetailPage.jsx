@@ -7,6 +7,7 @@ import { formatDate, formatDateTime, formatCurrency } from '../../utils/format';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Modal, { ConfirmDialog } from '../../components/ui/Modal';
 import { SkeletonCard } from '../../components/ui/Skeleton';
+import BalloonMix from '../../../components/BalloonMix';
 
 export default function BookingDetailPage() {
   const { bookingId } = useParams();
@@ -158,10 +159,8 @@ export default function BookingDetailPage() {
               {b.balloon_colors?.length > 0 && (
                 <div className="admin-detail-row">
                   <div className="admin-detail-label">Balloon Colours ({b.balloon_color_mode})</div>
-                  <div className="admin-detail-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {b.balloon_colors.map((c, i) => (
-                      <span key={i} title={c} style={{ width: 16, height: 16, borderRadius: '50%', background: c, border: '1px solid rgba(0,0,0,0.15)', display: 'inline-block' }} />
-                    ))}
+                  <div className="admin-detail-value">
+                    <BalloonMix colors={b.balloon_colors} ratios={b.balloon_color_ratios} />
                   </div>
                 </div>
               )}

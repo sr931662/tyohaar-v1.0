@@ -104,6 +104,10 @@ class BookingResponse(BaseSchema):
     balloon_color_mode: BalloonColorMode | None = Field(default=None, description="Single or dual balloon colour choice")
     balloon_finish: str | None = Field(default=None, description="Chosen balloon finish, e.g. Pastel")
     balloon_colors: list[str] | None = Field(default=None, description="Hex code(s) of the chosen balloon colour(s)")
+    balloon_color_ratios: list[int] | None = Field(
+        default=None,
+        description="Percentage share of each colour, aligned with balloon_colors; null = even mix",
+    )
     address_id: uuid.UUID | None
     scheduled_date: date
     scheduled_start_time: time | None

@@ -318,6 +318,16 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         ),
     )
 
+    balloon_color_ratios: Mapped[list[int] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment=(
+            "Optional share of each balloon colour in percent, aligned with "
+            "balloon_colors (e.g. [30, 20, 50]); sums to 100. NULL means the "
+            "customer left the mix to the vendor (an even split)."
+        ),
+    )
+
     balloon_finish: Mapped[str | None] = mapped_column(
         String(60),
         nullable=True,

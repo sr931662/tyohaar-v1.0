@@ -7,6 +7,7 @@ import StatusBadge from '../../../admin/components/ui/StatusBadge';
 import { SkeletonCard } from '../../../admin/components/ui/Skeleton';
 import Modal, { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import { formatDate, formatDateTime, formatCurrency } from '../../../admin/utils/format';
+import BalloonMix from '../../../components/BalloonMix';
 
 function Section({ title, children }) {
   return (
@@ -184,13 +185,7 @@ export default function VendorBookingDetailPage() {
               {b.balloon_colors?.length > 0 && (
                 <Row
                   label={`Balloon Colours (${b.balloon_color_mode})`}
-                  value={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {b.balloon_colors.map((c, i) => (
-                        <span key={i} title={c} style={{ width: 16, height: 16, borderRadius: '50%', background: c, border: '1px solid rgba(0,0,0,0.15)', display: 'inline-block' }} />
-                      ))}
-                    </div>
-                  }
+                  value={<BalloonMix colors={b.balloon_colors} ratios={b.balloon_color_ratios} />}
                 />
               )}
               <Row label="Special Instructions" value={b.special_instructions} />

@@ -31,6 +31,12 @@ __all__ = [
 ]
 
 
+
+# Balloon colour proportions: chosen on a slider in steps of 5%, and no colour
+# below 5% (a sliver nobody would notice). Kept in step with the app.
+BALLOON_RATIO_STEP = 5
+BALLOON_RATIO_MIN = 5
+
 class BookingCreate(BaseSchema):
     """
     Payload required to create a new booking.
@@ -160,6 +166,13 @@ class BookingCreate(BaseSchema):
         description="Balloon finish chosen from GET /balloon-finishes (e.g. matte, pastel, chrome). "
                     "Only meaningful with balloon colours.",
     )
+    balloon_color_ratios: list[int] | None = Field(
+        default=None,
+        description="Optional percentage share of each balloon colour, in the same order as "
+                    "balloon_colors, e.g. [30, 20, 50]. Needs 2+ colours; each a multiple of "
+                    f"{BALLOON_RATIO_STEP} and at least {BALLOON_RATIO_MIN}; they sum to 100. "
+                    "Omit for an even mix.",
+    )
     balloon_colors: list[str] | None = Field(
         default=None,
         description="Hex code(s) of the chosen balloon colour(s) — must be drawn from "
@@ -188,6 +201,8 @@ class BookingCreate(BaseSchema):
         if self.balloon_color_mode is None:
             if self.balloon_colors:
                 raise ValueError("balloon_colors requires balloon_color_mode to be set")
+            if self.balloon_color_ratios:
+                raise ValueError("balloon_color_ratios requires balloon colours")
             return self
 
         if not self.balloon_colors:
@@ -208,6 +223,21 @@ class BookingCreate(BaseSchema):
             raise ValueError("Balloon colours in a combination must all be different")
 
         self.balloon_colors = normalized
+
+        if self.balloon_color_ratios is not None:
+            ratios = self.balloon_color_ratios
+            if len(normalized) < 2:
+                raise ValueError("balloon_color_ratios needs at least two balloon colours")
+            if len(ratios) != len(normalized):
+                raise ValueError(
+                    f"balloon_color_ratios needs one value per colour ({len(normalized)}), got {len(ratios)}"
+                )
+            if any(r < BALLOON_RATIO_MIN for r in ratios):
+                raise ValueError(f"Each balloon colour needs at least {BALLOON_RATIO_MIN}%")
+            if any(r % BALLOON_RATIO_STEP for r in ratios):
+                raise ValueError(f"Balloon colour proportions go in steps of {BALLOON_RATIO_STEP}%")
+            if sum(ratios) != 100:
+                raise ValueError(f"Balloon colour proportions must add up to 100%, got {sum(ratios)}%")
         return self
 
 

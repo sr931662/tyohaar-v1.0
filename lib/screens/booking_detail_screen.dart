@@ -11,6 +11,7 @@ import '../data/services/color_service.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import 'plan_flow/balloon_proportions.dart';
 import '../utils/currency.dart';
 import '../widgets/common.dart';
 import '../widgets/line_kind_badge.dart';
@@ -128,6 +129,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final b = _booking!;
     final date = asDateTime(b['scheduled_date']);
     final colours = ((b['balloon_colors'] ?? []) as List).cast<String>();
+    // Shares are only shown when there is exactly one per colour.
+    final rawRatios = ((b['balloon_color_ratios'] ?? []) as List).map((r) => (r as num).toInt()).toList();
+    final ratios = rawRatios.length == colours.length && colours.length >= 2 ? rawRatios : const <int>[];
     final finish = b['balloon_finish'] as String?;
     final discount = _n('discount_amount');
     final usedKinds = [
@@ -175,10 +179,19 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                          '${i + 1}. ${_colourNames[colours[i].toLowerCase()] ?? colours[i].toUpperCase()}',
+                          ratios.isEmpty
+                              ? '${i + 1}. ${_colourNames[colours[i].toLowerCase()] ?? colours[i].toUpperCase()}'
+                              : '${i + 1}. ${l10n.bookingDetailColourShare(_colourNames[colours[i].toLowerCase()] ?? colours[i].toUpperCase(), ratios[i])}',
                           style: TyType.sans(13.5, color: ty.ink, weight: FontWeight.w600)),
                     ]),
                 ]),
+                if (ratios.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  BalloonMixPreview(
+                    colours: [for (final c in colours) BalloonShare(c, _hex(c))],
+                    ratios: ratios,
+                  ),
+                ],
                 if (finish != null) ...[
                   const SizedBox(height: 10),
                   Text(l10n.bookingDetailFinish(finish),

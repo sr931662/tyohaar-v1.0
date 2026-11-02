@@ -163,10 +163,13 @@ def _totals_table(d: InvoiceData) -> str:
 def _extras(d: InvoiceData) -> str:
     bits: list[str] = []
     if d.balloon_colors:
+        ratios = d.balloon_ratios if len(d.balloon_ratios) == len(d.balloon_colors) else []
         swatches = "".join(
             f'<span style="display:inline-block;width:12px;height:12px;border-radius:6px;background:{esc(h)};'
-            f'border:1px solid {LINE};margin:0 4px -1px 0;"></span>{esc(n)}&nbsp;&nbsp;'
-            for n, h in d.balloon_colors
+            f'border:1px solid {LINE};margin:0 4px -1px 0;"></span>{esc(n)}'
+            + (f" {int(ratios[i])}%" if ratios else "")
+            + "&nbsp;&nbsp;"
+            for i, (n, h) in enumerate(d.balloon_colors)
         )
         bits.append(_row("Balloon colours", swatches))
     if d.balloon_finish:

@@ -101,6 +101,7 @@ class InvoiceData:
     amount_paid: Decimal
     amount_due: Decimal
     balloon_colors: list[tuple[str, str]] = field(default_factory=list)   # (name, #hex) in the order chosen
+    balloon_ratios: list[int] = field(default_factory=list)  # percent per colour, aligned; empty = even mix
     balloon_finish: str | None = None
     customization_note: str | None = None
     special_instructions: str | None = None
@@ -219,12 +220,14 @@ def build_invoice_pdf(d: InvoiceData) -> bytes:
         cells, widths, style = [], [], [("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]
         cells.append(Paragraph("BALLOON DÉCOR", st["label"]))
         widths.append(30 * mm)
+        ratios = d.balloon_ratios if len(d.balloon_ratios) == len(d.balloon_colors) else []
         for i, (name, hexcode) in enumerate(d.balloon_colors, start=1):
             cells.append("")
             widths.append(5 * mm)
             style += [("BACKGROUND", (len(cells) - 1, 0), (len(cells) - 1, 0), colors.HexColor(hexcode)),
                       ("BOX", (len(cells) - 1, 0), (len(cells) - 1, 0), 0.5, LINE)]
-            cells.append(Paragraph(f"{i}. {escape(name)}", st["body"]))
+            share = f" <b>{int(ratios[i - 1])}%</b>" if ratios else ""
+            cells.append(Paragraph(f"{i}. {escape(name)}{share}", st["body"]))
             widths.append(26 * mm)
         if d.balloon_finish:
             cells.append(Paragraph(f"Finish: <b>{escape(d.balloon_finish)}</b>", st["body"]))

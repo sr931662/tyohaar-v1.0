@@ -396,6 +396,7 @@ class BookingService(BaseService):
                 customization_note=data.customization_note,
                 balloon_color_mode=data.balloon_color_mode,
                 balloon_colors=data.balloon_colors,
+                balloon_color_ratios=data.balloon_color_ratios if data.balloon_colors else None,
                 balloon_finish=balloon_finish,
             )
             booking = await uow.bookings.bookings.create(booking)
@@ -1708,6 +1709,7 @@ class BookingService(BaseService):
             amount_paid=Decimal(booking.amount_paid or 0),
             amount_due=Decimal(booking.amount_due or 0),
             balloon_colors=colours,
+            balloon_ratios=list(booking.balloon_color_ratios or []),
             balloon_finish=booking.balloon_finish,
             customization_note=booking.customization_note,
             special_instructions=booking.special_instructions,

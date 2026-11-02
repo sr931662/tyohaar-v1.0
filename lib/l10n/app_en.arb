@@ -2164,6 +2164,13 @@
     "placeholders": { "max": { "type": "int" } }
   },
   "marqueeTapToRemove": "Tap a character to remove it",
+  "planFlowProportionToggle": "Set colour proportions",
+  "planFlowProportionHint": "Choose how much of each colour you want. The last colour fills the rest.",
+  "planFlowProportionAuto": "auto",
+  "bookingDetailColourShare": "{name} · {percent}%",
+  "@bookingDetailColourShare": {
+    "placeholders": {"name": {"type": "String"}, "percent": {"type": "int"}}
+  },
   "marqueeBalloonColourNote": "Your letters are made in the balloon colours you picked.",
   "marqueeBalloonColourNoteDefault": "Sample colours shown. Your balloon colours will be used if you pick them.",
   "marqueeSelectHeading": "Select characters",

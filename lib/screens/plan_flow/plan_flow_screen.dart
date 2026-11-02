@@ -21,6 +21,7 @@ import 'package:tyohaar/screens/email_verification_screen.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
 import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
 import 'plan_logic.dart';
+import 'balloon_proportions.dart';
 import 'marquee_sheet.dart';
 import '../../widgets/line_kind_badge.dart';
 import '../../widgets/image_viewer.dart';
@@ -158,6 +159,26 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   // of would make the booking fail.
   List<String> _finishes = const [];
   String? _balloonFinish;
+
+  // Optional colour mix (e.g. 30% red, 20% gold, 50% white). Off by default:
+  // an even mix is what the vendor does unless told otherwise.
+  bool _useProportions = false;
+  List<int> _proportions = const [];
+  String _proportionsKey = '';
+
+  /// The mix for the colours picked right now. Picking, dropping or reordering
+  /// a colour starts again from an even split rather than carrying shares over
+  /// to the wrong colour.
+  List<int> get _balloonProportions {
+    final key = _balloonColors.join('|');
+    if (key != _proportionsKey || _proportions.length != _balloonColors.length) {
+      _proportionsKey = key;
+      _proportions = evenBalloonProportions(_balloonColors.length);
+    }
+    return _proportions;
+  }
+
+  bool get _sendingProportions => _useProportions && _balloonColors.length >= 2;
   static const int _maxCustomColours = 4;
   Address? _address;
   DateTime _eventDate = DateTime.now().add(const Duration(days: 30));
@@ -742,6 +763,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
         if (usingCustomColours) ...{
           'balloon_color_mode': balloonModeByCount[balloonColorsHex.length] ?? 'single',
           'balloon_colors': balloonColorsHex,
+          if (_sendingProportions && balloonColorsHex.length == _balloonColors.length)
+            'balloon_color_ratios': _balloonProportions,
           if (_balloonFinish != null) 'balloon_finish': _balloonFinish,
         },
         if (_couponCtrl.text.trim().isNotEmpty && _couponError == null)
@@ -1427,7 +1450,9 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text('${i + 1}. ${_balloonColorLabel(context, _balloonColors[i])}',
+                          Text(
+                              '${i + 1}. ${_balloonColorLabel(context, _balloonColors[i])}'
+                              '${_sendingProportions ? ' · ${_balloonProportions[i]}%' : ''}',
                               style: TyType.sans(13.5, color: ty.ink, weight: FontWeight.w600)),
                         ]),
                       ),
@@ -1436,6 +1461,12 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               if (_balloonFinish != null) ...[
                 const SizedBox(height: 10),
                 Text(l10n.planFlowFinishLabel(_balloonFinish!), style: TyType.sans(13, color: ty.ink2)),
+              ],
+              if (_balloonColors.length >= 2) ...[
+                const SizedBox(height: 12),
+                Divider(height: 1, color: ty.line),
+                const SizedBox(height: 10),
+                _proportionsSection(context),
               ],
               const SizedBox(height: 14),
               SizedBox(
@@ -1451,6 +1482,54 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _proportionsSection(BuildContext context) {
+    final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
+    final ratios = _balloonProportions;
+    final shares = [
+      for (final name in _balloonColors)
+        BalloonShare(_balloonColorLabel(context, name), _hexToColor(_hexForColour(name) ?? '#888888')),
+    ];
+    final last = shares.length - 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(l10n.planFlowProportionToggle,
+                  style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Text(l10n.planFlowProportionHint, style: TyType.sans(12, color: ty.ink3)),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          Switch.adaptive(
+            value: _useProportions,
+            activeTrackColor: ty.saffron,
+            onChanged: (v) => setState(() => _useProportions = v),
+          ),
+        ]),
+        if (_useProportions) ...[
+          const SizedBox(height: 10),
+          BalloonMixPreview(colours: shares, ratios: ratios),
+          const SizedBox(height: 6),
+          for (var i = 0; i < shares.length; i++)
+            BalloonProportionMeter(
+              key: ValueKey('ratio-${_balloonColors[i]}'),
+              colour: shares[i],
+              percent: ratios[i],
+              max: i < last ? maxBalloonProportion(ratios, i) : ratios[i],
+              autoLabel: l10n.planFlowProportionAuto,
+              onChanged: i < last
+                  ? (v) => setState(() => _proportions = setBalloonProportion(_balloonProportions, i, v))
+                  : null,
+            ),
+        ],
       ],
     );
   }
