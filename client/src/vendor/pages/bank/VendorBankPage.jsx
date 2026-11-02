@@ -38,7 +38,7 @@ function AddBankModal({ vendorId, onClose }) {
       qc.invalidateQueries(['vendor-bank-accounts', vendorId]);
       onClose();
     },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add bank account.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to add bank account.'),
   });
 
   const handleSubmit = (e) => {

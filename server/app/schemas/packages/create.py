@@ -16,6 +16,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
+from app.schemas.packages.units import normalise_unit_on_create
 from app.models.enums import CharacterSet, Currency, MarqueeStyle, PackagePricingType, PackageStatus, PackageUnit, ReviewModerationStatus
 from app.schemas.packages.common import PriceTierSchema
 
@@ -122,6 +123,11 @@ class PackageCreate(BaseSchema):
 class PackageItemCreate(BaseSchema):
     """Payload required to add an item to an existing package."""
 
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_unit(cls, values):
+        return normalise_unit_on_create(values)
+
     package_id: uuid.UUID = Field(description="Parent package UUID")
     name: str = Field(min_length=1, max_length=300, description="Item name")
     description: str | None = Field(default=None, description="Item description")
@@ -185,6 +191,11 @@ class CommonPackageItemCreate(BaseSchema):
     created once per vendor and attached to any number of that vendor's
     packages afterward via the attach/detach endpoints.
     """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_unit(cls, values):
+        return normalise_unit_on_create(values)
 
     name: str = Field(min_length=1, max_length=300, description="Item name")
     description: str | None = Field(default=None, description="Item description")
@@ -252,6 +263,11 @@ class AttachAllRequest(BaseSchema):
 class PackageServiceCreate(BaseSchema):
     """Payload required to add a service to an existing package."""
 
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_unit(cls, values):
+        return normalise_unit_on_create(values)
+
     package_id: uuid.UUID = Field(description="Parent package UUID")
     name: str = Field(min_length=1, max_length=300, description="Service name")
     description: str | None = Field(default=None, description="Service description")
@@ -312,6 +328,11 @@ class CommonPackageServiceCreate(BaseSchema):
     created once per vendor and attached to any number of that vendor's
     packages afterward via the attach/detach endpoints.
     """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_unit(cls, values):
+        return normalise_unit_on_create(values)
 
     name: str = Field(min_length=1, max_length=300, description="Service name")
     description: str | None = Field(default=None, description="Service description")

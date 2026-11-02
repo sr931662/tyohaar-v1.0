@@ -70,7 +70,7 @@ function ImportTab() {
       toast.success(result?.message ?? 'Import rolled back.');
       qc.invalidateQueries(['io', 'import-logs']);
     },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Rollback failed'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Rollback failed'),
   });
 
   const downloadTemplate = async () => {
@@ -103,7 +103,7 @@ function ImportTab() {
         errors: result.preview?.sample_errors ?? [],
       });
     } catch (err) {
-      toast.error(err?.response?.data?.detail ?? 'Validation failed');
+      toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Validation failed');
     } finally {
       setValidating(false);
     }
@@ -130,7 +130,7 @@ function ImportTab() {
       if (fileRef.current) fileRef.current.value = '';
       qc.invalidateQueries(['io', 'import-logs']);
     },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Import failed'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Import failed'),
   });
 
   return (
@@ -256,7 +256,7 @@ function ExportTab() {
       toast.success(`${result.message ?? 'Export complete'} (${result.estimated_rows ?? 0} rows)`);
       qc.invalidateQueries(['io', 'export-logs']);
     } catch (err) {
-      toast.error(err?.response?.data?.detail ?? 'Export failed');
+      toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Export failed');
     } finally {
       setExporting(false);
     }
@@ -268,7 +268,7 @@ function ExportTab() {
       const { blob, filename } = await ioApi.downloadExport(log.id);
       downloadBlob(blob, filename);
     } catch (err) {
-      toast.error(err?.response?.data?.detail ?? 'Download failed');
+      toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Download failed');
     } finally {
       setDownloadingId(null);
     }

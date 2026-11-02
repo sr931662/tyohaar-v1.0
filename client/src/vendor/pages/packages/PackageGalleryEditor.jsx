@@ -26,7 +26,7 @@ export default function PackageGalleryEditor({ pkgId, compact = false }) {
   const addMutation = useMutation({
     mutationFn: (fileUrl) => vendorPackagesApi.addGalleryItem(pkgId, { file_url: fileUrl }),
     onSuccess: () => { invalidate(); setUploadUrl(''); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add image.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to add image.'),
   });
 
   const deleteMutation = useMutation({

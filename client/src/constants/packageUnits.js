@@ -14,3 +14,9 @@ export const PACKAGE_UNIT_OPTIONS = [
   { value: 'sq ft', label: 'Sq. ft.' },
   { value: 'kg', label: 'Kg' },
 ];
+
+// Older rows can hold a free-text unit ("hrs", "Pieces", "2") from before this
+// list existed. Edit forms show such a value as its own option so the vendor
+// sees what is stored instead of a blank "Unit (optional)"; the server maps
+// known spellings and leaves an unmappable one untouched.
+export const isKnownUnit = (value) => PACKAGE_UNIT_OPTIONS.some((u) => u.value === value);

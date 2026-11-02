@@ -44,7 +44,7 @@ export default function ImageUploadField({
         toast.success(urls.length > 1 ? `${urls.length} files uploaded.` : 'File uploaded.');
       }
     } catch (err) {
-      const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Upload failed.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? err?.response?.data?.message ?? 'Upload failed.';
       toast.error(msg);
     } finally {
       setUploading(false);

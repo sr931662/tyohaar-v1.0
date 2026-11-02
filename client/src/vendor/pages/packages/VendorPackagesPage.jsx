@@ -12,7 +12,7 @@ import ItemImportExportBar from '../../components/ItemImportExportBar';
 import AttachPackagesModal from '../../components/AttachPackagesModal';
 import CommonServicesModal from './CommonServicesModal';
 import PackageServicesModal from './PackageServicesModal';
-import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
+import { PACKAGE_UNIT_OPTIONS, isKnownUnit } from '../../../constants/packageUnits';
 import { MarqueeStyleSelect } from './serviceForm';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -54,8 +54,10 @@ function PackageFormModal({ initial, occasions, onClose, onSave, saving }) {
     short_description: initial?.short_description ?? '',
     occasion_ids: initial?.occasion_ids ?? [],
     base_price: initial?.base_price ?? '',
-    min_guests: initial?.min_guests ?? '',
-    max_guests: initial?.max_guests ?? '',
+    // The API sends these under their column names (min_guest_count), so
+    // reading only min_guests always showed the form blank.
+    min_guests: initial?.min_guests ?? initial?.min_guest_count ?? '',
+    max_guests: initial?.max_guests ?? initial?.max_guest_count ?? '',
     duration_hours: initial?.duration_hours ?? '',
     cover_image_url: initial?.cover_image_url ?? '',
     is_customizable: initial?.is_customizable ?? false,
@@ -85,17 +87,20 @@ function PackageFormModal({ initial, occasions, onClose, onSave, saving }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
+    // On edit a cleared field is sent as null so it actually clears; an
+    // omitted key means "leave unchanged".
+    const blank = isEdit ? null : undefined;
     const body = {
       name: form.name.trim(),
-      description: form.description.trim() || undefined,
-      short_description: form.short_description.trim() || undefined,
+      description: form.description.trim() || blank,
+      short_description: form.short_description.trim() || blank,
       occasion_ids: form.occasion_ids,
       base_price: Number(form.base_price),
       pricing_type: 'fixed',
-      min_guests: form.min_guests !== '' ? Number(form.min_guests) : undefined,
-      max_guests: form.max_guests !== '' ? Number(form.max_guests) : undefined,
-      duration_hours: form.duration_hours !== '' ? Number(form.duration_hours) : undefined,
-      cover_image_url: form.cover_image_url.trim() || undefined,
+      min_guests: form.min_guests !== '' && form.min_guests != null ? Number(form.min_guests) : blank,
+      max_guests: form.max_guests !== '' && form.max_guests != null ? Number(form.max_guests) : blank,
+      duration_hours: form.duration_hours !== '' && form.duration_hours != null ? Number(form.duration_hours) : blank,
+      cover_image_url: form.cover_image_url.trim() || blank,
       is_customizable: form.is_customizable,
       city_slug: form.city_slug.trim().toLowerCase() || undefined,
     };
@@ -278,25 +283,25 @@ function CommonItemsModal({ onClose }) {
       invalidate();
       setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits', marquee_style: 'led' });
     },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to create item.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to create item.'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ itemId, body }) => vendorPackagesApi.updateCommonItem(itemId, body),
     onSuccess: () => { toast.success('Common item updated.'); invalidate(); setEditingId(null); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to update item.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to update item.'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (itemId) => vendorPackagesApi.deleteCommonItem(itemId),
     onSuccess: () => { toast.success('Common item deleted.'); invalidate(); setConfirmDelete(null); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to delete item.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to delete item.'),
   });
 
   const attachMutation = useMutation({
     mutationFn: ({ itemId, packageIds }) => vendorPackagesApi.attachAllCommonItem(itemId, packageIds),
     onSuccess: (result) => { toast.success(`Attached to ${result.attached_count} package(s).`); invalidate(); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to attach to packages.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to attach to packages.'),
   });
 
   const startEdit = (item) => {
@@ -336,8 +341,10 @@ function CommonItemsModal({ onClose }) {
         quantity: Number(editForm.quantity),
         max_quantity: editForm.max_quantity !== '' ? Number(editForm.max_quantity) : null,
         base_price: Number(editForm.base_price),
-        unit: editForm.unit || undefined,
-        description: editForm.description || undefined,
+        // null, not undefined: an omitted key means "unchanged", so a
+        // cleared unit or description used to silently stay as it was.
+        unit: editForm.unit || null,
+        description: editForm.description || null,
         cover_image_url: editForm.cover_image_url || null,
         choices: parseChoices(editForm.choices).length ? parseChoices(editForm.choices) : null,
         is_customizable: !!editForm.is_customizable,
@@ -396,6 +403,7 @@ function CommonItemsModal({ onClose }) {
                     <input className="admin-input" type="number" min="1" value={editForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
                     <select className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)}>
                       <option value="">Unit (optional)</option>
+                      {editForm.unit && !isKnownUnit(editForm.unit) && <option value={editForm.unit}>{editForm.unit} (old value, choose a unit)</option>}
                       {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                     </select>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
@@ -485,6 +493,7 @@ function CommonItemsModal({ onClose }) {
               <input className="admin-input" type="number" min="1" value={newItem.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
               <select className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)}>
                 <option value="">Unit (optional)</option>
+                {newItem.unit && !isKnownUnit(newItem.unit) && <option value={newItem.unit}>{newItem.unit} (old value, choose a unit)</option>}
                 {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
               </select>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
@@ -564,25 +573,25 @@ function PackageItemsModal({ pkg, onClose }) {
   const addMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.addItem(pkg.id, { ...body, package_id: pkg.id }),
     onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem({ name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '', is_mandatory: true, is_returnable: false, cover_image_url: '', choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits', marquee_style: 'led' }); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add item.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to add item.'),
   });
 
   const attachMutation = useMutation({
     mutationFn: (itemId) => vendorPackagesApi.attachCommonItem(pkg.id, itemId),
     onSuccess: () => { toast.success('Common item attached.'); invalidate(); setAttachingId(''); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to attach item.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to attach item.'),
   });
 
   const detachMutation = useMutation({
     mutationFn: (itemId) => vendorPackagesApi.detachCommonItem(pkg.id, itemId),
     onSuccess: () => { toast.success('Common item detached.'); invalidate(); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to detach item.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to detach item.'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ itemId, body }) => vendorPackagesApi.updateItem(pkg.id, itemId, body),
     onSuccess: () => { toast.success('Item updated.'); invalidate(); setEditingId(null); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to update item.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to update item.'),
   });
 
   const deleteMutation = useMutation({
@@ -628,8 +637,10 @@ function PackageItemsModal({ pkg, onClose }) {
         quantity: Number(editForm.quantity),
         max_quantity: editForm.max_quantity !== '' ? Number(editForm.max_quantity) : null,
         base_price: Number(editForm.base_price),
-        unit: editForm.unit || undefined,
-        description: editForm.description || undefined,
+        // null, not undefined: an omitted key means "unchanged", so a
+        // cleared unit or description used to silently stay as it was.
+        unit: editForm.unit || null,
+        description: editForm.description || null,
         cover_image_url: editForm.cover_image_url || null,
         choices: parseChoices(editForm.choices).length ? parseChoices(editForm.choices) : null,
         is_customizable: !!editForm.is_customizable,
@@ -696,6 +707,7 @@ function PackageItemsModal({ pkg, onClose }) {
                     <input className="admin-input" type="number" min="1" value={editForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
                     <select className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)}>
                       <option value="">Unit (optional)</option>
+                      {editForm.unit && !isKnownUnit(editForm.unit) && <option value={editForm.unit}>{editForm.unit} (old value, choose a unit)</option>}
                       {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                     </select>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
@@ -830,6 +842,7 @@ function PackageItemsModal({ pkg, onClose }) {
                   <input className="admin-input" type="number" min="1" value={newItem.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
                   <select className="admin-input" value={newItem.unit} onChange={(e) => setNF('unit', e.target.value)}>
                     <option value="">Unit (optional)</option>
+                    {newItem.unit && !isKnownUnit(newItem.unit) && <option value={newItem.unit}>{newItem.unit} (old value, choose a unit)</option>}
                     {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                   </select>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
@@ -912,7 +925,7 @@ function PackageItemImagesModal({ pkgId, item, onClose, onChanged }) {
   const addMutation = useMutation({
     mutationFn: (imageUrl) => vendorPackagesApi.addItemImage(pkgId, item.id, { image_url: imageUrl }),
     onSuccess: () => { toast.success('Image added.'); invalidate(); setUploadUrl(''); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add image.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to add image.'),
   });
 
   const deleteMutation = useMutation({
@@ -1061,19 +1074,19 @@ export default function VendorPackagesPage() {
   const createMutation = useMutation({
     mutationFn: (body) => vendorPackagesApi.create({ ...body, vendor_id: vendor?.id }),
     onSuccess: () => { toast.success('Package created!'); invalidate(); setShowCreate(false); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to create.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to create.'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, body }) => vendorPackagesApi.update(id, body),
     onSuccess: () => { toast.success('Package updated.'); invalidate(); setEditingPkg(null); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to update.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to update.'),
   });
 
   const submitMutation = useMutation({
     mutationFn: (packageId) => vendorPackagesApi.submitForReview(packageId),
     onSuccess: () => { toast.success('Submitted for admin review.'); invalidate(); setConfirmSubmit(null); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to submit.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to submit.'),
   });
 
   const unpublishMutation = useMutation({

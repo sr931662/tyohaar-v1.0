@@ -135,7 +135,7 @@ function ProfilePhotoCard() {
       await refreshUser();
       toast.success('Profile photo updated.');
     } catch (err) {
-      toast.error(err?.response?.data?.detail ?? 'Failed to update profile photo.');
+      toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to update profile photo.');
     } finally {
       setSaving(false);
     }
@@ -239,7 +239,7 @@ export default function VendorProfilePage() {
       qc.setQueryData(['vendor', 'me'], data);
     },
     onError: (err) => {
-      const msg = err?.response?.data?.detail ?? 'Failed to create profile.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to create profile.';
       toast.error(msg);
     },
   });
@@ -248,7 +248,7 @@ export default function VendorProfilePage() {
   const updateVendorMutation = useMutation({
     mutationFn: ({ vendorId, body }) => vendorProfileApi.update(vendorId, body),
     onError: (err) => {
-      const msg = err?.response?.data?.detail ?? 'Failed to update business details.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to update business details.';
       toast.error(msg);
     },
   });
@@ -257,7 +257,7 @@ export default function VendorProfilePage() {
   const updateProfileMutation = useMutation({
     mutationFn: ({ vendorId, body }) => vendorProfileApi.updateProfile(vendorId, body),
     onError: (err) => {
-      const msg = err?.response?.data?.detail ?? 'Failed to update profile.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to update profile.';
       toast.error(msg);
     },
   });
@@ -504,7 +504,7 @@ function GallerySection({ vendor }) {
       qc.invalidateQueries(['vendor-gallery', vendor.id]);
       setMediaUrl(''); setCaption(''); setIsFeatured(false);
     },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add photo.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to add photo.'),
   });
 
   const deleteMutation = useMutation({
@@ -604,7 +604,7 @@ function DocumentsSection({ vendor }) {
       qc.invalidateQueries(['vendor-documents', vendor.id]);
       setDocUrl('');
     },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add document.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to add document.'),
   });
 
   const deleteMutation = useMutation({

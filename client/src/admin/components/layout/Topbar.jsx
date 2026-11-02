@@ -36,7 +36,7 @@ export default function Topbar({ sidebarCollapsed, onToggleSidebar, onOpenMobile
       toast.success('Profile photo updated.');
       setPhotoModalOpen(false);
     } catch (err) {
-      toast.error(err?.response?.data?.detail ?? 'Failed to update profile photo.');
+      toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to update profile photo.');
     } finally {
       setSaving(false);
     }

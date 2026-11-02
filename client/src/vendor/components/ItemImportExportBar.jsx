@@ -70,7 +70,7 @@ export default function ItemImportExportBar({ scope, packageId, disabled, invali
       else toast.success(summary);
       if (invalidateKey) qc.invalidateQueries(invalidateKey);
     } catch (err) {
-      toast.error(err?.response?.data?.detail ?? 'Import failed.');
+      toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Import failed.');
     } finally {
       setImporting(false);
     }

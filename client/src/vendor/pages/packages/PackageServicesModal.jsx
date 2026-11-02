@@ -5,7 +5,7 @@ import { vendorPackagesApi, vendorServiceIoApi } from '../../api';
 import { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
-import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
+import { PACKAGE_UNIT_OPTIONS, isKnownUnit } from '../../../constants/packageUnits';
 import { EMPTY_SERVICE, buildServiceBody, serviceToForm, apiErrorMessage, ServiceCustomizationFields } from './serviceForm';
 
 // ── Package Services Modal ──────────────────────────────────────────────────────
@@ -123,6 +123,7 @@ export default function PackageServicesModal({ pkg, onClose }) {
                     <input className="admin-input" type="number" min="1" value={editForm.quantity} onChange={(e) => setEF('quantity', e.target.value)} placeholder="Qty" />
                     <select className="admin-input" value={editForm.unit} onChange={(e) => setEF('unit', e.target.value)}>
                       <option value="">Unit (optional)</option>
+                      {editForm.unit && !isKnownUnit(editForm.unit) && <option value={editForm.unit}>{editForm.unit} (old value, choose a unit)</option>}
                       {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                     </select>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
@@ -237,6 +238,7 @@ export default function PackageServicesModal({ pkg, onClose }) {
                   <input className="admin-input" type="number" min="1" value={newService.quantity} onChange={(e) => setNF('quantity', e.target.value)} placeholder="Qty" />
                   <select className="admin-input" value={newService.unit} onChange={(e) => setNF('unit', e.target.value)}>
                     <option value="">Unit (optional)</option>
+                    {newService.unit && !isKnownUnit(newService.unit) && <option value={newService.unit}>{newService.unit} (old value, choose a unit)</option>}
                     {PACKAGE_UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                   </select>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>

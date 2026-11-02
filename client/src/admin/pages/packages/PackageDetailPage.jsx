@@ -137,13 +137,13 @@ export default function PackageDetailPage() {
   const addItemMutation = useMutation({
     mutationFn: (body) => packagesApi.addItem(packageId, { ...body, package_id: packageId }),
     onSuccess: () => { toast.success('Item added.'); invalidate(); setNewItem(EMPTY_ITEM); setShowAddItem(false); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to add item.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to add item.'),
   });
 
   const updateItemMutation = useMutation({
     mutationFn: ({ itemId, body }) => packagesApi.updateItem(packageId, itemId, body),
     onSuccess: () => { toast.success('Item updated.'); invalidate(); setEditingItemId(null); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to update item.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to update item.'),
   });
 
   const deleteItemMutation = useMutation({
@@ -316,7 +316,7 @@ export default function PackageDetailPage() {
               <Row label="Short Description" value={pkg.short_description} />
               <Row label="Status" value={<StatusBadge status={status} />} />
               <Row label="Currency" value={pkg.currency} />
-              <Row label="Guests" value={pkg.min_guests || pkg.max_guests ? `${pkg.min_guests ?? '—'} – ${pkg.max_guests ?? '—'}` : '—'} />
+              <Row label="Guests" value={(pkg.min_guests ?? pkg.min_guest_count) || (pkg.max_guests ?? pkg.max_guest_count) ? `${pkg.min_guests ?? pkg.min_guest_count ?? '—'} – ${pkg.max_guests ?? pkg.max_guest_count ?? '—'}` : '—'} />
               <Row label="Duration" value={pkg.duration_hours ? `${pkg.duration_hours} hrs` : '—'} />
               <Row label="Display Order" value={pkg.display_order} />
               <Row label="Customizable" value={pkg.is_customizable ? 'Yes' : 'No'} />

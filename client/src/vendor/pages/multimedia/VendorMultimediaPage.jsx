@@ -242,7 +242,7 @@ function BookingMediaCard({ booking, onOpenGallery }) {
       qc.invalidateQueries({ queryKey: ['vendor', 'booking-media'] });
       qc.invalidateQueries({ queryKey: ['vendor', 'booking-media-gallery', 'images', booking.booking_id] });
     },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to upload photo.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to upload photo.'),
     onSettled: () => setUploadingPhoto(false),
   });
 
@@ -253,7 +253,7 @@ function BookingMediaCard({ booking, onOpenGallery }) {
       qc.invalidateQueries({ queryKey: ['vendor', 'booking-media'] });
       qc.invalidateQueries({ queryKey: ['vendor', 'booking-media-gallery', 'videos', booking.booking_id] });
     },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed to upload video.'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to upload video.'),
     onSettled: () => setUploadingVideo(false),
   });
 

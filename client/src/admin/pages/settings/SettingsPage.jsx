@@ -409,19 +409,19 @@ function LegalTab() {
   const createTermsMutation = useMutation({
     mutationFn: (body) => settingsApi.createTermsVersion(body),
     onSuccess: () => { toast.success('Terms version published'); qc.invalidateQueries(['settings', 'terms']); setTermsOpen(false); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed'),
   });
 
   const createPrivacyMutation = useMutation({
     mutationFn: (body) => settingsApi.createPrivacyVersion(body),
     onSuccess: () => { toast.success('Privacy policy published'); qc.invalidateQueries(['settings', 'privacy']); setPrivacyOpen(false); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed'),
   });
 
   const createCancellationMutation = useMutation({
     mutationFn: (body) => settingsApi.createCancellationPolicyVersion(body),
     onSuccess: () => { toast.success('Cancellation policy published'); qc.invalidateQueries(['settings', 'cancellation']); setCancellationOpen(false); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed'),
   });
 
   return (

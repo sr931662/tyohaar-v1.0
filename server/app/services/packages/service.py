@@ -108,27 +108,11 @@ def _parse_int_cell(value: Any) -> int | None:
     return int(text) if text else None
 
 
-# Common free-text spellings vendors type into a spreadsheet, mapped to the
-# fixed PackageUnit catalogue — bulk import bypasses the create/update
-# Pydantic schemas (upsert goes straight to create_from_dict/update), so
-# without this the exact confusion the unit dropdown fixes in the admin and
-# vendor forms (quantities like '2' or '6' typed into the unit column)
-# could still slip in through an XLSX/CSV upload.
-_UNIT_SYNONYMS: dict[str, str] = {
-    "piece": "pieces", "pieces": "pieces", "pc": "pieces", "pcs": "pieces",
-    "nos": "pieces", "no": "pieces", "unit": "pieces", "units": "pieces",
-    "set": "sets", "sets": "sets",
-    "hour": "hours", "hours": "hours", "hr": "hours", "hrs": "hours",
-    "day": "days", "days": "days",
-    "person": "persons", "persons": "persons", "pax": "persons",
-    "guest": "persons", "guests": "persons",
-    "plate": "plates", "plates": "plates", "serving": "plates", "servings": "plates",
-    # Normalization below strips '.' and turns ' ' into '_' before lookup, so
-    # "sq.ft"/"sqft" both become the key "sqft" and "sq ft" becomes "sq_ft" —
-    # both keys need an entry to cover every spelling.
-    "sqft": "sq ft", "sq_ft": "sq ft",
-    "kg": "kg", "kgs": "kg", "kilogram": "kg", "kilograms": "kg",
-}
+# Spreadsheet unit cells use the same spelling table as the API schemas
+# (app/schemas/packages/units.py): bulk import bypasses the create/update
+# schemas, so without this a quantity typed into the unit column could still
+# slip in through an XLSX/CSV upload.
+from app.schemas.packages.units import UNIT_SYNONYMS as _UNIT_SYNONYMS  # noqa: E402
 
 
 def _normalize_unit_cell(value: str | None) -> str | None:

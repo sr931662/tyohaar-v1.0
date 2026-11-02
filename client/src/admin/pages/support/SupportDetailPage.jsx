@@ -26,7 +26,7 @@ export default function SupportDetailPage() {
   const statusMutation = useMutation({
     mutationFn: (newStatus) => supportApi.updateStatus(id, newStatus),
     onSuccess: () => { toast.success('Status updated'); qc.invalidateQueries(['support', id]); },
-    onError: (err) => toast.error(err?.response?.data?.detail ?? 'Failed'),
+    onError: (err) => toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed'),
   });
 
   const sendMutation = useMutation({

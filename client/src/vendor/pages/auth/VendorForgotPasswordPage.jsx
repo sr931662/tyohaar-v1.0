@@ -26,7 +26,7 @@ export default function VendorForgotPasswordPage() {
       toast.success('OTP sent to your email address.');
       setStep('confirm');
     } catch (err) {
-      const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Could not send OTP. Please try again.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? err?.response?.data?.message ?? 'Could not send OTP. Please try again.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -45,7 +45,7 @@ export default function VendorForgotPasswordPage() {
       toast.success('Password reset successfully. Please sign in.');
       navigate('/vendor/login', { replace: true });
     } catch (err) {
-      const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Invalid or expired OTP.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? err?.response?.data?.message ?? 'Invalid or expired OTP.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -59,7 +59,7 @@ export default function VendorForgotPasswordPage() {
       await vendorAuthApi.requestPasswordResetOtp(email.trim().toLowerCase());
       toast.success('A new OTP has been sent.');
     } catch (err) {
-      const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Could not resend OTP.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? err?.response?.data?.message ?? 'Could not resend OTP.';
       setError(msg);
     } finally {
       setLoading(false);

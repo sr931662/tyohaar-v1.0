@@ -72,7 +72,7 @@ export default function VendorRegisterPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Registration failed. Please try again.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? err?.response?.data?.message ?? 'Registration failed. Please try again.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -91,7 +91,7 @@ export default function VendorRegisterPage() {
         navigate('/vendor', { replace: true });
       }
     } catch (err) {
-      const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Google sign-up failed.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? err?.response?.data?.message ?? 'Google sign-up failed.';
       setError(msg);
     } finally {
       setLoading(false);

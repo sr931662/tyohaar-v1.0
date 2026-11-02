@@ -54,7 +54,7 @@ export default function WorkspaceLoginPage() {
       toast.success('Welcome back!');
       navigate(data.role === 'vendor' ? '/vendor' : '/admin', { replace: true });
     } catch (err) {
-      const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Invalid email or password.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? err?.response?.data?.message ?? 'Invalid email or password.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -74,7 +74,7 @@ export default function WorkspaceLoginPage() {
       toast.success('Welcome back!');
       navigate('/vendor', { replace: true });
     } catch (err) {
-      const msg = err?.response?.data?.detail ?? err?.response?.data?.message ?? 'Google sign-in failed.';
+      const msg = (err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? err?.response?.data?.message ?? 'Google sign-in failed.';
       setError(msg);
     } finally {
       setLoading(false);

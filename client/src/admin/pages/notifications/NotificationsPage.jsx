@@ -122,7 +122,7 @@ function TemplatesTab() {
       qc.invalidateQueries(['notifications', 'templates']);
       setOpen(false); setEditItem(null);
     },
-    onError: (err) => toast.error(err?.response?.data?.message || err?.response?.data?.detail || 'Save failed'),
+    onError: (err) => toast.error(err?.response?.data?.message || (err?.response?.data?.error?.message ?? err?.response?.data?.detail) || 'Save failed'),
   });
 
   const deleteMutation = useMutation({
@@ -295,7 +295,7 @@ function SendTab() {
       ? notificationsApi.send(body)
       : notificationsApi.broadcast(body),
     onSuccess: () => { toast.success(mode === 'single' ? 'Notification sent' : 'Broadcast queued'); },
-    onError: (err) => toast.error(err?.response?.data?.message || err?.response?.data?.detail || 'Send failed'),
+    onError: (err) => toast.error(err?.response?.data?.message || (err?.response?.data?.error?.message ?? err?.response?.data?.detail) || 'Send failed'),
   });
 
   return (

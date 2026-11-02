@@ -132,7 +132,7 @@ export default function VendorAvailabilityPage() {
       toast.success('Weekly schedule saved.');
       qc.invalidateQueries(['vendor-availability', vendorId]);
     } catch (err) {
-      toast.error(err?.response?.data?.detail ?? 'Failed to save schedule.');
+      toast.error((err?.response?.data?.error?.message ?? err?.response?.data?.detail) ?? 'Failed to save schedule.');
     } finally {
       setSaving(false);
     }

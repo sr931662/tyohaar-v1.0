@@ -15,6 +15,7 @@ from typing import Annotated
 from pydantic import Field, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, MoneyAmount
+from app.schemas.packages.units import normalise_unit_on_update
 from app.models.enums import CharacterSet, Currency, MarqueeStyle, PackagePricingType, PackageStatus, PackageUnit
 from app.schemas.packages.common import PriceTierSchema
 
@@ -102,6 +103,11 @@ class PackageUpdate(BaseSchema):
 class PackageItemUpdate(BaseSchema):
     """Partial update payload for a PackageItem."""
 
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_unit(cls, values):
+        return normalise_unit_on_update(values)
+
     name: str | None = Field(default=None, min_length=1, max_length=300)
     description: str | None = None
     quantity: int | None = Field(default=None, ge=1)
@@ -148,6 +154,11 @@ _REQUIRED_SERVICE_COLUMNS = frozenset({
 
 class PackageServiceUpdate(BaseSchema):
     """Partial update payload for a PackageService (shared by both package-specific and common services)."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_unit(cls, values):
+        return normalise_unit_on_update(values)
 
     name: str | None = Field(default=None, min_length=1, max_length=300)
     description: str | None = None
