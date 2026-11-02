@@ -98,6 +98,26 @@ router.add_api_route(
 # ── Referral list ─────────────────────────────────────────────────────────────
 
 router.add_api_route(
+    "/admin",
+    ctrl.admin_list_referrals,
+    methods=["GET"],
+    status_code=status.HTTP_200_OK,
+    summary="List All Referrals (Admin)",
+    description="Every referral on the platform, newest first. Admin access required.",
+    operation_id="referrals_admin_list",
+)
+
+router.add_api_route(
+    "/admin/stats",
+    ctrl.admin_referral_stats,
+    methods=["GET"],
+    status_code=status.HTTP_200_OK,
+    summary="Referral Overview (Admin)",
+    description="Platform-wide referral totals. Admin access required.",
+    operation_id="referrals_admin_stats",
+)
+
+router.add_api_route(
     "",
     ctrl.list_referrals,
     methods=["GET"],

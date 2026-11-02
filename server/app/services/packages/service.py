@@ -382,6 +382,18 @@ class PackageService(BaseService):
         )
         return [row[0] for row in result.all()]
 
+    async def list_active_by_vendor(self, vendor_id: UUID) -> list[PackageResponse]:
+        """A vendor's published packages, newest first: what their public profile shows."""
+        from app.models.enums import PackageStatus
+
+        async with self._uow() as uow:
+            model = uow.packages.packages._model
+            rows = await uow.packages.packages.find_many(
+                model.vendor_id == vendor_id, model.status == PackageStatus.ACTIVE
+            )
+            rows = sorted(rows, key=lambda p: p.created_at, reverse=True)
+            return [PackageResponse.model_validate(p) for p in rows]
+
     async def assert_package_visible(
         self, package_id: UUID, viewer_id: UUID | None = None, viewer_role: str | None = None
     ) -> None:

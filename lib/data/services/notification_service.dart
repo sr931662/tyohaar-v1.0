@@ -16,7 +16,7 @@ class NotificationService {
   }
 
   Future<void> markAllAsRead() async {
-    await _api.dio.post('notifications/mark-read');
+    await _api.dio.post('notifications/mark-all-read');
   }
 
   Future<void> markAsRead(String notificationId) async {

@@ -47,7 +47,7 @@ def generate_vendor_slug(
     """
     type_code = VENDOR_TYPE_ABBREVIATIONS.get(vendor_type, "othr")
     locality = (city_slug or "unknown").strip().lower().replace(" ", "-")
-    digest = hashlib.md5(str(vendor_id).encode()).hexdigest()
+    digest = hashlib.md5(str(vendor_id).encode(), usedforsecurity=False).hexdigest()
     number = int(digest, 16) % 100_000
     return f"{type_code}-{locality}-{number:05d}"
 

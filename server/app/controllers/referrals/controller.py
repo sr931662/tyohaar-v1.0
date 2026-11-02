@@ -11,9 +11,14 @@ from fastapi import Depends
 
 from app.core.current_user import CurrentUserDep
 from app.core.dependencies import ReferralServiceDep
-from app.core.pagination import CursorPaginationParams, get_cursor_pagination
+from app.core.pagination import (
+    CursorPaginationParams,
+    OffsetPaginationParams,
+    get_cursor_pagination,
+    get_offset_pagination,
+)
 from app.core.permissions import AdminDep
-from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
+from app.core.responses import CursorMeta, CursorPaginatedResponse, PaginatedMeta, PaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
 from app.schemas.referrals.create import ReferralApplyCreate
 from app.schemas.referrals.milestones import (
@@ -63,6 +68,26 @@ async def activate_referral_reward(
         reward_id=reward_id, admin_id=current_user.id
     )
     return SuccessResponse(data=result, message="Referral reward activated.")
+
+
+async def admin_list_referrals(
+    admin: AdminDep,
+    pagination: Annotated[OffsetPaginationParams, Depends(get_offset_pagination)],
+    service: ReferralServiceDep,
+):
+    items, total = await service.admin_list_referrals(pagination.page, pagination.page_size)
+    pages = max(1, (total + pagination.page_size - 1) // pagination.page_size)
+    return PaginatedResponse(
+        data=items,
+        meta=PaginatedMeta(
+            page=pagination.page, page_size=pagination.page_size, total=total, total_pages=pages,
+            has_next=pagination.page < pages, has_prev=pagination.page > 1,
+        ),
+    )
+
+
+async def admin_referral_stats(admin: AdminDep, service: ReferralServiceDep):
+    return SuccessResponse(data=await service.admin_referral_stats(), message="Referral overview retrieved.")
 
 
 async def get_referral_stats(

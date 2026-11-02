@@ -260,3 +260,71 @@ async def test_another_vendor_cannot_see_a_draft(ids, monkeypatch):
     svc = _pkg_service(monkeypatch, "draft", ids.vendor, vendor_for_user=SimpleNamespace(id=ids.other_vendor))
     with pytest.raises(PackageNotFoundError):
         await svc.assert_package_visible(uuid.uuid4(), ids.vendor_user, "vendor")
+
+
+# ── Routes the clients call must exist, and stay as public / protected as intended ──
+
+def _route(method, path):
+    from fastapi.routing import APIRoute
+
+    from app.main import app
+
+    return next(r for r in app.routes if isinstance(r, APIRoute) and r.path == path and method in r.methods)
+
+
+def _dependency_names(route):
+    names = set()
+
+    def walk(dep):
+        names.add(getattr(dep.call, "__name__", str(dep.call)))
+        for sub in dep.dependencies:
+            walk(sub)
+
+    walk(route.dependant)
+    return names
+
+
+def test_a_vendors_published_packages_route_exists_and_is_public():
+    route = _route("GET", "/api/v1/vendors/{vendor_id}/packages")
+    assert not any("current" in n or "admin" in n for n in _dependency_names(route))
+
+
+@pytest.mark.parametrize("path", ["/api/v1/referrals/admin", "/api/v1/referrals/admin/stats"])
+def test_admin_referral_routes_exist_and_require_an_admin(path):
+    route = _route("GET", path)
+    assert any("admin" in n.lower() for n in _dependency_names(route))
+
+
+@pytest.mark.asyncio
+async def test_a_vendors_public_packages_are_active_only_and_newest_first(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.packages.service import PackageService
+
+    now = datetime.now(timezone.utc)
+    old = SimpleNamespace(id=1, created_at=now - timedelta(days=2))
+    new = SimpleNamespace(id=2, created_at=now)
+    seen_clauses = []
+
+    class Packages:
+        _model = SimpleNamespace(vendor_id=SimpleNamespace(__eq__=None), status=None)
+
+        async def find_many(self, *clauses, **k):
+            seen_clauses.extend(clauses)
+            return [old, new]
+
+    class Uow:
+        packages = SimpleNamespace(packages=Packages())
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *e):
+            return False
+
+    monkeypatch.setattr("app.services.packages.service.PackageResponse",
+                        SimpleNamespace(model_validate=lambda p: p.id))
+    svc = PackageService()
+    monkeypatch.setattr(svc, "_uow", lambda: Uow(), raising=False)
+    assert await svc.list_active_by_vendor(uuid.uuid4()) == [2, 1]   # newest first
+    assert len(seen_clauses) == 2                                    # vendor AND status filters

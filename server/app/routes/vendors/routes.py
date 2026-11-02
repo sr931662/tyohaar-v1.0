@@ -7,6 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, status
 
 from app.controllers.vendors import controller as ctrl
+from app.schemas.packages.response import PackageResponse
 from app.core.responses import CursorPaginatedResponse, SuccessResponse
 from app.schemas.vendors import (
     VendorBankAccountResponse,
@@ -56,6 +57,17 @@ router.add_api_route(
     summary="Get My Vendor Profile",
     description="Return the vendor profile associated with the authenticated vendor user.",
     operation_id="vendors_get_my_vendor",
+)
+
+router.add_api_route(
+    "/{vendor_id}/packages",
+    ctrl.list_vendor_public_packages,
+    methods=["GET"],
+    response_model=SuccessResponse[list[PackageResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="List a Vendor's Published Packages",
+    description="Public. The vendor's active packages, newest first.",
+    operation_id="vendors_list_public_packages",
 )
 
 router.add_api_route(

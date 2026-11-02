@@ -11,9 +11,10 @@ from typing import Annotated
 from fastapi import Depends, Query
 
 from app.core.current_user import CurrentUserDep
-from app.core.dependencies import VendorServiceDep
+from app.core.dependencies import PackageServiceDep, VendorServiceDep
 from app.core.pagination import CursorPaginationParams, get_cursor_pagination
 from app.core.permissions import AdminDep, CustomerDep, VendorDep
+from app.schemas.packages.response import PackageResponse
 from app.core.responses import CursorMeta, CursorPaginatedResponse, SuccessResponse
 from app.schemas.base import CursorPage
 from app.schemas.vendors import (
@@ -386,3 +387,11 @@ async def update_vendor_categories(
         vendor_id=vendor_id, category_ids=category_ids
     )
     return SuccessResponse(data=result, message="Vendor categories updated.")
+
+
+async def list_vendor_public_packages(
+    vendor_id: uuid.UUID,
+    service: PackageServiceDep,
+) -> SuccessResponse[list[PackageResponse]]:
+    """Published packages of one vendor, for the vendor's public profile."""
+    return SuccessResponse(data=await service.list_active_by_vendor(vendor_id), message="Packages retrieved.")

@@ -68,6 +68,22 @@ class _CursorPageHelper:
         )
 
 
+class AdminReferralRow(_BaseSchema):
+    id: UUID
+    referral_code: str
+    status: str
+    created_at: datetime
+    referrer: dict
+    referred: dict | None = None
+
+
+class AdminReferralStats(_BaseSchema):
+    total_referrals: int
+    successful_referrals: int
+    pending_rewards: int
+    total_reward_value: Decimal
+
+
 class ReferralService(BaseService):
     def __init__(self, session_factory=AsyncSessionLocal) -> None:
         super().__init__(session_factory)
@@ -380,3 +396,79 @@ class ReferralService(BaseService):
             reward = await validate_referral_reward_exists(reward_id, uow)
         # Only show status and value; structural security enforced by response schema
         return ReferralRewardResponse.model_validate(reward)
+
+    # ── Admin overview ────────────────────────────────────────────────────────
+
+    async def admin_list_referrals(self, page: int, page_size: int) -> tuple[list[AdminReferralRow], int]:
+        """Every referral on the platform, newest first, with both people's names."""
+        from sqlalchemy import func, select
+
+        from app.models.users.user import User
+
+        async with self._uow() as uow:
+            session = uow.session
+            total = (await session.execute(select(func.count()).select_from(Referral))).scalar_one()
+            rows = (
+                await session.execute(
+                    select(Referral).order_by(Referral.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+                )
+            ).scalars().all()
+            ids = {r.referrer_id for r in rows} | {r.referred_user_id for r in rows if r.referred_user_id}
+            users = {}
+            if ids:
+                users = {u.id: u for u in (await session.execute(select(User).where(User.id.in_(ids)))).scalars().all()}
+
+            def person(uid):
+                u = users.get(uid)
+                if u is None:
+                    return None
+                phone = u.phone if u.phone and not str(u.phone).startswith("TMP-") else None
+                return {"id": str(u.id), "full_name": u.display_name if phone or u.full_name else (u.email or None),
+                        "phone": phone, "email": u.email}
+
+            items = [
+                AdminReferralRow(
+                    id=r.id,
+                    referral_code=r.referral_code,
+                    status=getattr(r.referral_status, "value", str(r.referral_status)),
+                    created_at=r.created_at,
+                    referrer=person(r.referrer_id) or {},
+                    referred=person(r.referred_user_id) if r.referred_user_id else None,
+                )
+                for r in rows
+            ]
+            return items, int(total)
+
+    async def admin_referral_stats(self) -> AdminReferralStats:
+        from sqlalchemy import func, select
+
+        async with self._uow() as uow:
+            session = uow.session
+            total = (await session.execute(select(func.count()).select_from(Referral))).scalar_one()
+            successful = (
+                await session.execute(
+                    select(func.count()).select_from(Referral).where(
+                        Referral.referral_status.in_([ReferralStatus.CONVERTED, ReferralStatus.REWARDED])
+                    )
+                )
+            ).scalar_one()
+            pending = (
+                await session.execute(
+                    select(func.count()).select_from(ReferralReward).where(
+                        ReferralReward.reward_status.in_([ReferralRewardStatus.PENDING, ReferralRewardStatus.APPROVED])
+                    )
+                )
+            ).scalar_one()
+            value = (
+                await session.execute(
+                    select(func.coalesce(func.sum(ReferralReward.monetary_value), 0)).where(
+                        ReferralReward.reward_status == ReferralRewardStatus.PAID
+                    )
+                )
+            ).scalar_one()
+            return AdminReferralStats(
+                total_referrals=int(total),
+                successful_referrals=int(successful),
+                pending_rewards=int(pending),
+                total_reward_value=Decimal(value),
+            )
