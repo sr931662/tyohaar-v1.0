@@ -11,19 +11,38 @@ from typing import Any
 from app.core.config import settings
 
 
+def _legacy_hmac(password: str) -> str:
+    return hmac.new(settings.SECRET_KEY.encode(), password.encode(), hashlib.sha256).hexdigest()
+
+
 def hash_admin_password(password: str) -> str:
-    """HMAC-SHA256 hash of the password using the app's SECRET_KEY."""
-    return hmac.new(
-        settings.SECRET_KEY.encode(),
-        password.encode(),
-        hashlib.sha256,
-    ).hexdigest()
+    """
+    bcrypt, the same as every other account.
+
+    Admin passwords used to be an unsalted HMAC-SHA256 keyed with SECRET_KEY:
+    one fast hash, so anyone holding a copy of the users table and the key
+    could test billions of guesses per second. Existing hashes keep verifying
+    (see verify_admin_password) and are replaced on the next sign-in.
+    """
+    from app.core.security import hash_password
+
+    return hash_password(password)
+
+
+def admin_hash_needs_upgrade(stored_hash: str | None) -> bool:
+    """True for a legacy HMAC hash that should be re-saved as bcrypt."""
+    return bool(stored_hash) and not stored_hash.startswith("$2")
 
 
 def verify_admin_password(plain: str, stored_hash: str) -> bool:
-    """Constant-time comparison of a plain-text password against its stored HMAC-SHA256 hash."""
-    expected = hash_admin_password(plain)
-    return hmac.compare_digest(expected, stored_hash)
+    """Check a password against a bcrypt hash, or a legacy HMAC-SHA256 one."""
+    if not stored_hash:
+        return False
+    if stored_hash.startswith("$2"):
+        from app.core.security import verify_password
+
+        return verify_password(plain, stored_hash)
+    return hmac.compare_digest(_legacy_hmac(plain), stored_hash)
 
 
 def check_permission(admin_permissions: list[str], required: str) -> bool:

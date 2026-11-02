@@ -699,7 +699,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     // an event — gate the actual booking creation call, not the planning
     // steps leading up to it.
     final user = AuthManager.instance.currentUser;
-    if (user != null && user.role == 'customer' && !user.emailVerified) {
+    if (user != null && user.role == 'customer' && !user.hasVerifiedContact) {
       final verified = await Navigator.push<bool>(
         context,
         MaterialPageRoute(

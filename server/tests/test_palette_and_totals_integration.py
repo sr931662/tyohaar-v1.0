@@ -124,7 +124,7 @@ async def set_gst(sf, enabled: bool):
 
 async def make_user(sf, role=UserRole.CUSTOMER):
     async with sf() as s:
-        user = User(id=uuid.uuid4(), phone=f"+9198{uuid.uuid4().int % 10**8:08d}", first_name="Asha",
+        user = User(id=uuid.uuid4(), phone=f"+9198{uuid.uuid4().int % 10**8:08d}", phone_verified=True, first_name="Asha",
                     last_name="Test", role=role, user_type=UserType.INDIVIDUAL, account_status=AccountStatus.ACTIVE)
         s.add(user)
         await s.commit()

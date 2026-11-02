@@ -15,10 +15,12 @@ Authorization (role / permission checks) is in core/permissions.py.
 
 from __future__ import annotations
 
+import time
 import uuid
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
+from jose import JWTError, jwt
 
 from app.core.dependencies import get_user_service
 from app.core.security import (
@@ -30,6 +32,65 @@ from app.models.enums import AccountStatus
 from app.schemas.users.response import UserResponse
 from app.services.exceptions import NotFoundError
 from app.services.users.service import UserService
+
+
+# ── Session check ─────────────────────────────────────────────────────────────
+#
+# Access tokens carry the id of the session they were issued for. Without this
+# check a logged-out (or "log out of all devices") token kept working until it
+# expired — up to 7 days. Active session ids are cached in-process for a
+# minute, so this costs one lookup per session per minute rather than per
+# request; a revoked session is refused within that minute (immediately on the
+# instance that handled the logout, which calls forget_session).
+
+_SESSION_TTL_SECONDS = 60.0
+_SESSION_CACHE_MAX = 10_000
+_active_sessions: dict[str, float] = {}
+
+
+def forget_session(session_id: str) -> None:
+    _active_sessions.pop(str(session_id), None)
+
+
+def _session_id(token: str) -> str | None:
+    from app.core.config import settings
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return None
+    sid = payload.get("session_id")
+    return str(sid) if sid else None
+
+
+async def _session_is_active(session_id: str) -> bool:
+    from app.services.auth.service import AuthService
+
+    now = time.monotonic()
+    if _active_sessions.get(session_id, 0.0) > now:
+        return True
+    try:
+        active = await AuthService().session_is_active(uuid.UUID(session_id))
+    except ValueError:
+        return False
+    if active:
+        if len(_active_sessions) >= _SESSION_CACHE_MAX:
+            _active_sessions.clear()
+        _active_sessions[session_id] = now + _SESSION_TTL_SECONDS
+    return active
+
+
+async def _assert_session_active(token: str) -> None:
+    """401 if the token belongs to a session that has been ended."""
+    session_id = _session_id(token)
+    if session_id is None:
+        return  # tokens without a session claim (internal/admin) are unaffected
+    if not await _session_is_active(session_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your session has ended. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 async def get_current_user(
@@ -48,6 +109,7 @@ async def get_current_user(
     Raises HTTP 403 for accounts that are not allowed to act.
     """
     user_id_str = extract_user_id_from_token(token)
+    await _assert_session_active(token)
 
     try:
         user_id = uuid.UUID(user_id_str)
@@ -90,6 +152,7 @@ async def get_optional_user(
         # a client holding a stale token would otherwise be locked out of
         # pages that need no login at all.
         user_id_str = extract_user_id_from_token(token)
+        await _assert_session_active(token)
         user_id = uuid.UUID(user_id_str)
         user = await user_service.get_user(user_id)
     except (ValueError, NotFoundError, HTTPException):

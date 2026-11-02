@@ -72,6 +72,9 @@ class TokenPairResponse:
     expires_in: int = ACCESS_TOKEN_EXPIRY_SECONDS
     session_id: uuid.UUID | None = None
     user_id: uuid.UUID | None = None
+    # Set by one-time-code sign-in: True when that sign-in created the account,
+    # so the app can ask for a name.
+    is_new_user: bool = False
 
 
 @dataclass
@@ -99,6 +102,10 @@ class AuthProviderConfig:
 
     google_client_id: str
     google_enabled: bool
+    # One-time-code sign-in. Email needs SMTP, phone needs an SMS provider;
+    # outside production both work regardless (codes go to the server log).
+    email_otp_enabled: bool = True
+    phone_otp_enabled: bool = True
 
 
 # Email-verification OTPs get the 10-minute validity window the OTP email
@@ -198,8 +205,7 @@ class AuthService(BaseService):
             if not user or not user.password_hash:
                 raise InvalidCredentialsError()
 
-            if not verify_password(password, user.password_hash):
-                raise InvalidCredentialsError()
+            await self._check_password(uow, user, verify_password(password, user.password_hash))
 
             if user.account_status != AccountStatus.ACTIVE:
                 from app.services.auth.exceptions import AccountLockedError
@@ -208,6 +214,34 @@ class AuthService(BaseService):
             return await self._create_user_session(
                 user, ip_address, user_agent, LoginMethod.EMAIL_PASSWORD
             )
+
+    @staticmethod
+    async def _check_password(uow, user, is_valid: bool) -> None:
+        """
+        Enforce the lockout around a password check that has already run.
+
+        A locked account is refused even with the right password. A wrong
+        password counts towards LOGIN_MAX_FAILED_ATTEMPTS and is committed
+        before raising, because the unit of work rolls back on the exception
+        and would otherwise forget it. A right one clears the counter.
+        """
+        from app.services.auth.constants import LOGIN_LOCKOUT_MINUTES, LOGIN_MAX_FAILED_ATTEMPTS
+        from app.services.auth.exceptions import AccountLockedError, InvalidCredentialsError
+
+        if user.is_locked:
+            raise AccountLockedError(
+                "Too many wrong passwords. Try again in a few minutes, or sign in with a one-time code."
+            )
+        if not is_valid:
+            user.failed_login_count = (user.failed_login_count or 0) + 1
+            if user.failed_login_count >= LOGIN_MAX_FAILED_ATTEMPTS:
+                user.account_locked_until = datetime.now(tz=timezone.utc) + timedelta(minutes=LOGIN_LOCKOUT_MINUTES)
+                user.failed_login_count = 0
+            await uow.commit()
+            raise InvalidCredentialsError()
+        if user.failed_login_count or user.account_locked_until:
+            user.failed_login_count = 0
+            user.account_locked_until = None
 
     # ── Unified Workspace Login (vendor + admin/staff, never customers) ───────
 
@@ -251,13 +285,16 @@ class AuthService(BaseService):
                 if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
                 else verify_password(password, user.password_hash)
             )
-            if not is_valid:
-                raise InvalidCredentialsError()
+            await self._check_password(uow, user, is_valid)
 
             if user.account_status != AccountStatus.ACTIVE:
                 raise AccountLockedError(
                     "Your account is pending approval or has been suspended."
                 )
+
+            from app.services.admin.helpers import admin_hash_needs_upgrade, hash_admin_password
+            if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN) and admin_hash_needs_upgrade(user.password_hash):
+                user.password_hash = hash_admin_password(password)
 
             role = user.role
             tokens = await self._create_user_session(
@@ -439,9 +476,14 @@ class AuthService(BaseService):
 
     def get_provider_config(self) -> AuthProviderConfig:
         """Lets the client fetch the Google client ID at runtime."""
+        from app.services.notifications import email_client, sms_client
+
+        dev = not settings.is_production
         return AuthProviderConfig(
             google_client_id=settings.GOOGLE_CLIENT_ID,
             google_enabled=bool(settings.GOOGLE_CLIENT_ID),
+            email_otp_enabled=dev or email_client.is_configured(),
+            phone_otp_enabled=dev or sms_client.is_configured(),
         )
 
     # ── Google Sign-In (Customer) ─────────────────────────────────────────────
@@ -597,6 +639,12 @@ class AuthService(BaseService):
             user_id=user_id,
         )
 
+    async def session_is_active(self, session_id: uuid.UUID) -> bool:
+        """False once a session is logged out, revoked or expired."""
+        async with self._uow() as uow:
+            session = await uow.auth.sessions.get_by_id(session_id)
+            return session is not None and session.is_valid
+
     # ── Send OTP ──────────────────────────────────────────────────────────────
 
     async def send_otp(
@@ -669,15 +717,27 @@ class AuthService(BaseService):
                     "Email", "Could not send the verification code. Please try again."
                 ) from exc
         else:
-            # No SMS gateway is wired yet. The code is only ever written to the
-            # log outside production: a live OTP in a log file is a login for
-            # whoever can read it.
-            if not settings.is_production:
+            from app.services.exceptions import ExternalServiceError
+            from app.services.notifications import sms_client
+
+            if sms_client.is_configured():
+                try:
+                    await sms_client.send_otp_sms(phone, raw_otp)
+                except Exception as exc:
+                    logger.exception("Failed to text OTP to %s", phone)
+                    raise ExternalServiceError(
+                        "SMS", "Could not send the code by SMS. Please try again or use your email."
+                    ) from exc
+            elif not settings.is_production:
+                # Development only: a live OTP in a production log is a login
+                # for whoever can read the log.
                 logger.info(
                     "[SMS STUB] OTP for %s via %s (purpose=%s): %s", phone, channel, purpose, raw_otp
                 )
             else:
-                logger.info("[SMS STUB] OTP issued for %s via %s (purpose=%s)", phone, channel, purpose)
+                raise ExternalServiceError(
+                    "SMS", "Sign-in by phone isn't available yet. Please use your email."
+                )
 
         # Whatever the channel, also show the code on the account holder's own
         # signed-in devices when there are any.
@@ -752,45 +812,82 @@ class AuthService(BaseService):
         device_id: str | None = None,
     ) -> TokenPairResponse:
         """
-        Verify OTP → upsert user → create session → issue token pair.
-        Returns raw (never-hashed) access + refresh tokens.
+        One-time-code sign-in, which is also sign-up: verify the code, then
+        sign in the account that owns the email or phone number, creating it
+        on first use. The code proves the address is the caller's, so the
+        account starts verified and there is no separate verification step.
+
+        Only LOGIN / REGISTRATION codes are accepted here. A code issued for a
+        password reset or email check must never double as a sign-in.
+        An existing account that isn't ACTIVE (suspended, pending, deleted)
+        is refused; a code is not a way back into a blocked account.
         """
+        from app.services.auth.exceptions import AccountLockedError, OTPInvalidError
+
+        if data.purpose not in (OTPPurpose.LOGIN, OTPPurpose.REGISTRATION):
+            raise OTPInvalidError("This code can't be used to sign in.")
+
+        identifier = data.identifier
+        is_email = "@" in identifier
+
         async with self._uow() as uow:
-            # 1. Validate OTP — marks record VERIFIED on success
             await validate_otp_for_verification(
-                data.identifier,
+                identifier,
                 data.otp_code,
                 data.purpose,
                 uow,
                 settings.SECRET_KEY,
             )
 
-            # 2. Upsert user
-            user = await uow.users.users.find_by_phone(data.identifier)
+            if is_email:
+                user = await uow.users.users.find_by_email(identifier)
+            else:
+                user = await uow.users.users.find_by_phone(identifier)
+
             is_new_user = user is None
             if is_new_user:
-                new_user_data = UserCreate(phone=data.identifier).model_dump(exclude_unset=True)
-                new_user_data["primary_login_provider"] = LoginMethod.OTP_PHONE
-                new_user_data["phone_verified"] = True
-                new_user_data["account_status"] = AccountStatus.ACTIVE
-                new_user_data["verification_status"] = VerificationStatus.VERIFIED
+                new_user_data = {
+                    "account_status": AccountStatus.ACTIVE,
+                    "verification_status": VerificationStatus.VERIFIED,
+                    "role": UserRole.CUSTOMER,
+                }
+                if is_email:
+                    # phone is NOT NULL + unique: same placeholder register_user uses.
+                    new_user_data.update(
+                        email=identifier,
+                        email_verified=True,
+                        phone=f"TMP-{uuid.uuid4().hex[:10]}",
+                        primary_login_provider=LoginMethod.OTP_EMAIL,
+                    )
+                else:
+                    new_user_data.update(
+                        UserCreate(phone=identifier).model_dump(exclude_unset=True),
+                        phone_verified=True,
+                        primary_login_provider=LoginMethod.OTP_PHONE,
+                    )
                 user = await uow.users.users.create_from_dict(new_user_data)
-                # Create default UserProfile
                 await uow.users.profiles.create_from_dict({"user_id": user.id})
             else:
-                # Mark phone verified on successful OTP for existing user (if not already)
-                if not user.phone_verified:
+                if user.account_status != AccountStatus.ACTIVE:
+                    raise AccountLockedError("This account isn't active. Please contact support.")
+                if is_email and not user.email_verified:
+                    user.email_verified = True
+                if not is_email and not user.phone_verified:
                     user.phone_verified = True
-                    user.account_status = AccountStatus.ACTIVE
-                    user.verification_status = VerificationStatus.VERIFIED
+                # The code proves the person controls the account's address,
+                # which is exactly what a password lockout is waiting for.
+                user.failed_login_count = 0
+                user.account_locked_until = None
 
-            # Update last login
             user.last_login_at = datetime.now(tz=timezone.utc)
             await uow.session.flush()  # type: ignore[union-attr]
 
-        return await self._create_user_session(
-            user, ip_address, user_agent, LoginMethod.OTP_PHONE, device_id
+        tokens = await self._create_user_session(
+            user, ip_address, user_agent,
+            LoginMethod.OTP_EMAIL if is_email else LoginMethod.OTP_PHONE, device_id,
         )
+        tokens.is_new_user = is_new_user
+        return tokens
 
     # ── Session Creation for Other Auth Flows (admin, etc.) ───────────────────
 

@@ -128,6 +128,9 @@ class AdminService(BaseService):
                     raise AdminLoginFailedError("Invalid email or password.")
 
                 # Successful login — reset counters and record last login
+                from app.services.admin.helpers import admin_hash_needs_upgrade
+                if admin_hash_needs_upgrade(stored_hash):
+                    user.password_hash = hash_admin_password(password)
                 await uow.admin.admins.reset_failed_login(admin.id)
                 await uow.admin.admins.update_last_login(admin.id, ip_address=ip_address)
 

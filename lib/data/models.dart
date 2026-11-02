@@ -58,6 +58,7 @@ class User {
   final String role;
   final String status;
   final bool emailVerified;
+  final bool phoneVerified;
 
   User({
     required this.id,
@@ -70,7 +71,13 @@ class User {
     required this.role,
     required this.status,
     this.emailVerified = false,
+    this.phoneVerified = false,
   });
+
+  /// A booking needs one contact we know reaches the customer: a verified
+  /// email OR a verified phone (the server enforces the same rule). Accounts
+  /// made with a one-time code or Google are verified from the start.
+  bool get hasVerifiedContact => emailVerified || phoneVerified;
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -86,6 +93,7 @@ class User {
       role: json['role'] as String? ?? 'customer',
       status: json['account_status'] as String? ?? 'active',
       emailVerified: json['email_verified'] as bool? ?? false,
+      phoneVerified: json['phone_verified'] as bool? ?? false,
     );
   }
 

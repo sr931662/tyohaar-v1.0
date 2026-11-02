@@ -12,6 +12,7 @@ import '../widgets/google_g_logo.dart';
 import '../widgets/common.dart';
 import '../data/app_state.dart';
 import '../data/auth_manager.dart';
+import '../data/models.dart';
 import '../data/services/auth_service.dart';
 import '../data/services/google_auth_service.dart';
 // AuthCredentials is defined in auth_service.dart
@@ -19,7 +20,7 @@ import 'root_nav.dart';
 import 'vendor/vendor_root_nav.dart';
 import 'vendor/auth/vendor_register_screen.dart';
 import 'vendor/auth/vendor_forgot_password_screen.dart';
-import 'email_verification_screen.dart';
+import 'auth/code_sign_in_panel.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -30,16 +31,9 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
+class _AuthScreenState extends State<AuthScreen> {
   final _loginEmailCtrl = TextEditingController();
   final _loginPasswordCtrl = TextEditingController();
-
-  final _regNameCtrl = TextEditingController();
-  final _regEmailCtrl = TextEditingController();
-  final _regPasswordCtrl = TextEditingController();
-  final _regConfirmCtrl = TextEditingController();
 
   bool _isLoading = false;
   String _error = '';
@@ -47,42 +41,129 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   // always-visible button would be dead for every user until it is set.
   bool _googleEnabled = false;
   bool _loginObscure = true;
-  bool _regObscure = true;
-  bool _regConfirmObscure = true;
+  // The code (email / mobile) is the main way in. Password sign-in is still
+  // there for accounts that have one, one tap away.
+  bool _showPassword = false;
+  // Which code channels the server can deliver right now. Email works unless
+  // the server says otherwise; phone waits for the server to confirm SMS.
+  bool _emailCodes = true;
+  bool _phoneCodes = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() => setState(() => _error = ''));
     _loadProviderConfig();
   }
 
   Future<void> _loadProviderConfig() async {
-    // Google sign-in stays Android-only for now. On iOS it needs its own OAuth
-    // client (GIDClientID + URL scheme in Info.plist) or the plugin crashes,
-    // and App Store guideline 4.8 then also requires Sign in with Apple to be
-    // offered alongside it. Email/password works on every platform.
-    if (!kIsWeb && Platform.isIOS) return;
     try {
       final config = await context.read<AuthService>().getProviderConfig();
-      if (mounted) setState(() => _googleEnabled = config.googleEnabled);
+      if (!mounted) return;
+      setState(() {
+        _emailCodes = config.emailOtpEnabled;
+        _phoneCodes = config.phoneOtpEnabled;
+        // Google sign-in stays Android-only for now. On iOS it needs its own
+        // OAuth client (GIDClientID + URL scheme in Info.plist) or the plugin
+        // crashes, and App Store guideline 4.8 then also requires Sign in with
+        // Apple alongside it.
+        _googleEnabled = config.googleEnabled && (kIsWeb || !Platform.isIOS);
+      });
     } catch (_) {
-      // Leave it hidden. Offering a control that can only fail is worse than
-      // omitting it, and email/password sign-in is unaffected.
+      // Keep the defaults: email codes on, phone and Google hidden. Offering
+      // a control that can only fail is worse than omitting it.
     }
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _loginEmailCtrl.dispose();
     _loginPasswordCtrl.dispose();
-    _regNameCtrl.dispose();
-    _regEmailCtrl.dispose();
-    _regPasswordCtrl.dispose();
-    _regConfirmCtrl.dispose();
     super.dispose();
+  }
+
+  /// Signed in with a one-time code. A brand-new account gets one optional
+  /// question, its name, before landing in the app.
+  Future<void> _onCodeSignedIn(CodeSignInResult result) async {
+    var creds = result.credentials;
+    if (result.isNewUser) {
+      final name = await _askName();
+      if (!mounted) return;
+      if (name != null && name.isNotEmpty) {
+        try {
+          await context.read<AuthService>().saveName(creds.accessToken, name);
+          creds = AuthCredentials(
+            accessToken: creds.accessToken,
+            refreshToken: creds.refreshToken,
+            user: User(
+              id: creds.user.id,
+              phone: creds.user.phone,
+              email: creds.user.email,
+              fullName: name,
+              firstName: creds.user.firstName,
+              lastName: creds.user.lastName,
+              profilePhotoUrl: creds.user.profilePhotoUrl,
+              role: creds.user.role,
+              status: creds.user.status,
+              emailVerified: creds.user.emailVerified,
+              phoneVerified: creds.user.phoneVerified,
+            ),
+          );
+        } catch (_) {
+          // The name can be added later from the profile; never block sign-in.
+        }
+      }
+    }
+    if (!mounted) return;
+    await _onSuccess(creds);
+  }
+
+  Future<String?> _askName() {
+    final ctrl = TextEditingController();
+    final l10n = AppLocalizations.of(context)!;
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      backgroundColor: context.ty.paper,
+      builder: (sheet) {
+        final ty = sheet.ty;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.viewInsetsOf(sheet).bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.codeSignInNameTitle, style: TyType.display(24, color: ty.ink)),
+              const SizedBox(height: 6),
+              Text(l10n.codeSignInNameSubtitle, style: TyType.sans(14, color: ty.ink2)),
+              const SizedBox(height: 18),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                autofillHints: const [AutofillHints.name],
+                textInputAction: TextInputAction.done,
+                onSubmitted: (v) => Navigator.pop(sheet, v.trim()),
+                decoration: InputDecoration(
+                  hintText: l10n.authNameHint,
+                  filled: true,
+                  fillColor: ty.surface,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 18),
+              TyButton(l10n.codeSignInNameSave, full: true, onTap: () => Navigator.pop(sheet, ctrl.text.trim())),
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(sheet, ''),
+                  child: Text(l10n.codeSignInNameSkip, style: TyType.sans(13.5, color: ty.ink3, weight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ).whenComplete(ctrl.dispose);
   }
 
   // [overrideDestination] is used only right after registration, to land on
@@ -148,13 +229,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       });
     } on DioException catch (e) {
       if (!mounted) return;
-      final detail = e.response?.data;
-      String msg = AppLocalizations.of(context)!.authGoogleFailedError;
-      if (detail is Map) {
-        msg = detail['detail'] as String? ?? detail['message'] as String? ?? msg;
-      } else if (detail is String) {
-        msg = detail;
-      }
+      final msg = authErrorMessage(e, AppLocalizations.of(context)!.authGoogleFailedError);
       setState(() { _isLoading = false; _error = msg; });
     } catch (_) {
       if (!mounted) return;
@@ -196,59 +271,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       await _onSuccess(creds);
     } on DioException catch (e) {
       if (!mounted) return;
-      final detail = e.response?.data;
-      String msg = AppLocalizations.of(context)!.authLoginFailedError;
-      if (detail is Map) {
-        msg = detail['detail'] as String? ?? detail['message'] as String? ?? msg;
-      } else if (detail is String) {
-        msg = detail;
-      }
-      setState(() { _isLoading = false; _error = msg; });
-    } catch (_) {
-      if (mounted) setState(() { _isLoading = false; _error = AppLocalizations.of(context)!.authUnexpectedError; });
-    }
-  }
-
-  Future<void> _handleRegister() async {
-    if (_isLoading) return;
-    final name = _regNameCtrl.text.trim();
-    final email = _regEmailCtrl.text.trim();
-    final password = _regPasswordCtrl.text;
-    final confirm = _regConfirmCtrl.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = AppLocalizations.of(context)!.authRegisterFillAllFieldsError);
-      return;
-    }
-    if (password != confirm) {
-      setState(() => _error = AppLocalizations.of(context)!.authPasswordMismatchError);
-      return;
-    }
-    if (password.length < 8) {
-      setState(() => _error = AppLocalizations.of(context)!.authPasswordTooShortError);
-      return;
-    }
-
-    setState(() { _isLoading = true; _error = ''; });
-    try {
-      final creds = await context.read<AuthService>().register(email, password, name: name);
-      if (!mounted) return;
-      await _onSuccess(
-        creds,
-        overrideDestination: EmailVerificationScreen(
-          email: creds.user.email ?? email,
-          initialSendFailed: !creds.emailVerificationSent,
-        ),
-      );
-    } on DioException catch (e) {
-      if (!mounted) return;
-      final detail = e.response?.data;
-      String msg = AppLocalizations.of(context)!.authRegisterFailedError;
-      if (detail is Map) {
-        msg = detail['detail'] as String? ?? detail['message'] as String? ?? msg;
-      } else if (detail is String) {
-        msg = detail;
-      }
+      final msg = authErrorMessage(e, AppLocalizations.of(context)!.authLoginFailedError);
       setState(() { _isLoading = false; _error = msg; });
     } catch (_) {
       if (mounted) setState(() { _isLoading = false; _error = AppLocalizations.of(context)!.authUnexpectedError; });
@@ -273,184 +296,105 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       backgroundColor: ty.paper,
       appBar: tyAppBar(context, title: l10n.authWelcomeTitle),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // Smart height calculation: if the screen is too short, 
-            // we'll make the header section smaller and the overall layout more compact.
-            final isSmall = constraints.maxHeight < 600;
-            
-            return Column(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: resp.h(isSmall ? 12 : 24)),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l10n.authHeading, style: TyType.display(resp.sp(32), color: ty.ink)),
-                      SizedBox(height: resp.h(8)),
-                      Text(
-                        l10n.authSubheading,
-                        style: TyType.sans(resp.sp(15), color: ty.ink2, height: 1.4),
-                      ),
-                    ],
+                SizedBox(height: resp.h(24)),
+                Text(l10n.authHeading, style: TyType.display(resp.sp(32), color: ty.ink)),
+                SizedBox(height: resp.h(8)),
+                Text(l10n.codeSignInSubheading, style: TyType.sans(resp.sp(15), color: ty.ink2, height: 1.4)),
+                SizedBox(height: resp.h(28)),
+                if (_showPassword)
+                  _buildPasswordSection(ty, resp)
+                else
+                  CodeSignInPanel(
+                    phoneEnabled: _phoneCodes,
+                    emailEnabled: _emailCodes,
+                    onSignedIn: _onCodeSignedIn,
                   ),
-                ),
-                SizedBox(height: resp.h(isSmall ? 16 : 32)),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
-                  child: Container(
-                    height: resp.h(44),
-                    decoration: BoxDecoration(
-                      color: ty.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: ty.line),
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      indicator: BoxDecoration(
-                        color: ty.saffron,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      labelStyle: TyType.sans(resp.sp(14), weight: FontWeight.w700),
-                      unselectedLabelStyle: TyType.sans(resp.sp(14), weight: FontWeight.w500),
-                      labelColor: Colors.white,
-                      unselectedLabelColor: ty.ink2,
-                      tabs: [Tab(text: l10n.authTabLogin), Tab(text: l10n.authTabRegister)],
+                SizedBox(height: resp.h(6)),
+                Center(
+                  child: TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => setState(() { _showPassword = !_showPassword; _error = ''; }),
+                    child: Text(
+                      _showPassword ? l10n.codeSignInUseCodeInstead : l10n.codeSignInUsePasswordInstead,
+                      style: TyType.sans(resp.sp(13.5), color: ty.saffronDeep, weight: FontWeight.w700),
                     ),
                   ),
                 ),
-                SizedBox(height: resp.h(4)),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [_buildLoginTab(ty, resp), _buildRegisterTab(ty, resp)],
+                if (_googleEnabled) ...[
+                  SizedBox(height: resp.h(16)),
+                  _buildDivider(ty, resp),
+                  SizedBox(height: resp.h(20)),
+                  _buildGoogleButton(ty, resp),
+                  if (_error.isNotEmpty && !_showPassword) ...[
+                    SizedBox(height: resp.h(12)),
+                    Text(_error, style: TyType.sans(resp.sp(13), color: ty.rose, weight: FontWeight.w600)),
+                  ],
+                ],
+                if (widget.onAuthenticated == null) ...[
+                  SizedBox(height: resp.h(16)),
+                  _buildGuestLink(ty, resp),
+                ],
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const VendorRegisterScreen()),
+                    ),
+                    child: Text(l10n.authBusinessRegisterPromptLabel,
+                        style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600)),
                   ),
                 ),
+                SizedBox(height: resp.h(24)),
               ],
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildLoginTab(TyColors ty, TyResponsive resp) {
+  /// Email + password, for accounts that have a password.
+  Widget _buildPasswordSection(TyColors ty, TyResponsive resp) {
     final l10n = AppLocalizations.of(context)!;
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: resp.h(28)),
-          _buildField(ty, resp, l10n.authEmailLabel, l10n.authEmailHint, _loginEmailCtrl,
-              icon: Icons.email_outlined, type: TextInputType.emailAddress,
-              helperText: l10n.authEmailFormatHelperText),
-          SizedBox(height: resp.h(20)),
-          _buildField(ty, resp, l10n.authPasswordLabel, l10n.authPasswordHint, _loginPasswordCtrl,
-              icon: Icons.lock_outline_rounded,
-              obscure: _loginObscure,
-              onToggleObscure: () => setState(() => _loginObscure = !_loginObscure)),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const VendorForgotPasswordScreen()),
-              ),
-              child: Text(l10n.authForgotPasswordLabel, style: TyType.sans(resp.sp(13), color: ty.ink3, weight: FontWeight.w600)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildField(ty, resp, l10n.authEmailLabel, l10n.authEmailHint, _loginEmailCtrl,
+            icon: Icons.email_outlined, type: TextInputType.emailAddress),
+        SizedBox(height: resp.h(20)),
+        _buildField(ty, resp, l10n.authPasswordLabel, l10n.authPasswordHint, _loginPasswordCtrl,
+            icon: Icons.lock_outline_rounded,
+            obscure: _loginObscure,
+            onToggleObscure: () => setState(() => _loginObscure = !_loginObscure)),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const VendorForgotPasswordScreen()),
             ),
+            child: Text(l10n.authForgotPasswordLabel, style: TyType.sans(resp.sp(13), color: ty.ink3, weight: FontWeight.w600)),
           ),
-          if (_error.isNotEmpty) ...[
-            SizedBox(height: resp.h(16)),
-            Text(_error, style: TyType.sans(resp.sp(13), color: ty.rose, weight: FontWeight.w600)),
-          ],
-          SizedBox(height: resp.h(36)),
-          TyButton(
-            _isLoading ? l10n.authSigningInLabel : l10n.authSignInButtonLabel,
-            full: true,
-            onTap: _handleLogin,
-            enabled: !_isLoading,
-          ),
-          if (_googleEnabled) ...[
-            SizedBox(height: resp.h(28)),
-            _buildDivider(ty, resp),
-            SizedBox(height: resp.h(20)),
-            _buildGoogleButton(ty, resp),
-            if (widget.onAuthenticated == null) ...[
-              SizedBox(height: resp.h(8)),
-              _buildGuestLink(ty, resp),
-            ],
-          ] else if (widget.onAuthenticated == null) ...[
-            SizedBox(height: resp.h(28)),
-            _buildDivider(ty, resp),
-            SizedBox(height: resp.h(28)),
-            _buildGuestLink(ty, resp),
-          ],
-          SizedBox(height: resp.h(32)),
+        ),
+        if (_error.isNotEmpty) ...[
+          SizedBox(height: resp.h(8)),
+          Text(_error, style: TyType.sans(resp.sp(13), color: ty.rose, weight: FontWeight.w600)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildRegisterTab(TyColors ty, TyResponsive resp) {
-    final l10n = AppLocalizations.of(context)!;
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: resp.h(28)),
-          _buildField(ty, resp, l10n.authFullNameOptionalLabel, l10n.authNameHint, _regNameCtrl,
-              icon: Icons.person_outline_rounded),
-          SizedBox(height: resp.h(20)),
-          _buildField(ty, resp, l10n.authEmailLabel, l10n.authEmailHint, _regEmailCtrl,
-              icon: Icons.email_outlined, type: TextInputType.emailAddress,
-              helperText: l10n.authEmailFormatHelperText),
-          SizedBox(height: resp.h(20)),
-          _buildField(ty, resp, l10n.authPasswordLabel, l10n.authPasswordHint, _regPasswordCtrl,
-              icon: Icons.lock_outline_rounded,
-              obscure: _regObscure,
-              onToggleObscure: () => setState(() => _regObscure = !_regObscure),
-              helperText: l10n.authPasswordFormatHelperText),
-          SizedBox(height: resp.h(20)),
-          _buildField(ty, resp, l10n.authConfirmPasswordLabel, l10n.authPasswordHint, _regConfirmCtrl,
-              icon: Icons.lock_outline_rounded,
-              obscure: _regConfirmObscure,
-              onToggleObscure: () => setState(() => _regConfirmObscure = !_regConfirmObscure)),
-          if (_error.isNotEmpty) ...[
-            SizedBox(height: resp.h(16)),
-            Text(_error, style: TyType.sans(resp.sp(13), color: ty.rose, weight: FontWeight.w600)),
-          ],
-          SizedBox(height: resp.h(36)),
-          TyButton(
-            _isLoading ? l10n.authCreatingAccountLabel : l10n.authCreateAccountButtonLabel,
-            full: true,
-            onTap: _handleRegister,
-            enabled: !_isLoading,
-          ),
-          if (_googleEnabled) ...[
-            SizedBox(height: resp.h(28)),
-            _buildDivider(ty, resp),
-            SizedBox(height: resp.h(20)),
-            _buildGoogleButton(ty, resp),
-          ],
-          SizedBox(height: resp.h(20)),
-          Center(
-            child: TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const VendorRegisterScreen()),
-              ),
-              child: Text(l10n.authBusinessRegisterPromptLabel,
-                  style: TyType.sans(resp.sp(13), color: ty.saffronDeep, weight: FontWeight.w600)),
-            ),
-          ),
-          SizedBox(height: resp.h(12)),
-        ],
-      ),
+        SizedBox(height: resp.h(20)),
+        TyButton(
+          _isLoading ? l10n.authSigningInLabel : l10n.authSignInButtonLabel,
+          full: true,
+          onTap: _handleLogin,
+          enabled: !_isLoading,
+        ),
+      ],
     );
   }
 

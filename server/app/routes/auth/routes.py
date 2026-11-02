@@ -4,9 +4,10 @@ Auth Routes — OTP authentication, token rotation, session management.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
 from app.controllers.auth import controller as ctrl
+from app.core.rate_limit import auth_rate_limit
 from app.core.responses import SuccessResponse
 from app.schemas.auth.response import OTPSentResponse, SessionResponse
 from app.services.auth.service import (
@@ -39,6 +40,7 @@ router.add_api_route(
     summary="User Registration",
     description="Create a new customer account using email and password.",
     operation_id="auth_register",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -50,6 +52,7 @@ router.add_api_route(
     summary="User Login",
     description="Authenticate a customer using email and password.",
     operation_id="auth_login",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -61,6 +64,7 @@ router.add_api_route(
     summary="Vendor Login",
     description="Authenticate a vendor user with email and password. Returns a JWT access token.",
     operation_id="auth_vendor_login",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -78,6 +82,7 @@ router.add_api_route(
         "rejected outright."
     ),
     operation_id="auth_workspace_login",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -89,6 +94,7 @@ router.add_api_route(
     summary="Vendor Registration",
     description="Register a new vendor account (pending admin approval) using email and password.",
     operation_id="auth_vendor_register",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -100,6 +106,7 @@ router.add_api_route(
     summary="Reset Password",
     description="Verify an emailed OTP (purpose=password_reset) and set a new password.",
     operation_id="auth_reset_password",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -111,6 +118,7 @@ router.add_api_route(
     summary="Verify Email OTP",
     description="Verify an emailed OTP (purpose=email_verification) and mark the account's email as verified.",
     operation_id="auth_verify_email_otp",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -125,6 +133,7 @@ router.add_api_route(
         "on first use. Sign-in and sign-up are the same call."
     ),
     operation_id="auth_google",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -136,6 +145,7 @@ router.add_api_route(
     summary="Vendor Google Sign-In",
     description="Authenticate or register a vendor using a Google ID token.",
     operation_id="auth_vendor_google",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -147,6 +157,7 @@ router.add_api_route(
     summary="Request OTP",
     description="Send a one-time password to the specified phone number via the chosen channel (SMS or WhatsApp).",
     operation_id="auth_request_otp",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(
@@ -158,6 +169,7 @@ router.add_api_route(
     summary="Verify OTP",
     description="Verify the submitted OTP and return a JWT access/refresh token pair.",
     operation_id="auth_verify_otp",
+    dependencies=[Depends(auth_rate_limit)],
 )
 
 router.add_api_route(

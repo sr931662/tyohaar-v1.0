@@ -61,13 +61,29 @@ AUTH_RATE_LIMIT = RateLimitConfig(
 
 # ── Key derivation helper ─────────────────────────────────────────────────────
 
+def client_ip(request: Request) -> str:
+    """
+    The caller's IP for rate limiting.
+
+    X-Forwarded-For is "<whatever the client sent>, <added by each proxy>",
+    so its FIRST entry is attacker-controlled: keying on it let anyone dodge a
+    per-IP limit by sending a fresh fake address each time. The trustworthy
+    entry is the one our own proxy appended, counted from the right:
+    TRUSTED_PROXY_HOPS = 1 for Cloud Run's front end (the default), 2 behind
+    an extra load balancer.
+    """
+    from app.core.config import settings
+
+    forwarded = [p.strip() for p in request.headers.get("X-Forwarded-For", "").split(",") if p.strip()]
+    hops = max(1, settings.TRUSTED_PROXY_HOPS)
+    if len(forwarded) >= hops:
+        return forwarded[-hops]
+    return request.client.host if request.client else "unknown"
+
+
 def get_rate_limit_key(request: Request, config: RateLimitConfig) -> str:
     """Derive a per-client rate-limit key from the client IP."""
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    client_ip = forwarded.split(",")[0].strip() if forwarded else (
-        request.client.host if request.client else "unknown"
-    )
-    return f"{config.key_prefix}:{client_ip}"
+    return f"{config.key_prefix}:{client_ip(request)}"
 
 
 # ── In-memory backend ─────────────────────────────────────────────────────────
@@ -168,3 +184,35 @@ PUBLIC_INVITE_RATE_LIMIT = RateLimitConfig(requests=60, window_seconds=60, key_p
 # *failed* verifications are throttled separately per operator scope.
 GATE_RATE_LIMIT = RateLimitConfig(requests=180, window_seconds=60, key_prefix="rl:gate")
 GATE_FAILURE_LIMIT = RateLimitConfig(requests=30, window_seconds=600, key_prefix="rl:gatefail")
+
+
+# ── Auth endpoints ────────────────────────────────────────────────────────────
+
+AUTH_ENDPOINT_RATE_LIMIT = RateLimitConfig(
+    requests=AUTH_RATE_LIMIT_REQUESTS,
+    window_seconds=AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    key_prefix="rl:auth",
+)
+
+_auth_limiter = InMemoryRateLimiter()
+
+
+async def auth_rate_limit(request: Request) -> None:
+    """
+    FastAPI dependency for sign-in endpoints: at most AUTH_RATE_LIMIT_REQUESTS
+    calls per IP per endpoint per window. A brake on password / code guessing
+    and on using the API to spam people with codes; the per-account limits
+    (OTP sends, failed passwords) cover a slow attack spread over many IPs.
+
+    Counters live in process memory, so with several instances each enforces
+    its own share; swap in a shared backend (RateLimiterProtocol) to make the
+    limit global.
+    """
+    from app.services.exceptions import RateLimitError
+
+    key = f"{AUTH_ENDPOINT_RATE_LIMIT.key_prefix}:{request.url.path}:{client_ip(request)}"
+    if not await _auth_limiter.hit(key, AUTH_ENDPOINT_RATE_LIMIT):
+        raise RateLimitError(
+            "Too many attempts. Please wait a minute and try again.",
+            retry_after_seconds=AUTH_ENDPOINT_RATE_LIMIT.window_seconds,
+        )

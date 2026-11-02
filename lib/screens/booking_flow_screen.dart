@@ -124,7 +124,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     // an event — everything up to here (browsing, filling this form) is
     // unrestricted. Gate the actual booking creation call.
     final user = AuthManager.instance.currentUser;
-    if (user != null && user.role == 'customer' && !user.emailVerified) {
+    if (user != null && user.role == 'customer' && !user.hasVerifiedContact) {
       final verified = await Navigator.push<bool>(
         context,
         MaterialPageRoute(

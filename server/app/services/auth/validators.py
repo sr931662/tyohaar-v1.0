@@ -92,7 +92,7 @@ async def validate_otp_for_verification(
 
     if otp_record.is_expired:
         otp_record.status = OTPStatus.EXPIRED
-        await uow.session.flush()  # type: ignore[union-attr]
+        await uow.commit()
         raise OTPExpiredError("OTP has expired. Please request a new one.")
 
     if otp_record.is_attempts_exhausted:
@@ -104,7 +104,10 @@ async def validate_otp_for_verification(
         otp_record.attempt_count += 1
         if otp_record.attempt_count >= otp_record.max_attempts:
             otp_record.status = OTPStatus.EXHAUSTED
-        await uow.session.flush()  # type: ignore[union-attr]
+        # Commit, not just flush: the exception below makes the unit of work
+        # roll back on exit, which used to undo this increment, so the
+        # attempt limit never triggered and a code could be guessed forever.
+        await uow.commit()
         if otp_record.status == OTPStatus.EXHAUSTED:
             raise OTPAttemptsExhaustedError(
                 "Maximum verification attempts reached. Please request a new OTP."

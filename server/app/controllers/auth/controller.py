@@ -54,10 +54,11 @@ class _WorkspaceLoginRequest(BaseModel):
 
 
 def _client_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    # Same rule as rate limiting: the first X-Forwarded-For entry is whatever
+    # the client chose to send, so session records use the proxy-added one.
+    from app.core.rate_limit import client_ip
+
+    return client_ip(request)
 
 
 async def vendor_login(
@@ -224,6 +225,13 @@ async def request_otp(
     service: AuthServiceDep,
     request: Request,
 ) -> SuccessResponse[OTPSentResponse]:
+    is_email = "@" in body.identifier
+    if is_email != (body.channel == OTPDeliveryChannel.EMAIL):
+        from app.services.exceptions import ValidationError
+        raise ValidationError(
+            "Codes for an email address are sent by email, and for a phone number by SMS.",
+            field="channel",
+        )
     result = await service.send_otp(
         phone=body.identifier,
         channel=body.channel,
@@ -279,6 +287,8 @@ async def logout(
             await service.logout(session_id=uuid.UUID(session_id_str))
         except ValueError:
             pass
+        from app.core.current_user import forget_session
+        forget_session(session_id_str)
     return SuccessResponse(data=None, message="Logged out successfully.")
 
 

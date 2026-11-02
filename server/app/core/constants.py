@@ -23,7 +23,7 @@ JWT_ACCESS_TYPE: str = "access"
 # ── Rate Limiting ────────────────────────────────────────────────────────────
 DEFAULT_RATE_LIMIT_REQUESTS: int = 60
 DEFAULT_RATE_LIMIT_WINDOW_SECONDS: int = 60
-AUTH_RATE_LIMIT_REQUESTS: int = 10
+AUTH_RATE_LIMIT_REQUESTS: int = 20  # per IP, per sign-in endpoint (mobile carriers share IPs)
 AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 60
 
 # ── Role groupings ────────────────────────────────────────────────────────────

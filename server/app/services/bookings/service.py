@@ -155,6 +155,17 @@ class BookingService(BaseService):
         validate_booking_cutoff(event_dt)
 
         async with self._uow() as uow:
+            # A booking needs a contact we know reaches the customer: a
+            # verified email or phone. The apps already route an unverified
+            # customer to verification first; this makes it a rule rather
+            # than a client-side courtesy. Accounts made by one-time code or
+            # Google are verified from the start.
+            customer = await uow.users.users.get_by_id(customer_id)
+            if customer is not None and not (customer.email_verified or customer.phone_verified):
+                raise BusinessRuleError(
+                    "Please verify your email address or phone number before booking."
+                )
+
             # Idempotency safety net: if the customer already has a PENDING
             # booking for this exact package + date created in the last few
             # minutes, return it instead of creating a duplicate celebration

@@ -140,6 +140,19 @@ class Settings(BaseSettings):
     # addresses. Blank falls back to every active super-admin's email.
     OWNER_NOTIFICATION_EMAILS: str = ""
 
+    # ── SMS (one-time codes for phone sign-in) ──────────────────────────────
+    # SMS_PROVIDER: "msg91" (India; needs a DLT-approved template) or "twilio".
+    # msg91:  SMS_API_KEY = auth key, SMS_TEMPLATE_ID = flow template id,
+    #         SMS_TEMPLATE_OTP_VAR = template variable holding the code.
+    # twilio: SMS_ACCOUNT_SID, SMS_API_KEY = auth token, SMS_SENDER = from number.
+    # Blank -> phone sign-in is unavailable in production (dev logs the code).
+    SMS_PROVIDER: str = ""
+    SMS_API_KEY: str = ""
+    SMS_TEMPLATE_ID: str = ""
+    SMS_TEMPLATE_OTP_VAR: str = "otp"
+    SMS_ACCOUNT_SID: str = ""
+    SMS_SENDER: str = ""
+
     # ── Push Notifications (Firebase Cloud Messaging) ───────────────────────
     # console.firebase.google.com → Project Settings → Service Accounts →
     # "Generate new private key". Paste the FULL JSON contents of the
@@ -154,6 +167,9 @@ class Settings(BaseSettings):
     # "https://api.tyohaar.co". Blank → derived from the incoming request
     # (honouring X-Forwarded-Proto/Host), which is right behind most proxies.
     PUBLIC_BASE_URL: str = ""
+    # How many proxies in front of the app append to X-Forwarded-For. Cloud Run
+    # alone = 1. Used to find the real client IP for rate limiting.
+    TRUSTED_PROXY_HOPS: int = 1
     # Celebrations store a naive date + time-of-day; this is the zone they are
     # interpreted in when deciding whether a pass is inside its entry window.
     EVENT_TIMEZONE: str = "Asia/Kolkata"

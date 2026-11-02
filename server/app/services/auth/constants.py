@@ -15,4 +15,9 @@ REFRESH_TOKEN_REUSE_GRACE_SECONDS: int = 10
 
 MAX_ACTIVE_SESSIONS: int = 5
 
+# Password sign-in: this many wrong passwords in a row locks the account for
+# LOGIN_LOCKOUT_MINUTES. The user can still get in at once with a one-time code.
+LOGIN_MAX_FAILED_ATTEMPTS: int = 5
+LOGIN_LOCKOUT_MINUTES: int = 15
+
 PHONE_REGEX: str = r"^\+91[6-9]\d{9}$"

@@ -1,6 +1,28 @@
 import 'package:dio/dio.dart';
 import '../api_client.dart';
 import '../models.dart';
+import '../sign_in_identifier.dart';
+
+/// The message to show for a failed auth call. The server answers errors as
+/// {"error": {"message": ...}}; older code read `detail`/`message` at the top
+/// level, found nothing, and always showed a generic "failed" line.
+String authErrorMessage(Object error, String fallback) {
+  if (error is DioException) {
+    final data = error.response?.data;
+    if (data is Map) {
+      final nested = data['error'];
+      if (nested is Map && nested['message'] is String) return nested['message'] as String;
+      if (data['detail'] is String) return data['detail'] as String;
+      if (data['message'] is String) return data['message'] as String;
+    }
+    if (error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout) {
+      return fallback;
+    }
+  }
+  return fallback;
+}
 
 class AuthCredentials {
   final String accessToken;
@@ -25,15 +47,34 @@ class AuthCredentials {
 class AuthProviderConfig {
   final String googleClientId;
   final bool googleEnabled;
+  // Whether the server can deliver one-time codes by email / SMS right now.
+  // Missing from an older server -> assume email works, phone doesn't.
+  final bool emailOtpEnabled;
+  final bool phoneOtpEnabled;
 
-  AuthProviderConfig({required this.googleClientId, required this.googleEnabled});
+  AuthProviderConfig({
+    required this.googleClientId,
+    required this.googleEnabled,
+    this.emailOtpEnabled = true,
+    this.phoneOtpEnabled = false,
+  });
 
   factory AuthProviderConfig.fromJson(Map<String, dynamic> json) {
     return AuthProviderConfig(
       googleClientId: json['google_client_id'] as String? ?? '',
       googleEnabled: json['google_enabled'] as bool? ?? false,
+      emailOtpEnabled: json['email_otp_enabled'] as bool? ?? true,
+      phoneOtpEnabled: json['phone_otp_enabled'] as bool? ?? false,
     );
   }
+}
+
+/// Result of signing in with a one-time code.
+class CodeSignInResult {
+  final AuthCredentials credentials;
+  /// True when this sign-in created the account (so the app can ask a name).
+  final bool isNewUser;
+  const CodeSignInResult(this.credentials, this.isNewUser);
 }
 
 class AuthService {
@@ -171,21 +212,37 @@ class AuthService {
     return data?['access_token'] as String?;
   }
 
-  Future<void> requestOtp(String phone) async {
+  /// Sends a one-time sign-in code to an email address or mobile number.
+  /// Works the same for new and existing accounts: the code both signs in
+  /// and, on first use, creates the account. The server also shows the code
+  /// as a push notification on devices already signed in to that account.
+  Future<void> requestSignInCode(SignInIdentifier id) async {
     await _api.dio.post('auth/otp/request', data: {
-      'identifier': phone,
-      'channel': 'sms',
+      'identifier': id.value,
+      'channel': id.channel,
       'purpose': 'login',
-      'device_fingerprint': 'mobile_app_default',
     });
   }
 
-  Future<AuthCredentials> verifyOtp(String phone, String code) async {
+  Future<CodeSignInResult> verifySignInCode(SignInIdentifier id, String code) async {
     final response = await _api.dio.post('auth/otp/verify', data: {
-      'identifier': phone,
+      'identifier': id.value,
       'otp_code': code,
       'purpose': 'login',
     });
-    return _credentialsFromResponse(response.data as Map<String, dynamic>);
+    final json = response.data as Map<String, dynamic>;
+    final data = (json['data'] ?? json) as Map<String, dynamic>;
+    final creds = await _credentialsFromResponse(json);
+    return CodeSignInResult(creds, data['is_new_user'] as bool? ?? false);
+  }
+
+  /// Saves the name a brand-new account was asked for. Called before the
+  /// tokens are handed to AuthManager, so the token is passed explicitly.
+  Future<void> saveName(String accessToken, String name) async {
+    await _api.dio.put(
+      'users/me',
+      data: {'full_name': name},
+      options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+    );
   }
 }
