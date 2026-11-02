@@ -1003,6 +1003,33 @@ class PaymentService(BaseService):
                 ],
             )
 
+    @staticmethod
+    def _is_staff(role: str) -> bool:
+        return role in ("admin", "super_admin")
+
+    async def get_payment_transactions_for(
+        self, payment_id: uuid.UUID, requester_id: uuid.UUID, requester_role: str
+    ) -> list[PaymentTransactionResponse]:
+        """A payment's transaction trail: its payer, or an admin."""
+        if not self._is_staff(requester_role):
+            async with self._uow() as uow:
+                payment = await uow.payments.payments.get_by_id(payment_id)
+                if payment is None or payment.payer_id != requester_id:
+                    # Same answer for "not yours" and "doesn't exist".
+                    raise NotFoundError("Payment", str(payment_id))
+        return await self.get_payment_transactions(payment_id=payment_id)
+
+    async def list_refunds_for(
+        self, booking_id: uuid.UUID, requester_id: uuid.UUID, requester_role: str
+    ) -> list[RefundResponse]:
+        """A booking's refunds: the customer who booked it, or an admin."""
+        if not self._is_staff(requester_role):
+            async with self._uow() as uow:
+                booking = await uow.bookings.bookings.get_by_id(booking_id)
+                if booking is None or booking.customer_id != requester_id:
+                    raise NotFoundError("Booking", str(booking_id))
+        return await self.list_refunds(booking_id=booking_id)
+
     async def get_payment_transactions(
         self, payment_id: uuid.UUID
     ) -> list[PaymentTransactionResponse]:

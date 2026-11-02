@@ -139,6 +139,10 @@ class VendorBankAccount(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     vendor: Mapped[Vendor] = relationship("Vendor", back_populates="bank_accounts")
 
+    @property
+    def is_verified(self) -> bool:
+        return getattr(self.verification_status, "value", self.verification_status) == "verified"
+
     def __repr__(self) -> str:
         return (
             f"<VendorBankAccount id={self.id} vendor_id={self.vendor_id} "

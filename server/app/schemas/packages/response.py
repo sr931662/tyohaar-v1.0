@@ -15,7 +15,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from app.models.enums import CharacterSet, MarqueeStyle
 from app.schemas.base import BaseSchema, MoneyAmount
@@ -265,13 +265,13 @@ class PackagePricingResponse(BaseSchema):
 
     id: uuid.UUID
     package_id: uuid.UUID
-    pricing_type: PackagePricingType
+    pricing_type: str | None = Field(default=None, validation_alias=AliasChoices("pricing_type", "price_type"))
     base_price: MoneyAmount
     min_price: MoneyAmount | None
     max_price: MoneyAmount | None
-    price_per_person: MoneyAmount | None
-    tier_details: list[PriceTierSchema] | None
-    currency: Currency
+    price_per_person: MoneyAmount | None = Field(default=None)
+    tier_details: list[PriceTierSchema] | None = Field(default=None)
+    currency: Currency | None = Field(default=None)
     created_at: datetime
     updated_at: datetime
 
@@ -307,11 +307,11 @@ class PackageReviewResponse(BaseSchema):
     id: uuid.UUID
     package_id: uuid.UUID
     booking_id: uuid.UUID
-    reviewer_id: uuid.UUID
+    reviewer_id: uuid.UUID = Field(validation_alias=AliasChoices("reviewer_id", "customer_id"))
     rating: int
     title: str | None
     body: str | None
-    is_verified: bool
+    is_verified: bool = Field(validation_alias=AliasChoices("is_verified", "is_verified_booking"))
     is_published: bool
     created_at: datetime
     updated_at: datetime

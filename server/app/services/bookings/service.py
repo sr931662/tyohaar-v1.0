@@ -549,6 +549,41 @@ class BookingService(BaseService):
             verification_status=vendor.verification_status,
         )
 
+    @staticmethod
+    async def vendor_owns_booking(uow, booking, vendor_id: UUID) -> bool:
+        """
+        True if this vendor fulfils the booking: assigned to it, or the owner
+        of its package. Same two-source rule list_vendor_bookings uses.
+        """
+        assignments = await uow.bookings.assignments.find_many(
+            uow.bookings.assignments._model.booking_id == booking.id,
+            uow.bookings.assignments._model.vendor_id == vendor_id,
+        )
+        if assignments:
+            return True
+        package = await uow.packages.packages.get_by_id(booking.package_id)
+        return package is not None and package.vendor_id == vendor_id
+
+    @classmethod
+    async def assert_can_read_booking(cls, uow, booking, requester_id: UUID, requester_role: str) -> None:
+        """
+        Who may read a booking: its customer, the vendor fulfilling it, and
+        admin/support staff. Everyone else is refused with the same error as
+        a wrong customer, so the response doesn't reveal that the id exists.
+
+        Vendors used to pass this check unconditionally ("detail access here
+        is permissive"), which let any vendor read any customer's booking.
+        """
+        if requester_role in ("admin", "super_admin", "support"):
+            return
+        if requester_role == "customer" and booking.customer_id == requester_id:
+            return
+        if requester_role == "vendor":
+            vendor = await uow.vendors.vendors.find_by_user(requester_id)
+            if vendor is not None and await cls.vendor_owns_booking(uow, booking, vendor.id):
+                return
+        raise BookingOwnershipError(f"Booking {booking.id} does not belong to this account.")
+
     async def get_booking(
         self,
         booking_id: UUID,
@@ -557,14 +592,7 @@ class BookingService(BaseService):
     ) -> BookingDetailResponse:
         async with self._uow() as uow:
             booking = await validate_booking_exists(booking_id, uow)
-
-            # Access control: customers can only see their own bookings
-            if requester_role == "customer" and booking.customer_id != requester_id:
-                raise BookingOwnershipError(
-                    f"Booking {booking_id} does not belong to customer {requester_id}."
-                )
-            # Vendors: they access through list_vendor_bookings; detail access here is permissive
-            # Admin / support: unrestricted
+            await self.assert_can_read_booking(uow, booking, requester_id, requester_role)
 
             info = await self._attach_package_info(uow, [booking])
             name, cover_url = info.get(booking.package_id, (None, None))
@@ -783,6 +811,13 @@ class BookingService(BaseService):
     ) -> BookingResponse:
         async with self._uow() as uow:
             booking = await validate_booking_exists(booking_id, uow)
+            # Only the vendor fulfilling this booking may complete it. This
+            # used to be unchecked: any vendor could complete any booking,
+            # bumping their completion count and triggering a payout release.
+            if not await self.vendor_owns_booking(uow, booking, vendor_id):
+                raise VendorAssignmentOwnershipError(
+                    f"Vendor {vendor_id} is not assigned to booking {booking_id}."
+                )
             validate_status_transition_allowed(booking, "completed")
 
             actor_user_id = await self._resolve_vendor_actor_user_id(uow, vendor_id)
@@ -1338,6 +1373,7 @@ class BookingService(BaseService):
 
             await uow.commit()
             response = BookingCancellationResponse.model_validate(cancellation)
+            response.cancellation_fee = fee
             booking_number = booking.booking_number
 
         from app.models.enums import NotificationType
@@ -1574,11 +1610,7 @@ class BookingService(BaseService):
     ) -> list[dict]:
         async with self._uow() as uow:
             booking = await validate_booking_exists(booking_id, uow)
-
-            if requester_role == "customer" and booking.customer_id != requester_id:
-                raise BookingOwnershipError(
-                    f"Booking {booking_id} does not belong to customer {requester_id}."
-                )
+            await self.assert_can_read_booking(uow, booking, requester_id, requester_role)
 
             include_internal = requester_role in {"admin", "support"}
             history = await uow.bookings.history.find_by_booking(
@@ -1602,9 +1634,12 @@ class BookingService(BaseService):
     async def get_booking_status_history(
         self,
         booking_id: UUID,
+        requester_id: UUID,
+        requester_role: str,
     ) -> list[BookingStatusHistoryResponse]:
         async with self._uow() as uow:
-            await validate_booking_exists(booking_id, uow)
+            booking = await validate_booking_exists(booking_id, uow)
+            await self.assert_can_read_booking(uow, booking, requester_id, requester_role)
             records = await uow.bookings.status_history.find_by_booking(booking_id)
             return [BookingStatusHistoryResponse.model_validate(r) for r in records]
 

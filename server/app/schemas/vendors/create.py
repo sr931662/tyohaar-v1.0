@@ -253,11 +253,11 @@ class VendorReviewCreate(BaseSchema):
     with the vendor (is_verified enforced at the service layer).
     """
 
-    vendor_id: uuid.UUID = Field(description="FK to the vendor being reviewed")
+    vendor_id: uuid.UUID | None = Field(default=None, description="Vendor being reviewed. Set by the server from the URL / signed-in user; anything a client sends here is ignored.")
     booking_id: uuid.UUID = Field(
         description="FK to the Booking that qualifies this reviewer"
     )
-    reviewer_id: uuid.UUID = Field(description="FK to the reviewing User")
+    reviewer_id: uuid.UUID | None = Field(default=None, description="Reviewing user. Set by the server from the URL / signed-in user; anything a client sends here is ignored.")
     rating: int = Field(ge=1, le=5, description="Star rating from 1 (worst) to 5 (best)")
     title: str | None = Field(default=None, max_length=200, description="Optional review headline")
     body: str | None = Field(

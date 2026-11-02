@@ -89,8 +89,11 @@ class ReferralApplyCreate(BaseSchema):
         max_length=20,
         description="Referral code shared by the referrer.",
     )
-    referred_user_id: uuid.UUID = Field(
-        description="User ID of the person applying the code (the new user).",
+    # The person applying the code is the signed-in user; the service already
+    # ignores this field, and requiring it made every apply request fail.
+    referred_user_id: uuid.UUID | None = Field(
+        default=None,
+        description="Ignored. The signed-in user is always the one applying the code.",
     )
     channel: ReferralChannel = Field(
         default=ReferralChannel.LINK,

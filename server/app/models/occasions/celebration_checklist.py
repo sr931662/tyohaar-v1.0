@@ -110,6 +110,11 @@ class CelebrationChecklist(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         lazy="noload",
     )
 
+    @property
+    def is_completed(self) -> bool:
+        """What the API calls `is_completed` is `status == COMPLETED` here."""
+        return getattr(self.status, "value", self.status) == "completed"
+
     def __repr__(self) -> str:
         return (
             f"<CelebrationChecklist id={self.id} title={self.title!r} "

@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from app.schemas.base import BaseSchema, IDSchema, MoneyAmount
 from app.schemas.referrals.common import (
@@ -83,7 +83,7 @@ class ReferralRewardResponse(IDSchema):
         description="Event that triggered this reward"
     )
     reward_type: RewardType = Field(description="Category of reward")
-    amount: MoneyAmount = Field(description="Reward monetary value")
+    amount: MoneyAmount = Field(validation_alias=AliasChoices("amount", "monetary_value"), description="Reward monetary value")
     currency: Currency = Field(description="Currency of the reward")
     reward_status: ReferralRewardStatus = Field(description="Current payout status")
     approved_at: datetime | None = Field(

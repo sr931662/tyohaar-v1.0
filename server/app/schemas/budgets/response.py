@@ -17,7 +17,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from app.schemas.base import IDSchema, MoneyAmount
 from app.schemas.budgets.common import (
@@ -72,16 +72,17 @@ class BudgetResponse(IDSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     celebration_id: uuid.UUID = Field(description="Associated celebration")
-    user_id: uuid.UUID = Field(description="Budget owner")
+    user_id: uuid.UUID = Field(validation_alias=AliasChoices("user_id", "customer_id"), description="Budget owner")
     currency: Currency = Field(description="Budget currency")
-    total_planned: MoneyAmount = Field(description="Customer's stated spending limit")
-    total_spent: MoneyAmount = Field(description="Sum of actual expenses")
-    total_estimated: MoneyAmount = Field(description="Sum of estimated expenses")
-    contingency_pct: Decimal = Field(description="Contingency buffer percentage")
+    total_planned: MoneyAmount = Field(validation_alias=AliasChoices("total_planned", "planned_total"), description="Customer's stated spending limit")
+    total_spent: MoneyAmount = Field(validation_alias=AliasChoices("total_spent", "actual_total"), description="Sum of actual expenses")
+    total_estimated: MoneyAmount = Field(validation_alias=AliasChoices("total_estimated", "estimated_total"), description="Sum of estimated expenses")
+    contingency_pct: Decimal = Field(default=Decimal("0"), description="Contingency buffer percentage")
     contingency_amount: MoneyAmount = Field(
+        default=Decimal("0.00"),
         description="Contingency buffer amount (contingency_pct / 100 × total_planned)"
     )
-    lifecycle_status: BudgetLifecycleStatus = Field(description="Budget operational phase")
+    lifecycle_status: BudgetLifecycleStatus = Field(validation_alias=AliasChoices("lifecycle_status", "budget_status"), description="Budget operational phase")
     health_status: BudgetHealthStatus = Field(
         description="Real-time spending health indicator"
     )
@@ -109,7 +110,8 @@ class BudgetCategoryDefinitionResponse(IDSchema):
 
     name: str = Field(description="Display name (e.g. 'Decoration')")
     slug: str = Field(description="URL-safe slug (e.g. 'decoration')")
-    category: BudgetCategory = Field(
+    category: BudgetCategory | None = Field(
+        default=None, validation_alias=AliasChoices("category", "system_category"),
         description="Corresponding BudgetCategory enum value"
     )
     icon_url: str | None = Field(

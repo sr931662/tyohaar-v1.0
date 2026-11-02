@@ -186,10 +186,10 @@ class BookingCancellationResponse(BaseSchema):
 
     id: uuid.UUID
     booking_id: uuid.UUID
-    reason: CancellationReason
-    reason_detail: str | None
+    reason: CancellationReason = Field(validation_alias=AliasChoices("reason", "cancellation_reason"))
+    reason_detail: str | None = Field(default=None, validation_alias=AliasChoices("reason_detail", "cancellation_notes"))
     cancelled_by_id: uuid.UUID
-    cancellation_fee: MoneyAmount | None
+    cancellation_fee: MoneyAmount | None = Field(default=None)
     refund_amount: MoneyAmount | None
     cancelled_at: datetime
     created_at: datetime
@@ -203,13 +203,13 @@ class BookingRescheduleResponse(BaseSchema):
 
     id: uuid.UUID
     booking_id: uuid.UUID
-    previous_date: date
+    previous_date: date = Field(validation_alias=AliasChoices("previous_date", "old_date"))
     new_date: date
-    previous_start_time: time | None
+    previous_start_time: time | None = Field(default=None, validation_alias=AliasChoices("previous_start_time", "old_start_time"))
     new_start_time: time | None
     reason: str | None
-    rescheduled_by_id: uuid.UUID
-    rescheduled_at: datetime
+    rescheduled_by_id: uuid.UUID = Field(validation_alias=AliasChoices("rescheduled_by_id", "requested_by_id"))
+    rescheduled_at: datetime = Field(validation_alias=AliasChoices("rescheduled_at", "created_at"))
     created_at: datetime
     updated_at: datetime
 
@@ -253,12 +253,12 @@ class BookingInvoiceResponse(BaseSchema):
     booking_id: uuid.UUID
     invoice_number: str = Field(description="Unique invoice reference number")
     invoice_status: InvoiceStatus
-    issued_at: datetime | None
-    due_at: datetime | None
+    issued_at: datetime | None = Field(default=None, validation_alias=AliasChoices("issued_at", "generated_at"))
+    due_at: datetime | None = Field(default=None)
     subtotal: MoneyAmount
     tax_amount: MoneyAmount
     total_amount: MoneyAmount
-    pdf_url: str | None
+    pdf_url: str | None = Field(default=None, validation_alias=AliasChoices("pdf_url", "invoice_url"))
     created_at: datetime
     updated_at: datetime
 

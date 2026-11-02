@@ -83,6 +83,17 @@ _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
 
 
+_BANNER_COLUMNS = {
+    "action_url": "cta_url",
+    "valid_from": "display_start_at",
+    "valid_until": "display_end_at",
+}
+
+
+def _banner_columns(payload: dict) -> dict:
+    return {_BANNER_COLUMNS.get(key, key): value for key, value in payload.items()}
+
+
 class CommonService(BaseService):
     def __init__(
         self, session_factory: Callable[[], AsyncSession] = AsyncSessionLocal
@@ -261,8 +272,10 @@ class CommonService(BaseService):
         async with self._uow() as uow:
             if data.is_active:
                 await validate_active_banner_limit(uow)
-            banner = await uow.common.banners.create(
-                data.model_dump(exclude_unset=True)
+            # create() takes a model instance; this passed a dict. And the API's
+            # names (action_url, valid_from, valid_until) are not the columns.
+            banner = await uow.common.banners.create_from_dict(
+                _banner_columns(data.model_dump(exclude_unset=True))
             )
             await uow.commit()
             return BannerResponse.model_validate(banner)
@@ -275,7 +288,7 @@ class CommonService(BaseService):
     ) -> BannerResponse:
         async with self._uow() as uow:
             banner = await validate_banner_exists(banner_id, uow)
-            payload = data.model_dump(exclude_unset=True)
+            payload = _banner_columns(data.model_dump(exclude_unset=True))
             # If activating a currently-inactive banner, enforce limit
             if payload.get("is_active") is True and not banner.is_active:
                 await validate_active_banner_limit(uow)

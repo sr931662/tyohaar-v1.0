@@ -81,8 +81,13 @@ async def create_package(
 async def get_package(
     package_id: uuid.UUID,
     service: PackageServiceDep,
+    current_user: OptionalUserDep,
 ) -> SuccessResponse[PackageDetailResponse]:
-    result = await service.get_package(package_id=package_id)
+    result = await service.get_package(
+        package_id=package_id,
+        viewer_id=current_user.id if current_user else None,
+        viewer_role=current_user.role.value if current_user else None,
+    )
     return SuccessResponse(data=result, message="Package retrieved.")
 
 
@@ -235,7 +240,11 @@ async def delete_item(
 async def list_items(
     package_id: uuid.UUID,
     service: PackageServiceDep,
+    current_user: OptionalUserDep,
 ) -> SuccessResponse[list[PackageItemResponse]]:
+    await service.assert_package_visible(
+        package_id, current_user.id if current_user else None, current_user.role.value if current_user else None
+    )
     items = await service.list_items(package_id=package_id)
     return SuccessResponse(data=items, message="Items retrieved.")
 
@@ -438,7 +447,11 @@ async def delete_gallery_item(
 async def list_gallery(
     package_id: uuid.UUID,
     service: PackageServiceDep,
+    current_user: OptionalUserDep,
 ) -> SuccessResponse[list[PackageGalleryResponse]]:
+    await service.assert_package_visible(
+        package_id, current_user.id if current_user else None, current_user.role.value if current_user else None
+    )
     items = await service.list_gallery(package_id=package_id)
     return SuccessResponse(data=items, message="Gallery retrieved.")
 
@@ -534,7 +547,11 @@ async def delete_service(
 async def list_services(
     package_id: uuid.UUID,
     service: PackageServiceDep,
+    current_user: OptionalUserDep,
 ) -> SuccessResponse[list[PackageServiceResponse]]:
+    await service.assert_package_visible(
+        package_id, current_user.id if current_user else None, current_user.role.value if current_user else None
+    )
     services = await service.list_services(package_id=package_id)
     return SuccessResponse(data=services, message="Services retrieved.")
 
@@ -776,9 +793,13 @@ async def delete_availability(
 async def list_availability(
     package_id: uuid.UUID,
     service: PackageServiceDep,
+    current_user: OptionalUserDep,
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
 ) -> SuccessResponse[list[PackageAvailabilityResponse]]:
+    await service.assert_package_visible(
+        package_id, current_user.id if current_user else None, current_user.role.value if current_user else None
+    )
     slots = await service.list_availability(
         package_id=package_id, date_from=date_from, date_to=date_to
     )

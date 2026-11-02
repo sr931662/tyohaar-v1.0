@@ -65,6 +65,8 @@ import re as _re
 from datetime import datetime as _datetime
 from typing import Any as _Any
 
+from pydantic import AliasChoices as _AliasChoices
+from pydantic import Field as _Field
 from pydantic import field_validator as _field_validator
 
 from app.models.occasions.celebration_timeline import TimelineEventType as _TimelineEventType
@@ -85,7 +87,9 @@ class OccasionCategoryResponse(_BaseSchema):
     name: str
     description: str | None = None
     icon_url: str | None = None
-    display_order: int
+    # The column is `sort_order`; the API has always called it display_order.
+    # Reading only display_order made every list/create call fail validation.
+    display_order: int = _Field(validation_alias=_AliasChoices("display_order", "sort_order"))
     is_active: bool
     created_at: _datetime
 
@@ -321,10 +325,24 @@ class OccasionService(BaseService):
             await uow.occasions.occasions.delete(occasion)
 
     async def create_category(self, data: object) -> object:
+        from app.services.common.helpers import slugify
+
         async with self._uow() as uow:
-            category = await uow.occasions.categories.create_from_dict(
-                data.model_dump(exclude_unset=True)  # type: ignore[union-attr]
-            )
+            payload = data.model_dump(exclude_unset=True)  # type: ignore[union-attr]
+            # The API field is display_order; the column is sort_order. The
+            # model also requires a unique slug, which the request never had,
+            # so creating a category always failed.
+            if "display_order" in payload:
+                payload["sort_order"] = payload.pop("display_order")
+            base = slugify(payload["name"]) or "category"
+            slug, n = base, 1
+            while await uow.occasions.categories.find_one(
+                uow.occasions.categories._model.slug == slug
+            ):
+                n += 1
+                slug = f"{base}-{n}"
+            payload["slug"] = slug
+            category = await uow.occasions.categories.create_from_dict(payload)
             return OccasionCategoryResponse.model_validate(category)  # type: ignore[call-arg]
 
     async def create_mood(self, data: object) -> OccasionMoodResponse:

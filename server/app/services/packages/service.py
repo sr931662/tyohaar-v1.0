@@ -64,6 +64,7 @@ from app.schemas.packages import (
     PackageServiceUpdate,
 )
 from app.services.base import BaseService
+from app.services.packages.exceptions import PackageNotFoundError
 from app.services.packages.validators import (
     validate_item_limit,
     validate_item_review_not_duplicate,
@@ -381,7 +382,34 @@ class PackageService(BaseService):
         )
         return [row[0] for row in result.all()]
 
-    async def get_package(self, package_id: UUID) -> PackageDetailResponse:
+    async def assert_package_visible(
+        self, package_id: UUID, viewer_id: UUID | None = None, viewer_role: str | None = None
+    ) -> None:
+        """
+        Only ACTIVE packages are public. A draft, a package awaiting review, a
+        deactivated or archived one is visible to admin/support staff and to the
+        vendor who owns it, and otherwise looks exactly like a package that
+        doesn't exist. The detail endpoints used to answer anyone with the id,
+        exposing a vendor's unpublished listing and pricing.
+        """
+        from app.models.enums import PackageStatus
+
+        async with self._uow() as uow:
+            package = await validate_package_exists(package_id, uow)
+            if package.status == PackageStatus.ACTIVE:
+                return
+            if viewer_role in ("admin", "super_admin", "support"):
+                return
+            if viewer_role == "vendor" and viewer_id is not None:
+                vendor = await uow.vendors.vendors.find_by_user(viewer_id)
+                if vendor is not None and vendor.id == package.vendor_id:
+                    return
+            raise PackageNotFoundError(str(package_id))
+
+    async def get_package(
+        self, package_id: UUID, viewer_id: UUID | None = None, viewer_role: str | None = None
+    ) -> PackageDetailResponse:
+        await self.assert_package_visible(package_id, viewer_id, viewer_role)
         from app.models.packages.package_pricing import PackagePriceType
         from app.schemas.packages.response import PackagePricingResponse, PackageVendorInfo
         from app.services.vendors.helpers import generate_vendor_slug
@@ -1723,6 +1751,7 @@ class PackageService(BaseService):
             payload = data.model_dump(exclude_unset=True)
             payload["package_id"] = package_id
             payload["customer_id"] = reviewer_id
+            payload.pop("reviewer_id", None)  # the model's column is customer_id
             review = await uow.packages.reviews.create_from_dict(payload)
             await uow.commit()
 

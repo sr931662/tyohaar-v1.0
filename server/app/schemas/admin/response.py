@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from app.schemas.base import IDSchema
 
@@ -43,7 +43,7 @@ class AdminPermissionResponse(IDSchema):
     code: str = Field(description="Permission code in 'resource.action' format")
     name: str = Field(description="Human-readable permission name")
     description: str | None = Field(default=None, description="Permission description")
-    module: str = Field(description="Resource module (e.g. 'bookings')")
+    module: str = Field(validation_alias=AliasChoices("module", "resource"), description="Resource module (e.g. 'bookings')")
     action: str = Field(description="Action verb (e.g. 'read', 'write')")
     is_active: bool = Field(description="Whether this permission is enabled")
 

@@ -190,6 +190,15 @@ class AppSetting(UUIDPrimaryKeyMixin, TimestampMixin, AuditMixin, Base):
         comment="False disables the setting; settings service uses default_value instead",
     )
 
+    @property
+    def is_public(self) -> bool:
+        """Readable without admin rights: anything not marked sensitive."""
+        return not self.is_sensitive
+
+    @property
+    def is_editable(self) -> bool:
+        return not self.is_readonly
+
     def __repr__(self) -> str:
         display_value = "***" if self.is_sensitive else repr(self.value)
         return (

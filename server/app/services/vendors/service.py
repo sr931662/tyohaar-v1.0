@@ -130,6 +130,18 @@ class VendorDocumentUpdate(_BaseSchema):
     is_primary: bool | None = None
 
 
+# The API names these fields one way and the columns another. Creating a row
+# passed the API names straight to the model (a TypeError, so HTTP 500), and
+# updating silently dropped them, so a changed document URL or branch name
+# "saved" without saving.
+_DOCUMENT_COLUMNS = {"document_url": "file_url"}
+_BANK_COLUMNS = {"branch_name": "bank_branch"}
+
+
+def _to_columns(payload: dict, renames: dict[str, str]) -> dict:
+    return {renames.get(key, key): value for key, value in payload.items()}
+
+
 class VendorService(BaseService):
     def __init__(self, session_factory=AsyncSessionLocal) -> None:
         super().__init__(session_factory)
@@ -234,7 +246,7 @@ class VendorService(BaseService):
     ) -> VendorDocumentResponse:
         async with self._uow() as uow:
             await validate_vendor_ownership(vendor_id, user_id, uow)
-            payload = data.model_dump(exclude_unset=True)
+            payload = _to_columns(data.model_dump(exclude_unset=True), _DOCUMENT_COLUMNS)
             payload["vendor_id"] = vendor_id
             doc = await uow.vendors.documents.create_from_dict(payload)
             return VendorDocumentResponse.model_validate(doc)
@@ -252,7 +264,7 @@ class VendorService(BaseService):
             if doc is None or doc.vendor_id != vendor_id:
                 raise VendorDocumentNotFoundError(str(doc_id))
             doc = await uow.vendors.documents.update(
-                doc, data.model_dump(exclude_unset=True)  # type: ignore[union-attr]
+                doc, _to_columns(data.model_dump(exclude_unset=True), _DOCUMENT_COLUMNS)  # type: ignore[union-attr]
             )
             return VendorDocumentResponse.model_validate(doc)
 
@@ -411,7 +423,7 @@ class VendorService(BaseService):
         async with self._uow() as uow:
             await validate_vendor_ownership(vendor_id, user_id, uow)
             await validate_bank_account_limit(vendor_id, uow)
-            payload = data.model_dump(exclude_unset=True)
+            payload = _to_columns(data.model_dump(exclude_unset=True), _BANK_COLUMNS)
             payload["vendor_id"] = vendor_id
             account = await uow.vendors.bank_accounts.create_from_dict(payload)
             return VendorBankAccountResponse.model_validate(account)
@@ -429,7 +441,7 @@ class VendorService(BaseService):
             if account is None or account.vendor_id != vendor_id:
                 raise VendorNotFoundError(f"bank account {bank_id}")
             account = await uow.vendors.bank_accounts.update(
-                account, data.model_dump(exclude_unset=True)
+                account, _to_columns(data.model_dump(exclude_unset=True), _BANK_COLUMNS)
             )
             return VendorBankAccountResponse.model_validate(account)
 
@@ -465,6 +477,7 @@ class VendorService(BaseService):
             payload = data.model_dump(exclude_unset=True)
             payload["vendor_id"] = vendor_id
             payload["customer_id"] = reviewer_id
+            payload.pop("reviewer_id", None)  # the model's column is customer_id
             if body is not None:
                 payload["body"] = body
 

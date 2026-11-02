@@ -19,7 +19,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import ConfigDict, Field, computed_field, field_serializer
+from pydantic import AliasChoices, ConfigDict, Field, computed_field, field_serializer
 
 from app.schemas.base import BaseSchema, MoneyAmount
 from app.models.enums import (
@@ -153,7 +153,7 @@ class VendorCategoryResponse(BaseSchema):
     description: str | None = None
     icon_url: str | None = None
     is_active: bool
-    display_order: int
+    display_order: int = Field(validation_alias=AliasChoices("display_order", "sort_order"))
 
 
 class VendorDocumentResponse(BaseSchema):
@@ -169,11 +169,11 @@ class VendorDocumentResponse(BaseSchema):
     id: uuid.UUID
     vendor_id: uuid.UUID
     document_type: str
-    document_url: str
+    document_url: str = Field(validation_alias=AliasChoices("document_url", "file_url"))
     verification_status: VerificationStatus
     verified_at: datetime | None = None
     rejection_reason: str | None = None
-    is_active: bool
+    is_active: bool = Field(validation_alias=AliasChoices("is_active", "is_current"))
 
 
 class VendorBankAccountResponse(BaseSchema):
@@ -198,7 +198,7 @@ class VendorBankAccountResponse(BaseSchema):
     account_number: str = Field(exclude=True)
     ifsc_code: str
     bank_name: str
-    branch_name: str | None = None
+    branch_name: str | None = Field(default=None, validation_alias=AliasChoices("branch_name", "bank_branch"))
     is_primary: bool
     is_verified: bool
     verified_at: datetime | None = None
@@ -224,12 +224,12 @@ class VendorReviewResponse(BaseSchema):
     id: uuid.UUID
     vendor_id: uuid.UUID
     booking_id: uuid.UUID
-    reviewer_id: uuid.UUID
+    reviewer_id: uuid.UUID = Field(validation_alias=AliasChoices("reviewer_id", "customer_id"))
     rating: int
     title: str | None = None
     body: str | None = None
-    is_verified: bool
+    is_verified: bool = Field(default=False)
     is_published: bool
     vendor_response: str | None = None
-    vendor_responded_at: datetime | None = None
+    vendor_responded_at: datetime | None = Field(default=None, validation_alias=AliasChoices("vendor_responded_at", "responded_at"))
     created_at: datetime

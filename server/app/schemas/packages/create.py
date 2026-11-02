@@ -477,11 +477,14 @@ class PackageDiscountCreate(BaseSchema):
 class PackageReviewCreate(BaseSchema):
     """Payload required to submit a review for a package."""
 
-    package_id: uuid.UUID = Field(description="Reviewed package UUID")
+    # package_id and reviewer_id come from the URL and the signed-in user. They
+    # were required body fields no client could know, so every review the app
+    # submitted was rejected with a 422.
+    package_id: uuid.UUID | None = Field(default=None, description="Reviewed package UUID. Set by the server from the URL / signed-in user; anything a client sends here is ignored.")
     booking_id: uuid.UUID = Field(
         description="Booking that unlocks the right to review (1:1 guard)"
     )
-    reviewer_id: uuid.UUID = Field(description="UUID of the reviewing user")
+    reviewer_id: uuid.UUID | None = Field(default=None, description="Reviewing user. Set by the server from the URL / signed-in user; anything a client sends here is ignored.")
     rating: int = Field(ge=1, le=5, description="Star rating from 1 (worst) to 5 (best)")
     title: str | None = Field(default=None, max_length=200, description="Review headline")
     body: str | None = Field(default=None, description="Full review text")
@@ -490,13 +493,13 @@ class PackageReviewCreate(BaseSchema):
 class PackageItemReviewCreate(BaseSchema):
     """Payload required to submit a review for a package item."""
 
-    package_item_id: uuid.UUID = Field(description="Reviewed package item UUID")
+    package_item_id: uuid.UUID | None = Field(default=None, description="Reviewed package item UUID. Set by the server from the URL / signed-in user; anything a client sends here is ignored.")
     booking_id: uuid.UUID | None = Field(
         default=None,
         description="Booking this review relates to, used only for the "
                     "'Verified Purchase' badge",
     )
-    reviewer_id: uuid.UUID = Field(description="UUID of the reviewing user")
+    reviewer_id: uuid.UUID | None = Field(default=None, description="Reviewing user. Set by the server from the URL / signed-in user; anything a client sends here is ignored.")
     rating: int = Field(ge=1, le=5, description="Star rating from 1 (worst) to 5 (best)")
     title: str | None = Field(default=None, max_length=200, description="Review headline")
     body: str | None = Field(default=None, description="Full review text")

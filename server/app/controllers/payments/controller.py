@@ -158,7 +158,9 @@ async def get_payment_transactions(
     current_user: CurrentUserDep,
     service: PaymentServiceDep,
 ) -> SuccessResponse[list[PaymentTransactionResponse]]:
-    txns = await service.get_payment_transactions(payment_id=payment_id)
+    txns = await service.get_payment_transactions_for(
+        payment_id=payment_id, requester_id=current_user.id, requester_role=current_user.role.value
+    )
     return SuccessResponse(data=txns, message="Transactions retrieved.")
 
 
@@ -179,7 +181,9 @@ async def list_refunds(
     current_user: CurrentUserDep,
     service: PaymentServiceDep,
 ) -> SuccessResponse[list[RefundResponse]]:
-    refunds = await service.list_refunds(booking_id=booking_id)
+    refunds = await service.list_refunds_for(
+        booking_id=booking_id, requester_id=current_user.id, requester_role=current_user.role.value
+    )
     return SuccessResponse(data=refunds, message="Refunds retrieved.")
 
 
@@ -305,7 +309,7 @@ async def list_payment_splits(
 
 async def get_invoice(
     invoice_id: uuid.UUID,
-    current_user: CurrentUserDep,
+    current_user: AdminDep,
     service: PaymentServiceDep,
 ) -> SuccessResponse[InvoiceResponse]:
     result = await service.get_invoice(invoice_id=invoice_id)
@@ -313,7 +317,7 @@ async def get_invoice(
 
 
 async def list_invoices(
-    current_user: CurrentUserDep,
+    current_user: AdminDep,
     service: PaymentServiceDep,
     entity_id: uuid.UUID = Query(...),
     entity_type: str = Query(...),

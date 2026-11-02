@@ -132,6 +132,26 @@ class PackageAvailability(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         lazy="noload",
     )
 
+    # The API describes availability per day (a date, slots open, slots taken)
+    # while the model stores date ranges with a capacity and a blackout flag.
+    # These present the model in the API's terms: the range's first day, its
+    # capacity as the slots open, and a blackout as "not available".
+    @property
+    def available_date(self):
+        return self.start_date
+
+    @property
+    def slots_available(self) -> int:
+        return int(self.max_capacity or 0)
+
+    @property
+    def slots_booked(self) -> int:
+        return 0
+
+    @property
+    def is_available(self) -> bool:
+        return not self.is_blackout
+
     def __repr__(self) -> str:
         return (
             f"<PackageAvailability id={self.id} package_id={self.package_id} "

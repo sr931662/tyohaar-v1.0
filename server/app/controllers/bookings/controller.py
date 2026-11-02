@@ -274,7 +274,11 @@ async def get_booking_status_history(
     current_user: CurrentUserDep,
     service: BookingServiceDep,
 ) -> SuccessResponse[list[BookingStatusHistoryResponse]]:
-    records = await service.get_booking_status_history(booking_id=booking_id)
+    records = await service.get_booking_status_history(
+        booking_id=booking_id,
+        requester_id=current_user.id,
+        requester_role=current_user.role.value,
+    )
     return SuccessResponse(data=records, message="Status history retrieved.")
 
 
