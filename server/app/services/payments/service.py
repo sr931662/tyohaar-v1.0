@@ -249,7 +249,7 @@ async def _notify_payment_outcome(
             data = NotificationCreate(
                 user_id=payer_id,
                 notification_type=NotificationType.PAYMENT_FAILED,
-                channel=NotificationChannel.IN_APP,
+                channel=NotificationChannel.PUSH,
                 title="Payment failed",
                 body=f"Your payment of ₹{amount} for {payment_number} could not be completed. Please try again.",
                 reference_type="payment",
@@ -674,6 +674,10 @@ class PaymentService(BaseService):
                 await BookingService().notify_vendor_if_confirmed_and_paid(vendor_notify_booking_id)
             except Exception:
                 logger.exception("Vendor booking-confirmed notification failed for booking=%s", vendor_notify_booking_id)
+            try:
+                await BookingService().notify_booking_successful(vendor_notify_booking_id)
+            except Exception:
+                logger.exception("Booking-success notifications failed for booking=%s", vendor_notify_booking_id)
 
         if discount_redeem_trigger is not None:
             coupon_ids_raw, redeem_user_id, redeem_payment_id = discount_redeem_trigger
@@ -819,6 +823,11 @@ class PaymentService(BaseService):
             await BookingService().notify_vendor_if_confirmed_and_paid(booking_id)
         except Exception:
             logger.exception("Vendor booking-confirmed notification failed for booking=%s", booking_id)
+
+        try:
+            await BookingService().notify_booking_successful(booking_id)
+        except Exception:
+            logger.exception("Booking-success notifications failed for booking=%s", booking_id)
 
         if applied_coupon_ids:
             try:
@@ -1070,8 +1079,19 @@ class PaymentService(BaseService):
 
             result = RefundResponse.model_validate(refund)
             refund_id = refund.id
+            refund_payer_id = payment.payer_id
             gateway_payment_id = payment.gateway_payment_id
             gateway_val = payment.gateway.value if payment.gateway and hasattr(payment.gateway, "value") else str(payment.gateway)
+
+        from app.models.enums import NotificationType
+        from app.services.notifications.service import NotificationService
+
+        await NotificationService().notify(
+            refund_payer_id, NotificationType.REFUND_INITIATED,
+            "Refund initiated",
+            f"Your refund of ₹{data.amount} has been initiated. It usually reaches your account in 5–7 working days.",
+            reference_type="refund", reference_id=refund_id,
+        )
 
         if gateway_val == "razorpay" and gateway_payment_id:
             try:
@@ -1132,16 +1152,32 @@ class PaymentService(BaseService):
                 logger.warning("Refund webhook for unknown gateway_refund_id=%s", gateway_refund_id)
                 return
 
+            completed_notice = None
             if event == "refund.processed" and refund.refund_status != RefundStatus.COMPLETED:
                 await uow.payments.refunds.update(refund, {
                     "refund_status": RefundStatus.COMPLETED,
                     "processed_at": now,
                 })
+                refunded_payment = await uow.payments.payments.get_by_id(refund.payment_id)
+                if refunded_payment is not None:
+                    completed_notice = (refunded_payment.payer_id, getattr(refund, "amount", None), refund.id)
             elif event == "refund.failed" and refund.refund_status != RefundStatus.FAILED:
                 await uow.payments.refunds.update(refund, {
                     "refund_status": RefundStatus.FAILED,
                     "failure_reason": entity.get("error_description") or "Gateway reported refund failure.",
                 })
+
+        if completed_notice is not None:
+            from app.models.enums import NotificationType
+            from app.services.notifications.service import NotificationService
+
+            payer_id, amount, refund_ref = completed_notice
+            await NotificationService().notify(
+                payer_id, NotificationType.REFUND_COMPLETED,
+                "Refund completed",
+                f"Your refund{f' of ₹{amount}' if amount else ''} has been processed. It should now show in your account.",
+                reference_type="refund", reference_id=refund_ref,
+            )
 
     async def list_refunds(self, booking_id: uuid.UUID) -> list[RefundResponse]:
         async with self._uow() as uow:

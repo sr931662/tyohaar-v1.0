@@ -6,6 +6,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'theme/theme.dart';
+import 'utils/push_navigation.dart';
 import 'theme/theme_controller.dart';
 import 'data/app_state.dart';
 import 'data/auth_manager.dart';
@@ -56,6 +57,7 @@ class TyohaarApp extends StatelessWidget {
           final pov = AppState.instance.pov;
 
           return MaterialApp(
+            navigatorKey: rootNavigatorKey,
             title: 'Tyohaar',
             debugShowCheckedModeBanner: false,
             localizationsDelegates: AppLocalizations.localizationsDelegates,

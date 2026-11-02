@@ -646,6 +646,7 @@ class AuthService(BaseService):
         if channel == OTPDeliveryChannel.EMAIL:
             from app.services.exceptions import ExternalServiceError
             from app.services.notifications.email_client import send_email
+            from app.services.notifications.email_templates import otp_email
 
             purpose_label = {
                 OTPPurpose.PASSWORD_RESET: "reset your password",
@@ -658,7 +659,7 @@ class AuthService(BaseService):
                 await send_email(
                     to=phone,  # `phone` is the generic identifier; email here
                     subject=f"Your Tyohaar verification code: {raw_otp}",
-                    html_body=otp_email_html(raw_otp, purpose_label, settings.OTP_EXPIRE_MINUTES),
+                    html_body=otp_email(raw_otp, purpose_label, settings.OTP_EXPIRE_MINUTES),
                     text_body=f"Your Tyohaar verification code is {raw_otp}. "
                     f"It expires in {settings.OTP_EXPIRE_MINUTES} minutes.",
                 )
@@ -668,13 +669,19 @@ class AuthService(BaseService):
                     "Email", "Could not send the verification code. Please try again."
                 ) from exc
         else:
-            logger.info(
-                "[SMS STUB] OTP for %s via %s (purpose=%s): %s",
-                phone,
-                channel,
-                purpose,
-                raw_otp,
-            )
+            # No SMS gateway is wired yet. The code is only ever written to the
+            # log outside production: a live OTP in a log file is a login for
+            # whoever can read it.
+            if not settings.is_production:
+                logger.info(
+                    "[SMS STUB] OTP for %s via %s (purpose=%s): %s", phone, channel, purpose, raw_otp
+                )
+            else:
+                logger.info("[SMS STUB] OTP issued for %s via %s (purpose=%s)", phone, channel, purpose)
+
+        # Whatever the channel, also show the code on the account holder's own
+        # signed-in devices when there are any.
+        await self._push_otp(phone, raw_otp, purpose)
 
         return OTPSentResponse(
             status=OTPStatus.PENDING,
@@ -687,6 +694,53 @@ class AuthService(BaseService):
             delivered_at=None,
             delivery_reference=None,
         )
+
+    async def _push_otp(self, identifier: str, raw_otp: str, purpose: OTPPurpose) -> None:
+        """
+        Push the code to the devices already signed in to the account it
+        belongs to. Best effort: it never fails the request, and does nothing
+        if Firebase isn't configured or the account has no registered device.
+
+        Deliberately NOT sent to whichever device made the request. Anyone can
+        ask for a code for any phone number or email, so pushing it to the
+        requester would let them read the code and sign in as that person. The
+        account's own devices are the one place only its owner can see it.
+        """
+        import asyncio
+
+        from app.services.notifications.fcm_client import is_configured, send_push
+
+        if not is_configured():
+            return
+        purpose_label = {
+            OTPPurpose.LOGIN: "sign in",
+            OTPPurpose.REGISTRATION: "finish signing up",
+            OTPPurpose.PASSWORD_RESET: "reset your password",
+            OTPPurpose.EMAIL_VERIFICATION: "verify your email",
+            OTPPurpose.ACCOUNT_DELETION: "confirm account deletion",
+        }.get(purpose, "verify your identity")
+        try:
+            async with self._uow() as uow:
+                user = await uow.users.users.find_by_phone_or_email(identifier)
+                if user is None:
+                    return
+                devices = await uow.users.devices.find_by_user(user.id)
+                tokens = [d.push_notification_token for d in devices if d.is_active and d.push_notification_token]
+                if not tokens:
+                    return
+                result = await asyncio.to_thread(
+                    send_push,
+                    tokens,
+                    f"{raw_otp} is your Tyohaar code",
+                    f"Use it to {purpose_label}. Don't share it with anyone.",
+                    {"type": "otp"},
+                )
+                for token in result.invalid_tokens:
+                    device = await uow.users.devices.find_by_token(token)
+                    if device is not None:
+                        await uow.users.devices.update(device, {"is_active": False})
+        except Exception:
+            logger.exception("OTP push failed for %s", identifier)
 
     # ── Verify OTP ────────────────────────────────────────────────────────────
 

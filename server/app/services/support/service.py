@@ -288,7 +288,7 @@ class SupportService(BaseService):
                 data=NotificationCreate(
                     user_id=recipient_id,
                     notification_type=NotificationType.SUPPORT_UPDATE,
-                    channel=NotificationChannel.IN_APP,
+                    channel=NotificationChannel.PUSH,
                     title=f"New reply on {ticket.ticket_number}",
                     body=message.body[:200],
                     reference_type="support_ticket",

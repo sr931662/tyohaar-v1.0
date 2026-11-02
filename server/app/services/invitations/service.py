@@ -538,7 +538,17 @@ class InvitationService(BaseService):
                 Actor("host", user.id, _host_label(user)),
                 client_request_id=data.client_request_id,
             )
-            return self._host_view(guest, celebration, policy, base_url, _now()), created
+            view = self._host_view(guest, celebration, policy, base_url, _now())
+            notice = (celebration.id, celebration.title, guest.name)
+        # Only a genuinely new invitation: a replayed request (same
+        # client_request_id) must not tell the host twice.
+        if created:
+            await self._notify(
+                user.id, NotificationType.SYSTEM, "Invitation created",
+                f"{notice[2]} has been invited to {notice[1]}. Share their invitation whenever you're ready.",
+                notice[0],
+            )
+        return view, created
 
     async def bulk_create(
         self,
@@ -588,11 +598,20 @@ class InvitationService(BaseService):
                     status="created" if was_created else "existing",
                     invitation=self._host_view(guest, celebration, policy, base_url, now),
                 ))
-            return BulkCreateResult(
+            outcome = BulkCreateResult(
                 created=created,
                 skipped=sum(1 for r in results if r.status in ("duplicate", "error")),
                 results=results,
             )
+            notice = (celebration.id, celebration.title)
+        if outcome.created:
+            n = outcome.created
+            await self._notify(
+                user.id, NotificationType.SYSTEM, "Invitations created",
+                f"{n} {'guest has' if n == 1 else 'guests have'} been invited to {notice[1]}.",
+                notice[0],
+            )
+        return outcome
 
     async def get_detail(self, celebration_id, guest_id, user_id, *, base_url) -> GuestInvitationDetail:
         async with self._uow() as uow:
@@ -694,6 +713,7 @@ class InvitationService(BaseService):
                 raise ConflictError("This invitation has been cancelled.")
             policy = await self.load_policy(uow)
             now = _now()
+            first_share = guest.invitation_sent_at is None
             guest = await uow.occasions.guests.update(guest, {
                 "last_shared_at": now,
                 "last_shared_channel": channel,
@@ -701,7 +721,16 @@ class InvitationService(BaseService):
                 "invitation_sent_at": guest.invitation_sent_at or now,
             })
             await self._history(uow, guest, GuestHistoryEventType.SHARED, Actor("host", user.id, _host_label(user)), details={"channel": channel})
-            return self._host_view(guest, celebration, policy, base_url, now)
+            view = self._host_view(guest, celebration, policy, base_url, now)
+            notice = (celebration.id, celebration.title, guest.name)
+        # Once per guest: re-sharing the same link shouldn't ping the host again.
+        if first_share:
+            await self._notify(
+                user.id, NotificationType.SYSTEM, "Invitation shared",
+                f"{notice[2]}'s invitation to {notice[1]} was shared successfully.",
+                notice[0],
+            )
+        return view
 
     @staticmethod
     def delivery_capabilities() -> DeliveryCapabilities:

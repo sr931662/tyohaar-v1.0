@@ -136,6 +136,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = ""
     SMTP_FROM_NAME: str = "Tyohaar"
+    # Who the platform owner is for "new paid booking" emails: comma-separated
+    # addresses. Blank falls back to every active super-admin's email.
+    OWNER_NOTIFICATION_EMAILS: str = ""
 
     # ── Push Notifications (Firebase Cloud Messaging) ───────────────────────
     # console.firebase.google.com → Project Settings → Service Accounts →

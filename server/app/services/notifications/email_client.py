@@ -10,6 +10,7 @@ attempt a send — mirrors the fcm_client.py pattern for push.
 from __future__ import annotations
 
 import logging
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -29,6 +30,7 @@ async def send_email(
     subject: str,
     html_body: str,
     text_body: str | None = None,
+    attachments: list[tuple[str, bytes, str]] | None = None,
 ) -> None:
     """
     Send a single email via Gmail's SMTP relay (STARTTLS on port 587).
@@ -36,6 +38,9 @@ async def send_email(
     Raises RuntimeError if SMTP isn't configured — callers must check
     is_configured() first (or catch this) and fall back to PENDING status,
     same convention as fcm_client.send_push().
+
+    `attachments` is a list of (filename, content, mime subtype), e.g.
+    ("INV-1.pdf", pdf_bytes, "pdf").
     """
     if not is_configured():
         raise RuntimeError(
@@ -45,14 +50,26 @@ async def send_email(
 
     from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME
 
-    message = MIMEMultipart("alternative")
+    # With attachments the message is mixed(alternative(text, html), files);
+    # without, it stays a plain alternative, exactly as before.
+    alternative = MIMEMultipart("alternative")
+    if text_body:
+        alternative.attach(MIMEText(text_body, "plain", "utf-8"))
+    alternative.attach(MIMEText(html_body, "html", "utf-8"))
+
+    if attachments:
+        message = MIMEMultipart("mixed")
+        message.attach(alternative)
+        for filename, content, subtype in attachments:
+            part = MIMEApplication(content, _subtype=subtype)
+            part.add_header("Content-Disposition", "attachment", filename=filename)
+            message.attach(part)
+    else:
+        message = alternative
+
     message["Subject"] = subject
     message["From"] = f"{settings.SMTP_FROM_NAME} <{from_email}>"
     message["To"] = to
-
-    if text_body:
-        message.attach(MIMEText(text_body, "plain"))
-    message.attach(MIMEText(html_body, "html"))
 
     # Gmail app passwords are often copy-pasted with spaces (as displayed
     # in the Google Account UI) — strip them so a pasted value still works.

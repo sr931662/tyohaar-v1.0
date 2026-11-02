@@ -960,14 +960,139 @@ class BookingService(BaseService):
             data=NotificationCreate(
                 user_id=vendor_user_id,
                 notification_type=NotificationType.BOOKING_CONFIRMED,
-                channel=NotificationChannel.IN_APP,
+                channel=NotificationChannel.PUSH,
                 title="New confirmed booking",
                 body=f"Booking {booking.booking_number} is confirmed and paid. "
                      f"Please provide your Preparation Starting Time (PST).",
+                action_url=f"/vendor/bookings/{booking.id}",
                 reference_type="booking",
                 reference_id=booking.id,
             ),
         )
+
+    async def notify_booking_successful(self, booking_id: UUID) -> None:
+        """
+        Tell everyone involved that a booking is confirmed AND paid.
+
+        * customer: push notification (also kept in their in-app list) plus an
+          email with the full booking details and the invoice PDF attached;
+        * vendor whose package was booked: an email with the details (their
+          push is sent by notify_vendor_if_confirmed_and_paid);
+        * platform owner: an email, to OWNER_NOTIFICATION_EMAILS or, if unset,
+          every active super-admin.
+
+        Safe to call from the payment webhook and the client-verify path in
+        any order: the customer's BOOKING_CONFIRMED notification is the marker,
+        so a second call does nothing. Best effort throughout. A failed email
+        or push is logged and never fails the payment that triggered it.
+        """
+        import asyncio
+
+        from app.core.config import settings
+        from app.models.enums import AccountStatus, NotificationChannel, NotificationType, UserRole
+        from app.schemas.notifications.create import NotificationCreate
+        from app.services.bookings.invoice_pdf import build_invoice_pdf
+        from app.services.notifications import email_client
+        from app.services.notifications.email_templates import booking_success_email
+        from app.services.notifications.service import NotificationService
+
+        async with self._uow() as uow:
+            booking = await uow.bookings.bookings.get_by_id(booking_id)
+            if booking is None:
+                return
+            if booking.booking_status != BookingStatus.CONFIRMED or booking.payment_status != PaymentStatus.COMPLETED:
+                return
+
+            notif_model = uow.notifications.notifications._model
+            already = await uow.notifications.notifications.find_many(
+                notif_model.recipient_id == booking.customer_id,
+                notif_model.reference_type == "booking",
+                notif_model.reference_id == booking.id,
+                notif_model.notification_type == NotificationType.BOOKING_CONFIRMED,
+            )
+            if already:
+                return
+
+            package = await uow.packages.packages.get_by_id(booking.package_id)
+            vendor = await uow.vendors.vendors.get_by_id(package.vendor_id) if package is not None else None
+            vendor_user = await uow.users.users.get_by_id(vendor.user_id) if vendor is not None else None
+
+            pay_model = uow.payments.payments._model
+            payments = await uow.payments.payments.find_many(
+                pay_model.booking_id == booking.id,
+                pay_model.payment_status == PaymentStatus.COMPLETED,
+            )
+            payment_reference = next(
+                (p.gateway_payment_id or p.payment_number for p in reversed(list(payments))), None
+            )
+
+            owner_emails = [e.strip() for e in settings.OWNER_NOTIFICATION_EMAILS.split(",") if e.strip()]
+            if not owner_emails:
+                user_model = uow.users.users._model
+                admins = await uow.users.users.find_many(
+                    user_model.role == UserRole.SUPER_ADMIN,
+                    user_model.account_status == AccountStatus.ACTIVE,
+                    user_model.email.isnot(None),
+                )
+                owner_emails = [a.email for a in admins if a.email]
+
+            data = await self._build_invoice_data(uow, booking)
+            customer_id = booking.customer_id
+            booking_number = booking.booking_number
+            vendor_name = vendor.business_name if vendor is not None else None
+            vendor_email = vendor_user.email if vendor_user is not None else None
+            event_text = data.event_date.strftime("%d %b %Y")
+
+        # 1. Customer push. Created first because it doubles as the "already
+        #    done" marker for any concurrent or repeated call.
+        try:
+            await NotificationService().send_notification(
+                user_id=customer_id,
+                data=NotificationCreate(
+                    user_id=customer_id,
+                    notification_type=NotificationType.BOOKING_CONFIRMED,
+                    channel=NotificationChannel.PUSH,
+                    title="Booking confirmed 🎉",
+                    body=f"Your booking {booking_number} for {event_text} is confirmed. "
+                         f"We've emailed your invoice.",
+                    action_url=f"/bookings/{booking_id}",
+                    reference_type="booking",
+                    reference_id=booking_id,
+                ),
+            )
+        except Exception:
+            logger.exception("Booking-confirmed push failed for booking %s", booking_id)
+
+        # 2. Emails.
+        if not email_client.is_configured():
+            logger.info("SMTP not configured; skipping booking emails for %s", booking_number)
+            return
+
+        try:
+            pdf = await asyncio.to_thread(build_invoice_pdf, data)
+        except Exception:
+            logger.exception("Invoice PDF failed for booking %s; emailing without it", booking_id)
+            pdf = None
+
+        sent_to: set[str] = set()
+
+        async def _email(to: str | None, role: str, attach: bool) -> None:
+            if not to or to.lower() in sent_to:
+                return
+            sent_to.add(to.lower())
+            try:
+                subject, html, text = booking_success_email(
+                    role, data, vendor_name=vendor_name, payment_reference=payment_reference
+                )
+                attachments = [(f"{data.invoice_number}.pdf", pdf, "pdf")] if attach and pdf else None
+                await email_client.send_email(to, subject, html, text, attachments=attachments)
+            except Exception:
+                logger.exception("Booking %s email to %s failed (role=%s)", booking_number, role, role)
+
+        await _email(data.customer_email, "customer", attach=True)
+        await _email(vendor_email, "vendor", attach=False)
+        for owner in owner_emails:
+            await _email(owner, "owner", attach=False)
 
     async def _release_vendor_payment(self, booking_id: UUID) -> None:
         """
@@ -1200,7 +1325,20 @@ class BookingService(BaseService):
             )
 
             await uow.commit()
-            return BookingCancellationResponse.model_validate(cancellation)
+            response = BookingCancellationResponse.model_validate(cancellation)
+            booking_number = booking.booking_number
+
+        from app.models.enums import NotificationType
+        from app.services.notifications.service import NotificationService
+
+        await NotificationService().notify(
+            customer_id, NotificationType.BOOKING_CANCELLED,
+            "Cancellation requested",
+            f"We've received your request to cancel booking {booking_number}. "
+            f"We'll let you know once it's reviewed.",
+            reference_type="booking", reference_id=booking_id, action_url=f"/bookings/{booking_id}",
+        )
+        return response
 
     async def process_cancellation(
         self,
@@ -1235,9 +1373,37 @@ class BookingService(BaseService):
 
             await uow.commit()
 
+            customer_id = booking.customer_id
+            booking_number = booking.booking_number
+            vendor_user_id = None
+            if approved:
+                package = await uow.packages.packages.get_by_id(booking.package_id)
+                vendor = await uow.vendors.vendors.get_by_id(package.vendor_id) if package is not None else None
+                vendor_user_id = vendor.user_id if vendor is not None else None
+
         if approved:
             # Side effect: process refund
             await self._process_refund(booking_id, admin_id)
+
+        from app.models.enums import NotificationType
+        from app.services.notifications.service import NotificationService
+
+        notifier = NotificationService()
+        await notifier.notify(
+            customer_id, NotificationType.BOOKING_CANCELLED,
+            "Cancellation approved" if approved else "Cancellation declined",
+            (f"Booking {booking_number} has been cancelled. Any refund due will be processed to your original payment method."
+             if approved else
+             f"Your request to cancel booking {booking_number} was declined. The booking stays confirmed."),
+            reference_type="booking", reference_id=booking_id, action_url=f"/bookings/{booking_id}",
+        )
+        if approved and vendor_user_id is not None:
+            await notifier.notify(
+                vendor_user_id, NotificationType.BOOKING_CANCELLED,
+                "Booking cancelled",
+                f"Booking {booking_number} has been cancelled. You no longer need to prepare for it.",
+                reference_type="booking", reference_id=booking_id, action_url=f"/vendor/bookings/{booking_id}",
+            )
 
         return BookingResponse.model_validate(booking)
 
@@ -1474,83 +1640,90 @@ class BookingService(BaseService):
                 for line in await self._booking_lines(uow, booking)
             ]
 
+    async def _build_invoice_data(self, uow, booking):
+        """Everything the PDF invoice and the booking emails show, as InvoiceData."""
+        from sqlalchemy import select
+
+        from app.models.common.balloon_color import BalloonColor
+        from app.services.bookings.invoice_pdf import InvoiceData, InvoiceLine
+
+        lines = await self._booking_lines(uow, booking)
+        info = await self._attach_package_info(uow, [booking])
+        package_name, _cover = info.get(booking.package_id, (None, None))
+        celebration = await uow.occasions.celebrations.get_by_id(booking.celebration_id)
+        customer = await uow.users.users.get_by_id(booking.customer_id)
+        address = await uow.users.addresses.get_by_id(booking.address_id) if booking.address_id else None
+        existing = await uow.bookings.invoices.find_by_booking(booking.id)
+
+        venue: list[str] = []
+        if address is not None:
+            venue = [address.address_line_1, address.address_line_2, address.landmark, address.locality,
+                     address.city, address.state, address.postal_code]
+        elif celebration is not None and celebration.venue_address:
+            venue = [celebration.venue_address]
+
+        names: dict[str, str] = {}
+        if booking.balloon_colors:
+            rows = (await uow.session.execute(select(BalloonColor.hex_code, BalloonColor.name))).all()
+            names = {h.lower(): n for h, n in rows}
+        colours = [(names.get(h.lower(), h.upper()), h) for h in (booking.balloon_colors or [])]
+
+        subtotal = Decimal(booking.subtotal)
+        discount = Decimal(booking.discount_amount or 0)
+        number = existing.invoice_number if existing is not None else f"INV-{booking.booking_number}"
+        data = InvoiceData(
+            invoice_number=number,
+            issued_on=(booking.created_at or datetime.now(tz=timezone.utc)).date(),
+            booking_number=booking.booking_number,
+            booking_status=booking.booking_status.value,
+            payment_status=booking.payment_status.value,
+            package_name=package_name,
+            celebration_title=celebration.title if celebration else None,
+            event_date=booking.scheduled_date,
+            start_time=booking.scheduled_start_time,
+            end_time=booking.scheduled_end_time,
+            venue=[v for v in venue if v],
+            customer_name=customer.display_name if customer else None,
+            customer_phone=customer.phone if customer else None,
+            customer_email=customer.email if customer else None,
+            lines=[
+                InvoiceLine(
+                    kind=self._line_kind(line),
+                    name=line.name,
+                    quantity=line.quantity,
+                    unit=line.unit,
+                    unit_price=Decimal(line.unit_price),
+                    total=Decimal(line.final_price),
+                    note=line.notes,
+                    is_addon=bool(line.is_addon),
+                )
+                for line in lines
+            ],
+            subtotal=subtotal,
+            discount=discount,
+            taxable=subtotal - discount,
+            tax=Decimal(booking.tax_amount),
+            platform_fee=Decimal(booking.platform_fee or 0),
+            total=Decimal(booking.total_amount),
+            amount_paid=Decimal(booking.amount_paid or 0),
+            amount_due=Decimal(booking.amount_due or 0),
+            balloon_colors=colours,
+            balloon_finish=booking.balloon_finish,
+            customization_note=booking.customization_note,
+            special_instructions=booking.special_instructions,
+        )
+        return data
+
     async def get_invoice_pdf(
         self, booking_id: UUID, requester_id: UUID, requester_role: str
     ) -> tuple[bytes, str]:
         """(pdf bytes, suggested filename) for the booking's invoice."""
-        from sqlalchemy import select
-
-        from app.models.common.balloon_color import BalloonColor
-        from app.services.bookings.invoice_pdf import InvoiceData, InvoiceLine, build_invoice_pdf
+        from app.services.bookings.invoice_pdf import build_invoice_pdf
 
         async with self._uow() as uow:
             booking = await self._booking_for_reader(uow, booking_id, requester_id, requester_role)
-            lines = await self._booking_lines(uow, booking)
-            info = await self._attach_package_info(uow, [booking])
-            package_name, _cover = info.get(booking.package_id, (None, None))
-            celebration = await uow.occasions.celebrations.get_by_id(booking.celebration_id)
-            customer = await uow.users.users.get_by_id(booking.customer_id)
-            address = await uow.users.addresses.get_by_id(booking.address_id) if booking.address_id else None
-            existing = await uow.bookings.invoices.find_by_booking(booking.id)
-
-            venue: list[str] = []
-            if address is not None:
-                venue = [address.address_line_1, address.address_line_2, address.landmark, address.locality,
-                         address.city, address.state, address.postal_code]
-            elif celebration is not None and celebration.venue_address:
-                venue = [celebration.venue_address]
-
-            names: dict[str, str] = {}
-            if booking.balloon_colors:
-                rows = (await uow.session.execute(select(BalloonColor.hex_code, BalloonColor.name))).all()
-                names = {h.lower(): n for h, n in rows}
-            colours = [(names.get(h.lower(), h.upper()), h) for h in (booking.balloon_colors or [])]
-
-            subtotal = Decimal(booking.subtotal)
-            discount = Decimal(booking.discount_amount or 0)
-            number = existing.invoice_number if existing is not None else f"INV-{booking.booking_number}"
-            data = InvoiceData(
-                invoice_number=number,
-                issued_on=(booking.created_at or datetime.now(tz=timezone.utc)).date(),
-                booking_number=booking.booking_number,
-                booking_status=booking.booking_status.value,
-                payment_status=booking.payment_status.value,
-                package_name=package_name,
-                celebration_title=celebration.title if celebration else None,
-                event_date=booking.scheduled_date,
-                start_time=booking.scheduled_start_time,
-                end_time=booking.scheduled_end_time,
-                venue=[v for v in venue if v],
-                customer_name=customer.display_name if customer else None,
-                customer_phone=customer.phone if customer else None,
-                customer_email=customer.email if customer else None,
-                lines=[
-                    InvoiceLine(
-                        kind=self._line_kind(line),
-                        name=line.name,
-                        quantity=line.quantity,
-                        unit=line.unit,
-                        unit_price=Decimal(line.unit_price),
-                        total=Decimal(line.final_price),
-                        note=line.notes,
-                        is_addon=bool(line.is_addon),
-                    )
-                    for line in lines
-                ],
-                subtotal=subtotal,
-                discount=discount,
-                taxable=subtotal - discount,
-                tax=Decimal(booking.tax_amount),
-                platform_fee=Decimal(booking.platform_fee or 0),
-                total=Decimal(booking.total_amount),
-                amount_paid=Decimal(booking.amount_paid or 0),
-                amount_due=Decimal(booking.amount_due or 0),
-                balloon_colors=colours,
-                balloon_finish=booking.balloon_finish,
-                customization_note=booking.customization_note,
-                special_instructions=booking.special_instructions,
-            )
-        return build_invoice_pdf(data), f"{number}.pdf"
+            data = await self._build_invoice_data(uow, booking)
+        return build_invoice_pdf(data), f"{data.invoice_number}.pdf"
 
     async def get_booking_invoice(
         self,

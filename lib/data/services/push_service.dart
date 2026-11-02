@@ -8,6 +8,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import '../api_client.dart';
 import '../auth_manager.dart';
 import '../../utils/log.dart';
+import '../../utils/push_navigation.dart';
 
 /// Handles Firebase Cloud Messaging setup: permission request, token
 /// registration with the backend, foreground display via a local
@@ -66,6 +67,9 @@ class PushService {
 
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+      // The notification that launched the app from a terminated state.
+      final launchedBy = await FirebaseMessaging.instance.getInitialMessage();
+      if (launchedBy != null) _handleNotificationTap(launchedBy);
     } catch (e) {
       logDebug('PushService: initialization failed ($e).');
     }
@@ -76,6 +80,8 @@ class PushService {
     const iosInit = DarwinInitializationSettings();
     await _localNotifications.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
+      // Tapping a notification shown while the app is open.
+      onDidReceiveNotificationResponse: (response) => openFromPush(response.payload),
     );
     await _localNotifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
@@ -107,13 +113,13 @@ class PushService {
         ),
         iOS: const DarwinNotificationDetails(),
       ),
+      payload: message.data['action_url'] as String?,
     );
   }
 
   void _handleNotificationTap(RemoteMessage message) {
-    // Deep-link routing can be added here using message.data['action_url']
-    // once a global navigator key is wired in — left as a no-op for now.
     logDebug('PushService: notification tapped, data=${message.data}');
+    openFromPush(message.data['action_url'] as String?);
   }
 
   Future<String> _getStableDeviceId() async {

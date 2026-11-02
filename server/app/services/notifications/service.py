@@ -9,7 +9,7 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
-from app.models.enums import NotificationChannel, NotificationStatus
+from app.models.enums import NotificationChannel, NotificationStatus, NotificationType
 from app.models.notifications.notification import Notification
 from app.schemas.base import CursorPage
 from app.schemas.cms.bulk import BulkOperationResult
@@ -123,6 +123,7 @@ class NotificationService(BaseService):
         the row just stays PENDING, same as today. Mirrors _dispatch_push.
         """
         from app.services.notifications.email_client import is_configured, send_email
+        from app.services.notifications.email_templates import esc, shell
 
         if not is_configured():
             return
@@ -137,7 +138,11 @@ class NotificationService(BaseService):
                 await send_email(
                     to=user.email,
                     subject=title,
-                    html_body=f"<div style=\"font-family: sans-serif; font-size: 15px; color: #2A2018;\">{body}</div>",
+                    html_body=shell(
+                        preheader=body[:90],
+                        heading=title,
+                        body_html=f"<p style=\"margin:0;\">{esc(body).replace(chr(10), '<br>')}</p>",
+                    ),
                     text_body=body,
                 )
                 new_status = NotificationStatus.SENT
@@ -150,6 +155,44 @@ class NotificationService(BaseService):
                     "notification_status": new_status,
                     "sent_at": datetime.now(tz=timezone.utc) if new_status == NotificationStatus.SENT else None,
                 })
+
+    async def notify(
+        self,
+        user_id: UUID,
+        notification_type: NotificationType,
+        title: str,
+        body: str,
+        *,
+        reference_type: str | None = None,
+        reference_id: UUID | None = None,
+        action_url: str | None = None,
+        channel: NotificationChannel = NotificationChannel.PUSH,
+    ) -> None:
+        """
+        Push a notification (it is also kept in the user's in-app list).
+
+        Best effort, for use after the triggering change has committed: any
+        failure is logged and swallowed, so a flaky FCM or database hiccup can
+        never undo or fail the action that caused the notification.
+        """
+        from app.schemas.notifications.create import NotificationCreate
+
+        try:
+            await self.send_notification(
+                user_id=user_id,
+                data=NotificationCreate(
+                    user_id=user_id,
+                    notification_type=notification_type,
+                    channel=channel,
+                    title=title,
+                    body=body,
+                    action_url=action_url,
+                    reference_type=reference_type,
+                    reference_id=reference_id,
+                ),
+            )
+        except Exception:
+            logger.exception("Notification %r to user %s failed", title, user_id)
 
     # ── Send ──────────────────────────────────────────────────────────────────
 
