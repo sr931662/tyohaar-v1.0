@@ -571,6 +571,9 @@ class OccasionService(BaseService):
                 uow, guest_id=guest.id, celebration_id=celebration_id,
                 event_type=GuestHistoryEventType.INVITED,
             )
+            from app.services.invitations.events import EventService
+
+            await EventService.assign_functions(uow, guest)
             await uow.commit()
             return _guest_response(guest)
 

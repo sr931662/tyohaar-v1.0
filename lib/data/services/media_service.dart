@@ -44,6 +44,16 @@ class MediaService {
     return items;
   }
 
+  /// A cover photo for an invitation. Returns its public URL.
+  Future<String> uploadInvitationCover(File file) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(file.path, filename: file.path.split(Platform.pathSeparator).last),
+      'usage': 'invitation',
+    });
+    final response = await _api.dio.post('media/upload', data: formData);
+    return (response.data['data'] as Map?)?['url'] as String? ?? '';
+  }
+
   Future<String> uploadProfilePicture(File file) async {
     final fileName = file.path.split('/').last;
     final formData = FormData.fromMap({

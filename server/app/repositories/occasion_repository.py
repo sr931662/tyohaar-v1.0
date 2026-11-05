@@ -20,6 +20,11 @@ from app.models.occasions.celebration import Celebration
 from app.models.occasions.celebration_budget import CelebrationBudget
 from app.models.occasions.celebration_checklist import CelebrationChecklist
 from app.models.occasions.celebration_guest import CelebrationGuest
+from app.models.occasions.event_planning import (
+    CelebrationFunction,
+    CelebrationGuestGroup,
+    GuestFunctionResponse,
+)
 from app.models.occasions.celebration_guest_history import CelebrationGuestHistory
 from app.models.occasions.gate_access import CelebrationGateAccess
 from app.models.occasions.guest_entry_log import GuestEntryLog
@@ -176,6 +181,21 @@ class CelebrationGuestRepository(BaseRepository[CelebrationGuest]):
         return await self.find_one(CelebrationGuest.entry_code_hash == code_hash)
 
 
+class CelebrationFunctionRepository(BaseRepository[CelebrationFunction]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, CelebrationFunction)
+
+
+class CelebrationGuestGroupRepository(BaseRepository[CelebrationGuestGroup]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, CelebrationGuestGroup)
+
+
+class GuestFunctionResponseRepository(BaseRepository[GuestFunctionResponse]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, GuestFunctionResponse)
+
+
 class GuestEntryLogRepository(BaseRepository[GuestEntryLog]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, GuestEntryLog)
@@ -301,6 +321,9 @@ class OccasionRepositoryAggregate:
         self.tags = OccasionTagRepository(session)
         self.celebrations = CelebrationRepository(session)
         self.guests = CelebrationGuestRepository(session)
+        self.functions = CelebrationFunctionRepository(session)
+        self.guest_groups = CelebrationGuestGroupRepository(session)
+        self.function_responses = GuestFunctionResponseRepository(session)
         self.guest_history = CelebrationGuestHistoryRepository(session)
         self.entry_logs = GuestEntryLogRepository(session)
         self.gate_accesses = CelebrationGateAccessRepository(session)

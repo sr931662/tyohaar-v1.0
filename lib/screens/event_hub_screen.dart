@@ -26,7 +26,13 @@ import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
 import '../widgets/tutorial/tutorial_overlay.dart';
+import '../widgets/ty_button.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../data/services/event_service.dart';
+import '../widgets/event_ui.dart';
+import 'events/event_dashboard_screen.dart';
+import 'events/functions_editor.dart';
+import 'events/invitation_setup_screen.dart';
 import 'guests_screen.dart';
 import 'package_detail_screen.dart';
 
@@ -48,6 +54,8 @@ class _EventHubScreenState extends State<EventHubScreen> {
   final BookingService _bookingService = BookingService();
   final PackageService _packageService = PackageService();
   final MediaService _mediaService = MediaService();
+  final EventService _eventService = EventService();
+  EventDetail? _event;
   Celebration? _celebration;
   Booking? _booking;
   List<Guest> _guests = [];
@@ -86,10 +94,12 @@ class _EventHubScreenState extends State<EventHubScreen> {
       final detailsFuture = _celebrationService.getCelebrationDetails(id);
       final guestsFuture = _celebrationService.listGuests(id);
       final bookingsFuture = _bookingService.listByCelebration(id);
+      final eventFuture = _eventService.get(id);
 
       final details = await detailsFuture;
       final guests = await guestsFuture;
       final bookings = await bookingsFuture;
+      final event = await eventFuture;
 
       Booking? booking = bookings.isNotEmpty ? bookings.first : null;
       Package? package;
@@ -122,6 +132,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
       if (mounted) {
         setState(() {
           _celebration = details;
+          _event = event;
           _booking = booking;
           _guests = guests;
           _package = package;
@@ -297,14 +308,30 @@ class _EventHubScreenState extends State<EventHubScreen> {
                             ],
                           ),
                           SizedBox(height: resp.h(22)),
-                          SectionHeader(l10n.eventHubPackageDetailsHeader),
-                          _buildPackageSection(context),
+                          _buildInvitationsSection(context),
                           SizedBox(height: resp.h(18)),
+                          if (_event != null) ...[
+                            SectionHeader(l10n.evStepFunctions),
+                            FunctionsEditor(
+                              eventId: _event!.id,
+                              functions: _event!.functions,
+                              service: _eventService,
+                              onChanged: (_) => _load(),
+                            ),
+                            SizedBox(height: resp.h(18)),
+                          ],
+                          // Services only exist on a Tyohaar booking; an
+                          // independent event has nothing to show here.
+                          if (_event?.isBooked ?? _booking != null) ...[
+                            SectionHeader(l10n.eventHubPackageDetailsHeader),
+                            _buildPackageSection(context),
+                            SizedBox(height: resp.h(18)),
+                          ],
                           SectionHeader(l10n.eventHubGatheringHeader, action: l10n.eventHubManageActionLabel,
                               onAction: () {
                             Navigator.of(context)
                                 .push(MaterialPageRoute(
-                                    builder: (_) => const GuestsScreen()))
+                                    builder: (_) => GuestsScreen(celebrationId: _celebration?.id)))
                                 .then((_) => _load());
                           }),
                           Container(
@@ -365,12 +392,14 @@ class _EventHubScreenState extends State<EventHubScreen> {
                               ],
                             ),
                           ),
-                          SizedBox(height: resp.h(18)),
-                          SectionHeader(l10n.eventHubMultimediaHeader),
-                          _EventMediaSection(
-                            media: _eventMedia,
-                            isLoading: _loadingMedia,
-                          ),
+                          if (_booking != null) ...[
+                            SizedBox(height: resp.h(18)),
+                            SectionHeader(l10n.eventHubMultimediaHeader),
+                            _EventMediaSection(
+                              media: _eventMedia,
+                              isLoading: _loadingMedia,
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -415,6 +444,47 @@ class _EventHubScreenState extends State<EventHubScreen> {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The way into invitations, guests, RSVPs and activity for this event.
+  Widget _buildInvitationsSection(BuildContext context) {
+    final ty = context.ty;
+    final resp = context.resp;
+    final l10n = AppLocalizations.of(context)!;
+    final event = _event;
+    if (event == null) return const SizedBox.shrink();
+    final configured = event.invitationsConfigured;
+    return Container(
+      padding: EdgeInsets.all(resp.w(16)),
+      decoration: _card(ty, resp),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(child: Text(l10n.evDashInvitations, style: TyType.display(resp.sp(19), color: ty.ink))),
+            EventSourceBadge(booked: event.isBooked),
+          ]),
+          SizedBox(height: resp.h(4)),
+          Text(
+            event.counts.invited > 0
+                ? l10n.evCountsLine(event.counts.invited, event.counts.confirmed, event.counts.pending)
+                : (configured ? l10n.evNoGuestsYet : l10n.evSetUpInvitations),
+            style: TyType.sans(resp.sp(13), color: ty.ink2),
+          ),
+          SizedBox(height: resp.h(12)),
+          TyButton(
+            configured ? l10n.evManageInvitations : l10n.evSetUpCta,
+            full: true,
+            onTap: () => Navigator.of(context)
+                .push(MaterialPageRoute(
+                    builder: (_) => configured
+                        ? EventDashboardScreen(eventId: event.id)
+                        : InvitationSetupScreen(eventId: event.id)))
+                .then((_) => _load()),
           ),
         ],
       ),

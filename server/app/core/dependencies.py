@@ -31,6 +31,7 @@ from app.services.feedback.service import FeedbackService
 from app.services.media.service import MediaService
 from app.services.notifications.service import NotificationService
 from app.services.colors.service import BalloonColorService, BalloonFinishService
+from app.services.invitations.events import EventService
 from app.services.invitations.service import InvitationService
 from app.services.occasions.service import OccasionService
 from app.services.packages.service import PackageService
@@ -98,6 +99,11 @@ def get_invitation_service() -> InvitationService:
     return InvitationService(AsyncSessionLocal)
 
 
+def get_event_service() -> EventService:
+    """Dependency factory — returns an EventService bound to the default session factory."""
+    return EventService(AsyncSessionLocal)
+
+
 def get_package_service() -> PackageService:
     """Dependency factory — returns a PackageService bound to the default session factory."""
     return PackageService(AsyncSessionLocal)
@@ -162,6 +168,7 @@ DeletionServiceDep = Annotated[DeletionService, Depends(get_deletion_service)]
 VendorServiceDep = Annotated[VendorService, Depends(get_vendor_service)]
 OccasionServiceDep = Annotated[OccasionService, Depends(get_occasion_service)]
 InvitationServiceDep = Annotated[InvitationService, Depends(get_invitation_service)]
+EventServiceDep = Annotated[EventService, Depends(get_event_service)]
 PackageServiceDep = Annotated[PackageService, Depends(get_package_service)]
 BookingServiceDep = Annotated[BookingService, Depends(get_booking_service)]
 PaymentServiceDep = Annotated[PaymentService, Depends(get_payment_service)]

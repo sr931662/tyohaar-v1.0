@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:tyohaar/data/services/event_service.dart';
+import 'package:tyohaar/screens/events/event_dashboard_screen.dart' show dietaryLabel;
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/colors.dart';
@@ -16,6 +18,7 @@ class VendorBookingDetailScreen extends StatefulWidget {
 }
 
 class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> with SingleTickerProviderStateMixin {
+  Future<VendorGuestSummary?>? _guestSummaryFuture;
   final _bookingService = BookingService();
   late final TabController _tabController = TabController(length: 3, vsync: this);
   Booking? _booking;
@@ -146,11 +149,49 @@ class _VendorBookingDetailScreenState extends State<VendorBookingDetailScreen> w
     );
   }
 
+  /// What the customer has approved for vendors: totals only, never names.
+  Widget _guestSummary(TyColors ty, Booking b) {
+    final l10n = AppLocalizations.of(context)!;
+    return FutureBuilder<VendorGuestSummary?>(
+      future: _guestSummaryFuture ??= EventService().vendorGuestSummary(b.id),
+      builder: (context, snapshot) {
+        // An older server or a hiccup here shouldn't take the booking page with it.
+        if (snapshot.connectionState != ConnectionState.done || snapshot.hasError) return const SizedBox.shrink();
+        final summary = snapshot.data;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: ty.line)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(l10n.evVendorSummaryTitle, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            if (summary == null)
+              Text(l10n.evVendorSummaryNone, style: TyType.sans(13, color: ty.ink3))
+            else ...[
+              if (summary.finalGuestCount != null)
+                Text(l10n.evVendorSummaryCount(summary.finalGuestCount!), style: TyType.sans(13.5, color: ty.ink2, weight: FontWeight.w600)),
+              if (summary.note != null) Text(summary.note!, style: TyType.sans(13, color: ty.ink2)),
+              for (final f in summary.functions) ...[
+                const SizedBox(height: 8),
+                Text('${f.name}: ${l10n.evFunctionPeople(f.people)}', style: TyType.sans(13, color: ty.ink, weight: FontWeight.w700)),
+                for (final d in f.dietary.entries)
+                  Text('${dietaryLabel(l10n, d.key)}: ${d.value}', style: TyType.sans(12.5, color: ty.ink2)),
+                for (final m in f.meals.entries) Text('${m.key}: ${m.value}', style: TyType.sans(12.5, color: ty.ink2)),
+                if (f.notSpecified > 0) Text('${l10n.evFoodNotSpecified}: ${f.notSpecified}', style: TyType.sans(12.5, color: ty.ink3)),
+              ],
+            ],
+          ]),
+        );
+      },
+    );
+  }
+
   Widget _buildOverview(TyColors ty, Booking b) {
     final l10n = AppLocalizations.of(context)!;
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
+        _guestSummary(ty, b),
         if (b.celebrationTitle != null && b.celebrationTitle!.isNotEmpty)
           _row(ty, l10n.vendorBookingDetailCelebrationLabel, b.celebrationTitle!),
         _row(ty, l10n.vendorBookingDetailPackageLabel, b.packageName ?? '—'),

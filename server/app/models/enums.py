@@ -536,6 +536,24 @@ class InvitationStatus(str, enum.Enum):
     EXPIRED = "expired"
 
 
+class EventSource(str, enum.Enum):
+    """Where a celebration came from. Same engine either way; only onboarding and entitlements differ."""
+    TYOHAAR_BOOKING = "tyohaar_booking"
+    STANDALONE = "standalone"
+
+
+class InvitationPublishStatus(str, enum.Enum):
+    """Whether guests may see the invitation. Events predating this are PUBLISHED."""
+    DRAFT = "draft"
+    PUBLISHED = "published"
+
+
+class GuestGroupResponseMode(str, enum.Enum):
+    """How a household answers: one answer for everyone, or member by member."""
+    GROUP = "group"
+    INDIVIDUAL = "individual"
+
+
 class RSVPStatus(str, enum.Enum):
     PENDING = "pending"
     ATTENDING = "attending"
@@ -557,6 +575,12 @@ class GuestHistoryEventType(str, enum.Enum):
     EMAIL_FAILED = "email_failed"
     LINK_ROTATED = "link_rotated"
     REVOKED = "revoked"
+    # A real browser requested the link. Weaker than INVITATION_OPENED (the page
+    # actually ran and was on screen); neither one means the guest read it.
+    LINK_ACCESSED = "link_accessed"
+    RSVP_STARTED = "rsvp_started"
+    REMINDER_SENT = "reminder_sent"
+    FUNCTIONS_CHANGED = "functions_changed"
 
 
 class GuestPassStatus(str, enum.Enum):

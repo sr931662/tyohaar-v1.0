@@ -20,7 +20,7 @@ import '../data/services/location_service.dart';
 import 'home_screen.dart';
 import 'plans_screen.dart';
 import 'account_screen.dart';
-import 'invitation_management_screen.dart';
+import 'events/my_events_screen.dart';
 
 import 'notifications_screen.dart';
 import 'manage_address_screen.dart';
@@ -29,7 +29,7 @@ import 'privacy_policy_screen.dart';
 import '../widgets/adaptive_nav_bar.dart';
 import '../l10n/generated/app_localizations.dart';
 
-/// The app's primary shell: Home, Plans, Invitations and Account, all
+/// The app's primary shell: Home, Plans, Events and Account, all
 /// styled alike in one dock. Packages are reached only through the
 /// Home tab's occasion cards (occasion -> packages -> ...), so there is no
 /// standalone packages tab.
@@ -60,10 +60,17 @@ class _RootNavState extends State<RootNav> {
   /// that so IndexedStack still preserves their state and scroll offsets.
   final Set<int> _builtTabs = {0};
 
+  static const int _eventsTab = 2;
+  static const int _accountTab = 3;
+
+  /// Bumped on returning to Events so a booking or guest added elsewhere shows.
+  int _eventsRefresh = 0;
+
   List<Widget> _buildPages() => [
         HomeScreen(scrollController: _homeScrollController),
         _builtTabs.contains(1) ? const PlansScreen() : const SizedBox.shrink(),
-        _builtTabs.contains(2) ? const AccountScreen() : const SizedBox.shrink(),
+        _builtTabs.contains(_eventsTab) ? MyEventsScreen(refreshSignal: _eventsRefresh) : const SizedBox.shrink(),
+        _builtTabs.contains(_accountTab) ? const AccountScreen() : const SizedBox.shrink(),
       ];
 
   @override
@@ -90,6 +97,7 @@ class _RootNavState extends State<RootNav> {
   // behind it for contrast.
   void _setIndex(int i) {
     setState(() {
+      if (i == _eventsTab && _index != _eventsTab) _eventsRefresh++;
       _index = i;
       // First visit builds the tab for real; it stays built from here on.
       _builtTabs.add(i);
@@ -160,18 +168,6 @@ class _RootNavState extends State<RootNav> {
     await _resolveLocation();
   }
 
-  void _openInvitations() {
-    AuthManager.instance.checkAuth(
-      context,
-      action: AppLocalizations.of(context)!.homeAuthActionManageInvitations,
-      onAuthenticated: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const InvitationManagementScreen()),
-        );
-      },
-    );
-  }
-
   Future<void> _push(BuildContext context, Widget page) {
     return Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
@@ -196,15 +192,7 @@ class _RootNavState extends State<RootNav> {
         user: AuthManager.instance.currentUser,
         onUseCurrentLocation: _resolveLocation,
         onNavigate: (i) {
-          if (i == 1 || i == 2) {
-             AuthManager.instance.checkAuth(
-              context,
-              action: i == 1 ? AppLocalizations.of(context)!.rootNavActionViewPlans : AppLocalizations.of(context)!.rootNavActionAccessAccount,
-              onAuthenticated: () => _setIndex(i),
-            );
-          } else {
-            _setIndex(i);
-          }
+          _guardedSetIndex(i);
           Navigator.pop(context);
         },
       ),
@@ -235,7 +223,7 @@ class _RootNavState extends State<RootNav> {
                 isScrolled: _isScrolled,
                 onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
                 onOpenNotifications: () => _push(context, const NotificationsScreen()).then((_) => _loadUnreadCount()),
-                onOpenProfile: () => _setIndex(2),
+                onOpenProfile: () => _setIndex(_accountTab),
                 user: AuthManager.instance.currentUser,
                 unreadCount: _unreadNotifs,
                 currentCity: CityPreference.instance.activeCity ?? _currentCity,
@@ -247,27 +235,12 @@ class _RootNavState extends State<RootNav> {
       ),
       bottomNavigationBar: TyAdaptiveNavBar(
         destinations: _dockDestinations(AppLocalizations.of(context)!),
-        selectedIndex: _dockSlotForTab(_index),
-        onDestinationSelected: (slot) {
-          if (slot == _invitationsSlot) {
-            _openInvitations();
-            return;
-          }
-          _onTabTapped(_tabForDockSlot(slot));
-        },
+        selectedIndex: _index,
+        onDestinationSelected: _onTabTapped,
       ),
       ),
     );
   }
-
-  // The dock shows Home, Plans, Invitations, Account. Invitations opens a
-  // pushed screen rather than a tab, so dock slots and IndexedStack pages
-  // differ from slot 2 onwards.
-  static const int _invitationsSlot = 2;
-
-  static int _dockSlotForTab(int tab) => tab >= _invitationsSlot ? tab + 1 : tab;
-
-  static int _tabForDockSlot(int slot) => slot > _invitationsSlot ? slot - 1 : slot;
 
   static List<TyNavDestination> _dockDestinations(AppLocalizations l10n) => [
         TyNavDestination(
@@ -285,11 +258,11 @@ class _RootNavState extends State<RootNav> {
           cupertinoActiveIcon: CupertinoIcons.square_list_fill,
         ),
         TyNavDestination(
-          label: l10n.rootNavInvitationsLabel,
-          icon: Icons.mail_outline_rounded,
-          activeIcon: Icons.mail_rounded,
-          cupertinoIcon: CupertinoIcons.envelope,
-          cupertinoActiveIcon: CupertinoIcons.envelope_fill,
+          label: l10n.rootNavEventsLabel,
+          icon: Icons.celebration_outlined,
+          activeIcon: Icons.celebration_rounded,
+          cupertinoIcon: CupertinoIcons.sparkles,
+          cupertinoActiveIcon: CupertinoIcons.sparkles,
         ),
         TyNavDestination(
           label: l10n.rootNavAccountLabel,
@@ -312,15 +285,25 @@ class _RootNavState extends State<RootNav> {
       }
       return;
     }
-    if (i == 1 || i == 2) {
-      AuthManager.instance.checkAuth(
-        context,
-        action: i == 1 ? AppLocalizations.of(context)!.rootNavActionViewPlans : AppLocalizations.of(context)!.rootNavActionAccessAccount,
-        onAuthenticated: () => _setIndex(i),
-      );
-    } else {
+    _guardedSetIndex(i);
+  }
+
+  /// Everything except Home belongs to an account.
+  void _guardedSetIndex(int i) {
+    if (i == 0) {
       _setIndex(i);
+      return;
     }
+    final l10n = AppLocalizations.of(context)!;
+    AuthManager.instance.checkAuth(
+      context,
+      action: switch (i) {
+        1 => l10n.rootNavActionViewPlans,
+        _eventsTab => l10n.rootNavActionViewEvents,
+        _ => l10n.rootNavActionAccessAccount,
+      },
+      onAuthenticated: () => _setIndex(i),
+    );
   }
 }
 
@@ -562,7 +545,8 @@ class _AppSidebar extends StatelessWidget {
               children: [
                 _drawerItem(context, Icons.home_outlined, l10n.rootNavHomeLabel, 0),
                 _drawerItem(context, Icons.event_note_outlined, l10n.rootNavMyPlansLabel, 1),
-                _drawerItem(context, Icons.person_outline_rounded, l10n.rootNavAccountLabel, 2),
+                _drawerItem(context, Icons.celebration_outlined, l10n.rootNavEventsLabel, _RootNavState._eventsTab),
+                _drawerItem(context, Icons.person_outline_rounded, l10n.rootNavAccountLabel, _RootNavState._accountTab),
                 const Divider(height: 32, indent: 20, endIndent: 20, color: Colors.black12),
                 ListenableBuilder(
                   listenable: CityPreference.instance,

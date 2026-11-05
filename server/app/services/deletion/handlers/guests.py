@@ -36,6 +36,7 @@ from app.models.invitations.invitation_guest import InvitationGuest
 from app.models.occasions.celebration import Celebration
 from app.models.occasions.celebration_guest import CelebrationGuest
 from app.models.occasions.celebration_guest_history import CelebrationGuestHistory
+from app.models.occasions.event_planning import CelebrationGuestGroup, GuestFunctionResponse
 from app.models.occasions.gate_access import CelebrationGateAccess
 from app.models.occasions.guest_entry_log import GuestEntryLog
 from app.services.deletion.registry import (
@@ -91,6 +92,20 @@ async def purge_guests(
             )
         )
         report.count("celebration_guest_history", result.rowcount or 0)
+        # Meal choices and allergies are about the guest, not the host.
+        result = await session.execute(
+            delete(GuestFunctionResponse).where(
+                GuestFunctionResponse.celebration_id.in_(celebration_ids)
+            )
+        )
+        report.count("guest_function_responses", result.rowcount or 0)
+        # Before the guests: a household's main-contact FK points at one of them.
+        result = await session.execute(
+            delete(CelebrationGuestGroup).where(
+                CelebrationGuestGroup.celebration_id.in_(celebration_ids)
+            )
+        )
+        report.count("celebration_guest_groups", result.rowcount or 0)
 
         result = await session.execute(
             delete(CelebrationGuest).where(
@@ -98,6 +113,18 @@ async def purge_guests(
             )
         )
         report.count("celebration_guests", result.rowcount or 0)
+
+        # A booked celebration survives deletion, sanitised in place. Its
+        # invitation fields are the host's and guests' words, so they don't.
+        result = await session.execute(
+            update(Celebration)
+            .where(Celebration.id.in_(celebration_ids))
+            .values(
+                host_name=None, contact_name=None, contact_phone=None, cover_image_url=None,
+                invitation_settings=None, general_link_hash=None, general_link_enc=None,
+            )
+        )
+        report.count("celebration_invitation_fields_cleared", result.rowcount or 0)
 
     if invitation_ids:
         result = await session.execute(
@@ -167,6 +194,18 @@ async def purge_expired_guest_pii(
             )
         )
         counts["celebration_guest_history"] = result.rowcount or 0
+        result = await session.execute(
+            delete(GuestFunctionResponse).where(
+                GuestFunctionResponse.celebration_id.in_(expired_celebrations)
+            )
+        )
+        counts["guest_function_responses"] = result.rowcount or 0
+        result = await session.execute(
+            delete(CelebrationGuestGroup).where(
+                CelebrationGuestGroup.celebration_id.in_(expired_celebrations)
+            )
+        )
+        counts["celebration_guest_groups"] = result.rowcount or 0
 
         result = await session.execute(
             delete(CelebrationGuest).where(

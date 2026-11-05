@@ -62,6 +62,7 @@ class CelebrationGuest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_celebration_guests_rsvp", "celebration_id", "rsvp_status"),
         Index("ix_celebration_guests_entry", "celebration_id", "entry_status"),
         Index("ix_celebration_guests_pass", "celebration_id", "pass_status"),
+        Index("ix_celebration_guests_group", "group_id"),
         UniqueConstraint(
             "celebration_id",
             "client_request_id",
@@ -239,6 +240,31 @@ class CelebrationGuest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "respond' (displayed as ignored) — see CelebrationGuestResponse.display_status."
         ),
     )
+
+    # ── Households & tracking ─────────────────────────────────────────────────
+
+    group_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("celebration_guest_groups.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="The household this guest belongs to, if any.",
+    )
+    source: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="host", server_default="host",
+        comment="host | import | general_link — how this guest got onto the list.",
+    )
+    link_accessed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment="First non-crawler request for the link. Not proof anyone looked at it.",
+    )
+    visit_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0",
+        comment="Page loads that ran in a real browser and were on screen.",
+    )
+    last_visited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rsvp_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reminder_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     # ── Relationships ─────────────────────────────────────────────────────────
 

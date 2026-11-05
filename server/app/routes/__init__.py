@@ -19,6 +19,7 @@ from app.routes.budgets.routes import router as budgets_router
 from app.routes.colors.routes import router as colors_router
 from app.routes.common.routes import router as common_router
 from app.routes.deletion.routes import router as deletion_router
+from app.routes.events.routes import router as events_router
 from app.routes.feedback.routes import router as feedback_router
 from app.routes.invitations.routes import (
     admin_router as invitations_admin_router,
@@ -43,6 +44,7 @@ all_routers = [
     occasions_router,
     invitations_router,
     invitations_public_router,
+    events_router,
     packages_router,
     bookings_router,
     payments_router,

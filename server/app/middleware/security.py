@@ -34,7 +34,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # A personal invitation's URL is its credential, so it never leaves in a Referer.
+        response.headers["Referrer-Policy"] = (
+            "no-referrer" if request.url.path.startswith("/i/") else "strict-origin-when-cross-origin"
+        )
         # The gate console scans pass QR codes with the device camera; it is
         # the one page allowed to ask for it (same-origin only).
         camera = "(self)" if request.url.path.endswith(_CAMERA_PAGE_SUFFIX) else "()"

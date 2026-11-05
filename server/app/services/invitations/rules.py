@@ -83,6 +83,8 @@ def entry_window(
     *,
     tz_name: str,
     policy: InvitationPolicy,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> tuple[datetime, datetime]:
     """
     The UTC instants between which a pass admits entry.
@@ -91,8 +93,21 @@ def entry_window(
     day ends at midnight. An end time at or before the start time means the
     event runs past midnight. The policy's grace periods are applied to both
     ends so early and late arrivals are not turned away at the boundary.
+
+    A multi-function event passes ``start_date``/``end_date``: the pass then
+    works for the whole span, not only on the main day, and the day boundaries
+    apply instead of one function's times.
     """
     tz = event_zone(tz_name)
+    first = min(start_date or celebration_date, celebration_date)
+    last = max(end_date or celebration_date, celebration_date)
+    if first != last:
+        return (
+            (datetime.combine(first, time(0, 0), tzinfo=tz)
+             - timedelta(minutes=policy.entry_grace_minutes_before)).astimezone(timezone.utc),
+            (datetime.combine(last + timedelta(days=1), time(0, 0), tzinfo=tz)
+             + timedelta(minutes=policy.entry_grace_minutes_after)).astimezone(timezone.utc),
+        )
     start_local = datetime.combine(celebration_date, start_time or time(0, 0), tzinfo=tz)
     if end_time is None:
         end_local = datetime.combine(celebration_date + timedelta(days=1), time(0, 0), tzinfo=tz)
@@ -235,6 +250,23 @@ def can_rsvp(
     if celebration_status in (CelebrationStatus.CANCELLED, CelebrationStatus.COMPLETED):
         return False
     return today < celebration_date
+
+
+def rollup_rsvp(statuses: list[RSVPStatus]) -> RSVPStatus:
+    """
+    One guest-level answer from their per-function answers, for everything that
+    reads ``CelebrationGuest.rsvp_status``: coming to anything means attending;
+    declined only when every function has been declined.
+    """
+    if not statuses:
+        return RSVPStatus.PENDING
+    if RSVPStatus.ATTENDING in statuses:
+        return RSVPStatus.ATTENDING
+    if RSVPStatus.MAYBE in statuses:
+        return RSVPStatus.MAYBE
+    if all(s is RSVPStatus.DECLINED for s in statuses):
+        return RSVPStatus.DECLINED
+    return RSVPStatus.PENDING
 
 
 def can_invite_to(

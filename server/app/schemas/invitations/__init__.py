@@ -79,6 +79,9 @@ class GuestInvitationFields(BaseSchema):
 
 class GuestInvitationCreate(GuestInvitationFields):
     name: str = Field(min_length=1, max_length=200)
+    function_ids: list[uuid.UUID] | None = Field(
+        default=None, description="Functions to invite this guest to. Omitted means all of them.",
+    )
     client_request_id: str | None = Field(
         default=None,
         min_length=8,
@@ -140,6 +143,13 @@ class GuestInvitationResponse(BaseSchema):
     revoked_reason: str | None = None
     created_at: datetime
 
+    group_id: uuid.UUID | None = None
+    source: str = "host"
+    link_accessed_at: datetime | None = None
+    visit_count: int = 0
+    rsvp_started_at: datetime | None = None
+    reminder_count: int = 0
+    last_reminded_at: datetime | None = None
     invite_url: str | None = Field(default=None, description="Guest's personal link — share it, don't publish it.")
     entry_code: str | None = Field(default=None, description="Formatted gate code, e.g. K7QM-3XPD.")
     qr_payload: str | None = Field(default=None, description="Exact string to encode in the pass QR.")

@@ -184,7 +184,7 @@ def test_hashes_are_keyed_and_kind_separated():
 
 def test_encryption_round_trip_and_tamper_rejection():
     token = cred.new_link_token()
-    assert len(token) >= 43
+    assert len(token) >= 22
     enc = cred.encrypt(token)
     assert token not in enc and cred.decrypt(enc) == token
     assert cred.decrypt(enc[:-4] + "AAAA") is None

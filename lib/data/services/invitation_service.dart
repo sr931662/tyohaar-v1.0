@@ -237,6 +237,7 @@ class GuestInvitation {
   final String? inviteUrl;
   final String? entryCode;
   final String? qrPayload;
+  final String? groupId;
 
   GuestInvitation({
     required this.id,
@@ -270,6 +271,7 @@ class GuestInvitation {
     this.inviteUrl,
     this.entryCode,
     this.qrPayload,
+    this.groupId,
   });
 
   bool get isRevoked => passStatus == 'revoked';
@@ -308,6 +310,7 @@ class GuestInvitation {
         inviteUrl: j['invite_url'] as String?,
         entryCode: j['entry_code'] as String?,
         qrPayload: j['qr_payload'] as String?,
+        groupId: j['group_id'] as String?,
       );
 }
 

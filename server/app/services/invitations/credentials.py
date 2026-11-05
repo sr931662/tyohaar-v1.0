@@ -3,9 +3,12 @@ Invitation credentials — generation, normalisation, keyed hashing, encryption.
 
 Two secrets exist per guest invitation:
 
-* **Link token** — ``secrets.token_urlsafe(32)`` (256 bits). Lives in the guest's
-  personal invite URL (in the fragment, so it never reaches access logs) and
-  authorises viewing that one invitation, RSVPing and showing the pass.
+* **Link token** — ``secrets.token_urlsafe(16)`` (128 bits, a short URL that is
+  still unguessable). Lives in the guest's personal invite URL and authorises
+  viewing that one invitation, RSVPing and showing the pass. It is in the URL
+  *path*, because a WhatsApp preview can only be built from what the server
+  receives; our own logs redact it (see core/log_redaction). Links issued
+  earlier used 32 bytes in the fragment and still resolve: lookup is by hash.
 * **Entry code** — 8 characters from an unambiguous 31-symbol alphabet
   (~39.6 bits), e.g. ``K7QM-3XPD``. Printed on the pass and encoded in its QR
   as ``TYH1:K7QM3XPD``. It is *not* a bearer credential: it is only accepted by
@@ -33,6 +36,7 @@ ENTRY_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no I, L, O, 0, 1
 ENTRY_CODE_LENGTH = 8
 QR_PREFIX = "TYH1:"
 GATE_TOKEN_KIND = "gate"
+GENERAL_LINK_KIND = "general"
 LINK_TOKEN_KIND = "link"
 ENTRY_CODE_KIND = "code"
 
@@ -53,7 +57,7 @@ def _fernet() -> Fernet:
 # ── Generation ────────────────────────────────────────────────────────────────
 
 def new_link_token() -> str:
-    return secrets.token_urlsafe(32)
+    return secrets.token_urlsafe(16)
 
 
 def new_gate_token() -> str:

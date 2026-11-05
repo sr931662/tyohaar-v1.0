@@ -182,6 +182,11 @@ def rate_limit(config: RateLimitConfig):
 PUBLIC_INVITE_RATE_LIMIT = RateLimitConfig(requests=60, window_seconds=60, key_prefix="rl:invite")
 # Gate endpoints — a busy gate scans quickly, so per-IP is lenient; repeated
 # *failed* verifications are throttled separately per operator scope.
+# The page itself may arrive through the website's proxy, so every guest can
+# share one IP here: generous, and the token keys anything sensitive anyway.
+INVITE_PAGE_RATE_LIMIT = RateLimitConfig(requests=600, window_seconds=60, key_prefix="rl:invitepage")
+# Self-registering through a general link writes a guest row each time.
+INVITE_CLAIM_RATE_LIMIT = RateLimitConfig(requests=10, window_seconds=600, key_prefix="rl:inviteclaim")
 GATE_RATE_LIMIT = RateLimitConfig(requests=180, window_seconds=60, key_prefix="rl:gate")
 GATE_FAILURE_LIMIT = RateLimitConfig(requests=30, window_seconds=600, key_prefix="rl:gatefail")
 

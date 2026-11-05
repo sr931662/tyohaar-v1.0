@@ -167,6 +167,20 @@ class Settings(BaseSettings):
     # "https://api.tyohaar.co". Blank → derived from the incoming request
     # (honouring X-Forwarded-Proto/Host), which is right behind most proxies.
     PUBLIC_BASE_URL: str = ""
+    # Origin guest invitation links are shared on, e.g. "https://tyohaar.in".
+    # The website must proxy /i/* here (client/functions/[[path]].js does).
+    # Blank → PUBLIC_BASE_URL, so links keep working before the proxy is live.
+    INVITE_BASE_URL: str = ""
+    # Marketing/app links in the guest page footer.
+    TYOHAAR_WEBSITE_URL: str = "https://tyohaar.in"
+    TYOHAAR_ANDROID_APP_URL: str = ""
+    TYOHAAR_IOS_APP_URL: str = ""
+    # WhatsApp Business Platform (Cloud API) — the only permitted route for
+    # automated reminders. All blank → reminders stay manual, sent by the host
+    # from their own phone. See services/invitations/whatsapp_cloud.py.
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_ACCESS_TOKEN: str = ""
+    WHATSAPP_REMINDER_TEMPLATE: str = ""
     # How many proxies in front of the app append to X-Forwarded-For. Cloud Run
     # alone = 1. Used to find the real client IP for rate limiting.
     TRUSTED_PROXY_HOPS: int = 1

@@ -349,7 +349,9 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMixin, 
         lazy="noload",
     )
 
-    celebration: Mapped[Celebration] = relationship("Celebration", lazy="noload")
+    celebration: Mapped[Celebration] = relationship(
+        "Celebration", lazy="noload", foreign_keys=[celebration_id]
+    )
 
     package: Mapped[Package] = relationship("Package", lazy="noload")
 

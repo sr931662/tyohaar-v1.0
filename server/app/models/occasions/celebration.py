@@ -9,7 +9,7 @@ customer-facing model in the system.
 from __future__ import annotations
 
 import uuid
-from datetime import date, time
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -17,6 +17,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Date,
+    DateTime,
     Enum as SAEnum,
     ForeignKey,
     Index,
@@ -26,13 +27,14 @@ from sqlalchemy import (
     String,
     Text,
     Time,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
-from app.models.enums import CelebrationStatus, Currency
+from app.models.enums import CelebrationStatus, Currency, EventSource, InvitationPublishStatus
 from app.models.mixins import (
     MetadataMixin,
     NotesMixin,
@@ -91,6 +93,14 @@ class Celebration(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMix
             "guest_count >= 0",
             name="ck_celebrations_guest_count_non_negative",
         ),
+        # One booking can back at most one event; a second association fails
+        # here even if two requests race past the service-level check.
+        Index(
+            "uq_celebrations_linked_booking",
+            "linked_booking_id",
+            unique=True,
+            postgresql_where=text("linked_booking_id IS NOT NULL"),
+        ),
     )
 
     # ── Ownership ─────────────────────────────────────────────────────────────
@@ -104,11 +114,12 @@ class Celebration(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMix
 
     # ── Occasion Selection ────────────────────────────────────────────────────
 
-    occasion_id: Mapped[uuid.UUID] = mapped_column(
+    occasion_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("occasions.id", ondelete="RESTRICT"),
-        nullable=False,
-        comment="The occasion type being celebrated",
+        nullable=True,
+        comment="The occasion type being celebrated. NULL for an independent event "
+                "whose category isn't an occasion Tyohaar sells (see event_type).",
     )
 
     theme_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -286,6 +297,62 @@ class Celebration(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, NotesMix
         back_populates="celebration",
         lazy="noload",
         cascade="all, delete-orphan",
+    )
+
+    # ── Invitation management (see services/invitations/events.py) ────────────
+
+    event_source: Mapped[EventSource] = mapped_column(
+        SAEnum(EventSource, name="event_source", native_enum=False, length=20),
+        nullable=False,
+        default=EventSource.STANDALONE,
+        server_default="STANDALONE",
+        comment="TYOHAAR_BOOKING once backed by a booking; otherwise independently organised.",
+    )
+    linked_booking_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("bookings.id", ondelete="SET NULL", use_alter=True, name="fk_celebrations_linked_booking"),
+        nullable=True,
+        comment="The booking this event is associated with. NULL for standalone events.",
+    )
+    event_type: Mapped[str | None] = mapped_column(
+        String(40), nullable=True,
+        comment="wedding | birthday | anniversary | engagement | baby_shower | housewarming | "
+                "religious | corporate | custom. NULL on rows created by the booking flow.",
+    )
+    custom_event_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    host_name: Mapped[str | None] = mapped_column(
+        String(200), nullable=True, comment="As shown to guests, e.g. 'The Sharma Family'.",
+    )
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, comment="Shown to guests only if the host chose to provide it.",
+    )
+    cover_image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    event_start_date: Mapped[date | None] = mapped_column(
+        Date, nullable=True, comment="Earliest function date; NULL means celebration_date.",
+    )
+    event_end_date: Mapped[date | None] = mapped_column(
+        Date, nullable=True, comment="Latest function date; NULL means celebration_date.",
+    )
+    invitation_status: Mapped[InvitationPublishStatus] = mapped_column(
+        SAEnum(InvitationPublishStatus, name="invitation_publish_status", native_enum=False, length=20),
+        nullable=False,
+        default=InvitationPublishStatus.PUBLISHED,
+        server_default="PUBLISHED",
+    )
+    invitation_published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invitation_settings: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True,
+        comment="Design, RSVP questions, display overrides and reminder rules. Validated by "
+                "schemas.events.InvitationSettings, which also fills in defaults.",
+    )
+    general_link_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True, comment="HMAC of the shareable general invitation token.",
+    )
+    general_link_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    general_link_visits: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0",
+        comment="Browser visits to the general link. Anonymous by design: nobody is identified until they respond.",
     )
 
     @property

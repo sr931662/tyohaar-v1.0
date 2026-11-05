@@ -11,6 +11,11 @@ from app.models.occasions.occasion import (
 from app.models.occasions.celebration import Celebration
 from app.models.occasions.celebration_guest import CelebrationGuest
 from app.models.occasions.celebration_guest_history import CelebrationGuestHistory
+from app.models.occasions.event_planning import (
+    CelebrationFunction,
+    CelebrationGuestGroup,
+    GuestFunctionResponse,
+)
 from app.models.occasions.gate_access import CelebrationGateAccess
 from app.models.occasions.guest_entry_log import GuestEntryLog
 from app.models.occasions.celebration_timeline import CelebrationTimeline, TimelineEventType
@@ -30,6 +35,9 @@ __all__ = [
     "Celebration",
     "CelebrationGuest",
     "CelebrationGuestHistory",
+    "CelebrationFunction",
+    "CelebrationGuestGroup",
+    "GuestFunctionResponse",
     "CelebrationGateAccess",
     "GuestEntryLog",
     "CelebrationTimeline",

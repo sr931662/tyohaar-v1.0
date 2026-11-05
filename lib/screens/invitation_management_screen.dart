@@ -27,7 +27,14 @@ import 'invitations/invitation_labels.dart';
 /// sharing and gate check-in. Data comes from the server only; the counts
 /// are server aggregates, never computed from a partially loaded page.
 class InvitationManagementScreen extends StatefulWidget {
-  const InvitationManagementScreen({super.key});
+  /// Pins the screen to one event (the dashboard's Guests tab). Null keeps the
+  /// original behaviour: every celebration, with a picker.
+  final String? celebrationId;
+
+  /// Inside the dashboard, which already has its own app bar.
+  final bool embedded;
+
+  const InvitationManagementScreen({super.key, this.celebrationId, this.embedded = false});
 
   @override
   State<InvitationManagementScreen> createState() => _InvitationManagementScreenState();
@@ -87,7 +94,9 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
       _error = false;
     });
     try {
-      final celebrations = await _celebrationService.listCelebrations();
+      final celebrations = widget.celebrationId != null
+          ? [await _celebrationService.getCelebrationDetails(widget.celebrationId!)]
+          : await _celebrationService.listCelebrations();
       if (!mounted) return;
       if (celebrations.isEmpty) {
         setState(() {
@@ -281,7 +290,7 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
     final showFooter = _hasNext || _loadingMore;
     return Scaffold(
       backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: l10n.invitationManagementAppBarTitle, actions: [
+      appBar: widget.embedded ? null : tyAppBar(context, title: l10n.invitationManagementAppBarTitle, actions: [
         IconButton(
           tooltip: l10n.invGateTitle,
           icon: Icon(Icons.qr_code_scanner_rounded, color: ty.ink),

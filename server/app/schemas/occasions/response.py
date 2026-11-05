@@ -17,6 +17,7 @@ from pydantic import ConfigDict, Field, computed_field
 
 from app.schemas.base import BaseSchema
 from app.models.enums import (
+    EventSource,
     CelebrationStatus,
     Currency,
     GuestEntryStatus,
@@ -126,11 +127,13 @@ class CelebrationResponse(BaseSchema):
 
     id: uuid.UUID
     customer_id: uuid.UUID
-    occasion_id: uuid.UUID
+    occasion_id: uuid.UUID | None = None
     theme_id: uuid.UUID | None = None
     mood_id: uuid.UUID | None = None
     title: str
     description: str | None = None
+    event_source: EventSource = EventSource.STANDALONE
+    event_type: str | None = None
     celebration_date: date
     start_time: time | None = None
     end_time: time | None = None

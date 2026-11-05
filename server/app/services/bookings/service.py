@@ -15,7 +15,7 @@ from app.models.bookings.booking_item import BookingItem
 from app.models.bookings.booking_service_item import BookingServiceItem
 from app.models.bookings.booking_reschedule import BookingReschedule, RescheduleStatus
 from app.models.bookings.booking_status_history import BookingStatusHistory
-from app.models.enums import AssignmentStatus, BookingStatus, InvoiceStatus, PaymentStatus
+from app.models.enums import AssignmentStatus, BookingStatus, EventSource, InvoiceStatus, PaymentStatus
 from app.schemas.base import CursorPage
 from app.schemas.bookings import (
     BookingAssignmentInternal,
@@ -220,6 +220,7 @@ class BookingService(BaseService):
                     "theme_id": data.theme_id,
                     "custom_theme_colors": data.custom_theme_colors if not data.theme_id else None,
                     "guest_count": 0,
+                    "event_source": EventSource.TYOHAAR_BOOKING,
                 })
                 celebration_id = celebration.id
 
@@ -744,6 +745,9 @@ class BookingService(BaseService):
                     "confirmed_at": datetime.now(tz=timezone.utc),
                 },
             )
+            from app.services.invitations.events import EventService
+
+            await EventService.associate_confirmed_booking(uow, booking)
 
             await self._write_status_history(
                 uow, booking.id, old_status, BookingStatus.CONFIRMED, admin_id

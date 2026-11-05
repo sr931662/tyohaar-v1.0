@@ -41,7 +41,14 @@ class _PlansScreenState extends State<PlansScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final list = await context.read<CelebrationService>().listCelebrations();
-      if (mounted) setState(() { _celebrations = list; _loading = false; });
+      if (mounted) {
+        setState(() {
+          // Plans is about what's being arranged with Tyohaar; an event the
+          // customer is organising themselves lives under Events.
+          _celebrations = list.where((c) => !c.isIndependentEvent).toList();
+          _loading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() { _error = AppLocalizations.of(context)!.plansLoadError; _loading = false; });
     }

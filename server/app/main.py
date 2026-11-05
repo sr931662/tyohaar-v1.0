@@ -32,6 +32,7 @@ from app.middleware import (
     SecurityHeadersMiddleware,
 )
 from app.routes import all_routers
+from app.routes.events.routes import guest_page_router
 
 # ── OpenAPI tag definitions ───────────────────────────────────────────────────
 
@@ -341,6 +342,8 @@ def create_app() -> FastAPI:
     # ── Domain routers ────────────────────────────────────────────────────────
     for router in all_routers:
         app.include_router(router, prefix=settings.API_V1_PREFIX)
+    # The guest invitation page lives at the root: https://<site>/i/<token>.
+    app.include_router(guest_page_router)
 
     # ── Health / probe endpoints ──────────────────────────────────────────────
     app.add_api_route(

@@ -219,6 +219,14 @@ def _booking_settled_by_capture(booking, payment, now: datetime) -> dict:
     return updates
 
 
+async def _associate_event(uow, booking) -> None:
+    """A captured payment confirms the booking, which makes its event a Tyohaar event."""
+    from app.services.invitations.events import EventService
+
+    if booking.booking_status == BookingStatus.CONFIRMED:
+        await EventService.associate_confirmed_booking(uow, booking)
+
+
 async def _notify_payment_outcome(
     payer_id: uuid.UUID,
     is_success: bool,
@@ -627,6 +635,7 @@ class PaymentService(BaseService):
                         await uow.bookings.bookings.update(
                             booking, _booking_settled_by_capture(booking, payment, now)
                         )
+                        await _associate_event(uow, booking)
 
                     payment_outcome = (payment.payer_id, True, payment.payment_number, payment.final_amount)
                     referral_trigger = (payment.payer_id, payment.final_amount, payment.booking_id)
@@ -799,6 +808,7 @@ class PaymentService(BaseService):
                 await uow.bookings.bookings.update(
                     booking, _booking_settled_by_capture(booking, payment, now)
                 )
+                await _associate_event(uow, booking)
 
             payer_id = payment.payer_id
             payment_number = payment.payment_number

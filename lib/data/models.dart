@@ -1451,6 +1451,10 @@ class Celebration {
   // is an unrelated template-categorization string), denormalized the same
   // way as theme_colors since CelebrationResponse doesn't nest relationships.
   final CelebrationMood? mood;
+  // tyohaar_booking | standalone. eventType is set only on events the customer
+  // created themselves through invitation management.
+  final String? eventSource;
+  final String? eventType;
 
   Celebration({
     required this.id,
@@ -1469,7 +1473,12 @@ class Celebration {
     this.themeColors,
     this.themeCoverImageUrl,
     this.mood,
+    this.eventSource,
+    this.eventType,
   });
+
+  /// Created through invitation management and not (yet) booked.
+  bool get isIndependentEvent => eventSource == 'standalone' && eventType != null;
 
   factory Celebration.fromJson(Map<String, dynamic> json) {
     final rawThemeColors = json['theme_colors'] as Map?;
@@ -1495,6 +1504,8 @@ class Celebration {
           ? double.tryParse(json['estimated_budget'].toString())
           : null,
       mood: CelebrationMood.fromJson(json),
+      eventSource: json['event_source'] as String?,
+      eventType: json['event_type'] as String?,
     );
   }
 }

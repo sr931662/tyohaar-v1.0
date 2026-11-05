@@ -53,6 +53,7 @@ from app.models.enums import (
 from app.models.occasions.celebration import Celebration
 from app.models.occasions.celebration_guest import CelebrationGuest
 from app.models.occasions.celebration_guest_history import CelebrationGuestHistory
+from app.models.occasions.event_planning import GuestFunctionResponse
 from app.models.occasions.gate_access import CelebrationGateAccess
 from app.models.occasions.guest_entry_log import GuestEntryLog
 from app.schemas.invitations import (
@@ -100,6 +101,7 @@ from app.services.occasions.exceptions import (
 logger = logging.getLogger(__name__)
 
 INVITE_PAGE_PATH = "/public/invite/page"
+GUEST_LINK_PREFIX = "/i"
 GATE_PAGE_PATH = "/public/gate/page"
 
 
@@ -163,6 +165,8 @@ class InvitationService(BaseService):
             celebration.end_time,
             tz_name=settings.EVENT_TIMEZONE,
             policy=policy,
+            start_date=celebration.event_start_date,
+            end_date=celebration.event_end_date,
         )
 
     @staticmethod
@@ -185,11 +189,14 @@ class InvitationService(BaseService):
 
     @staticmethod
     def invite_url(base_url: str | None, token: str | None) -> str | None:
-        if not base_url or not token:
+        if not token:
             return None
-        # Token in the fragment: browsers never send it to the server, so it
-        # stays out of access logs and Referer headers.
-        return f"{base_url.rstrip('/')}{settings.API_V1_PREFIX}{INVITE_PAGE_PATH}#{token}"
+        origin = settings.INVITE_BASE_URL or base_url
+        if not origin:
+            return None
+        # In the path, not the fragment: WhatsApp builds its preview from what
+        # the server returns for this URL, so the server has to see the token.
+        return f"{origin.rstrip('/')}{GUEST_LINK_PREFIX}/{token}"
 
     def _host_view(
         self,
@@ -229,6 +236,13 @@ class InvitationService(BaseService):
             revoked_at=guest.revoked_at,
             revoked_reason=guest.revoked_reason,
             created_at=guest.created_at,
+            group_id=guest.group_id,
+            source=guest.source or "host",
+            link_accessed_at=guest.link_accessed_at,
+            visit_count=guest.visit_count or 0,
+            rsvp_started_at=guest.rsvp_started_at,
+            reminder_count=guest.reminder_count or 0,
+            last_reminded_at=guest.last_reminded_at,
             # A revoked invitation's link and code are dead — don't hand them
             # back out where they might be re-shared.
             invite_url=None if guest.pass_status is GuestPassStatus.REVOKED
@@ -462,6 +476,8 @@ class InvitationService(BaseService):
         actor: Actor,
         *,
         client_request_id: str | None,
+        function_ids: list[uuid.UUID] | None = None,
+        source: str = "host",
     ) -> tuple[CelebrationGuest, bool]:
         """Returns (guest, created). Caller holds the celebration row lock."""
         if client_request_id:
@@ -499,9 +515,13 @@ class InvitationService(BaseService):
             "arrival_window_end": data.arrival_window_end,
             "vehicle_number": data.vehicle_number,
             "client_request_id": client_request_id,
+            "source": source,
             **(await self._unique_credentials(uow)),
         })
         await self._history(uow, guest, GuestHistoryEventType.INVITED, actor)
+        from app.services.invitations.events import EventService
+
+        await EventService.assign_functions(uow, guest, function_ids or data.function_ids)
         return guest, True
 
     async def _assert_can_invite(self, uow, celebration: Celebration, policy: InvitationPolicy) -> None:
@@ -896,6 +916,13 @@ class InvitationService(BaseService):
             if data.note is not None:
                 changes["guest_note"] = data.note or None  # never touches host's `notes`
             guest = await uow.occasions.guests.update(guest, changes)
+            # A link from before per-function answers: one answer, every function.
+            await uow.session.execute(
+                update(GuestFunctionResponse)
+                .where(GuestFunctionResponse.celebration_guest_id == guest.id)
+                .values(status=data.rsvp_status, attendee_count=party_size, responded_at=now, updated_at=now)
+                .execution_options(synchronize_session=False)
+            )
             if previous != data.rsvp_status or guest.rsvp_party_size != party_size:
                 await self._history(
                     uow, guest, GuestHistoryEventType.RSVP_CHANGED, Actor("guest", label=guest.name),
@@ -956,8 +983,12 @@ class InvitationService(BaseService):
         )
 
     async def host_scope(self, celebration_id: uuid.UUID, user) -> GateScope:
+        from app.services.invitations import entitlements
+
         async with self._uow() as uow:
-            await self._owned_celebration(uow, celebration_id, user.id)
+            celebration = await self._owned_celebration(uow, celebration_id, user.id)
+            if not (await entitlements.for_event(uow, celebration)).qr_check_in:
+                raise BusinessRuleError("QR check-in isn't included for this event.")
         return GateScope(Actor("host", user.id, _host_label(user)), celebration_id)
 
     async def gate_access_scope(self, token: str | None) -> GateScope:
@@ -1044,6 +1075,12 @@ class InvitationService(BaseService):
                 await limiter.hit(failure_key, GATE_FAILURE_LIMIT)
                 return GateResult(result=R.INVALID, message=rules.MESSAGES[R.INVALID], recorded=False)
             policy = await self.load_policy(uow)
+            # Someone at Monday's Haldi comes back for Wednesday's wedding on
+            # the same pass, whatever the single-day default is.
+            start_day = celebration.event_start_date or celebration.celebration_date
+            end_day = celebration.event_end_date or celebration.celebration_date
+            if start_day != end_day:
+                policy = policy.model_copy(update={"allow_reentry": True})
             window = self.window(celebration, policy)
 
             # Retried scan (lost response, double tap): answer with the

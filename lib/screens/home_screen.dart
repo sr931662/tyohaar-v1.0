@@ -1,28 +1,23 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
-import '../theme/theme.dart';
 import '../theme/typography.dart';
 import '../theme/responsive.dart';
 import '../data/auth_manager.dart';
 import '../data/city_preference.dart';
 import '../data/models.dart';
 import '../data/services/package_service.dart';
-import '../data/services/celebration_service.dart';
-import '../data/services/booking_service.dart';
 import '../data/services/user_service.dart';
 import '../utils/currency.dart';
 import '../utils/log.dart';
-import '../widgets/avatar.dart';
 import '../widgets/photo_placeholder.dart';
 import '../widgets/common.dart';
 import '../widgets/state_screens.dart';
+import '../widgets/invitation_hero.dart';
 import '../widgets/occasion_grid.dart';
 import '../l10n/generated/app_localizations.dart';
-import 'event_hub_screen.dart';
+import 'events/invitation_entry_screen.dart';
 import 'manage_address_screen.dart';
 import 'package:tyohaar/screens/package_detail_screen.dart';
 import 'package:tyohaar/screens/plan_flow/plan_flow_screen.dart';
@@ -37,23 +32,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final PackageService _packageService = PackageService();
-  final CelebrationService _celebrationService = CelebrationService();
-  final BookingService _bookingService = BookingService();
   final UserService _userService = UserService();
 
   List<Package> _featured = [];
   bool _featuredIsFallback = false;
   String? _cityName;
   List<Occasion> _occasions = [];
-  Celebration? _activeCelebration;
-  Booking? _activeBooking;
-  List<Guest> _guests = [];
   bool _isLoading = true;
-  // Tracks the separate (post-Future.wait) booking fetch so the hero card
-  // can keep showing a placeholder instead of jumping straight to the
-  // generic illustration fallback while the real package cover is still
-  // in flight.
-  bool _isBookingLoading = false;
   String? _error;
 
   @override
@@ -133,59 +118,18 @@ class _HomeScreenState extends State<HomeScreen> {
           logDebug('Error loading occasions: $e');
           return <Occasion>[];
         }),
-        // Celebrations are per-user, so a guest has none to fetch. Asking
-        // anyway cost a round trip that could only ever 401, and the home
-        // screen is the first thing a guest sees.
-        if (AuthManager.instance.isAuthenticated)
-          _celebrationService.listCelebrations().catchError((e) {
-            logDebug('Error loading celebrations: $e');
-            return <Celebration>[];
-          })
-        else
-          Future<List<Celebration>>.value(const <Celebration>[]),
       ]);
 
       setState(() {
         _cityName = city;
         _featured = results[0] as List<Package>;
         _occasions = results[1] as List<Occasion>;
-        final celebrations = results[2] as List<Celebration>;
-        if (celebrations.isNotEmpty) {
-          _activeCelebration = celebrations.first;
-          _isBookingLoading = true;
-          _loadGuests(_activeCelebration!.id);
-          _loadActiveBooking(_activeCelebration!.id);
-        }
         _isLoading = false;
         _error = null;
       });
     } catch (e, st) {
       logError('home.loadData', e, st);
       if (mounted) setState(() { _error = 'Could not load home data.'; _isLoading = false; });
-    }
-  }
-
-  Future<void> _loadGuests(String celebrationId) async {
-    try {
-      final guests = await _celebrationService.listGuests(celebrationId);
-      setState(() => _guests = guests);
-    } catch (e) {
-      logDebug('Error loading guests: $e');
-    }
-  }
-
-  Future<void> _loadActiveBooking(String celebrationId) async {
-    try {
-      final bookings = await _bookingService.listByCelebration(celebrationId);
-      if (mounted) {
-        setState(() {
-          if (bookings.isNotEmpty) _activeBooking = bookings.first;
-          _isBookingLoading = false;
-        });
-      }
-    } catch (e) {
-      logDebug('Error loading active booking: $e');
-      if (mounted) setState(() => _isBookingLoading = false);
     }
   }
 
@@ -216,8 +160,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return TyStateScreen.error(context, onAction: _loadData);
     }
 
-    final totalGuests = _guests.length;
-
     return RefreshIndicator(
       onRefresh: _loadData,
       color: ty.saffron,
@@ -225,7 +167,9 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: widget.scrollController,
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         children: [
-        _buildHeroCard(context, totalGuests),
+        InvitationHero(
+          onExplore: () => _push(context, const InvitationEntryScreen(), authAction: l10n.homeAuthActionManageInvitations),
+        ),
 
         Padding(
           padding: EdgeInsets.fromLTRB(resp.w(18), resp.h(12), resp.w(18), resp.h(20)),
@@ -255,234 +199,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   );
 }
-
-  Widget _buildHeroCard(
-    BuildContext context,
-    int totalGuests,
-  ) {
-    final ty = context.ty;
-    final resp = context.resp;
-    final l10n = AppLocalizations.of(context)!;
-    final double radius = resp.w(42.0);
-
-    final title = _activeCelebration?.title ?? l10n.homeStartPlanningFallback;
-    final dt = _activeCelebration?.celebrationDate;
-    final date = dt != null ? '${dt.day}/${dt.month}/${dt.year}' : '';
-    final location = _activeCelebration?.venueAddress ?? l10n.homeSelectLocationFallback;
-
-    // Resolve hero image and display name from occasions list if needed.
-    // _activeCelebration.category is the raw category_id UUID (backend does
-    // not nest the occasion object in CelebrationResponse) — never shown to
-    // the user directly. Look up the matching Occasion for a human-readable name.
-    String? heroUrl = _activeBooking?.packageCoverUrl ?? _activeCelebration?.heroImageUrl;
-    String displayLabel = l10n.homeCelebrationFallback;
-
-    if (_activeCelebration?.occasionId != null) {
-      final occ = _occasions.cast<Occasion?>().firstWhere(
-        (o) => o?.id == _activeCelebration?.occasionId,
-        orElse: () => null
-      );
-      if (occ != null) {
-        heroUrl ??= occ.heroImageUrl;
-        displayLabel = occ.name;
-      }
-    }
-
-    String? statusLabel;
-    Color statusColor = Colors.orange;
-    if (dt != null) {
-      final today = DateTime.now();
-      final daysLeft = DateTime(dt.year, dt.month, dt.day)
-          .difference(DateTime(today.year, today.month, today.day))
-          .inDays;
-      if (daysLeft < 0) {
-        statusLabel = l10n.homeStatusCompletedLabel;
-        statusColor = Colors.grey;
-      } else if (daysLeft == 0) {
-        statusLabel = l10n.homeStatusTodayLabel;
-        statusColor = ty.rose;
-      } else if (daysLeft == 1) {
-        statusLabel = l10n.homeStatusTomorrowLabel;
-        statusColor = Colors.orange;
-      } else {
-        statusLabel = l10n.homeStatusDaysLeftLabel(daysLeft);
-        statusColor = Colors.orange;
-      }
-    }
-
-    // Scoped to the hero itself, not the whole screen: once the hero scrolls
-    // out from under the status bar the annotation stops covering it and the
-    // app-wide theme-aware style takes back over, so the icons stay readable
-    // against the page background too.
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: tyOverlayOverImage,
-      child: GestureDetector(
-      onTap: () => _push(context, const EventHubScreen(), authAction: l10n.homeAuthActionViewEventHub),
-      child: SizedBox(
-        height: resp.h(420),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
-                // While the booking (and its real package cover image) is
-                // still loading, keep showing a plain placeholder instead of
-                // rendering an empty-URL CachedNetworkImage — that would
-                // error immediately and flash the generic illustration
-                // fallback before the real cover image ever gets a chance.
-                child: (heroUrl == null && _isBookingLoading)
-                    ? PhotoPlaceholder(tint: 'saffron', height: resp.h(440), arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius)))
-                    : CachedNetworkImage(
-                        imageUrl: heroUrl ?? '',
-                        fit: BoxFit.cover,
-                        // Decode at roughly the widest phone screen rather
-                        // than the source resolution — the hero is the first
-                        // image on the first screen, and a full-size decode
-                        // of a multi-megapixel upload stalls the frame.
-                        memCacheWidth: 1080,
-                        placeholder: (context, url) => PhotoPlaceholder(tint: 'saffron', height: resp.h(440), arch: false, radius: BorderRadius.vertical(bottom: Radius.circular(radius))),
-                        errorWidget: (context, url, error) {
-                          final local = _activeCelebration?.occasionName != null
-                              ? OccasionAssets.getRelatedBackground(_activeCelebration!.occasionName!)
-                              : null;
-                          return Image.asset(
-                            local ?? 'assets/images/Landing page image.png',
-                            fit: BoxFit.cover,
-                          );
-                        },
-                      ),
-              ),
-            ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-               height: resp.h(230),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    // Not theme-dependent. The status bar icons are white in
-                    // both themes (see tyOverlayOverImage), so the scrim that
-                    // has to carry them cannot be lighter in light mode — that
-                    // is what made the clock and battery unreadable.
-                    colors: [
-                      Colors.black.withValues(alpha: 0.78),
-                      Colors.black.withValues(alpha: 0.46),
-                      Colors.transparent,
-                    ],
-                    stops: const [0, 0.52, 1.0],
-                  ),
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
-                    gradient: RadialGradient(
-                      center: const Alignment(0.05, 0.1),
-                      radius: 0.92,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.24),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.9),
-                      Colors.black.withValues(alpha: 0.34),
-                      Colors.transparent,
-                    ],
-                    stops: const [0, 0.58, 0.84],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: resp.w(18),
-              right: resp.w(18),
-              bottom: resp.h(32),
-              child: Container(
-                padding: EdgeInsets.fromLTRB(resp.w(14), resp.h(14), resp.w(14), resp.h(12)),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(resp.w(24)),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.34),
-                      Colors.black.withValues(alpha: 0.18),
-                    ],
-                  ),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.homeYourNextCelebrationLabel,
-                        style: TyType.eyebrow(resp.sp(11.5), color: Colors.white.withValues(alpha: 0.88))),
-                    SizedBox(height: resp.h(12)),
-                    Row(children: [
-                      Flexible(
-                        child: TyPill(
-                          displayLabel,
-                          background: Colors.white.withValues(alpha: 0.96),
-                          foreground: const Color(0xFF241914),
-                        ),
-                      ),
-                      SizedBox(width: resp.w(8)),
-                      if (statusLabel != null)
-                        Flexible(
-                            child: TyPill(statusLabel,
-                                background: statusColor,
-                                foreground: Colors.white)),
-                    ]),
-                    SizedBox(height: resp.h(14)),
-                    Text(title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TyType.display(resp.sp(34), color: Colors.white)),
-                    SizedBox(height: resp.h(8)),
-                    Row(children: [
-                      Icon(Icons.event, size: resp.sp(15), color: Colors.white.withValues(alpha: 0.86)),
-                      SizedBox(width: resp.w(6)),
-                      Expanded(
-                        child: Text(l10n.homeDateLocationLabel(date, location),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TyType.sans(resp.sp(14), color: Colors.white.withValues(alpha: 0.9))),
-                      ),
-                    ]),
-                    SizedBox(height: resp.h(20)),
-                    Row(
-                      children: [
-                        _stackedAvatars(context, _guests, totalGuests),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      ),
-    );
-  }
 
   Widget _packageRail(BuildContext context, List<Package> packages) {
     final ty = context.ty;
@@ -531,42 +247,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _stackedAvatars(BuildContext context, List<Guest> guests, int total) {
-    final resp = context.resp;
-    final l10n = AppLocalizations.of(context)!;
-    if (guests.isEmpty) return const SizedBox();
-    return SizedBox(
-      width: resp.w(112),
-      height: resp.h(30),
-      child: Stack(
-        children: [
-          for (int i = 0; i < guests.length.clamp(0, 4); i++)
-            Positioned(
-              left: i * resp.w(20.0),
-              child: TyAvatar(name: guests[i].name, index: i, size: resp.w(30)),
-            ),
-          if (total > 4)
-            Positioned(
-              left: 4 * resp.w(20.0) - resp.w(10),
-              child: Container(
-                width: resp.w(30),
-                height: resp.w(30),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
-                ),
-                child: Text(l10n.homeMoreGuestsCountLabel(total - 4),
-                    style: TextStyle(
-                        color: Colors.white, fontSize: resp.sp(10.5), fontWeight: FontWeight.w700)),
-              ),
-            ),
-        ],
       ),
     );
   }

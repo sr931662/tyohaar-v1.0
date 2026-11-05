@@ -178,7 +178,7 @@ async def invite(svc, celebration, host, name="Ravi", **kw):
 
 
 def token_of(inv) -> str:
-    return inv.invite_url.split("#", 1)[1]
+    return inv.invite_url.rsplit("/i/", 1)[1]
 
 
 async def set_day(sf, celebration, days_from_today: int, **extra):
@@ -198,7 +198,7 @@ async def test_create_list_summary_and_detail(sf, svc):
                        vehicle_number="mh12ab1234", notes="Seat near family")
     assert inv.phone == "+919876543210" and inv.vehicle_number == "MH12AB1234"
     assert inv.pass_state == "not_yet_valid" and inv.entry_code and inv.qr_payload.startswith("TYH1:")
-    assert inv.invite_url.startswith(f"{BASE}{settings.API_V1_PREFIX}/public/invite/page#")
+    assert inv.invite_url.startswith(f"{BASE}/i/")
 
     items, total = await svc.list_invitations(cel.id, host.id, base_url=BASE)
     assert total == 1 and items[0].id == inv.id
@@ -709,7 +709,7 @@ async def test_http_public_pages_and_endpoints(sf, http):
     cel = await make_celebration(sf, host, days_ahead=1)
     http.login(host)
     inv = (await http.post(f"{P}/celebrations/{cel.id}/invitations", json={"name": "Guest"})).json()["data"]
-    token = inv["invite_url"].split("#", 1)[1]
+    token = inv["invite_url"].rsplit("/i/", 1)[1]
     http.login(None)
 
     page = await http.get(f"{P}/public/invite/page")

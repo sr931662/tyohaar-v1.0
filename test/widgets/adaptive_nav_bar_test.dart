@@ -6,7 +6,7 @@ import 'package:tyohaar/widgets/adaptive_nav_bar.dart';
 const _destinations = [
   TyNavDestination(label: 'Home', icon: Icons.home_outlined, activeIcon: Icons.home_rounded),
   TyNavDestination(label: 'Plans', icon: Icons.event_note_outlined, activeIcon: Icons.event_note),
-  TyNavDestination(label: 'Invitations', icon: Icons.mail_outline, activeIcon: Icons.mail),
+  TyNavDestination(label: 'Events', icon: Icons.celebration_outlined, activeIcon: Icons.celebration),
   TyNavDestination(label: 'Account', icon: Icons.person_outline, activeIcon: Icons.person),
 ];
 
@@ -62,7 +62,7 @@ void main() {
     testWidgets('${platform.name}: taps report the dock slot', (tester) async {
       final taps = <int>[];
       await tester.pumpWidget(_shell(platform: platform, onSelected: taps.add));
-      await tester.tap(find.text('Invitations'));
+      await tester.tap(find.text('Events'));
       await tester.tap(find.text('Account'));
       await tester.pumpAndSettle();
       expect(taps, [2, 3]);
