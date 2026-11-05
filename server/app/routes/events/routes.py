@@ -124,6 +124,8 @@ _route(guest_page_router, "/i/_api/rsvp", ctrl.guest_rsvp, ["POST"], SuccessResp
        summary="Submit or change a response (X-Invite-Token)", dependencies=_api_limit)
 _route(guest_page_router, "/i/_api/claim", ctrl.guest_claim, ["POST"], SuccessResponse[PublicClaimResult],
        summary="Identify yourself on a general link (X-Invite-Token)", dependencies=_claim_limit)
+_route(guest_page_router, "/i/_font/{name}", ctrl.guest_font, ["GET"], None,
+       summary="Self-hosted invitation font", include_in_schema=False)
 _route(guest_page_router, "/i/preview/{token}", ctrl.guest_preview_page, ["GET"], None,
        summary="Organiser's preview page", response_class=HTMLResponse, include_in_schema=False)
 _route(guest_page_router, "/i/{token}/calendar.ics", ctrl.guest_calendar, ["GET"], None,

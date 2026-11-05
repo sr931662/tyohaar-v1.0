@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import re
 
-_INVITE_PATH = re.compile(r"(/i/)(?!_api\b)[^/\s\"?]+")
+_INVITE_PATH = re.compile(r"(/i/)(?!_api\b|_font\b)[^/\s\"?]+")
 
 
 def redact_invite_path(text: str) -> str:

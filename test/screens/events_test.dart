@@ -352,12 +352,12 @@ void main() {
     await tester.pumpWidget(scaffolded(SingleChildScrollView(child: InvitationHero(onExplore: () => taps++))));
     await tester.pump();
     expect(find.text('INVITATION MANAGEMENT'), findsOneWidget);
-    expect(find.text('Every invitation. Every guest. One place.'), findsOneWidget);
-    for (final f in ['Create Invitations', 'Share with Guests', 'Track RSVPs', 'Manage Food Preferences', 'Guest Updates']) {
-      expect(find.text(f), findsOneWidget);
+    expect(find.text('Manage Your Event Invitations'), findsOneWidget);
+    for (final f in ['Send\nInvitations', 'Track\nRSVPs', 'Food\nPreferences', 'Guest\nUpdates']) {
+      expect(find.text(f), findsWidgets);
     }
-    await tester.ensureVisible(find.text('Explore Invitations'));
-    await tester.tap(find.text('Explore Invitations'));
+    await tester.ensureVisible(find.text('Manage Invitations'));
+    await tester.tap(find.text('Manage Invitations'));
     expect(taps, 1);
     expect(tester.takeException(), isNull);
     expect(find.textContaining('Your Next Celebration', findRichText: true), findsNothing);

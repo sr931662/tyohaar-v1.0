@@ -1003,3 +1003,52 @@ async def test_entitlements_are_data_not_assumptions():
     assert ent.resolve(booked=True, platform=off, package_id="p2").qr_check_in is True
     # Nothing can deliver it, so nobody gets it, whatever the setting says.
     assert ent.resolve(booked=True, platform={"booked": {"automated_reminders": True}}).automated_reminders is False
+
+
+@pytest.mark.parametrize("event_type,custom,marker", [
+    ("wedding", None, "e-wedding"), ("birthday", None, "e-birthday"), ("anniversary", None, "e-anniversary"),
+    ("engagement", None, "e-engagement"), ("baby_shower", None, "e-baby_shower"), ("housewarming", None, "e-housewarming"),
+    ("religious", None, "e-religious"), ("corporate", None, "e-corporate"), ("custom", "Retirement Party", "e-custom"),
+])
+async def test_each_kind_of_event_gets_its_own_look(host, event_type, custom, marker):
+    event = await host.create_event(event_type=event_type, custom_event_type=custom)
+    await host.publish(event["id"])
+    invitation = await host.invite(event["id"], "Themed", "+919800000031")
+    async with guest_client(host.app) as c:
+        page = await c.get(f"/i/{token_of(invitation)}")
+    assert page.status_code == 200 and marker in page.text
+    assert 'class="scene-art"' in page.text  # drawn scene, because there is no cover photo
+    assert "src=\"http" not in page.text.split("<script")[0]  # nothing loaded from elsewhere
+
+
+async def test_a_cover_photo_replaces_the_scene_and_a_chosen_colour_wins(host):
+    event = await host.create_event(event_type="corporate", cover_image_url="https://cdn.example.com/c.jpg")
+    await host.publish(event["id"])
+    await host.http.put(f"{P}/events/{event['id']}/invitation", json={
+        "design": {"primary_color": "#123456", "tagline": "Annual <b>Summit</b>"},
+    })
+    invitation = await host.invite(event["id"], "Photo", "+919800000032")
+    async with guest_client(host.app) as c:
+        page = await c.get(f"/i/{token_of(invitation)}")
+    assert 'class="scene-art"' not in page.text and "https://cdn.example.com/c.jpg" in page.text
+    assert "--primary:#123456" in page.text
+    assert "Annual &lt;b&gt;Summit&lt;/b&gt;" in page.text  # the ribbon is the organiser's text, escaped
+
+
+async def test_booked_events_pick_a_theme_from_their_occasion():
+    from app.services.invitations.guest_themes import theme_for
+
+    assert theme_for(None, "Wedding").key == "wedding"
+    assert theme_for(None, "Griha Pravesh").key == "housewarming"
+    assert theme_for(None, "Birthday Party").key == "birthday"
+    assert theme_for(None, "Something Else").key == "custom"
+    assert theme_for("birthday", "Wedding").key == "birthday"  # an explicit type wins
+
+
+async def test_fonts_are_self_hosted_and_only_from_the_list(host):
+    async with guest_client(host.app) as c:
+        font = await c.get("/i/_font/pf-600-normal.woff2")
+        assert font.status_code == 200 and font.headers["content-type"] == "font/woff2"
+        assert font.content[:4] == b"wOF2" and "immutable" in font.headers["cache-control"]
+        assert (await c.get("/i/_font/..%2F..%2Fconfig.py")).status_code == 404
+        assert (await c.get("/i/_font/LICENSE_DEJAVU")).status_code == 404

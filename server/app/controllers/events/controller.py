@@ -355,6 +355,10 @@ async def guest_preview_page(token: str, request: Request, service: EventService
     return guest_page.invitation_page(meta, page_url="", api_origin=api_origin(request), token=token)
 
 
+async def guest_font(name: str) -> Response:
+    return guest_page.font_file(name) or Response(status_code=status.HTTP_404_NOT_FOUND)
+
+
 async def guest_calendar(token: str, service: EventServiceDep) -> PlainTextResponse:
     try:
         filename, body = await service.calendar(token)

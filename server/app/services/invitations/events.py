@@ -1461,6 +1461,7 @@ class EventService(BaseService):
                 "design": current.design,
                 "status": celebration.status.value,
                 "label": await self._label(uow, celebration),
+                "event_type": celebration.event_type,
             }
 
     async def public_view(self, token: str | None, *, is_real_browser: bool) -> PublicInvitationPage:
@@ -1543,6 +1544,7 @@ class EventService(BaseService):
                 "design": current.design,
                 "status": celebration.status.value,
                 "label": await self._label(uow, celebration),
+                "event_type": celebration.event_type,
             }
 
     async def track_rsvp_started(self, token: str | None) -> None:

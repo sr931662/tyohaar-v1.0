@@ -51,6 +51,7 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
   final _displayAddress = TextEditingController();
   final _instructions = TextEditingController();
   final _heading = TextEditingController();
+  final _tagline = TextEditingController();
   final _message = TextEditingController();
   final _mealOptions = TextEditingController();
 
@@ -70,7 +71,7 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
 
   @override
   void dispose() {
-    for (final c in [_displayTitle, _displayVenue, _displayAddress, _instructions, _heading, _message, _mealOptions]) {
+    for (final c in [_displayTitle, _displayVenue, _displayAddress, _instructions, _heading, _tagline, _message, _mealOptions]) {
       c.dispose();
     }
     super.dispose();
@@ -90,6 +91,7 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
       _displayAddress.text = (s.display['venue_address'] as String?) ?? e.venueAddress ?? '';
       _instructions.text = (s.display['instructions'] as String?) ?? '';
       _heading.text = (s.design['heading'] as String?) ?? '';
+      _tagline.text = (s.design['tagline'] as String?) ?? '';
       _message.text = (s.design['message'] as String?) ?? '';
       _template = s.design['template'] as String? ?? 'classic';
       _font = s.design['font'] as String? ?? 'serif';
@@ -150,6 +152,7 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
         'accent_color': p.$2,
         'background_color': p.$3,
         'heading': clean(_heading),
+        'tagline': clean(_tagline),
         'message': clean(_message),
       },
       'rsvp': {
@@ -459,6 +462,7 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
       ]),
       const SizedBox(height: 16),
       EventField(controller: _heading, label: l10n.evDesignHeading, hint: l10n.evDesignHeadingHint, maxLength: 120),
+      EventField(controller: _tagline, label: l10n.evDesignTagline, hint: l10n.evDesignTaglineHint, maxLength: 60),
       EventField(controller: _message, label: l10n.evDesignMessage, hint: l10n.evDesignMessageHint, maxLength: 1500, maxLines: 4),
       Container(
         padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 18),

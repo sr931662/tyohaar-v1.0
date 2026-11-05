@@ -56,6 +56,7 @@ class InvitationDesign(BaseSchema):
     accent_color: str = "#B8892F"
     background_color: str = "#FBF6EC"
     heading: str | None = Field(default=None, max_length=120)
+    tagline: str | None = Field(default=None, max_length=60, description="Short ribbon line, e.g. 'Turning 5!'.")
     message: str | None = Field(default=None, max_length=1500)
 
     @field_validator("primary_color", "accent_color", "background_color")
@@ -66,7 +67,7 @@ class InvitationDesign(BaseSchema):
             raise ValueError("Colours must look like #RRGGBB.")
         return v
 
-    _strip = field_validator("heading", "message", mode="before")(_clean)
+    _strip = field_validator("heading", "tagline", "message", mode="before")(_clean)
 
 
 class RSVPQuestion(BaseSchema):
