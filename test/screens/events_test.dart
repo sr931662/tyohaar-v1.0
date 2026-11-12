@@ -11,7 +11,9 @@ import 'package:tyohaar/l10n/generated/app_localizations.dart';
 import 'package:tyohaar/screens/events/create_event_wizard.dart';
 import 'package:tyohaar/screens/events/event_dashboard_screen.dart';
 import 'package:tyohaar/screens/events/invitation_entry_screen.dart';
-import 'package:tyohaar/screens/events/invitation_setup_screen.dart';
+import 'package:tyohaar/screens/events/invitation_settings_panel.dart';
+import 'package:tyohaar/screens/invitations/invitation_form_screen.dart';
+import 'package:tyohaar/data/services/invitation_service.dart' show GuestInvitation;
 import 'package:tyohaar/screens/events/my_events_screen.dart';
 import 'package:tyohaar/theme/theme.dart';
 import 'package:tyohaar/widgets/invitation_hero.dart';
@@ -263,11 +265,27 @@ void main() {
     });
   });
 
-  group('Setup', () {
-    testWidgets('booked event arrives filled in, and the note says the booking is safe', (tester) async {
-      phone(tester, height: 1200);
-      useAdapter(tester, FakeAdapter((o) => {'data': eventJson()}));
-      await tester.pumpWidget(app(InvitationSetupScreen(eventId: 'e1', service: EventService())));
+  group('Invitation settings', () {
+    Future<void> open(WidgetTester tester, FakeAdapter adapter, {Map<String, dynamic>? event}) async {
+      phone(tester, height: 1600);
+      useAdapter(tester, adapter);
+      await tester.pumpWidget(app(Scaffold(
+        body: InvitationSettingsPanel(
+          event: EventDetail.fromJson(event ?? eventJson()),
+          service: EventService(),
+          onChanged: () async {},
+          onPublished: () {},
+        ),
+      )));
+      await settle(tester);
+    }
+
+    testWidgets('one page of short topics, and a booked event arrives filled in', (tester) async {
+      await open(tester, FakeAdapter((o) => {'data': eventJson()}));
+      for (final topic in ['Event details', 'Functions', 'Design', 'RSVP questions', 'One link for everyone']) {
+        expect(find.text(topic), findsOneWidget);
+      }
+      await tester.tap(find.text('Event details'));
       await settle(tester);
       final title = tester.widget<EditableText>(find.byType(EditableText).first);
       expect(title.controller.text, 'Sharma Wedding');
@@ -276,13 +294,12 @@ void main() {
     });
 
     testWidgets('sends display changes as overrides, never as event edits', (tester) async {
-      phone(tester, height: 1200);
       final adapter = FakeAdapter((o) => {'data': eventJson()});
-      useAdapter(tester, adapter);
-      await tester.pumpWidget(app(InvitationSetupScreen(eventId: 'e1', service: EventService())));
+      await open(tester, adapter);
+      await tester.tap(find.text('Event details'));
       await settle(tester);
       await tester.enterText(find.byType(TextFormField).first, 'Ananya weds Rohan');
-      await tester.tap(find.text('Next'));
+      await tester.tap(find.text('Save changes'));
       await settle(tester);
 
       final put = adapter.requests.singleWhere((r) => r.method == 'PUT');
@@ -291,6 +308,53 @@ void main() {
       expect(display['title'], 'Ananya weds Rohan');
       expect(display['venue_name'], isNull); // unchanged, so not overridden
       expect(adapter.requests.where((r) => r.method == 'PATCH'), isEmpty);
+    });
+
+    testWidgets('Preview is never ahead of what was saved', (tester) async {
+      final adapter = FakeAdapter((o) => {'data': eventJson(invitation: 'draft', configured: false)});
+      await open(tester, adapter, event: eventJson(invitation: 'draft', configured: false));
+      expect(find.text('Publish invitation'), findsOneWidget);
+      expect(find.text('Preview'), findsOneWidget);
+    });
+  });
+
+  group('Add guest', () {
+    testWidgets('asks only for name, phone, email and a note', (tester) async {
+      phone(tester, height: 1000);
+      useAdapter(tester, FakeAdapter((o) => {'data': <String, dynamic>{}}));
+      await tester.pumpWidget(app(const InvitationFormScreen(celebrationId: 'e1')));
+      await tester.pump();
+      for (final gone in ['Accompanying guests', 'Expected arrival', 'Vehicle number', 'Group']) {
+        expect(find.text(gone), findsNothing, reason: gone);
+      }
+      expect(find.text('Guest name *'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNWidgets(4));
+    });
+
+    testWidgets('editing keeps what an older invitation already had', (tester) async {
+      phone(tester, height: 1000);
+      final adapter = FakeAdapter((o) => {
+            'data': {
+              'id': 'g1', 'celebration_id': 'e1', 'name': 'Asha Rao', 'plus_ones_allowed': 2, 'pass_status': 'active',
+              'pass_state': 'valid', 'rsvp_status': 'pending', 'entry_status': 'not_arrived',
+            }
+          });
+      useAdapter(tester, adapter);
+      final existing = GuestInvitation.fromJson({
+        'id': 'g1', 'celebration_id': 'e1', 'name': 'Asha Rao', 'plus_ones_allowed': 2, 'pass_status': 'active',
+        'pass_state': 'valid', 'rsvp_status': 'pending', 'entry_status': 'not_arrived',
+        'arrival_window_start': '18:00:00', 'arrival_window_end': '20:00:00', 'vehicle_number': 'UP32AB1234', 'group_tag': 'Family',
+      });
+      await tester.pumpWidget(app(InvitationFormScreen(celebrationId: 'e1', existing: existing)));
+      await tester.pump();
+      await tester.enterText(find.byType(TextFormField).at(1), '9876543210');
+      await tester.tap(find.text('Save changes'));
+      await settle(tester);
+      final body = adapter.requests.singleWhere((r) => r.method == 'PATCH').data as Map;
+      expect(body['plus_ones_allowed'], 2);
+      expect(body['vehicle_number'], 'UP32AB1234');
+      expect(body['group_tag'], 'Family');
+      expect(body['arrival_window_start'], '18:00:00');
     });
   });
 
@@ -323,7 +387,7 @@ void main() {
       expect(find.textContaining('146 of 184 invitations have answered'), findsOneWidget);
       expect(find.text('72 invited · 48 confirmed · 20 pending · 4 declined'), findsOneWidget);
       expect(find.textContaining("doesn't mean the invitation was read"), findsOneWidget);
-      for (final tab in ['Overview', 'Guests', 'Invitations', 'RSVPs', 'Food & Preferences', 'Activity']) {
+      for (final tab in ['Overview', 'Guests', 'Responses', 'Invitation']) {
         expect(find.text(tab), findsOneWidget);
       }
     });

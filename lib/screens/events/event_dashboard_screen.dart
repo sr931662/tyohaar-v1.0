@@ -1,11 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/services/event_service.dart';
 import '../../data/services/invitation_service.dart' show invitationErrorMessage;
@@ -19,14 +16,15 @@ import '../invitation_management_screen.dart';
 import '../invitations/gate_scan_screen.dart';
 import '../invitations/invitation_form_screen.dart';
 import '../invitations/invitation_labels.dart';
-import 'functions_editor.dart';
 import 'households_screen.dart';
-import 'invitation_setup_screen.dart';
+import 'invitation_settings_panel.dart';
 import 'reminders_screen.dart';
 
 /// One event's invitations, the same screen for both kinds of customer.
 /// Every number is the server's, computed from real guests and responses.
-/// The Guests tab is the existing guest, pass and gate screen, embedded.
+/// Four tabs: Overview, Guests (the existing guest, pass and gate screen,
+/// embedded), Responses (RSVPs, food, activity and reminders) and Invitation
+/// (everything about how it looks and behaves, with Preview and Publish).
 class EventDashboardScreen extends StatefulWidget {
   final String eventId;
   final EventService? service;
@@ -48,6 +46,7 @@ class EventDashboardScreen extends StatefulWidget {
 class _EventDashboardScreenState extends State<EventDashboardScreen> with SingleTickerProviderStateMixin {
   late final EventService _service = widget.service ?? EventService();
   late final TabController _tabs;
+  final ValueNotifier<String> _responsesView = ValueNotifier('rsvps');
   EventDetail? _event;
   EventAnalytics? _analytics;
   bool _loading = true;
@@ -57,7 +56,7 @@ class _EventDashboardScreenState extends State<EventDashboardScreen> with Single
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 6, vsync: this, initialIndex: widget.initialTab);
+    _tabs = TabController(length: 4, vsync: this, initialIndex: widget.initialTab);
     _load();
     if (widget.justPublished) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -71,7 +70,19 @@ class _EventDashboardScreenState extends State<EventDashboardScreen> with Single
   @override
   void dispose() {
     _tabs.dispose();
+    _responsesView.dispose();
     super.dispose();
+  }
+
+  void _showResponses(String view) {
+    _responsesView.value = view;
+    _tabs.animateTo(2);
+  }
+
+  /// Live now: say so, and land where the next job is.
+  void _onPublished() {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.evPublishedMessage)));
+    _tabs.animateTo(1);
   }
 
   Future<void> _load() async {
@@ -140,22 +151,35 @@ class _EventDashboardScreenState extends State<EventDashboardScreen> with Single
           tabs: [
             Tab(text: l10n.evDashOverview),
             Tab(text: l10n.evDashGuests),
+            Tab(text: l10n.evDashResponses),
             Tab(text: l10n.evDashInvitations),
-            Tab(text: l10n.evDashRsvps),
-            Tab(text: l10n.evDashFood),
-            Tab(text: l10n.evDashActivity),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabs,
         children: [
-          _OverviewTab(event: event, analytics: _analytics, onRefresh: _load, onOpen: _open, onSelectTab: (i) => _tabs.animateTo(i)),
-          InvitationManagementScreen(celebrationId: event.id, embedded: true),
-          _InvitationsTab(event: event, service: _service, onChanged: _load, onOpen: _open),
-          _RsvpsTab(event: event, service: _service),
-          _FoodTab(event: event, service: _service, onChanged: _load),
-          _ActivityTab(eventId: event.id, service: _service),
+          _OverviewTab(
+            event: event,
+            analytics: _analytics,
+            onRefresh: _load,
+            onOpen: _open,
+            onSelectTab: (i) => _tabs.animateTo(i),
+            onShowResponses: _showResponses,
+          ),
+          InvitationManagementScreen(
+            celebrationId: event.id,
+            embedded: true,
+            onOpenHouseholds: () => _open(HouseholdsScreen(eventId: event.id, service: _service)),
+          ),
+          _ResponsesTab(
+            event: event,
+            service: _service,
+            view: _responsesView,
+            onChanged: _load,
+            onSetUp: () => _tabs.animateTo(3),
+          ),
+          InvitationSettingsPanel(event: event, service: _service, onChanged: _load, onPublished: _onPublished),
         ],
       ),
     );
@@ -170,8 +194,16 @@ class _OverviewTab extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final Future<void> Function(Widget) onOpen;
   final ValueChanged<int> onSelectTab;
+  final ValueChanged<String> onShowResponses;
 
-  const _OverviewTab({required this.event, this.analytics, required this.onRefresh, required this.onOpen, required this.onSelectTab});
+  const _OverviewTab({
+    required this.event,
+    this.analytics,
+    required this.onRefresh,
+    required this.onOpen,
+    required this.onSelectTab,
+    required this.onShowResponses,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +224,7 @@ class _OverviewTab extends StatelessWidget {
               icon: Icons.drafts_outlined,
               text: l10n.evDraftBanner,
               action: l10n.evFinishSetup,
-              onTap: () => onOpen(InvitationSetupScreen(eventId: e.id, initialStep: 4)),
+              onTap: () => onSelectTab(3),
             ),
           ] else if (!e.invitationsConfigured) ...[
             const SizedBox(height: 12),
@@ -200,7 +232,7 @@ class _OverviewTab extends StatelessWidget {
               icon: Icons.auto_awesome_outlined,
               text: l10n.evSetUpInvitations,
               action: l10n.evSetUpCta,
-              onTap: () => onOpen(InvitationSetupScreen(eventId: e.id)),
+              onTap: () => onSelectTab(3),
             ),
           ],
           const SizedBox(height: 16),
@@ -226,10 +258,10 @@ class _OverviewTab extends StatelessWidget {
             crossAxisSpacing: 8,
             childAspectRatio: 1.15,
             children: [
-              _Action(Icons.style_outlined, l10n.evActionCreate, () => onOpen(InvitationSetupScreen(eventId: e.id))),
+              _Action(Icons.style_outlined, l10n.evActionCreate, () => onSelectTab(3)),
               _Action(Icons.person_add_alt_1_rounded, l10n.evActionAddGuest, () => onOpen(InvitationFormScreen(celebrationId: e.id))),
               _Action(Icons.ios_share_rounded, l10n.evActionShare, () => onSelectTab(1)),
-              _Action(Icons.notifications_active_outlined, l10n.evActionRemind, () => onOpen(RemindersScreen(event: e))),
+              _Action(Icons.notifications_active_outlined, l10n.evActionRemind, () => onShowResponses('reminders')),
               if (e.entitlements.qrCheckIn)
                 _Action(Icons.qr_code_scanner_rounded, l10n.evActionCheckIn,
                     () => onOpen(GateScanScreen(celebrationId: e.id, celebrationTitle: e.title))),
@@ -486,205 +518,87 @@ class _FunnelRow extends StatelessWidget {
   }
 }
 
-// ── Invitations ──────────────────────────────────────────────────────────────
+// ── Responses ────────────────────────────────────────────────────────────────
 
-class _InvitationsTab extends StatefulWidget {
+/// RSVPs, food, activity and reminders: everything that comes back from guests,
+/// one tab with a switch rather than four. Each part loads when first opened.
+class _ResponsesTab extends StatefulWidget {
   final EventDetail event;
   final EventService service;
+  final ValueNotifier<String> view;
   final Future<void> Function() onChanged;
-  final Future<void> Function(Widget) onOpen;
-  const _InvitationsTab({required this.event, required this.service, required this.onChanged, required this.onOpen});
+  final VoidCallback onSetUp;
+
+  const _ResponsesTab({required this.event, required this.service, required this.view, required this.onChanged, required this.onSetUp});
 
   @override
-  State<_InvitationsTab> createState() => _InvitationsTabState();
+  State<_ResponsesTab> createState() => _ResponsesTabState();
 }
 
-class _InvitationsTabState extends State<_InvitationsTab> {
-  bool _busy = false;
+class _ResponsesTabState extends State<_ResponsesTab> with AutomaticKeepAliveClientMixin {
+  static const _views = ['rsvps', 'food', 'activity', 'reminders'];
+  final Set<String> _built = {};
 
-  void _snack(String m) {
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _built.add(widget.view.value);
+    widget.view.addListener(_changed);
   }
 
-  Future<void> _run(Future<void> Function() action) async {
-    setState(() => _busy = true);
-    try {
-      await action();
-      await widget.onChanged();
-    } catch (e) {
-      _snack(invitationErrorMessage(e));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  @override
+  void dispose() {
+    widget.view.removeListener(_changed);
+    super.dispose();
   }
 
-  Future<void> _preview() async {
-    final l10n = AppLocalizations.of(context)!;
-    try {
-      final url = await widget.service.previewLink(widget.event.id);
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } catch (_) {
-      _snack(l10n.evPreviewFailed);
-    }
-  }
-
-  Future<void> _import() async {
-    final l10n = AppLocalizations.of(context)!;
-    final picked = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: const ['csv', 'xlsx']);
-    final file = picked?.files.single;
-    if (file?.path == null || !mounted) return;
-    setState(() => _busy = true);
-    try {
-      final outcome = await widget.service.importGuests(widget.event.id, file!.path!, file.name);
-      await widget.onChanged();
-      if (!mounted) return;
-      final problems = outcome.rows.where((r) => r.status == 'error' || r.status == 'duplicate').toList();
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.evImportDone(outcome.created, outcome.skipped)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: problems.isEmpty
-                ? Text(l10n.evImportAllGood)
-                : ListView(shrinkWrap: true, children: [
-                    for (final r in problems.take(50))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(l10n.evImportRow(r.row, r.name ?? '—', r.message ?? ''), style: const TextStyle(fontSize: 13)),
-                      ),
-                  ]),
-          ),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.invDone))],
-        ),
-      );
-    } catch (e) {
-      _snack(invitationErrorMessage(e));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  void _changed() {
+    if (mounted) setState(() => _built.add(widget.view.value));
   }
 
   @override
   Widget build(BuildContext context) {
-    final ty = context.ty;
+    super.build(context);
     final l10n = AppLocalizations.of(context)!;
-    final e = widget.event;
-    final generalOn = e.generalLinkUrl != null;
-    return ListView(
-      padding: EdgeInsets.fromLTRB(18, 14, 18, 28 + MediaQuery.paddingOf(context).bottom),
-      children: [
-        EventSection(
-          title: l10n.evInvitationStatus,
+    final current = widget.view.value;
+    final labels = {
+      'rsvps': l10n.evDashRsvps,
+      'food': l10n.evDashFood,
+      'activity': l10n.evDashActivity,
+      'reminders': l10n.evDashReminders,
+    };
+    Widget body(String v) {
+      if (!_built.contains(v)) return const SizedBox.shrink();
+      return switch (v) {
+        'food' => _FoodTab(event: widget.event, service: widget.service, onChanged: widget.onChanged, onSetUp: widget.onSetUp),
+        'activity' => _ActivityTab(eventId: widget.event.id, service: widget.service),
+        'reminders' => RemindersPanel(event: widget.event, service: widget.service),
+        _ => _RsvpsTab(event: widget.event, service: widget.service),
+      };
+    }
+
+    return Column(children: [
+      SizedBox(
+        height: 52,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
           children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: eventCardDecoration(ty),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text(e.isDraft ? l10n.evStatusDraftLine : l10n.evStatusPublishedLine,
-                    style: TyType.sans(13.5, color: ty.ink2, height: 1.4)),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(child: TyButton(l10n.evEditInvitation, kind: TyButtonKind.ghost, full: true,
-                      onTap: () => widget.onOpen(InvitationSetupScreen(eventId: e.id)))),
-                  const SizedBox(width: 8),
-                  Expanded(child: TyButton(l10n.evPreviewShort, kind: TyButtonKind.ghost, full: true, onTap: _preview)),
-                ]),
-                const SizedBox(height: 8),
-                if (e.isDraft)
-                  TyButton(l10n.evPublish, full: true, enabled: !_busy, onTap: () => _run(() => widget.service.publish(e.id)))
-                else
-                  TextButton(
-                    onPressed: _busy ? null : () => _run(() => widget.service.unpublish(e.id)),
-                    child: Text(l10n.evUnpublish),
-                  ),
-              ]),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        EventSection(
-          title: l10n.evGeneralLinkTitle,
-          subtitle: l10n.evGeneralLinkNote,
-          children: [
-            EventTileCard(
-              child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  value: generalOn,
-                  activeTrackColor: ty.saffron,
-                  onChanged: _busy ? null : (v) => _run(() => widget.service.setGeneralLink(e.id, enabled: v)),
-                  title: Text(l10n.evGeneralLinkToggle, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
-                ),
-                if (generalOn) ...[
-                  SelectableText(e.generalLinkUrl!, style: TyType.sans(12.5, color: ty.ink2)),
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    Expanded(
-                      child: TyButton(l10n.invCopyLink, kind: TyButtonKind.ghost, full: true, onTap: () async {
-                        await Clipboard.setData(ClipboardData(text: e.generalLinkUrl!));
-                        _snack(l10n.evLinkCopied);
-                      }),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TyButton(l10n.invShareSheet, kind: TyButtonKind.ghost, full: true,
-                          onTap: () => Share.share(l10n.evGeneralShareMessage(e.title, e.generalLinkUrl!))),
-                    ),
-                  ]),
-                  TextButton(
-                    onPressed: _busy ? null : () => _run(() => widget.service.setGeneralLink(e.id, enabled: true, rotate: true)),
-                    child: Text(l10n.evGeneralLinkReplace),
-                  ),
-                ],
-              ]),
+            for (final v in _views)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(label: Text(labels[v]!), selected: current == v, onSelected: (_) => widget.view.value = v),
               ),
-            ),
           ],
         ),
-        const SizedBox(height: 18),
-        EventSection(
-          title: l10n.evStepFunctions,
-          children: [
-            FunctionsEditor(eventId: e.id, functions: e.functions, service: widget.service, onChanged: (_) => widget.onChanged()),
-          ],
-        ),
-        const SizedBox(height: 18),
-        EventSection(
-          title: l10n.evGuestListTools,
-          children: [
-            _ToolRow(Icons.diversity_3_rounded, l10n.evHouseholdsTitle, l10n.evHouseholdsCount(e.groups.length),
-                () => widget.onOpen(HouseholdsScreen(eventId: e.id, service: widget.service))),
-            _ToolRow(Icons.upload_file_rounded, l10n.evImportTitle, l10n.evImportNote, _busy ? null : _import),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _ToolRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
-  const _ToolRow(this.icon, this.title, this.subtitle, this.onTap);
-
-  @override
-  Widget build(BuildContext context) {
-    final ty = context.ty;
-    return EventTileCard(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Icon(icon, color: ty.ink2),
-        title: Text(title, style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w700)),
-        subtitle: Text(subtitle, style: TyType.sans(12, color: ty.ink3)),
-        trailing: Icon(Icons.chevron_right_rounded, color: ty.ink3),
-        onTap: onTap,
       ),
-    );
+      Expanded(
+        child: IndexedStack(index: _views.indexOf(current), children: [for (final v in _views) body(v)]),
+      ),
+    ]);
   }
 }
 
@@ -845,7 +759,8 @@ class _FoodTab extends StatefulWidget {
   final EventDetail event;
   final EventService service;
   final Future<void> Function() onChanged;
-  const _FoodTab({required this.event, required this.service, required this.onChanged});
+  final VoidCallback onSetUp;
+  const _FoodTab({required this.event, required this.service, required this.onChanged, required this.onSetUp});
 
   @override
   State<_FoodTab> createState() => _FoodTabState();
@@ -855,6 +770,13 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
   FoodReport? _report;
   bool _error = false;
   bool _busy = false;
+
+  @override
+  void didUpdateWidget(_FoodTab old) {
+    super.didUpdateWidget(old);
+    // Settings may have just been saved in the Invitation tab.
+    if (!identical(old.event, widget.event)) _load();
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -935,14 +857,8 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
               title: l10n.evFoodOffTitle,
               message: l10n.evFoodOffMessage,
               action: e.entitlements.foodPreferences ? l10n.evFoodTurnOn : null,
-              onAction: e.entitlements.foodPreferences
-                  ? () async {
-                      await Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => InvitationSetupScreen(eventId: e.id, initialStep: 3),
-                      ));
-                      if (mounted) _load();
-                    }
-                  : null,
+              // The questions are switched on in the Invitation tab.
+              onAction: e.entitlements.foodPreferences ? widget.onSetUp : null,
             )
           else if (report.functions.isEmpty)
             EventEmpty(icon: Icons.restaurant_outlined, title: l10n.evFoodEmpty, message: l10n.evFoodEmptyMessage)

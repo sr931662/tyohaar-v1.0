@@ -32,7 +32,6 @@ import '../data/services/event_service.dart';
 import '../widgets/event_ui.dart';
 import 'events/event_dashboard_screen.dart';
 import 'events/functions_editor.dart';
-import 'events/invitation_setup_screen.dart';
 import 'guests_screen.dart';
 import 'package_detail_screen.dart';
 
@@ -481,9 +480,7 @@ class _EventHubScreenState extends State<EventHubScreen> {
             full: true,
             onTap: () => Navigator.of(context)
                 .push(MaterialPageRoute(
-                    builder: (_) => configured
-                        ? EventDashboardScreen(eventId: event.id)
-                        : InvitationSetupScreen(eventId: event.id)))
+                    builder: (_) => EventDashboardScreen(eventId: event.id, initialTab: configured ? 0 : 3)))
                 .then((_) => _load()),
           ),
         ],

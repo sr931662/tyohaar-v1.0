@@ -7,7 +7,6 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/whatsapp.dart';
-import '../../widgets/common.dart';
 import '../../widgets/event_ui.dart';
 import '../../widgets/state_screens.dart';
 import '../invitations/invitation_labels.dart';
@@ -16,16 +15,16 @@ import '../invitations/invitation_labels.dart';
 /// from their own WhatsApp: nothing here sends automatically, because automated
 /// messages are only allowed through the WhatsApp Business Platform, which
 /// isn't set up. Anyone who has answered, including with a no, isn't listed.
-class RemindersScreen extends StatefulWidget {
+class RemindersPanel extends StatefulWidget {
   final EventSummaryCard event;
   final EventService? service;
-  const RemindersScreen({super.key, required this.event, this.service});
+  const RemindersPanel({super.key, required this.event, this.service});
 
   @override
-  State<RemindersScreen> createState() => _RemindersScreenState();
+  State<RemindersPanel> createState() => _RemindersPanelState();
 }
 
-class _RemindersScreenState extends State<RemindersScreen> {
+class _RemindersPanelState extends State<RemindersPanel> {
   late final EventService _service = widget.service ?? EventService();
   ReminderList? _list;
   bool _error = false;
@@ -79,10 +78,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final candidates = list == null
         ? const <ReminderCandidate>[]
         : (_dueOnly ? list.candidates.where((c) => c.reasons.isNotEmpty).toList() : list.candidates);
-    return Scaffold(
-      backgroundColor: ty.paper,
-      appBar: tyAppBar(context, title: l10n.evRemindersTitle),
-      body: _error
+    return _error
           ? TyStateScreen.error(context, onAction: _load)
           : list == null
               ? const Center(child: CircularProgressIndicator())
@@ -127,7 +123,6 @@ class _RemindersScreenState extends State<RemindersScreen> {
                           ),
                     ],
                   ),
-                ),
-    );
+                );
   }
 }

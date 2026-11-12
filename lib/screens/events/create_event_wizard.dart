@@ -12,7 +12,7 @@ import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../widgets/common.dart';
 import '../../widgets/ty_button.dart';
-import 'invitation_setup_screen.dart';
+import 'event_dashboard_screen.dart';
 
 String eventTypeName(AppLocalizations l10n, String type) => switch (type) {
       'wedding' => l10n.evTypeWedding,
@@ -123,7 +123,8 @@ class _CreateEventWizardState extends State<CreateEventWizard> {
       );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => InvitationSetupScreen(eventId: event.id, service: widget.service),
+        // Straight to the Invitation tab: design it, preview it, publish it.
+        builder: (_) => EventDashboardScreen(eventId: event.id, service: widget.service, initialTab: 3),
       ));
     } catch (e) {
       if (mounted) setState(() => _error = isNoResponse(e) ? l10n.invSaveUncertain : invitationErrorMessage(e));

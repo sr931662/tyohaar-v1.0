@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
+import '../../data/services/event_service.dart';
 import '../../data/services/invitation_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/colors.dart';
@@ -30,7 +32,6 @@ class _BulkInviteScreenState extends State<BulkInviteScreen> {
   final _service = InvitationService();
   final _paste = TextEditingController();
   final List<_Row> _rows = [];
-  int _plusOnes = 0;
   bool _saving = false;
   String? _error;
   BulkInviteResult? _result;
@@ -89,6 +90,47 @@ class _BulkInviteScreenState extends State<BulkInviteScreen> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
 
+  /// An Excel or CSV list goes to the server as it is; it reports row by row.
+  Future<void> _importFile() async {
+    final l10n = AppLocalizations.of(context)!;
+    final picked = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: const ['csv', 'xlsx']);
+    final file = picked?.files.single;
+    if (file?.path == null || !mounted) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final outcome = await EventService().importGuests(widget.celebrationId, file!.path!, file.name);
+      if (!mounted) return;
+      final problems = outcome.rows.where((r) => r.status == 'error' || r.status == 'duplicate').toList();
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.evImportDone(outcome.created, outcome.skipped)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: problems.isEmpty
+                ? Text(l10n.evImportAllGood)
+                : ListView(shrinkWrap: true, children: [
+                    for (final r in problems.take(50))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(l10n.evImportRow(r.row, r.name ?? '—', r.message ?? ''), style: const TextStyle(fontSize: 13)),
+                      ),
+                  ]),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.invDone))],
+        ),
+      );
+      if (mounted && outcome.created > 0) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) setState(() => _error = invitationErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_saving || _rows.isEmpty) return;
     final l10n = AppLocalizations.of(context)!;
@@ -99,7 +141,7 @@ class _BulkInviteScreenState extends State<BulkInviteScreen> {
     try {
       final result = await _service.bulkCreate(
         widget.celebrationId,
-        [for (final r in _rows) InvitationDraft(name: r.name, phone: r.phone, plusOnesAllowed: _plusOnes)],
+        [for (final r in _rows) InvitationDraft(name: r.name, phone: r.phone)],
         clientRequestId: _batchId,
       );
       if (mounted) setState(() => _result = result);
@@ -142,15 +184,16 @@ class _BulkInviteScreenState extends State<BulkInviteScreen> {
               Expanded(child: OutlinedButton.icon(onPressed: _addContact, icon: const Icon(Icons.contacts_outlined), label: Text(l10n.invBulkAddContact))),
             ]),
             const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: Text(l10n.invBulkAllowance, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600))),
-              IconButton(onPressed: _plusOnes > 0 ? () => setState(() { _plusOnes--; _changed(); }) : null,
-                  tooltip: l10n.invAllowanceLess, icon: const Icon(Icons.remove_circle_outline_rounded)),
-              Text('+$_plusOnes', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
-              IconButton(onPressed: _plusOnes < 10 ? () => setState(() { _plusOnes++; _changed(); }) : null,
-                  tooltip: l10n.invAllowanceMore, icon: const Icon(Icons.add_circle_outline_rounded)),
-            ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _importFile,
+              icon: const Icon(Icons.upload_file_rounded),
+              label: Text(l10n.evImportTitle),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 10),
+              child: Text(l10n.evImportNote, style: TyType.sans(12, color: ty.ink3)),
+            ),
             Text(l10n.invBulkCount(_rows.length, _maxRows), style: TyType.eyebrow(11, color: ty.ink3)),
             const SizedBox(height: 6),
             for (var i = 0; i < _rows.length; i++)

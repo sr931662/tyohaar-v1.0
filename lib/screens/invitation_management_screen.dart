@@ -34,7 +34,10 @@ class InvitationManagementScreen extends StatefulWidget {
   /// Inside the dashboard, which already has its own app bar.
   final bool embedded;
 
-  const InvitationManagementScreen({super.key, this.celebrationId, this.embedded = false});
+  /// Shown as a row under the quick actions when set (the dashboard sets it).
+  final VoidCallback? onOpenHouseholds;
+
+  const InvitationManagementScreen({super.key, this.celebrationId, this.embedded = false, this.onOpenHouseholds});
 
   @override
   State<InvitationManagementScreen> createState() => _InvitationManagementScreenState();
@@ -357,24 +360,27 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
           ),
           const SizedBox(height: 18),
         ],
-        Text(l10n.invitationManagementGuestStatusLabel, style: TyType.eyebrow(11, color: ty.ink3)),
-        const SizedBox(height: 10),
-        Row(children: [
-          _stat(context, s?.active, l10n.invitationManagementInvitedLabel, ty.ink2),
-          const SizedBox(width: 8),
-          _stat(context, s?.attending, l10n.invStatComing, ty.leaf),
-          const SizedBox(width: 8),
-          _stat(context, s?.arrivedGuests, l10n.invStatArrived, ty.saffronDeep),
-          const SizedBox(width: 8),
-          _stat(context, s?.stillExpected, l10n.invStatExpected, ty.ink2),
-        ]),
-        if (s != null && (s.arrivedPeople > 0 || s.expectedPeople > 0))
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(l10n.invPeopleSummary(s.arrivedPeople, s.expectedPeople, s.insideNow),
-                style: TyType.sans(12.5, color: ty.ink3)),
-          ),
-        const SizedBox(height: 16),
+        // On the dashboard the Overview tab already shows these numbers.
+        if (!widget.embedded) ...[
+          Text(l10n.invitationManagementGuestStatusLabel, style: TyType.eyebrow(11, color: ty.ink3)),
+          const SizedBox(height: 10),
+          Row(children: [
+            _stat(context, s?.active, l10n.invitationManagementInvitedLabel, ty.ink2),
+            const SizedBox(width: 8),
+            _stat(context, s?.attending, l10n.invStatComing, ty.leaf),
+            const SizedBox(width: 8),
+            _stat(context, s?.arrivedGuests, l10n.invStatArrived, ty.saffronDeep),
+            const SizedBox(width: 8),
+            _stat(context, s?.stillExpected, l10n.invStatExpected, ty.ink2),
+          ]),
+          if (s != null && (s.arrivedPeople > 0 || s.expectedPeople > 0))
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(l10n.invPeopleSummary(s.arrivedPeople, s.expectedPeople, s.insideNow),
+                  style: TyType.sans(12.5, color: ty.ink3)),
+            ),
+          const SizedBox(height: 16),
+        ],
         Row(children: [
           Expanded(child: _action(context, Icons.person_add_alt_1_rounded, l10n.invAddGuest, _create)),
           const SizedBox(width: 8),
@@ -389,6 +395,10 @@ class _InvitationManagementScreenState extends State<InvitationManagementScreen>
           ),
         ]),
         const SizedBox(height: 10),
+        if (widget.onOpenHouseholds != null) ...[
+          _tile(context, Icons.diversity_3_rounded, l10n.evHouseholdsTitle, l10n.evHouseholdsIntro, widget.onOpenHouseholds!),
+          const SizedBox(height: 8),
+        ],
         _tile(context, Icons.badge_outlined, l10n.invGateAccessTitle, l10n.invGateAccessTileSubtitle,
             () => _open(GateAccessScreen(celebrationId: selected.id, celebrationTitle: selected.title))),
         const SizedBox(height: 8),

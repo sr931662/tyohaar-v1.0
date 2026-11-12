@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/services/event_service.dart';
@@ -7,12 +9,9 @@ import '../../data/services/invitation_service.dart' show invitationErrorMessage
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
-import '../../widgets/common.dart';
 import '../../widgets/event_ui.dart';
-import '../../widgets/state_screens.dart';
 import '../../widgets/ty_button.dart';
 import 'create_event_wizard.dart' show EventField;
-import 'event_dashboard_screen.dart';
 import 'functions_editor.dart';
 
 const _palettes = <(String, String, String)>[
@@ -23,29 +22,37 @@ const _palettes = <(String, String, String)>[
   ('#8A4B08', '#C8456B', '#FFF8EC'), // Marigold
 ];
 
-/// One setup path for both journeys, opened on an existing event: confirm what
-/// guests will read, the functions, the look, the questions, then preview and
-/// publish. A booked customer never re-enters anything; their details arrive
-/// filled in, and changing them here only changes the invitation, never the booking.
-class InvitationSetupScreen extends StatefulWidget {
-  final String eventId;
-  final EventService? service;
-  final int initialStep;
-  const InvitationSetupScreen({super.key, required this.eventId, this.service, this.initialStep = 0});
+/// Everything about how the invitation looks and behaves, on one page: what
+/// guests read, the functions, the design, the RSVP questions and the shared
+/// link. It lives in the dashboard's Invitation tab, so there is no separate
+/// setup flow to find or finish. One Save stores it all; Preview and Publish
+/// save first, so what you see is what guests get.
+///
+/// A booked customer's details arrive filled in, and changes here only change
+/// what guests read, never the booking.
+class InvitationSettingsPanel extends StatefulWidget {
+  final EventDetail event;
+  final EventService service;
+
+  /// Reloads the event after anything changed on the server.
+  final Future<void> Function() onChanged;
+
+  /// Called once the invitation has gone live.
+  final VoidCallback onPublished;
+
+  const InvitationSettingsPanel({
+    super.key,
+    required this.event,
+    required this.service,
+    required this.onChanged,
+    required this.onPublished,
+  });
 
   @override
-  State<InvitationSetupScreen> createState() => _InvitationSetupScreenState();
+  State<InvitationSettingsPanel> createState() => _InvitationSettingsPanelState();
 }
 
-class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
-  late final EventService _service = widget.service ?? EventService();
-  late int _step = widget.initialStep;
-  EventDetail? _event;
-  bool _loading = true;
-  bool _loadFailed = false;
-  bool _saving = false;
-  String? _error;
-
+class _InvitationSettingsPanelState extends State<InvitationSettingsPanel> with AutomaticKeepAliveClientMixin {
   final _displayTitle = TextEditingController();
   final _displayVenue = TextEditingController();
   final _displayAddress = TextEditingController();
@@ -62,11 +69,42 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
   bool _allowMaybe = true, _allowEdit = true, _askCount = true, _askFood = false, _askAllergies = false, _askSpecial = false;
   DateTime? _deadline;
   List<Map<String, dynamic>> _questions = [];
+  bool _busy = false;
+  String? _error;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  EventDetail get _event => widget.event;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    final e = _event;
+    final s = e.settings;
+    _displayTitle.text = (s.display['title'] as String?) ?? e.title;
+    _displayVenue.text = (s.display['venue_name'] as String?) ?? e.venueName ?? '';
+    _displayAddress.text = (s.display['venue_address'] as String?) ?? e.venueAddress ?? '';
+    _instructions.text = (s.display['instructions'] as String?) ?? '';
+    _heading.text = (s.design['heading'] as String?) ?? '';
+    _tagline.text = (s.design['tagline'] as String?) ?? '';
+    _message.text = (s.design['message'] as String?) ?? '';
+    _template = s.design['template'] as String? ?? 'classic';
+    _font = s.design['font'] as String? ?? 'serif';
+    final primary = (s.design['primary_color'] as String?)?.toUpperCase();
+    final i = _palettes.indexWhere((p) => p.$1 == primary);
+    _palette = i < 0 ? 0 : i;
+    _invitationType = s.invitationType;
+    _allowMaybe = s.rsvp['allow_maybe'] as bool? ?? true;
+    _allowEdit = s.rsvp['allow_edit'] as bool? ?? true;
+    _askCount = s.rsvp['ask_attendee_count'] as bool? ?? true;
+    _askFood = s.rsvp['ask_food'] as bool? ?? false;
+    _askAllergies = s.rsvp['ask_allergies'] as bool? ?? false;
+    _askSpecial = s.rsvp['ask_special_requirements'] as bool? ?? false;
+    _mealOptions.text = ((s.rsvp['meal_options'] as List?) ?? const []).join(', ');
+    final deadline = s.rsvp['deadline'] as String?;
+    _deadline = deadline == null ? null : DateTime.tryParse(deadline);
+    _questions = ((s.rsvp['questions'] as List?) ?? const []).map((q) => Map<String, dynamic>.from(q as Map)).toList();
   }
 
   @override
@@ -77,61 +115,10 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _loadFailed = false;
-    });
-    try {
-      final e = await _service.get(widget.eventId);
-      if (!mounted) return;
-      final s = e.settings;
-      _displayTitle.text = (s.display['title'] as String?) ?? e.title;
-      _displayVenue.text = (s.display['venue_name'] as String?) ?? e.venueName ?? '';
-      _displayAddress.text = (s.display['venue_address'] as String?) ?? e.venueAddress ?? '';
-      _instructions.text = (s.display['instructions'] as String?) ?? '';
-      _heading.text = (s.design['heading'] as String?) ?? '';
-      _tagline.text = (s.design['tagline'] as String?) ?? '';
-      _message.text = (s.design['message'] as String?) ?? '';
-      _template = s.design['template'] as String? ?? 'classic';
-      _font = s.design['font'] as String? ?? 'serif';
-      final primary = (s.design['primary_color'] as String?)?.toUpperCase();
-      final i = _palettes.indexWhere((p) => p.$1 == primary);
-      _palette = i < 0 ? 0 : i;
-      _invitationType = s.invitationType;
-      _allowMaybe = s.rsvp['allow_maybe'] as bool? ?? true;
-      _allowEdit = s.rsvp['allow_edit'] as bool? ?? true;
-      _askCount = s.rsvp['ask_attendee_count'] as bool? ?? true;
-      _askFood = s.rsvp['ask_food'] as bool? ?? false;
-      _askAllergies = s.rsvp['ask_allergies'] as bool? ?? false;
-      _askSpecial = s.rsvp['ask_special_requirements'] as bool? ?? false;
-      _mealOptions.text = ((s.rsvp['meal_options'] as List?) ?? const []).join(', ');
-      final deadline = s.rsvp['deadline'] as String?;
-      _deadline = deadline == null ? null : DateTime.tryParse(deadline);
-      _questions = ((s.rsvp['questions'] as List?) ?? const []).map((q) => Map<String, dynamic>.from(q as Map)).toList();
-      setState(() {
-        _event = e;
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _loadFailed = true;
-        });
-      }
-    }
-  }
-
-  List<String> get _steps {
-    final l10n = AppLocalizations.of(context)!;
-    return [l10n.evStepDetails, l10n.evStepFunctions, l10n.evStepDesign, l10n.evStepRsvp, l10n.evStepPublish];
-  }
-
   String? _ymd(DateTime? d) => d == null ? null : DateFormat('yyyy-MM-dd').format(d);
 
-  Map<String, dynamic> _settingsPayload() {
-    final e = _event!;
+  Map<String, dynamic> _payload() {
+    final e = _event;
     final p = _palettes[_palette];
     String? clean(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
     // Only what differs from the event record goes in as an override, so a
@@ -171,56 +158,58 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
     };
   }
 
-  Future<bool> _saveSettings() async {
+  void _snack(String m) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  /// Runs [action] with the busy flag and a readable error, so every button
+  /// here behaves the same way.
+  Future<bool> _run(Future<void> Function() action) async {
     setState(() {
-      _saving = true;
+      _busy = true;
       _error = null;
     });
     try {
-      final updated = await _service.saveSettings(widget.eventId, _settingsPayload());
-      if (mounted) setState(() => _event = updated);
+      await action();
       return true;
     } catch (e) {
       if (mounted) setState(() => _error = invitationErrorMessage(e));
       return false;
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _next() async {
-    if (!await _saveSettings() || !mounted) return;
-    setState(() => _step += 1);
+  Future<bool> _save({bool announce = false}) async {
+    final saved = AppLocalizations.of(context)!.evSaved;
+    final ok = await _run(() async {
+      await widget.service.saveSettings(_event.id, _payload());
+      await widget.onChanged();
+    });
+    if (ok && announce) _snack(saved);
+    return ok;
   }
 
   Future<void> _preview() async {
     final l10n = AppLocalizations.of(context)!;
-    if (!await _saveSettings() || !mounted) return;
+    if (!await _save() || !mounted) return;
     try {
-      final url = await _service.previewLink(widget.eventId);
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      await launchUrl(Uri.parse(await widget.service.previewLink(_event.id)), mode: LaunchMode.externalApplication);
     } catch (_) {
       if (mounted) setState(() => _error = l10n.evPreviewFailed);
     }
   }
 
   Future<void> _publish() async {
-    if (!await _saveSettings() || !mounted) return;
-    setState(() => _saving = true);
-    try {
-      await _service.publish(widget.eventId);
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => EventDashboardScreen(eventId: widget.eventId, service: widget.service, justPublished: true),
-      ));
-    } catch (e) {
-      if (mounted) setState(() => _error = invitationErrorMessage(e));
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+    if (!await _save() || !mounted) return;
+    final ok = await _run(() async {
+      await widget.service.publish(_event.id);
+      await widget.onChanged();
+    });
+    if (ok && mounted) widget.onPublished();
   }
 
-  void _addQuestion() async {
+  Future<void> _addQuestion() async {
     final l10n = AppLocalizations.of(context)!;
     final label = TextEditingController();
     final options = TextEditingController();
@@ -244,8 +233,7 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
                 ],
                 onChanged: (v) => set(() => kind = v ?? 'text'),
               ),
-              if (kind == 'choice')
-                TextField(controller: options, decoration: InputDecoration(labelText: l10n.evQuestionOptions)),
+              if (kind == 'choice') TextField(controller: options, decoration: InputDecoration(labelText: l10n.evQuestionOptions)),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 value: required,
@@ -277,143 +265,137 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
-    if (_loading) {
-      return Scaffold(backgroundColor: ty.paper, body: const Center(child: CircularProgressIndicator()));
-    }
-    if (_loadFailed || _event == null) {
-      return Scaffold(
-        backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: l10n.evSetupTitle),
-        body: TyStateScreen.error(context, onAction: _load),
-      );
-    }
-    final last = _step == _steps.length - 1;
-    return PopScope(
-      canPop: _step == 0,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) setState(() => _step -= 1);
-      },
-      child: Scaffold(
-        backgroundColor: ty.paper,
-        appBar: tyAppBar(context, title: l10n.evSetupTitle),
-        body: Column(children: [
-          _StepBar(steps: _steps, current: _step),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
+    final e = _event;
+    return Column(children: [
+      Expanded(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+          children: [
+            _statusCard(context),
+            const SizedBox(height: 14),
+            _Section(
+              icon: Icons.edit_note_rounded,
+              title: l10n.evStepDetails,
+              children: _detailsFields(context),
+            ),
+            _Section(
+              icon: Icons.event_note_rounded,
+              title: l10n.evStepFunctions,
+              subtitle: e.functions.isEmpty ? l10n.evFunctionsEmpty : null,
               children: [
-                switch (_step) {
-                  0 => _detailsStep(context),
-                  1 => _functionsStep(context),
-                  2 => _designStep(context),
-                  3 => _rsvpStep(context),
-                  _ => _publishStep(context),
-                },
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(_error!, style: TyType.sans(13.5, color: ty.rose, weight: FontWeight.w600)),
-                  ),
+                FunctionsEditor(eventId: e.id, functions: e.functions, service: widget.service, onChanged: (_) => widget.onChanged()),
               ],
             ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
-              child: Row(children: [
-                if (_step > 0) ...[
-                  Expanded(
-                    child: TyButton(l10n.evBack, kind: TyButtonKind.ghost, full: true, enabled: !_saving, onTap: () => setState(() => _step -= 1)),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-                Expanded(
-                  flex: 2,
-                  child: TyButton(
-                    _saving ? l10n.invSaving : (last ? l10n.evPublish : l10n.evNext),
-                    full: true,
-                    enabled: !_saving,
-                    onTap: last ? _publish : _next,
-                  ),
-                ),
-              ]),
+            _Section(
+              icon: Icons.palette_outlined,
+              title: l10n.evStepDesign,
+              initiallyExpanded: !e.invitationsConfigured,
+              children: _designFields(context),
             ),
+            _Section(icon: Icons.how_to_reg_outlined, title: l10n.evStepRsvp, children: _rsvpFields(context)),
+            _Section(icon: Icons.link_rounded, title: l10n.evGeneralLinkTitle, children: _generalLink(context)),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(_error!, style: TyType.sans(13.5, color: ty.rose, weight: FontWeight.w600)),
+              ),
+          ],
+        ),
+      ),
+      SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
+          decoration: BoxDecoration(color: ty.paper, border: Border(top: BorderSide(color: ty.line))),
+          child: TyButton(_busy ? l10n.invSaving : l10n.evSaveChanges, full: true, enabled: !_busy, onTap: () => _save(announce: true)),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _statusCard(BuildContext context) {
+    final ty = context.ty;
+    final l10n = AppLocalizations.of(context)!;
+    final e = _event;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: eventCardDecoration(ty),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(e.isDraft ? Icons.drafts_outlined : Icons.public_rounded, size: 18, color: e.isDraft ? ty.ink3 : ty.leaf),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(e.isDraft ? l10n.evStatusDraftLine : l10n.evStatusPublishedLine,
+                style: TyType.sans(13, color: ty.ink2, height: 1.4)),
           ),
         ]),
-      ),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+            child: TyButton(l10n.evPreviewShort, kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.visibility_outlined,
+                enabled: !_busy, onTap: _preview),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: e.isDraft
+                ? TyButton(l10n.evPublish, full: true, enabled: !_busy, onTap: _publish)
+                : TyButton(l10n.evUnpublish, kind: TyButtonKind.ghost, full: true, enabled: !_busy, onTap: () async {
+                    await _run(() async {
+                      await widget.service.unpublish(e.id);
+                      await widget.onChanged();
+                    });
+                  }),
+          ),
+        ]),
+      ]),
     );
   }
 
-  Widget _detailsStep(BuildContext context) {
+  List<Widget> _detailsFields(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
-    final e = _event!;
+    final e = _event;
     final time = eventTimeText(e.startTime);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Align(alignment: Alignment.centerLeft, child: EventSourceBadge(booked: e.isBooked)),
-      const SizedBox(height: 10),
-      Text(e.isBooked ? l10n.evDetailsBookedIntro : l10n.evDetailsOwnIntro, style: TyType.sans(13.5, color: ty.ink2, height: 1.4)),
-      const SizedBox(height: 12),
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: eventCardDecoration(ty),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(e.eventTypeLabel, style: TyType.eyebrow(10.5, color: ty.ink3)),
-          const SizedBox(height: 4),
-          Text(eventDateRange(context, e.date, e.endDate) + (time == null ? '' : ' · $time'),
-              style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700)),
-          if (e.booking != null) ...[
-            const SizedBox(height: 4),
-            Text(l10n.evDetailsFromBooking(e.booking!.packageName ?? e.booking!.bookingNumber ?? ''),
-                style: TyType.sans(12.5, color: ty.ink3)),
-          ],
-        ]),
+    return [
+      Text(e.isBooked ? l10n.evDetailsBookedIntro : l10n.evDetailsOwnIntro, style: TyType.sans(13, color: ty.ink2, height: 1.4)),
+      const SizedBox(height: 8),
+      Text(
+        eventDateRange(context, e.date, e.endDate) + (time == null ? '' : ' · $time'),
+        style: TyType.sans(14, color: ty.ink, weight: FontWeight.w700),
       ),
-      const SizedBox(height: 14),
+      if (e.booking != null)
+        Text(l10n.evDetailsFromBooking(e.booking!.packageName ?? e.booking!.bookingNumber ?? ''), style: TyType.sans(12.5, color: ty.ink3)),
+      const SizedBox(height: 12),
       EventField(controller: _displayTitle, label: l10n.evDisplayTitle, maxLength: 300),
       EventField(controller: _displayVenue, label: l10n.evFieldVenue, maxLength: 300),
       EventField(controller: _displayAddress, label: l10n.evFieldAddress, maxLength: 1000, maxLines: 2),
       EventField(controller: _instructions, label: l10n.evDisplayInstructions, maxLength: 2000, maxLines: 3),
       if (e.isBooked) Text(l10n.evDisplayBookingNote, style: TyType.sans(12, color: ty.ink3, height: 1.4)),
-    ]);
+    ];
   }
 
-  Widget _functionsStep(BuildContext context) {
+  List<Widget> _designFields(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(l10n.evFunctionsIntro, style: TyType.sans(13.5, color: ty.ink2, height: 1.4)),
-      const SizedBox(height: 12),
-      FunctionsEditor(
-        eventId: widget.eventId,
-        functions: _event!.functions,
-        service: _service,
-        onChanged: (_) {},
-      ),
-    ]);
-  }
-
-  Widget _designStep(BuildContext context) {
-    final ty = context.ty;
-    final l10n = AppLocalizations.of(context)!;
-    final canCustomise = _event!.entitlements.customTemplates;
+    final canCustomise = _event.entitlements.customTemplates;
     final p = _palettes[_palette];
     Color hex(String h) => Color(int.parse('FF${h.substring(1)}', radix: 16));
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(l10n.evDesignStyle, style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w700)),
-      const SizedBox(height: 8),
-      // Only what exists. The static card is the image generated on the guest
-      // list screen; there is no animated or video invitation to offer yet.
+    Widget label(String t) => Padding(
+          padding: const EdgeInsets.only(top: 6, bottom: 8),
+          child: Text(t, style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w700)),
+        );
+    return [
+      label(l10n.evDesignStyle),
+      // Only what exists: the static card is the image made on the guest list.
       Wrap(spacing: 8, runSpacing: 8, children: [
         ChoiceChip(label: Text(l10n.evDesignStyleWeb), selected: _invitationType == 'web', onSelected: (_) => setState(() => _invitationType = 'web')),
         ChoiceChip(label: Text(l10n.evDesignStyleStatic), selected: _invitationType == 'static', onSelected: (_) => setState(() => _invitationType = 'static')),
       ]),
-      const SizedBox(height: 16),
-      Text(l10n.evDesignTemplate, style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w700)),
-      const SizedBox(height: 8),
+      const SizedBox(height: 10),
+      label(l10n.evDesignTemplate),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final t in const ['classic', 'royal', 'floral', 'minimal'])
           if (canCustomise || t == 'classic')
@@ -428,9 +410,8 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
               onSelected: (_) => setState(() => _template = t),
             ),
       ]),
-      const SizedBox(height: 16),
-      Text(l10n.evDesignColours, style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w700)),
-      const SizedBox(height: 8),
+      const SizedBox(height: 10),
+      label(l10n.evDesignColours),
       Wrap(spacing: 10, children: [
         for (var i = 0; i < _palettes.length; i++)
           Semantics(
@@ -452,35 +433,34 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
             ),
           ),
       ]),
-      const SizedBox(height: 16),
-      Text(l10n.evDesignFont, style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w700)),
-      const SizedBox(height: 8),
+      const SizedBox(height: 10),
+      label(l10n.evDesignFont),
       Wrap(spacing: 8, runSpacing: 8, children: [
         ChoiceChip(label: Text(l10n.evFontSerif), selected: _font == 'serif', onSelected: (_) => setState(() => _font = 'serif')),
         ChoiceChip(label: Text(l10n.evFontTraditional), selected: _font == 'traditional', onSelected: (_) => setState(() => _font = 'traditional')),
         ChoiceChip(label: Text(l10n.evFontModern), selected: _font == 'modern', onSelected: (_) => setState(() => _font = 'modern')),
       ]),
-      const SizedBox(height: 16),
+      const SizedBox(height: 14),
       EventField(controller: _heading, label: l10n.evDesignHeading, hint: l10n.evDesignHeadingHint, maxLength: 120),
       EventField(controller: _tagline, label: l10n.evDesignTagline, hint: l10n.evDesignTaglineHint, maxLength: 60),
       EventField(controller: _message, label: l10n.evDesignMessage, hint: l10n.evDesignMessageHint, maxLength: 1500, maxLines: 4),
       Container(
-        padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 18),
+        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 18),
         decoration: BoxDecoration(color: hex(p.$1), borderRadius: BorderRadius.circular(16)),
         child: Column(children: [
           Text((_heading.text.trim().isEmpty ? l10n.evDesignHeadingDefault : _heading.text.trim()).toUpperCase(),
               textAlign: TextAlign.center, style: TyType.eyebrow(10.5, color: Colors.white.withValues(alpha: 0.9))),
           const SizedBox(height: 8),
           Text(_displayTitle.text, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: TyType.display(24, color: Colors.white)),
+              style: TyType.display(22, color: Colors.white)),
           const SizedBox(height: 10),
           Container(width: 38, height: 1, color: hex(p.$2)),
         ]),
       ),
-    ]);
+    ];
   }
 
-  Widget _toggle(String title, bool value, ValueChanged<bool>? onChanged, {String? subtitle}) {
+  Widget _toggle(String title, bool value, ValueChanged<bool> onChanged, {String? subtitle}) {
     final ty = context.ty;
     return SwitchListTile.adaptive(
       contentPadding: EdgeInsets.zero,
@@ -492,13 +472,12 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
     );
   }
 
-  Widget _rsvpStep(BuildContext context) {
+  List<Widget> _rsvpFields(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
-    final ent = _event!.entitlements;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(l10n.evRsvpIntro, style: TyType.sans(13.5, color: ty.ink2, height: 1.4)),
-      const SizedBox(height: 6),
+    final ent = _event.entitlements;
+    return [
+      Text(l10n.evRsvpIntro, style: TyType.sans(13, color: ty.ink2, height: 1.4)),
       _toggle(l10n.evRsvpAllowMaybe, _allowMaybe, (v) => setState(() => _allowMaybe = v)),
       _toggle(l10n.evRsvpAskCount, _askCount, (v) => setState(() => _askCount = v), subtitle: l10n.evRsvpAskCountNote),
       _toggle(l10n.evRsvpAllowEdit, _allowEdit, (v) => setState(() => _allowEdit = v)),
@@ -506,6 +485,7 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
         _toggle(l10n.evRsvpAskFood, _askFood, (v) => setState(() => _askFood = v), subtitle: l10n.evRsvpAskFoodNote),
         if (_askFood) ...[
           _toggle(l10n.evRsvpAskAllergies, _askAllergies, (v) => setState(() => _askAllergies = v)),
+          const SizedBox(height: 4),
           EventField(controller: _mealOptions, label: l10n.evRsvpMeals, hint: l10n.evRsvpMealsHint),
         ],
       ],
@@ -530,7 +510,7 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
         },
       ),
       if (ent.advancedRsvp) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(l10n.evRsvpQuestions, style: TyType.sans(13, color: ty.ink2, weight: FontWeight.w700)),
         for (final q in _questions)
           ListTile(
@@ -545,51 +525,94 @@ class _InvitationSetupScreenState extends State<InvitationSetupScreen> {
         const SizedBox(height: 6),
         TyButton(l10n.evQuestionAdd, kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.add_rounded, onTap: _addQuestion),
       ],
-    ]);
+    ];
   }
 
-  Widget _publishStep(BuildContext context) {
+  List<Widget> _generalLink(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(l10n.evPublishIntro, style: TyType.sans(13.5, color: ty.ink2, height: 1.4)),
-      const SizedBox(height: 14),
-      TyButton(l10n.evPreviewCta, kind: TyButtonKind.ghost, full: true, leadingIcon: Icons.visibility_outlined, enabled: !_saving, onTap: _preview),
-      const SizedBox(height: 8),
-      Text(l10n.evPreviewNote, textAlign: TextAlign.center, style: TyType.sans(12, color: ty.ink3)),
-    ]);
+    final e = _event;
+    final on = e.generalLinkUrl != null;
+    return [
+      Text(l10n.evGeneralLinkNote, style: TyType.sans(13, color: ty.ink2, height: 1.4)),
+      SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        value: on,
+        activeTrackColor: ty.saffron,
+        onChanged: _busy
+            ? null
+            : (v) => _run(() async {
+                  await widget.service.setGeneralLink(e.id, enabled: v);
+                  await widget.onChanged();
+                }),
+        title: Text(l10n.evGeneralLinkToggle, style: TyType.sans(14, color: ty.ink, weight: FontWeight.w600)),
+      ),
+      if (on) ...[
+        SelectableText(e.generalLinkUrl!, style: TyType.sans(12.5, color: ty.ink2)),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(
+            child: TyButton(l10n.invCopyLink, kind: TyButtonKind.ghost, full: true, onTap: () async {
+              await Clipboard.setData(ClipboardData(text: e.generalLinkUrl!));
+              _snack(l10n.evLinkCopied);
+            }),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TyButton(l10n.invShareSheet, kind: TyButtonKind.ghost, full: true,
+                onTap: () => Share.share(l10n.evGeneralShareMessage(e.title, e.generalLinkUrl!))),
+          ),
+        ]),
+        TextButton(
+          onPressed: _busy
+              ? null
+              : () => _run(() async {
+                    await widget.service.setGeneralLink(e.id, enabled: true, rotate: true);
+                    await widget.onChanged();
+                  }),
+          child: Text(l10n.evGeneralLinkReplace),
+        ),
+      ],
+    ];
   }
 }
 
-class _StepBar extends StatelessWidget {
-  final List<String> steps;
-  final int current;
-  const _StepBar({required this.steps, required this.current});
+/// A collapsible block, so a page of settings reads as a short list of topics.
+class _Section extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool initiallyExpanded;
+  final List<Widget> children;
+
+  const _Section({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.initiallyExpanded = false,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
     final ty = context.ty;
-    final l10n = AppLocalizations.of(context)!;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(l10n.evStepOf(current + 1, steps.length, steps[current]), style: TyType.sans(12.5, color: ty.ink2, weight: FontWeight.w700)),
-        const SizedBox(height: 6),
-        Row(children: [
-          for (var i = 0; i < steps.length; i++) ...[
-            Expanded(
-              child: Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  color: i <= current ? ty.saffron : ty.line,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-              ),
-            ),
-            if (i < steps.length - 1) const SizedBox(width: 4),
-          ],
-        ]),
-      ]),
+    return EventTileCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          maintainState: true,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          leading: Icon(icon, color: ty.saffronDeep),
+          title: Text(title, style: TyType.sans(15, color: ty.ink, weight: FontWeight.w700)),
+          subtitle: subtitle == null ? null : Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TyType.sans(12, color: ty.ink3)),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
     );
   }
 }

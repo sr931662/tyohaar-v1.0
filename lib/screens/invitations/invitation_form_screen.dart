@@ -26,9 +26,7 @@ class _InvitationFormScreenState extends State<InvitationFormScreen> {
   final _service = InvitationService();
   final _formKey = GlobalKey<FormState>();
   late final String _requestId = newRequestId('inv');
-  late final TextEditingController _name, _phone, _email, _vehicle, _group, _notes;
-  late int _plusOnes;
-  TimeOfDay? _arriveFrom, _arriveTo;
+  late final TextEditingController _name, _phone, _email, _notes;
   bool _saving = false;
   String? _error;
 
@@ -41,30 +39,16 @@ class _InvitationFormScreenState extends State<InvitationFormScreen> {
     _name = TextEditingController(text: e?.name ?? '');
     _phone = TextEditingController(text: e?.phone ?? '');
     _email = TextEditingController(text: e?.email ?? '');
-    _vehicle = TextEditingController(text: e?.vehicleNumber ?? '');
-    _group = TextEditingController(text: e?.groupTag ?? '');
     _notes = TextEditingController(text: e?.notes ?? '');
-    _plusOnes = e?.plusOnesAllowed ?? 0;
-    _arriveFrom = _parse(e?.arrivalWindowStart);
-    _arriveTo = _parse(e?.arrivalWindowEnd);
   }
 
   @override
   void dispose() {
-    for (final c in [_name, _phone, _email, _vehicle, _group, _notes]) {
+    for (final c in [_name, _phone, _email, _notes]) {
       c.dispose();
     }
     super.dispose();
   }
-
-  static TimeOfDay? _parse(String? hhmm) {
-    if (hhmm == null || hhmm.length < 5) return null;
-    final p = hhmm.split(':');
-    return TimeOfDay(hour: int.parse(p[0]), minute: int.parse(p[1]));
-  }
-
-  static String? _fmt(TimeOfDay? t) =>
-      t == null ? null : '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   Future<void> _pickContact() async {
     final l10n = AppLocalizations.of(context)!;
@@ -86,23 +70,6 @@ class _InvitationFormScreenState extends State<InvitationFormScreen> {
     }
   }
 
-  Future<void> _pickTime(bool start) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: (start ? _arriveFrom : _arriveTo) ?? const TimeOfDay(hour: 19, minute: 0),
-    );
-    if (picked == null) return;
-    setState(() {
-      if (start) {
-        _arriveFrom = picked;
-        _arriveTo ??= TimeOfDay(hour: (picked.hour + 2) % 24, minute: picked.minute);
-      } else {
-        _arriveTo = picked;
-        _arriveFrom ??= TimeOfDay(hour: (picked.hour + 22) % 24, minute: picked.minute);
-      }
-    });
-  }
-
   void _snack(String m) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
@@ -114,15 +81,18 @@ class _InvitationFormScreenState extends State<InvitationFormScreen> {
       _saving = true;
       _error = null;
     });
+    // Allowance, arrival window, vehicle and group aren't asked for any more,
+    // but a guest saved with them keeps them: an edit sends everything back.
+    final old = widget.existing;
     final draft = InvitationDraft(
       name: _name.text,
       phone: _phone.text,
       email: _email.text,
-      plusOnesAllowed: _plusOnes,
-      arrivalWindowStart: _fmt(_arriveFrom),
-      arrivalWindowEnd: _fmt(_arriveTo),
-      vehicleNumber: _vehicle.text,
-      groupTag: _group.text,
+      plusOnesAllowed: old?.plusOnesAllowed ?? 0,
+      arrivalWindowStart: old?.arrivalWindowStart,
+      arrivalWindowEnd: old?.arrivalWindowEnd,
+      vehicleNumber: old?.vehicleNumber,
+      groupTag: old?.groupTag,
       notes: _notes.text,
     );
     try {
@@ -146,10 +116,6 @@ class _InvitationFormScreenState extends State<InvitationFormScreen> {
   Widget build(BuildContext context) {
     final ty = context.ty;
     final l10n = AppLocalizations.of(context)!;
-    final windowText = _arriveFrom == null
-        ? l10n.invArrivalNotSet
-        : '${_arriveFrom!.format(context)} – ${_arriveTo!.format(context)}';
-
     return Scaffold(
       backgroundColor: ty.paper,
       appBar: tyAppBar(context, title: _editing ? l10n.invEditTitle : l10n.invCreateTitle),
@@ -181,59 +147,6 @@ class _InvitationFormScreenState extends State<InvitationFormScreen> {
               if (t.isEmpty) return null;
               return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t) ? null : l10n.invFieldEmailInvalid;
             }),
-            const SizedBox(height: 6),
-            _sectionLabel(context, l10n.invFieldAllowance),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: _box(ty),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _plusOnes == 0 ? l10n.invAllowanceSolo : l10n.invAllowancePlus(_plusOnes),
-                      style: TyType.sans(14.5, color: ty.ink, weight: FontWeight.w600),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: l10n.invAllowanceLess,
-                    onPressed: _plusOnes > 0 ? () => setState(() => _plusOnes--) : null,
-                    icon: const Icon(Icons.remove_circle_outline_rounded),
-                  ),
-                  Text('$_plusOnes', style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700)),
-                  IconButton(
-                    tooltip: l10n.invAllowanceMore,
-                    onPressed: _plusOnes < 10 ? () => setState(() => _plusOnes++) : null,
-                    icon: const Icon(Icons.add_circle_outline_rounded),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            _sectionLabel(context, l10n.invFieldArrival),
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
-              decoration: _box(ty),
-              child: Row(
-                children: [
-                  Expanded(child: Text(windowText, style: TyType.sans(14.5, color: _arriveFrom == null ? ty.ink3 : ty.ink))),
-                  TextButton(onPressed: () => _pickTime(true), child: Text(l10n.invArrivalFrom)),
-                  TextButton(onPressed: () => _pickTime(false), child: Text(l10n.invArrivalTo)),
-                  if (_arriveFrom != null)
-                    IconButton(
-                      tooltip: l10n.invArrivalClear,
-                      onPressed: () => setState(() => _arriveFrom = _arriveTo = null),
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                    ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 6, left: 4),
-              child: Text(l10n.invArrivalHelp, style: TyType.sans(12, color: ty.ink3)),
-            ),
-            const SizedBox(height: 10),
-            _field(context, _vehicle, l10n.invFieldVehicle, capitalization: TextCapitalization.characters, maxLength: 20),
-            _field(context, _group, l10n.invFieldGroup, hint: l10n.invFieldGroupHint, capitalization: TextCapitalization.words),
             _field(context, _notes, l10n.invFieldNotes, hint: l10n.invFieldNotesHint, maxLines: 3),
             if (_error != null)
               Padding(
@@ -251,14 +164,6 @@ class _InvitationFormScreenState extends State<InvitationFormScreen> {
       ),
     );
   }
-
-  BoxDecoration _box(TyColors ty) =>
-      BoxDecoration(color: ty.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: ty.line));
-
-  Widget _sectionLabel(BuildContext context, String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8, left: 4),
-        child: Text(text, style: TyType.sans(13, color: context.ty.ink2, weight: FontWeight.w600)),
-      );
 
   Widget _field(
     BuildContext context,

@@ -11,7 +11,6 @@ import '../../widgets/event_ui.dart';
 import '../../widgets/ty_button.dart';
 import 'create_event_wizard.dart';
 import 'event_dashboard_screen.dart';
-import 'invitation_setup_screen.dart';
 
 /// The one starting point for both kinds of customer. Someone who booked with
 /// Tyohaar sees those events; anyone can always start their own, and neither
@@ -69,11 +68,8 @@ class _InvitationEntryScreenState extends State<InvitationEntryScreen> {
       (_lists?.all ?? const <EventSummaryCard>[]).where((e) => e.segment != 'completed' && e.status != 'cancelled' && test(e));
 
   void _manage(EventSummaryCard e) {
-    if (!e.invitationsConfigured) {
-      _open(InvitationSetupScreen(eventId: e.id));
-    } else {
-      _open(EventDashboardScreen(eventId: e.id));
-    }
+    // Not set up yet: open on the Invitation tab, where that happens.
+    _open(EventDashboardScreen(eventId: e.id, initialTab: e.invitationsConfigured ? 0 : 3));
   }
 
   /// Home is where occasions and packages are browsed.
