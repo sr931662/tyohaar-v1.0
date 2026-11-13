@@ -92,7 +92,7 @@ We may update this Privacy Policy from time to time. Material changes will be co
 
 If you have questions about this Privacy Policy or how we handle your data, contact us at:
 
-- **Email:** goyalkarn@gmail.com
+- **Email:** info@tyohaar.co
 - **Phone:** +91 8860384909
 
 ---

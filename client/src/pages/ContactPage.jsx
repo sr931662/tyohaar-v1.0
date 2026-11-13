@@ -7,7 +7,7 @@ import Button from '../components/ui/Button.jsx';
 import { fadeUp, bloom, stagger, inView } from '../lib/motion';
 import styles from './ContactPage.module.css';
 
-const CONTACT_EMAIL = 'goyalkarn@gmail.com';
+const CONTACT_EMAIL = 'info@tyohaar.co';
 const CONTACT_PHONE = '+91 8860384909';
 const CONTACT_PHONE_TEL = '+918860384909';
 

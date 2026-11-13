@@ -316,7 +316,7 @@ async def seed_faqs(session) -> None:
         (FAQCategory.VENDOR,       "Main khud vendor ban sakta hoon?",              "Bilkul! Vendor portal pe register karein, documents upload karein, aur verification ke baad aap live ho jaoge."),
         (FAQCategory.ACCOUNT,      "Password bhool gaya — kya karein?",             "Login page pe 'Forgot Password' click karein. OTP aapke registered phone/email pe aayega."),
         (FAQCategory.REFERRAL,     "Referral program kaise kaam karta hai?",        "Apna unique referral code share karein. Jab koi friend pehli booking kare, aap dono ko wallet credit milega."),
-        (FAQCategory.TECHNICAL,    "App crash ho raha hai — kya karein?",          "App update karein ya reinstall karein. Problem persist kare toh support@tyohaar.com pe contact karein."),
+        (FAQCategory.TECHNICAL,    "App crash ho raha hai — kya karein?",          "App update karein ya reinstall karein. Problem persist kare toh info@tyohaar.co pe contact karein."),
     ]
     for category, question, answer in faqs:
         res = await session.execute(select(FAQ).where(FAQ.question == question))

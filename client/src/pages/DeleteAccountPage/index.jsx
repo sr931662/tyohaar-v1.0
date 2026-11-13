@@ -8,7 +8,7 @@ import Button from '../../components/ui/Button.jsx';
 import { fadeUp, bloom, stagger, inView } from '../../lib/motion';
 import styles from './DeleteAccountPage.module.css';
 
-const SUPPORT_EMAIL = 'goyalkarn@gmail.com';
+const SUPPORT_EMAIL = 'info@tyohaar.co';
 const SUPPORT_PHONE = '+91 8860384909';
 const SUPPORT_PHONE_TEL = '+918860384909';
 
