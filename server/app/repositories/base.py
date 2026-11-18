@@ -307,7 +307,16 @@ class BaseRepository(Generic[ModelT]):
 
     # ── Write ─────────────────────────────────────────────────────────────────
 
-    async def create(self, instance: ModelT) -> ModelT:
+    async def create(self, instance: ModelT | dict[str, Any]) -> ModelT:
+        # Many services (payments, ledger, refunds, webhooks, coupons, ...)
+        # hand over a plain dict of column values. Build the model here
+        # instead of letting session.add() fail with "Class 'dict' is not
+        # mapped", which surfaced as a 503 when starting a payment.
+        if isinstance(instance, dict):
+            try:
+                instance = self._model(**instance)
+            except Exception as exc:
+                raise DatabaseError(f"Create {self._model.__name__} failed: {exc}") from exc
         try:
             self._session.add(instance)
             await self._session.flush()

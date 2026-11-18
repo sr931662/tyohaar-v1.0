@@ -25,6 +25,10 @@ class BookingStatusTransitionError(BusinessRuleError):
         )
 
 
+class BookingPaymentRequiredError(BusinessRuleError):
+    default_message = "A booking cannot be confirmed until its payment is completed."
+
+
 class BookingCutoffError(BusinessRuleError):
     default_message = (
         "Bookings must be made at least 24 hours before the scheduled event."

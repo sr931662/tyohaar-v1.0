@@ -54,6 +54,7 @@ from app.services.bookings.exceptions import (
     AssignmentNotFoundError,
     BookingNotFoundError,
     BookingOwnershipError,
+    BookingPaymentRequiredError,
     BookingStatusTransitionError,
     CelebrationRequiredError,
     VendorAssignmentOwnershipError,
@@ -736,6 +737,14 @@ class BookingService(BaseService):
         async with self._uow() as uow:
             booking = await validate_booking_exists(booking_id, uow)
             validate_status_transition_allowed(booking, "confirmed")
+            # Confirmation is what makes the booking real for the vendor and
+            # turns its event into a Tyohaar event, so it has to follow a
+            # captured payment — even when an admin is the one confirming.
+            # A customer's captured payment already confirms the booking by
+            # itself (_booking_settled_by_capture); this only stops an unpaid
+            # booking being pushed through by hand.
+            if booking.payment_status != PaymentStatus.COMPLETED:
+                raise BookingPaymentRequiredError()
             old_status = booking.booking_status
 
             booking = await uow.bookings.bookings.update(
