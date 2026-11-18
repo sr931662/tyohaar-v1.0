@@ -68,6 +68,18 @@ class PaymentCreate(BaseSchema):
         description="Target payment gateway (defaults to platform setting if None)",
     )
 
+    @field_validator("payment_method", mode="before")
+    @classmethod
+    def ignore_gateway_name_as_method(cls, v: object) -> object:
+        # Released app builds send the gateway name ("razorpay") here, but
+        # that is a gateway, not an instrument (upi / card / ...). The real
+        # instrument is only known once the customer picks it inside
+        # checkout, so treat a gateway name as "not chosen yet" instead of
+        # rejecting the whole payment with a 422.
+        if isinstance(v, str) and v.strip().lower() in {g.value for g in PaymentGatewayEnum}:
+            return None
+        return v
+
     @model_validator(mode="after")
     def validate_final_amount(self) -> "PaymentCreate":
         expected = (

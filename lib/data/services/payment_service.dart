@@ -193,7 +193,8 @@ class PaymentService {
       'discount_amount': 0,
       'tax_amount': 0,
       'final_amount': subtotal,
-      'payment_method': 'razorpay',
+      // No payment_method: that field is the instrument (upi, card, ...),
+      // chosen later inside Razorpay's sheet. "razorpay" is the gateway.
       'gateway': 'razorpay',
     });
     return PaymentOrder.fromJson(response.data['data'] as Map<String, dynamic>);
