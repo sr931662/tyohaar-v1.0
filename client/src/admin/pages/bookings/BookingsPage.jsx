@@ -28,7 +28,7 @@ export default function BookingsPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['bookings', { page, perPage, search: debouncedSearch, status }],
-    queryFn: () => bookingsApi.list({ page, per_page: perPage, search: debouncedSearch || undefined, status: status || undefined }),
+    queryFn: () => bookingsApi.list({ page, per_page: perPage, search: debouncedSearch || undefined, booking_status: status || undefined }),
   });
 
   const items = data?.items ?? [];
@@ -59,7 +59,7 @@ export default function BookingsPage() {
       </div>
 
       {isLoading ? (
-        <SkeletonTable rows={10} cols={7} />
+        <SkeletonTable rows={10} cols={8} />
       ) : !items.length ? (
         <EmptyState title="No bookings found" />
       ) : (
@@ -73,6 +73,7 @@ export default function BookingsPage() {
                 <th>Event Date</th>
                 <th>Amount</th>
                 <th>Status</th>
+                <th>Payment</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -80,17 +81,24 @@ export default function BookingsPage() {
               {items.map((b) => (
                 <tr key={b.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/bookings/${b.id}`)}>
                   <td><code style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{b.booking_number ?? `${b.id?.slice(0, 8)}…`}</code></td>
-                  {/* BookingResponse sends customer_id (UUID) only — no nested customer object */}
-                  <td><code style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{b.customer_id?.slice(0, 8) ?? '—'}</code></td>
-                  {/* BookingResponse sends package_id (UUID) only — no nested package object */}
+                  {/* customer_* are filled by the backend for admin requests only */}
+                  <td>
+                    <div>{b.customer_name ?? '—'}</div>
+                    {(b.customer_phone || b.customer_email) && (
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        {[b.customer_phone, b.customer_email].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </td>
                   <td style={{ maxWidth: 200 }}>
-                    <code className="truncate" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{b.package_id?.slice(0, 8) ?? '—'}</code>
+                    <span className="truncate">{b.package_name ?? '—'}</span>
                   </td>
                   {/* was: b.event_date — backend sends scheduled_date */}
                   <td>{formatDate(b.scheduled_date)}</td>
                   <td>{formatCurrency(b.total_amount)}</td>
                   {/* was: b.status — backend sends booking_status */}
                   <td><StatusBadge status={b.booking_status} /></td>
+                  <td><StatusBadge status={b.payment_status} /></td>
                   <td>
                     <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/admin/bookings/${b.id}`); }}>
                       View

@@ -73,6 +73,16 @@ from app.services.payments.validators import (
 
 logger = logging.getLogger(__name__)
 
+# Payment states a Razorpay lookup may still turn into COMPLETED. FAILED is
+# included because the app reports a dismissed sheet as abandoned, which can
+# race a payment that actually went through.
+_GATEWAY_SYNCABLE_STATUSES = frozenset({
+    PaymentStatus.PENDING,
+    PaymentStatus.INITIATED,
+    PaymentStatus.PROCESSING,
+    PaymentStatus.FAILED,
+})
+
 _JsonNumberDecimal = Annotated[
     Decimal, PlainSerializer(float, return_type=float, when_used="json")
 ]
@@ -776,14 +786,44 @@ class PaymentService(BaseService):
                     "Verified signature promoting previously-FAILED payment=%s", payment.id
                 )
 
+        return await self._settle_captured_payment(
+            payment_id=payment_id,
+            gateway_payment_id=gateway_payment_id,
+            gateway_signature=gateway_signature,
+            ledger_description=f"Payment captured via {gateway} (client verification)",
+        )
+
+    async def _settle_captured_payment(
+        self,
+        payment_id: uuid.UUID,
+        gateway_payment_id: str,
+        gateway_signature: str | None,
+        ledger_description: str,
+    ) -> PaymentResponse:
+        """
+        Record a capture the gateway has already confirmed — by a verified
+        checkout signature or by asking Razorpay directly — and confirm the
+        booking. Idempotent: an already-settled payment is returned as-is.
+        """
+        async with self._uow() as uow:
+            payment = await validate_payment_exists(payment_id, uow)
+            if payment.payment_status in (
+                PaymentStatus.COMPLETED,
+                PaymentStatus.REFUNDED,
+                PaymentStatus.PARTIALLY_REFUNDED,
+            ):
+                return PaymentResponse.model_validate(payment)
+
             now = datetime.now(tz=timezone.utc)
-            await uow.payments.payments.update(payment, {
+            payment_updates: dict = {
                 "payment_status": PaymentStatus.COMPLETED,
                 "gateway_payment_id": gateway_payment_id,
-                # gateway_signature stored internally; never returned to clients
-                "gateway_signature": gateway_signature,
                 "captured_at": now,
-            })
+            }
+            if gateway_signature:
+                # Stored internally; never returned to clients.
+                payment_updates["gateway_signature"] = gateway_signature
+            await uow.payments.payments.update(payment, payment_updates)
 
             await uow.payments.transactions.create({
                 "payment_id": payment.id,
@@ -808,7 +848,7 @@ class PaymentService(BaseService):
                 "payee_id": None,
                 "booking_id": payment.booking_id,
                 "payment_id": payment.id,
-                "description": f"Payment captured via {gateway} (client verification)",
+                "description": ledger_description,
                 "transacted_at": now,
             })
 
@@ -934,7 +974,73 @@ class PaymentService(BaseService):
             payment = await validate_payment_exists(payment_id, uow)
             if payment.payer_id != customer_id:
                 raise BusinessRuleError("Payment does not belong to this customer.")
-            return PaymentResponse.model_validate(payment)
+            result = PaymentResponse.model_validate(payment)
+
+        # The app polls this after checkout when its own verify call did not
+        # go through. Ask Razorpay before answering, so a paid order is settled
+        # here even when neither verify nor the webhook ever reached us.
+        if result.payment_status in _GATEWAY_SYNCABLE_STATUSES and result.gateway_order_id:
+            try:
+                synced = await self.sync_payment_with_gateway(payment_id)
+                if synced is not None:
+                    return synced
+            except Exception:
+                logger.exception("Gateway sync failed for payment %s", payment_id)
+        return result
+
+    async def sync_payment_with_gateway(self, payment_id: uuid.UUID) -> PaymentResponse | None:
+        """
+        Settle an open payment from Razorpay's own record of its order.
+
+        Razorpay is the source of truth for whether money moved. If the order
+        has a captured payment, the capture is recorded and the booking
+        confirmed. An authorized-but-uncaptured payment for the full amount is
+        captured first (Razorpay refunds those automatically after a few days
+        otherwise). Returns None when the gateway shows nothing paid.
+        """
+        import asyncio
+
+        async with self._uow() as uow:
+            payment = await validate_payment_exists(payment_id, uow)
+            status = payment.payment_status
+            order_id = payment.gateway_order_id or ""
+            expected_paise = _rupees_to_paise(payment.final_amount)
+            currency = payment.currency.value if hasattr(payment.currency, "value") else str(payment.currency)
+
+        if status not in _GATEWAY_SYNCABLE_STATUSES or not order_id.startswith("order_"):
+            return None
+
+        client = _razorpay_client()
+        order_payments = await asyncio.to_thread(client.order.payments, order_id)
+        items = order_payments.get("items", []) if isinstance(order_payments, dict) else []
+
+        captured = next((p for p in items if p.get("status") == "captured"), None)
+        if captured is None:
+            authorized = next(
+                (
+                    p for p in items
+                    if p.get("status") == "authorized" and int(p.get("amount") or 0) == expected_paise
+                ),
+                None,
+            )
+            if authorized is None:
+                return None
+            captured = await asyncio.to_thread(
+                client.payment.capture, authorized["id"], expected_paise, {"currency": currency}
+            )
+            if captured.get("status") != "captured":
+                return None
+
+        logger.info(
+            "Settling payment %s from gateway order %s (gateway payment %s)",
+            payment_id, order_id, captured.get("id"),
+        )
+        return await self._settle_captured_payment(
+            payment_id=payment_id,
+            gateway_payment_id=captured["id"],
+            gateway_signature=None,
+            ledger_description="Payment captured via razorpay (gateway reconciliation)",
+        )
 
     async def list_payments(
         self,

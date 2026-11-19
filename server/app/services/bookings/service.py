@@ -626,12 +626,43 @@ class BookingService(BaseService):
         cursor: str | None,
         limit: int,
     ) -> CursorPage[BookingResponse]:
+        from sqlalchemy import or_, select
+        from app.models.users.user import User
+
+        # customer_id None means the caller is an admin listing everyone's
+        # bookings; only then are customer contact details attached.
+        is_admin_view = customer_id is None
+
         async with self._uow() as uow:
+            model = uow.bookings.bookings._model
             conditions = []
             if customer_id is not None:
-                conditions.append(uow.bookings.bookings._model.customer_id == customer_id)
+                conditions.append(model.customer_id == customer_id)
             if filters.celebration_id is not None:
-                conditions.append(uow.bookings.bookings._model.celebration_id == filters.celebration_id)
+                conditions.append(model.celebration_id == filters.celebration_id)
+            if filters.package_id is not None:
+                conditions.append(model.package_id == filters.package_id)
+            if filters.booking_status is not None:
+                conditions.append(model.booking_status == filters.booking_status)
+            if filters.payment_status is not None:
+                conditions.append(model.payment_status == filters.payment_status)
+            if filters.search:
+                term = f"%{filters.search.strip()}%"
+                search_conditions = [model.booking_number.ilike(term)]
+                if is_admin_view:
+                    # Admins search by who booked as well as by booking number.
+                    search_conditions.append(
+                        model.customer_id.in_(
+                            select(User.id).where(
+                                or_(
+                                    User.full_name.ilike(term),
+                                    User.email.ilike(term),
+                                    User.phone.ilike(term),
+                                )
+                            )
+                        )
+                    )
+                conditions.append(or_(*search_conditions))
             page = await uow.bookings.bookings.cursor_paginate(
                 *conditions,
                 cursor=cursor,
@@ -639,6 +670,12 @@ class BookingService(BaseService):
             )
             info = await self._attach_package_info(uow, page.items)
             celeb_info = await self._attach_celebration_info(uow, page.items)
+            customers: dict = {}
+            if is_admin_view and page.items:
+                rows = await uow.session.execute(
+                    select(User).where(User.id.in_({b.customer_id for b in page.items}))
+                )
+                customers = {u.id: u for u in rows.scalars().all()}
             items = []
             for b in page.items:
                 item = BookingResponse.model_validate(b)
@@ -646,6 +683,15 @@ class BookingService(BaseService):
                 item.celebration_title, item.theme_id, item.theme_name, item.theme_colors = celeb_info.get(
                     b.celebration_id, (None, None, None, None)
                 )
+                user = customers.get(b.customer_id)
+                if user is not None:
+                    # TMP-<hex> is a placeholder for accounts without a real
+                    # number yet — not something an admin can call or read.
+                    phone = user.phone or None
+                    item.customer_phone = None if phone and phone.startswith("TMP-") else phone
+                    name = user.display_name
+                    item.customer_name = None if name and name.startswith("TMP-") else name
+                    item.customer_email = user.email
                 items.append(item)
             return CursorPage(
                 items=items,

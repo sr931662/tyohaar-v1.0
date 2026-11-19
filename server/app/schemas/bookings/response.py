@@ -135,6 +135,11 @@ class BookingResponse(BaseSchema):
     cancellation_reason: CancellationReason | None
     created_at: datetime
     updated_at: datetime
+    # Filled only on the admin booking list, so the table can show who booked
+    # instead of a bare customer_id. Always null on customer-facing lists.
+    customer_name: str | None = None
+    customer_email: str | None = None
+    customer_phone: str | None = None
 
 
 class BookingItemResponse(BaseSchema):
