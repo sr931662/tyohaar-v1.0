@@ -11,6 +11,12 @@ import '../api_client.dart';
 /// checkout at all.
 const String kRazorpayKeyId = String.fromEnvironment('RAZORPAY_KEY_ID');
 
+double? _toDouble(Object? value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
 class PaymentOrder {
   final String paymentId;
   final String orderId;
@@ -25,8 +31,11 @@ class PaymentOrder {
   });
 
   factory PaymentOrder.fromJson(Map<String, dynamic> json) {
-    final amount = (json['amount'] as num?)?.toDouble() ?? 0;
-    final serverAmountPaise = json['amount_paise'] as num?;
+    // Money fields may arrive as a JSON number or as a Decimal string
+    // ("2498.00") — a bare `as num?` cast threw on the string form and
+    // aborted checkout with "Could not initiate payment".
+    final amount = _toDouble(json['amount']) ?? 0;
+    final serverAmountPaise = _toDouble(json['amount_paise']);
     return PaymentOrder(
       paymentId: json['payment_id'] as String,
       orderId: json['gateway_order_id'] as String,

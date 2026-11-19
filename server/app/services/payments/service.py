@@ -12,8 +12,9 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Callable
+from typing import Annotated, Callable
 
+from pydantic import PlainSerializer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -72,6 +73,10 @@ from app.services.payments.validators import (
 
 logger = logging.getLogger(__name__)
 
+_JsonNumberDecimal = Annotated[
+    Decimal, PlainSerializer(float, return_type=float, when_used="json")
+]
+
 
 @dataclass
 class PaymentGatewayConfig:
@@ -95,7 +100,11 @@ class PaymentInitResponse:
     payment_number: str
     gateway_order_id: str
     checkout_url: str | None
-    amount: Decimal
+    # Sent as a JSON number, not pydantic's default Decimal string
+    # ("2498.00"): the app reads it with `as num?`, and a string there threw
+    # inside checkout setup — every payment showed "Could not initiate
+    # payment" even though the Razorpay order had been created.
+    amount: _JsonNumberDecimal
     amount_paise: int = 0
     currency: str = "INR"
     gateway: str = "razorpay"
