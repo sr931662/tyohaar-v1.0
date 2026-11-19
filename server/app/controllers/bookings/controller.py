@@ -59,6 +59,9 @@ async def get_booking(
     current_user: CurrentUserDep,
     service: BookingServiceDep,
 ) -> SuccessResponse[BookingDetailResponse]:
+    from app.services.payments.service import sync_open_payments_throttled
+    is_admin = current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    await sync_open_payments_throttled(None if is_admin else current_user.id)
     result = await service.get_booking(
         booking_id=booking_id,
         requester_id=current_user.id,
@@ -75,6 +78,10 @@ async def list_bookings(
 ) -> CursorPaginatedResponse[BookingResponse]:
     # Admins see all bookings; customers see only their own
     is_admin = current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    # Settle anything Razorpay shows as paid before the list is read, so a
+    # paid booking never shows as payment-pending here.
+    from app.services.payments.service import sync_open_payments_throttled
+    await sync_open_payments_throttled(None if is_admin else current_user.id)
     page = await service.list_bookings(
         customer_id=None if is_admin else current_user.id,
         filters=filters,

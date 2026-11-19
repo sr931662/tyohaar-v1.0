@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -11,6 +13,23 @@ from app.core import log_redaction
 from app.core.logging import configure_logging
 
 logger = logging.getLogger("tyohaar.lifespan")
+
+# How often a running instance re-checks open payments with Razorpay. The
+# webhook is the primary signal; this catches anything it missed.
+_RAZORPAY_SYNC_INTERVAL_SECONDS = 180
+
+
+async def _razorpay_sync_loop() -> None:
+    from app.services.payments.service import PaymentService
+
+    while True:
+        try:
+            await PaymentService().sync_open_payments()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Background Razorpay payment sync failed")
+        await asyncio.sleep(_RAZORPAY_SYNC_INTERVAL_SECONDS)
 
 
 @asynccontextmanager
@@ -47,9 +66,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("%s is ready to serve requests.", app.title)
 
+    sync_task = asyncio.create_task(_razorpay_sync_loop())
+
     yield
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     logger.info("Shutting down %s…", app.title)
+    sync_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await sync_task
     await dispose_engine()
     logger.info("Engine disposed. Goodbye.")

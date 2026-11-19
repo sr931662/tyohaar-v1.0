@@ -144,6 +144,8 @@ async def list_payments(
     service: PaymentServiceDep,
 ) -> CursorPaginatedResponse[PaymentResponse]:
     is_admin = current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    from app.services.payments.service import sync_open_payments_throttled
+    await sync_open_payments_throttled(None if is_admin else current_user.id)
     page = await service.list_payments(
         customer_id=None if is_admin else current_user.id,
         filters=filters,

@@ -43,6 +43,9 @@ class _Repo:
     async def get_by_id(self, _id):
         return self._returns.get("get_by_id")
 
+    async def get_by_id_with_lock(self, _id):
+        return self._returns.get("get_by_id")
+
     async def find_by_payment(self, _payment_id):
         return self._returns.get("find_by_payment", [])
 

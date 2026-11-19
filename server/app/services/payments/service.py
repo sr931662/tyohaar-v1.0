@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Annotated, Callable
 
@@ -82,6 +82,36 @@ _GATEWAY_SYNCABLE_STATUSES = frozenset({
     PaymentStatus.PROCESSING,
     PaymentStatus.FAILED,
 })
+
+# Last Razorpay sync per scope (None = all payers), so opening a list page
+# repeatedly does not hit Razorpay on every request.
+_SYNC_MIN_INTERVAL = timedelta(seconds=30)
+_SYNC_TIMEOUT_SECONDS = 10
+_last_sync_at: dict[uuid.UUID | None, datetime] = {}
+
+
+async def sync_open_payments_throttled(payer_id: uuid.UUID | None = None) -> None:
+    """
+    Bring open payments in line with Razorpay before a list is read — at most
+    once per _SYNC_MIN_INTERVAL per scope, and never holding a request up for
+    more than _SYNC_TIMEOUT_SECONDS. Never raises: a slow or failing gateway
+    must not break the page, which then simply shows the stored status.
+    """
+    import asyncio
+
+    now = datetime.now(tz=timezone.utc)
+    last = _last_sync_at.get(payer_id)
+    if last is not None and now - last < _SYNC_MIN_INTERVAL:
+        return
+    _last_sync_at[payer_id] = now
+    try:
+        await asyncio.wait_for(
+            PaymentService().sync_open_payments(payer_id=payer_id),
+            timeout=_SYNC_TIMEOUT_SECONDS,
+        )
+    except Exception:
+        logger.warning("Razorpay sync before list read did not finish", exc_info=True)
+
 
 _JsonNumberDecimal = Annotated[
     Decimal, PlainSerializer(float, return_type=float, when_used="json")
@@ -806,7 +836,13 @@ class PaymentService(BaseService):
         booking. Idempotent: an already-settled payment is returned as-is.
         """
         async with self._uow() as uow:
-            payment = await validate_payment_exists(payment_id, uow)
+            # Row lock: verify, the webhook, a client poll and the background
+            # sync can all race to settle the same payment. Whoever gets the
+            # lock second sees COMPLETED and returns without writing a second
+            # transaction or ledger entry.
+            payment = await uow.payments.payments.get_by_id_with_lock(payment_id)
+            if payment is None:
+                raise NotFoundError("Payment", str(payment_id))
             if payment.payment_status in (
                 PaymentStatus.COMPLETED,
                 PaymentStatus.REFUNDED,
@@ -987,6 +1023,50 @@ class PaymentService(BaseService):
             except Exception:
                 logger.exception("Gateway sync failed for payment %s", payment_id)
         return result
+
+    async def sync_open_payments(
+        self,
+        payer_id: uuid.UUID | None = None,
+        max_age: timedelta = timedelta(days=7),
+        limit: int = 50,
+    ) -> int:
+        """
+        Ask Razorpay about every recent open payment (optionally one payer's)
+        and settle the ones it shows as paid. Returns how many were settled.
+
+        This is what keeps payment status in step with Razorpay without anyone
+        verifying by hand: it runs on a timer inside the server and before the
+        admin and customer booking/payment lists are read. Failures for one
+        payment are logged and never stop the rest.
+        """
+        from app.models.payments.payment import Payment
+
+        if not (settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET):
+            return 0
+        since = datetime.now(tz=timezone.utc) - max_age
+        conditions = [
+            Payment.payment_status.in_(list(_GATEWAY_SYNCABLE_STATUSES)),
+            Payment.gateway_order_id.like("order_%"),
+            Payment.created_at >= since,
+        ]
+        if payer_id is not None:
+            conditions.append(Payment.payer_id == payer_id)
+        async with self._uow() as uow:
+            candidates = await uow.payments.payments.find_many(
+                *conditions, order_by=Payment.created_at.desc(), limit=limit
+            )
+            ids = [p.id for p in candidates]
+
+        settled = 0
+        for pid in ids:
+            try:
+                if await self.sync_payment_with_gateway(pid) is not None:
+                    settled += 1
+            except Exception:
+                logger.exception("Gateway sync failed for payment %s", pid)
+        if settled:
+            logger.info("Razorpay sync settled %d payment(s)", settled)
+        return settled
 
     async def sync_payment_with_gateway(self, payment_id: uuid.UUID) -> PaymentResponse | None:
         """
