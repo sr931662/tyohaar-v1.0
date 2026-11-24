@@ -103,7 +103,12 @@ export default function VendorBookingDetailPage() {
   );
 
   const b = booking;
-  const items = b.items ?? [];
+  // `lines` is the full priced order (items and services, with what the customer
+  // typed for each); `items` only ever held the item rows.
+  const items = b.lines?.length ? b.lines : (b.items ?? []);
+  const addr = b.address;
+  const mapLink = addr?.maps_link ?? (addr?.latitude != null && addr?.longitude != null
+    ? `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}` : null);
 
   return (
     <div>
@@ -194,11 +199,17 @@ export default function VendorBookingDetailPage() {
           </div>
 
           <div className="admin-card">
-            <Section title="Customer Info">
-              {/* BookingResponse sends customer_id (UUID) only — no nested customer object */}
-              <Row label="Customer ID" value={b.customer_id ? <code style={{ fontSize: 12 }}>{b.customer_id.slice(0, 8)}</code> : null} />
-              {/* Address fields not in BookingResponse; address_id is available if needed */}
-              <Row label="Address ID" value={b.address_id ? <code style={{ fontSize: 12 }}>{b.address_id.slice(0, 8)}</code> : null} />
+            <Section title="Where to go">
+              {/* Customer contact details are deliberately not sent to vendors. */}
+              <Row label="Address" value={addr?.full_address ?? b.venue_address} />
+              {b.venue_address && addr?.full_address && b.venue_address !== addr.full_address && (
+                <Row label="Venue (as entered)" value={b.venue_address} />
+              )}
+              {addr?.delivery_instructions && <Row label="Instructions" value={addr.delivery_instructions} />}
+              <Row
+                label="Map"
+                value={mapLink ? <a href={mapLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-brand)', fontWeight: 600 }}>Open in Google Maps ↗</a> : null}
+              />
             </Section>
           </div>
 
@@ -238,25 +249,23 @@ export default function VendorBookingDetailPage() {
                     <th>Qty</th>
                     <th>Unit Price</th>
                     <th>Final Price</th>
-                    <th>Customizations</th>
+                    <th>Customer asked for</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id}>
+                    <tr key={item.id ?? `${item.name}-${items.indexOf(item)}`}>
                       <td>
-                        <div className="admin-user-name">{item.package_item?.name ?? item.name ?? '—'}</div>
-                        {item.package_item?.description && (
-                          <div className="admin-user-email">{item.package_item.description}</div>
+                        <div className="admin-user-name">{item.package_item?.name ?? item.name ?? '—'}{item.is_addon && <span className="badge badge-info" style={{ marginLeft: 8 }}>Add-on</span>}</div>
+                        {(item.description ?? item.package_item?.description) && (
+                          <div className="admin-user-email">{item.description ?? item.package_item?.description}</div>
                         )}
                       </td>
-                      <td>{item.quantity ?? 1}</td>
+                      <td>{item.quantity ?? 1}{item.unit ? ` ${item.unit}` : ''}</td>
                       <td>{formatCurrency(item.unit_price ?? 0)}</td>
                       <td style={{ fontWeight: 600 }}>{formatCurrency(item.final_price ?? 0)}</td>
-                      <td style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                        {item.customizations
-                          ? Object.entries(item.customizations).map(([k, v]) => `${k}: ${v}`).join(', ')
-                          : '—'}
+                      <td style={{ fontSize: 12.5 }}>
+                        {item.note ?? item.notes ?? '—'}
                       </td>
                     </tr>
                   ))}
