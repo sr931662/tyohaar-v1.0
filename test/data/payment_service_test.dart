@@ -114,7 +114,9 @@ void main() {
       expect(adapter.lastRequest?.method, 'POST');
       final body = adapter.lastRequest?.data as Map;
       expect(body['subtotal'], 500.0);
-      expect(body['payment_method'], 'razorpay');
+      expect(body['gateway'], 'razorpay');
+      // The gateway's name is not a payment method; sending it was a 422.
+      expect(body.containsKey('payment_method'), isFalse);
     });
   });
 

@@ -19,7 +19,7 @@ import '../../utils/currency.dart';
 import '../../utils/log.dart';
 import 'package:tyohaar/screens/email_verification_screen.dart';
 import 'package:tyohaar/screens/payment_screen.dart';
-import 'package:tyohaar/screens/manage_address_screen.dart' show AddressFormSheet;
+import 'package:tyohaar/screens/address/address_flow.dart' show showAddAddressFlow;
 import 'plan_logic.dart';
 import 'balloon_proportions.dart';
 import 'marquee_sheet.dart';
@@ -54,7 +54,12 @@ class PlanFlowScreen extends StatefulWidget {
   // the package step instead of asking the customer to pick the occasion
   // again. When omitted, the flow opens with the occasion picker.
   final Occasion? initialOccasion;
-  const PlanFlowScreen({super.key, this.initialOccasion});
+  // Starts the flow from a package the customer already chose on its detail
+  // page: the occasion and package steps are skipped and the flow opens on
+  // add-ons. Going through this one flow (instead of a second, older booking
+  // screen) keeps the price, address and promo handling identical everywhere.
+  final Package? initialPackage;
+  const PlanFlowScreen({super.key, this.initialOccasion, this.initialPackage});
 
   @override
   State<PlanFlowScreen> createState() => _PlanFlowScreenState();
@@ -230,19 +235,20 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   List<_StepDef> get _steps {
     final l10n = AppLocalizations.of(context)!;
     return [
-      if (widget.initialOccasion == null)
+      if (widget.initialOccasion == null && widget.initialPackage == null)
         _StepDef(
           kind: _StepKind.occasion,
           title: l10n.planFlowOccasionStepTitle,
           subtitle: l10n.planFlowOccasionStepSubtitle,
           build: _occasionStep,
         ),
-      _StepDef(
-        kind: _StepKind.package,
-        title: l10n.planFlowPackageStepTitle,
-        subtitle: l10n.planFlowPackageStepSubtitle,
-        build: _packageStep,
-      ),
+      if (widget.initialPackage == null)
+        _StepDef(
+          kind: _StepKind.package,
+          title: l10n.planFlowPackageStepTitle,
+          subtitle: l10n.planFlowPackageStepSubtitle,
+          build: _packageStep,
+        ),
       _StepDef(
         kind: _StepKind.items,
         title: l10n.planFlowItemsStepTitle,
@@ -310,6 +316,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
   @override
   void initState() {
     super.initState();
+    _pkg = widget.initialPackage;
     _loadData();
   }
 
@@ -345,6 +352,17 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 (o) => o?.id == widget.initialOccasion!.id,
                 orElse: () => widget.initialOccasion,
               );
+        } else if (widget.initialPackage != null) {
+          // Started from a package: the occasion is whichever one it is sold
+          // under (left null if the package lists none; the server then
+          // derives it from the package itself).
+          final ids = widget.initialPackage!.occasionIds;
+          for (final o in _occasions) {
+            if (ids.contains(o.id)) {
+              _occasion = o;
+              break;
+            }
+          }
         } else if (_occasions.isNotEmpty) {
           _occasion = _occasions.first;
         }
@@ -355,7 +373,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       // image so the grid renders instantly (no per-card network fetch)
       // even on a fresh install where nothing has been cached yet.
       _precacheOccasionImages(_occasions);
-      if (_occasion != null) _loadPackagesForOccasion(_occasion!.id);
+      if (_occasion != null && widget.initialPackage == null) _loadPackagesForOccasion(_occasion!.id);
       _loadPalette();
     } catch (e, st) {
       logError('plan_flow.loadData', e, st);
@@ -695,6 +713,15 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       return;
     }
 
+    // A celebration needs a venue. Without one the vendor has nowhere to go,
+    // and the old flow let the booking through with a blank address.
+    if (_address == null) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.addrNeededToBook)));
+      await _openAddAddress();
+      if (_address == null || !mounted) return;
+    }
+
     // Email verification is only required at the point of actually booking
     // an event — gate the actual booking creation call, not the planning
     // steps leading up to it.
@@ -816,6 +843,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     return Scaffold(
       backgroundColor: ty.paper,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             Padding(
@@ -866,14 +894,22 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: ty.line2)),
-              ),
-              child: _footer(context, steps, step),
-            ),
           ],
+        ),
+      ),
+      // A bottom bar (not a row inside the body) so error snackbars appear
+      // ABOVE the primary button instead of covering it. After a failed
+      // booking the customer could not tap "Proceed To Payment" again until
+      // the message timed out.
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+          decoration: BoxDecoration(
+            color: ty.paper,
+            border: Border(top: BorderSide(color: ty.line2)),
+          ),
+          child: _footer(context, steps, step),
         ),
       ),
     );
@@ -1027,17 +1063,10 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       return;
     }
 
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => AddressFormSheet(
-        onSave: (data) async {
-          final addr = await _userService.addAddress(data);
-          if (mounted) setState(() { _addresses = [..._addresses, addr]; _address = addr; });
-        },
-      ),
-    );
+    final saved = await showAddAddressFlow(context, save: (data) => _userService.addAddress(data));
+    if (saved != null && mounted) {
+      setState(() { _addresses = [..._addresses, saved]; _address = saved; });
+    }
   }
 
   // ── Step: Package ────────────────────────────────────────────────────────
@@ -2141,9 +2170,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _summaryCard(context, l10n.planFlowSummaryCelebrationLabel, _occasion?.name ?? '',
-            onEdit: occasionIdx == -1 ? null : () => _jumpTo(occasionIdx)),
-        _summaryCard(context, l10n.planFlowSummaryPackageLabel, _pkg?.name ?? '', onEdit: () => _jumpTo(packageIdx)),
+        if (_occasion != null)
+          _summaryCard(context, l10n.planFlowSummaryCelebrationLabel, _occasion?.name ?? '',
+              onEdit: occasionIdx == -1 ? null : () => _jumpTo(occasionIdx)),
+        _summaryCard(context, l10n.planFlowSummaryPackageLabel, _pkg?.name ?? '',
+            onEdit: packageIdx == -1 ? null : () => _jumpTo(packageIdx)),
         if (_showBalloonTheme && _balloonColors.isNotEmpty)
           _summaryCard(
             context,
@@ -2186,20 +2217,35 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
             children: [
               if (_addresses.isEmpty)
                 TyButton(l10n.planFlowAddAddressButtonLabel, kind: TyButtonKind.ghost, leadingIcon: Icons.add_location_alt_outlined, onTap: _openAddAddress)
-              else
-                RadioGroup<Address>(
-                  groupValue: _address,
-                  onChanged: (v) => setState(() => _address = v!),
-                  child: Column(
-                    children: _addresses.map((addr) => RadioListTile<Address>(
-                          value: addr,
-                          activeColor: ty.saffron,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(addr.label, style: TyType.sans(14, weight: FontWeight.w700)),
-                          subtitle: Text(addr.fullAddress, style: TyType.sans(12, color: ty.ink2)),
-                        )).toList(),
+              else ...[
+                // Its own transparent Material: the card behind has a fill, which
+                // otherwise hides the tap ripple (and trips a framework assertion).
+                Material(
+                  type: MaterialType.transparency,
+                  child: RadioGroup<Address>(
+                    groupValue: _address,
+                    onChanged: (v) => setState(() => _address = v!),
+                    child: Column(
+                      children: _addresses.map((addr) => RadioListTile<Address>(
+                            value: addr,
+                            activeColor: ty.saffron,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(addr.label, style: TyType.sans(14, weight: FontWeight.w700)),
+                            subtitle: Text(addr.fullAddress, style: TyType.sans(12, color: ty.ink2)),
+                          )).toList(),
+                    ),
                   ),
                 ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _openAddAddress,
+                    icon: Icon(Icons.add_location_alt_outlined, size: 18, color: ty.saffronDeep),
+                    label: Text(l10n.planFlowAddNewAddressLabel,
+                        style: TyType.sans(13.5, color: ty.saffronDeep, weight: FontWeight.w700)),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -2289,10 +2335,11 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: onEdit,
-            child: Icon(Icons.edit_outlined, size: 16, color: ty.ink3),
-          ),
+          if (onEdit != null)
+            GestureDetector(
+              onTap: onEdit,
+              child: Icon(Icons.edit_outlined, size: 16, color: ty.ink3),
+            ),
         ],
       ),
     );
@@ -2383,8 +2430,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
       );
 }
 
-// The address add/edit form now lives in manage_address_screen.dart
-// (AddressFormSheet) and is reused here to avoid two divergent copies.
+// The address add/edit journey lives in screens/address/address_flow.dart and
+// is shared with Manage Addresses so the two never drift apart.
 
 // ── Package preview sheet ────────────────────────────────────────────────────
 // Swipe-up preview of a package from the package step: a photo carousel

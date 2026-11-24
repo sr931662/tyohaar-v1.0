@@ -9,6 +9,7 @@ import '../data/services/user_service.dart';
 import '../widgets/ty_button.dart';
 import '../widgets/common.dart';
 import '../l10n/generated/app_localizations.dart';
+import 'address/address_flow.dart';
 
 class ManageAddressScreen extends StatefulWidget {
   const ManageAddressScreen({super.key});
@@ -78,32 +79,15 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
   }
 
   Future<void> _openAddForm() async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => AddressFormSheet(
-        onSave: (data) async {
-          await context.read<UserService>().addAddress(data);
-        },
-      ),
-    );
-    _load();
+    final userService = context.read<UserService>();
+    final saved = await showAddAddressFlow(context, save: (data) => userService.addAddress(data));
+    if (saved != null) _load();
   }
 
   Future<void> _openEditForm(Address addr) async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => AddressFormSheet(
-        existing: addr,
-        onSave: (data) async {
-          await context.read<UserService>().updateAddress(addr.id, data);
-        },
-      ),
-    );
-    _load();
+    final userService = context.read<UserService>();
+    final saved = await showEditAddressFlow(context, addr, save: (data) => userService.updateAddress(addr.id, data));
+    if (saved != null) _load();
   }
 
   @override
@@ -261,219 +245,6 @@ class _ManageAddressScreenState extends State<ManageAddressScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Normalizes a 10-digit Indian mobile number to E.164 (+91XXXXXXXXXX),
-/// which is what the backend's phone validator requires. Leaves already
-/// E.164-formatted numbers untouched.
-String? normalizeIndianPhone(String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return null;
-  if (trimmed.startsWith('+')) return trimmed;
-  final digitsOnly = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-  if (digitsOnly.length == 10) return '+91$digitsOnly';
-  if (digitsOnly.length == 12 && digitsOnly.startsWith('91')) return '+$digitsOnly';
-  return '+$digitsOnly';
-}
-
-class AddressFormSheet extends StatefulWidget {
-  final Future<void> Function(Map<String, dynamic> data) onSave;
-  final Address? existing;
-  const AddressFormSheet({super.key, required this.onSave, this.existing});
-
-  @override
-  State<AddressFormSheet> createState() => _AddressFormSheetState();
-}
-
-class _AddressFormSheetState extends State<AddressFormSheet> {
-  late final _recipientNameCtrl = TextEditingController(text: widget.existing?.recipientName ?? '');
-  late final _recipientPhoneCtrl = TextEditingController(text: widget.existing?.recipientPhone ?? '');
-  late final _line1Ctrl = TextEditingController(text: widget.existing?.addressLine1 ?? '');
-  late final _line2Ctrl = TextEditingController(text: widget.existing?.addressLine2 ?? '');
-  late final _landmarkCtrl = TextEditingController(text: widget.existing?.landmark ?? '');
-  late final _cityCtrl = TextEditingController(text: widget.existing?.city ?? '');
-  late final _stateCtrl = TextEditingController(text: widget.existing?.state ?? '');
-  late final _pinCtrl = TextEditingController(text: widget.existing?.postalCode ?? '');
-  late String _label = widget.existing?.label ?? 'Home';
-  bool _saving = false;
-  String? _error;
-
-  static const _labelToType = {'Home': 'home', 'Work': 'work', 'Other': 'other'};
-
-  // The picker options above are canonical keys stored as-is in `_label` and
-  // sent to the backend as the address `label` field; this only localizes
-  // what's rendered on the chip.
-  String _labelDisplayText(AppLocalizations l10n, String label) {
-    switch (label) {
-      case 'Home':
-        return l10n.manageAddressLabelHome;
-      case 'Work':
-        return l10n.manageAddressLabelWork;
-      default:
-        return l10n.manageAddressLabelOther;
-    }
-  }
-
-  @override
-  void dispose() {
-    _recipientNameCtrl.dispose();
-    _recipientPhoneCtrl.dispose();
-    _line1Ctrl.dispose();
-    _line2Ctrl.dispose();
-    _landmarkCtrl.dispose();
-    _cityCtrl.dispose();
-    _stateCtrl.dispose();
-    _pinCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final l10n = AppLocalizations.of(context)!;
-    final line1 = _line1Ctrl.text.trim();
-    final city = _cityCtrl.text.trim();
-    final state = _stateCtrl.text.trim();
-    final pin = _pinCtrl.text.trim();
-    if (line1.isEmpty || city.isEmpty || state.isEmpty || pin.isEmpty) {
-      setState(() => _error = l10n.manageAddressFormValidationError);
-      return;
-    }
-    setState(() { _saving = true; _error = null; });
-    try {
-      await widget.onSave({
-        'address_type': _labelToType[_label] ?? 'other',
-        'label': _label,
-        if (_recipientNameCtrl.text.trim().isNotEmpty) 'recipient_name': _recipientNameCtrl.text.trim(),
-        if (_recipientPhoneCtrl.text.trim().isNotEmpty)
-          'recipient_phone': normalizeIndianPhone(_recipientPhoneCtrl.text.trim()),
-        'address_line_1': line1,
-        if (_line2Ctrl.text.trim().isNotEmpty) 'address_line_2': _line2Ctrl.text.trim(),
-        if (_landmarkCtrl.text.trim().isNotEmpty) 'landmark': _landmarkCtrl.text.trim(),
-        'city': city,
-        'state': state,
-        'postal_code': pin,
-        'country': 'India',
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.manageAddressSavedMessage)),
-        );
-        Navigator.pop(context);
-      }
-    } catch (_) {
-      if (mounted) setState(() { _saving = false; _error = l10n.manageAddressSaveError; });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ty = context.ty;
-    final l10n = AppLocalizations.of(context)!;
-    return Container(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 32),
-      decoration: BoxDecoration(
-        color: ty.paper,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: ty.line, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(widget.existing != null ? l10n.manageAddressEditAddressTitle : l10n.manageAddressAddAddressTitle, style: TyType.display(22, color: ty.ink)),
-            const SizedBox(height: 20),
-            // Label picker
-            Row(
-              children: ['Home', 'Work', 'Other'].map((l) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => setState(() => _label = l),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _label == l ? ty.saffron : ty.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _label == l ? ty.saffron : ty.line),
-                    ),
-                    child: Text(_labelDisplayText(l10n, l), style: TyType.sans(13, color: _label == l ? Colors.white : ty.ink, weight: FontWeight.w600)),
-                  ),
-                ),
-              )).toList(),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _field(ty, l10n.manageAddressRecipientNameLabel, l10n.manageAddressRecipientNameHint, _recipientNameCtrl)),
-                const SizedBox(width: 12),
-                Expanded(child: _field(ty, l10n.manageAddressRecipientPhoneLabel, l10n.manageAddressRecipientPhoneHint, _recipientPhoneCtrl, type: TextInputType.phone, helperText: l10n.manageAddressPhoneFormatHelperText)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _field(ty, l10n.manageAddressLine1Label, l10n.manageAddressLine1Hint, _line1Ctrl),
-            const SizedBox(height: 12),
-            _field(ty, l10n.manageAddressLine2Label, l10n.manageAddressLine2Hint, _line2Ctrl),
-            const SizedBox(height: 12),
-            _field(ty, l10n.manageAddressLandmarkLabel, l10n.manageAddressLandmarkHint, _landmarkCtrl),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: _field(ty, l10n.manageAddressCityLabel, l10n.manageAddressCityHint, _cityCtrl)),
-                const SizedBox(width: 12),
-                Expanded(child: _field(ty, l10n.manageAddressStateLabel, l10n.manageAddressStateHint, _stateCtrl)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _field(ty, l10n.manageAddressPinCodeLabel, l10n.manageAddressPinCodeHint, _pinCtrl, type: TextInputType.number, helperText: l10n.manageAddressPinCodeFormatHelperText),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: TyType.sans(13, color: ty.rose)),
-            ],
-            const SizedBox(height: 24),
-            TyButton(_saving ? l10n.manageAddressSavingLabel : l10n.manageAddressSaveButtonLabel, full: true, enabled: !_saving, onTap: _save),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _field(TyColors ty, String label, String hint, TextEditingController ctrl,
-      {TextInputType type = TextInputType.text, String? helperText}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TyType.eyebrow(10, color: ty.ink3)),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          decoration: BoxDecoration(
-            color: ty.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: ty.line),
-          ),
-          child: TextField(
-            controller: ctrl,
-            keyboardType: type,
-            style: TyType.sans(14, color: ty.ink),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TyType.sans(14, color: ty.ink3),
-              border: InputBorder.none,
-            ),
-          ),
-        ),
-        if (helperText != null) ...[
-          const SizedBox(height: 4),
-          Text(helperText, style: TyType.sans(10.5, color: ty.ink3)),
-        ],
-      ],
     );
   }
 }

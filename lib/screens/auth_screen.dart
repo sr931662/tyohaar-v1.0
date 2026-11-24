@@ -297,6 +297,7 @@ class _AuthScreenState extends State<AuthScreen> {
       appBar: tyAppBar(context, title: l10n.authWelcomeTitle),
       body: SafeArea(
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: EdgeInsets.symmetric(horizontal: resp.w(24)),
           child: AutofillGroup(
             child: Column(
@@ -305,7 +306,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 SizedBox(height: resp.h(24)),
                 Text(l10n.authHeading, style: TyType.display(resp.sp(32), color: ty.ink)),
                 SizedBox(height: resp.h(8)),
-                Text(l10n.codeSignInSubheading, style: TyType.sans(resp.sp(15), color: ty.ink2, height: 1.4)),
+                Text(_phoneCodes ? l10n.codeSignInSubheading : l10n.codeSignInSubheadingEmail, style: TyType.sans(resp.sp(15), color: ty.ink2, height: 1.4)),
                 SizedBox(height: resp.h(28)),
                 if (_showPassword)
                   _buildPasswordSection(ty, resp)

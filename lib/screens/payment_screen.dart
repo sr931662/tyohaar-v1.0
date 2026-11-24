@@ -5,6 +5,7 @@ import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../data/auth_manager.dart';
 import '../data/services/payment_service.dart';
+import '../utils/currency.dart';
 import '../widgets/ty_button.dart';
 import 'booking_confirmation_screen.dart';
 import 'send_invitations_screen.dart';
@@ -379,7 +380,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(child: Text(widget.packageName, style: TyType.sans(16, color: ty.ink, weight: FontWeight.w700))),
-                      Text('₹${widget.amount.toInt()}', style: TyType.display(20, color: ty.saffronDeep)),
+                      Text(formatRupees(widget.amount), style: TyType.display(20, color: ty.saffronDeep)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -511,7 +512,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ? l10n.paymentConfirmingLabel
             : _isBusy
                 ? l10n.paymentProcessingLabel
-                : l10n.paymentPayButtonLabel('${widget.amount.toInt()}'),
+                : l10n.paymentPayButtonLabel(formatRupees(widget.amount).replaceFirst('₹', '')),
         full: true,
         icon: Icons.payment_rounded,
         enabled: !_isBusy,

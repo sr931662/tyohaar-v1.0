@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -7,7 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:gal/gal.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import 'package:tyohaar/screens/booking_flow_screen.dart';
+import 'package:tyohaar/screens/plan_flow/plan_flow_screen.dart';
 import 'package:tyohaar/theme/assets.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -99,7 +99,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   }
 
   // The served image URL already has the Tyohaar watermark baked in
-  // server-side (see cloudinary_client.py) — saving it is enough, no
+  // server-side (see cloudinary_client.py) â€” saving it is enough, no
   // client-side watermarking needed. Downloads whichever image is
   // currently visible in the slider, not always the cover.
   Future<void> _downloadCurrentImage() async {
@@ -293,10 +293,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => BookingFlowScreen(
-                            package: _fullPackage,
-                            initialGuestCount: _guestCount,
-                          ),
+                          builder: (_) => PlanFlowScreen(initialPackage: _fullPackage),
                         ),
                       );
                     }),
@@ -359,7 +356,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
             ),
           ),
         ),
-        // Save/download button — clearly visible against any photo: solid
+        // Save/download button â€” clearly visible against any photo: solid
         // white pill with a label, bottom-right, above the page dots so it
         // never overlaps them regardless of image count.
         Positioned(
@@ -534,7 +531,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
     );
   }
 
-  /// Full-screen zoomable viewer for one item — cover first, then its
+  /// Full-screen zoomable viewer for one item â€” cover first, then its
   /// gallery images.
   void _showItemGallery(BuildContext context, PackageItem item) {
     ImageViewer.open(context, images: item.allImageUrls, title: item.name);

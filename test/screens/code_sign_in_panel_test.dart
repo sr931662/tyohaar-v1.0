@@ -86,28 +86,60 @@ void main() {
 
   testWidgets('email works the same way', (tester) async {
     await tester.pumpWidget(host());
+    await tester.tap(find.text('Email'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'Asha@Example.com');
     await tester.tap(find.text('Send code'));
     await tester.pumpAndSettle();
     expect(auth.sent, ['asha@example.com']);
   });
 
-  testWidgets('a mobile number is refused clearly when SMS is not available', (tester) async {
+  testWidgets('mobile is flagged up front when SMS is not available, and email is the default', (tester) async {
     await tester.pumpWidget(host(phone: false));
-    await tester.enterText(find.byType(TextField), '9876543210');
-    await tester.tap(find.text('Send code'));
+    // Starts on email: there is no dead end waiting after typing a number.
+    expect(tester.widget<TextField>(find.byType(TextField)).keyboardType, TextInputType.emailAddress);
+    expect(find.text('Soon'), findsOneWidget);
+    await tester.tap(find.text('Mobile'));
     await tester.pumpAndSettle();
-    expect(auth.sent, isEmpty);
     expect(find.textContaining("isn't available yet"), findsOneWidget);
+    expect(auth.sent, isEmpty);
+    // Still on the email field.
+    expect(tester.widget<TextField>(find.byType(TextField)).keyboardType, TextInputType.emailAddress);
   });
 
-  testWidgets('nonsense input is caught before calling the server', (tester) async {
+  testWidgets('each tab brings up the right keyboard: number pad for mobile, @ keyboard for email', (tester) async {
+    await tester.pumpWidget(host());
+    expect(tester.widget<TextField>(find.byType(TextField)).keyboardType, TextInputType.phone);
+    await tester.tap(find.text('Email'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.byType(TextField)).keyboardType, TextInputType.emailAddress);
+  });
+
+  testWidgets('the mobile field takes digits only, at most 10', (tester) async {
+    await tester.pumpWidget(host());
+    await tester.enterText(find.byType(TextField), '98a76-54 3210999');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '9876543210');
+  });
+
+  testWidgets('an incomplete mobile number is caught before calling the server', (tester) async {
     await tester.pumpWidget(host());
     await tester.enterText(find.byType(TextField), '12345');
     await tester.tap(find.text('Send code'));
     await tester.pumpAndSettle();
     expect(auth.sent, isEmpty);
-    expect(find.textContaining('valid 10-digit'), findsOneWidget);
+    expect(find.textContaining('10-digit'), findsWidgets);
+  });
+
+  testWidgets('a malformed email is caught before calling the server', (tester) async {
+    await tester.pumpWidget(host());
+    await tester.tap(find.text('Email'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'not-an-email');
+    await tester.tap(find.text('Send code'));
+    await tester.pumpAndSettle();
+    expect(auth.sent, isEmpty);
+    expect(find.textContaining('valid email'), findsOneWidget);
   });
 
   testWidgets("the server's own message is shown, not a generic one", (tester) async {

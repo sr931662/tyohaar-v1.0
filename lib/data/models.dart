@@ -368,6 +368,9 @@ class Package {
   final int displayOrder;
   // City slug where this package is offered (e.g. 'noida', 'mumbai').
   final String? citySlug;
+  // Occasions this package is sold under; lets a flow that starts from a
+  // package (rather than an occasion) still know what is being celebrated.
+  final List<String> occasionIds;
 
   const Package({
     required this.id,
@@ -397,6 +400,7 @@ class Package {
     this.currency = 'INR',
     this.displayOrder = 0,
     this.citySlug,
+    this.occasionIds = const [],
   });
 
   Package copyWith({int? likeCount, bool? isLiked}) => Package(
@@ -427,6 +431,7 @@ class Package {
         currency: currency,
         displayOrder: displayOrder,
         citySlug: citySlug,
+        occasionIds: occasionIds,
       );
 
   factory Package.fromJson(Map<String, dynamic> json) {
@@ -473,6 +478,7 @@ class Package {
       currency: json['currency'] as String? ?? 'INR',
       displayOrder: json['display_order'] as int? ?? 0,
       citySlug: json['city_slug'] as String?,
+      occasionIds: (json['occasion_ids'] as List?)?.map((e) => e.toString()).toList() ?? const [],
     );
   }
 
@@ -1280,6 +1286,10 @@ class Address {
   final String country;
   final String postalCode;
   final bool isDefault;
+  final String? locality;
+  final String? deliveryInstructions;
+  final double? latitude;
+  final double? longitude;
 
   const Address({
     required this.id,
@@ -1295,6 +1305,10 @@ class Address {
     this.country = 'India',
     required this.postalCode,
     this.isDefault = false,
+    this.locality,
+    this.deliveryInstructions,
+    this.latitude,
+    this.longitude,
   });
 
   /// Single-line summary for display in cards/lists.
@@ -1324,6 +1338,10 @@ class Address {
       country: json['country'] as String? ?? 'India',
       postalCode: json['postal_code'] as String? ?? '',
       isDefault: json['is_default'] as bool? ?? false,
+      locality: json['locality'] as String?,
+      deliveryInstructions: json['delivery_instructions'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble() ?? double.tryParse('${json['latitude'] ?? ''}'),
+      longitude: (json['longitude'] as num?)?.toDouble() ?? double.tryParse('${json['longitude'] ?? ''}'),
     );
   }
 }

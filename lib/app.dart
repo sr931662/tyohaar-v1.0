@@ -83,7 +83,13 @@ class TyohaarApp extends StatelessWidget {
                 ),
                 child: MediaQuery(
                   data: mq.copyWith(textScaler: clampedScaler),
-                  child: OfflineBanner(child: child ?? const SizedBox.shrink()),
+                  // Tapping empty space puts the keyboard away. Without this the
+                  // keypad stayed up over buttons and messages on every form.
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                    child: OfflineBanner(child: child ?? const SizedBox.shrink()),
+                  ),
                 ),
               );
             },
