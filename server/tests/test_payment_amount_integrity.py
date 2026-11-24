@@ -105,6 +105,8 @@ def service(monkeypatch, customer_id):
         id=uuid.uuid4(),
         customer_id=customer_id,
         total_amount=BOOKING_TOTAL,
+        amount_paid=Decimal("0.00"),
+        amount_due=BOOKING_TOTAL,
         payment_status=PaymentStatus.PENDING,
     )
     payments_repo = _Repo()

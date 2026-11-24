@@ -69,6 +69,8 @@ async def send_email(
 
     message["Subject"] = subject
     message["From"] = f"{settings.SMTP_FROM_NAME} <{from_email}>"
+    # Replies go to the public support address even if the relay rewrites From.
+    message["Reply-To"] = from_email
     message["To"] = to
 
     # Gmail app passwords are often copy-pasted with spaces (as displayed

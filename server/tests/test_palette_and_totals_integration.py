@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.models import *  # noqa: F401,F403 - registers every table on Base
 from app.models.base import Base
+from app.models.bookings.booking import Booking
 from app.models.bookings.booking_item import BookingItem
 from app.models.common.app_setting import AppSetting
 from app.models.common.balloon_color import BalloonColor
@@ -30,6 +31,7 @@ from app.models.common.balloon_finish import BalloonFinish
 from app.models.enums import (
     AppSettingDataType,
     AccountStatus,
+    BookingStatus,
     CharacterSet,
     Currency,
     PackageStatus,
@@ -482,3 +484,33 @@ async def test_http_invoice_download_headers_and_errors(sf):
         await as_(stranger)
         assert (await c.get(url)).status_code == 403
         assert (await c.get(f"/api/v1/bookings/{result.id}/lines")).status_code == 403
+
+
+async def test_a_new_booking_never_touches_an_earlier_one(sf):
+    """Regression: a second attempt for the same package + date used to return the
+    FIRST booking (or cancel it), so the payment screen charged an earlier attempt's
+    add-ons / price. Every booking is created from its own request alone."""
+    await seed_palette(sf)
+    customer = await make_user(sf)
+    package, occasion = await make_package(sf)
+    cake = await add_item(sf, package, name="Cake", base_price=Decimal("250"), quantity=1, is_mandatory=False)
+
+    first = await run_booking(sf, customer, booking(package, occasion))
+    assert Decimal(str(first.total_amount)) == Decimal("1000")
+
+    # Same package and date, but this time with the cake: a separate booking, priced
+    # only from what was selected now.
+    second = await run_booking(sf, customer, booking(package, occasion, item_ids=[cake.id]))
+    assert second.id != first.id
+    assert Decimal(str(second.subtotal)) == Decimal("1250")
+    assert Decimal(str(second.total_amount)) == Decimal("1250")
+
+    # Even an identical request is its own booking: nothing is reused...
+    third = await run_booking(sf, customer, booking(package, occasion, item_ids=[cake.id]))
+    assert third.id not in (first.id, second.id)
+
+    # ...and no earlier booking was changed or cancelled along the way.
+    async with sf() as s:
+        for earlier in (first, second):
+            row = await s.get(Booking, earlier.id)
+            assert row.booking_status == BookingStatus.PENDING

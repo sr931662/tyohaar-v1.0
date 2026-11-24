@@ -72,3 +72,15 @@ class UnsupportedGatewayError(ValidationError):
 class RefundNotFoundError(NotFoundError):
     def __init__(self, identifier: str | None = None) -> None:
         super().__init__("Refund", identifier)
+
+
+class PaymentNotConfirmedError(ConflictError):
+    """Razorpay has not (yet) reported this payment as captured."""
+
+    default_message = "Razorpay has not confirmed this payment yet."
+
+
+class PaymentAmountMismatchError(BusinessRuleError):
+    """What Razorpay says was paid is not what this payment was created for."""
+
+    default_message = "The amount Razorpay received does not match this payment."

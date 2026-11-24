@@ -126,15 +126,18 @@ class Settings(BaseSettings):
     # Generate one at myaccount.google.com/apppasswords ("Mail" → your device
     # name), then set SMTP_USERNAME to the full Gmail address and
     # SMTP_PASSWORD to the 16-character app password (spaces are fine, they
-    # are stripped before use). SMTP_FROM_EMAIL defaults to SMTP_USERNAME
-    # when left blank.
+    # are stripped before use). SMTP_FROM_EMAIL is the address customers see
+    # on every email (default info@tyohaar.co). Gmail only honours it if that
+    # address is a verified "Send mail as" alias of SMTP_USERNAME (or is the
+    # SMTP_USERNAME itself); otherwise Gmail silently rewrites the sender to
+    # the login account. Set it blank to send as SMTP_USERNAME.
     # Leave SMTP_USERNAME/SMTP_PASSWORD blank in dev; OTP emails and other
     # transactional emails return a clear error until set.
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM_EMAIL: str = ""
+    SMTP_FROM_EMAIL: str = "info@tyohaar.co"
     SMTP_FROM_NAME: str = "Tyohaar"
     # Who the platform owner is for "new paid booking" emails: comma-separated
     # addresses. Blank falls back to every active super-admin's email.

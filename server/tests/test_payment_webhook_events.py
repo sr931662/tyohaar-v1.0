@@ -114,8 +114,9 @@ def service(monkeypatch, payment):
         id=payment.booking_id,
         booking_status=None,
         payment_status=PaymentStatus.PENDING,
+        total_amount=Decimal("50000.00"),
         amount_paid=Decimal("0.00"),
-        amount_due=Decimal("500.00"),
+        amount_due=Decimal("50000.00"),
         applied_coupon_ids=None,
     )
     svc = PaymentService()

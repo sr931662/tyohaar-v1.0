@@ -42,6 +42,9 @@ __all__ = [
     "BookingVendorSummary",
     "BookingDetailResponse",
     "BookingMediaSummary",
+    "BookingAddressSummary",
+    "BookingPaymentSummary",
+    "BookingLineResponse",
 ]
 
 
@@ -140,6 +143,9 @@ class BookingResponse(BaseSchema):
     customer_name: str | None = None
     customer_email: str | None = None
     customer_phone: str | None = None
+    vendor_name: str | None = Field(
+        default=None, description="Package-owner vendor's business name; admin booking list only"
+    )
 
 
 class BookingItemResponse(BaseSchema):
@@ -241,6 +247,7 @@ class BookingStatusHistoryResponse(BaseSchema):
         validation_alias=AliasChoices("to_status", "new_status")
     )
     changed_by_id: uuid.UUID | None
+    changed_by_name: str | None = Field(default=None, description="Display name of whoever made the change")
     reason: str | None
     changed_at: datetime = Field(
         validation_alias=AliasChoices("changed_at", "transitioned_at")
@@ -266,6 +273,47 @@ class BookingInvoiceResponse(BaseSchema):
     pdf_url: str | None = Field(default=None, validation_alias=AliasChoices("pdf_url", "invoice_url"))
     created_at: datetime
     updated_at: datetime
+
+
+class BookingAddressSummary(BaseSchema):
+    """Where the celebration happens and who will be there, for the booking page."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID | None = None
+    label: str | None = None
+    recipient_name: str | None = None
+    recipient_phone: str | None = None
+    address_line_1: str | None = None
+    address_line_2: str | None = None
+    landmark: str | None = None
+    locality: str | None = None
+    city: str | None = None
+    state: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    maps_link: str | None = Field(default=None, description="Google Maps link the customer pasted, if any")
+    delivery_instructions: str | None = None
+    full_address: str | None = Field(default=None, description="The whole address on one line")
+
+
+class BookingPaymentSummary(BaseSchema):
+    """One payment attempt/charge against the booking, newest first."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    payment_number: str | None = None
+    payment_status: str
+    payment_method: str | None = None
+    gateway: str | None = None
+    final_amount: MoneyAmount
+    gateway_payment_id: str | None = None
+    captured_at: datetime | None = None
+    failed_at: datetime | None = None
+    created_at: datetime
 
 
 class BookingDetailResponse(BookingResponse):
@@ -296,6 +344,24 @@ class BookingDetailResponse(BookingResponse):
     vendor: BookingVendorSummary | None = Field(
         default=None, description="Package-owner vendor summary — admin/support requesters only"
     )
+    # What was actually ordered, delivered where, and charged how. The ORM
+    # relationships behind most of these are lazy="noload", so the service
+    # fills them explicitly; they used to come back empty on every booking.
+    lines: list[BookingLineResponse] = Field(
+        default_factory=list,
+        description="Everything priced on the booking (items and services), labelled rental/keep/service",
+    )
+    recipient_name: str | None = None
+    recipient_phone: str | None = None
+    address: BookingAddressSummary | None = None
+    occasion_name: str | None = None
+    venue_name: str | None = None
+    venue_address: str | None = None
+    package_base_price: MoneyAmount | None = Field(
+        default=None, description="The package's own price, before items/services, discount and tax"
+    )
+    applied_coupon_codes: list[str] = Field(default_factory=list)
+    payments: list[BookingPaymentSummary] = Field(default_factory=list)
 
 
 class BookingMediaSummary(BaseSchema):
@@ -339,3 +405,7 @@ class BookingLineResponse(BaseSchema):
     final_price: MoneyAmount
     is_addon: bool = False
     note: str | None = Field(default=None, description="What the customer asked for, e.g. 'ANITA 30'")
+
+
+# BookingDetailResponse refers to BookingLineResponse, which is defined after it.
+BookingDetailResponse.model_rebuild()

@@ -34,6 +34,7 @@ from app.schemas.bookings import (
     BookingStatusHistoryResponse,
     BookingVendorSummary,
 )
+from app.schemas.bookings.response import BookingAddressSummary, BookingPaymentSummary
 from app.services.base import BaseService
 from app.services.exceptions import BusinessRuleError
 from app.services.bookings.constants import (
@@ -167,28 +168,6 @@ class BookingService(BaseService):
                     "Please verify your email address or phone number before booking."
                 )
 
-            # Idempotency safety net: if the customer already has a PENDING
-            # booking for this exact package + date created in the last few
-            # minutes, return it instead of creating a duplicate celebration
-            # + booking. Covers a client back-navigation/resubmit race
-            # rather than a client-supplied idempotency key.
-            recent_cutoff = datetime.now(tz=timezone.utc) - timedelta(minutes=5)
-            duplicate_candidates = await uow.bookings.bookings.find_many(
-                uow.bookings.bookings._model.customer_id == customer_id,
-                uow.bookings.bookings._model.package_id == data.package_id,
-                uow.bookings.bookings._model.scheduled_date == data.scheduled_date,
-                uow.bookings.bookings._model.booking_status == BookingStatus.PENDING,
-                uow.bookings.bookings._model.created_at >= recent_cutoff,
-            )
-            if duplicate_candidates:
-                existing = max(duplicate_candidates, key=lambda b: b.created_at)
-                info = await self._attach_package_info(uow, [existing])
-                response = BookingResponse.model_validate(existing)
-                response.package_name, response.package_cover_url = info.get(
-                    existing.package_id, (None, None)
-                )
-                return response
-
             # Validate package exists and is available
             package = await validate_package_available(data.package_id, data.scheduled_date, uow)
 
@@ -209,21 +188,6 @@ class BookingService(BaseService):
 
                 if occasion_id is None:
                     raise CelebrationRequiredError()
-
-                celebration = await uow.occasions.celebrations.create_from_dict({
-                    "customer_id": customer_id,
-                    "occasion_id": occasion_id,
-                    "title": data.celebration_title or f"{package.name} booking",
-                    "celebration_date": data.scheduled_date,
-                    "venue_address": data.venue_address,
-                    # theme_id takes precedence — the Flutter client only ever sends
-                    # one of the two, but guard against both being set anyway.
-                    "theme_id": data.theme_id,
-                    "custom_theme_colors": data.custom_theme_colors if not data.theme_id else None,
-                    "guest_count": 0,
-                    "event_source": EventSource.TYOHAAR_BOOKING,
-                })
-                celebration_id = celebration.id
 
             if data.balloon_colors:
                 from app.services.colors.service import BalloonColorService
@@ -380,6 +344,28 @@ class BookingService(BaseService):
             tax_amount = amounts["tax"]
             total_amount = amounts["total"]
 
+            # A booking is created from this request alone. Earlier bookings, paid
+            # or not, are never looked at, reused, repriced or cancelled here:
+            # the app's booking button is already single-flight, and an unpaid
+            # booking that is never paid is its own matter (it simply stays
+            # unpaid and unconfirmed).
+
+            if celebration_id is None:
+                celebration = await uow.occasions.celebrations.create_from_dict({
+                    "customer_id": customer_id,
+                    "occasion_id": occasion_id,
+                    "title": data.celebration_title or f"{package.name} booking",
+                    "celebration_date": data.scheduled_date,
+                    "venue_address": data.venue_address,
+                    # theme_id takes precedence — the Flutter client only ever sends
+                    # one of the two, but guard against both being set anyway.
+                    "theme_id": data.theme_id,
+                    "custom_theme_colors": data.custom_theme_colors if not data.theme_id else None,
+                    "guest_count": 0,
+                    "event_source": EventSource.TYOHAAR_BOOKING,
+                })
+                celebration_id = celebration.id
+
             booking_ref = generate_booking_reference()
 
             booking = Booking(
@@ -515,6 +501,20 @@ class BookingService(BaseService):
             for cid, title, theme_id, theme_name, theme_colors, custom_colors in rows.all()
         }
 
+    @staticmethod
+    def _real_phone(phone: str | None) -> str | None:
+        """TMP-<hex> is a placeholder for accounts with no number yet, not something to show."""
+        phone = (phone or "").strip()
+        return None if not phone or phone.startswith("TMP-") else phone
+
+    @staticmethod
+    def _customer_label(user) -> str | None:
+        """A person's name, else their email: never a placeholder, never blank when we know who they are."""
+        name = (user.display_name or "").strip()
+        if name and not name.startswith("TMP-"):
+            return name
+        return user.email or None
+
     async def _attach_customer_info(self, uow, customer_id: UUID) -> BookingCustomerSummary | None:
         """Fetch a lightweight customer contact snapshot for admin/support-only display."""
         user = await uow.users.users.get_by_id(customer_id)
@@ -522,8 +522,8 @@ class BookingService(BaseService):
             return None
         return BookingCustomerSummary(
             id=user.id,
-            full_name=user.full_name,
-            phone=user.phone,
+            full_name=self._customer_label(user),
+            phone=self._real_phone(user.phone),
             email=user.email,
         )
 
@@ -546,7 +546,7 @@ class BookingService(BaseService):
         return BookingVendorSummary(
             id=vendor.id,
             business_name=vendor.business_name,
-            phone=vendor_user.phone if vendor_user else None,
+            phone=self._real_phone(vendor_user.phone) if vendor_user else None,
             email=vendor_user.email if vendor_user else None,
             verification_status=vendor.verification_status,
         )
@@ -613,11 +613,170 @@ class BookingService(BaseService):
             # a vendor's own view of the same endpoint, to preserve the
             # existing invariant that customers and vendors never see each
             # other's identity through this shared endpoint.
-            if requester_role in ("admin", "super_admin"):
+            if requester_role in ("admin", "super_admin", "support"):
                 response.customer = await self._attach_customer_info(uow, booking.customer_id)
                 response.vendor = await self._attach_vendor_info(uow, booking.package_id)
 
+            await self._attach_booking_detail(uow, booking, response, requester_role)
             return response
+
+    async def _attach_booking_detail(
+        self, uow, booking, response: BookingDetailResponse, requester_role: str = "admin"
+    ) -> None:
+        """
+        Fill the parts of the detail response the ORM relationships never load
+        (they are all lazy="noload"): what was ordered, where, who is there,
+        the package price, payments, and the cancellation / reschedule /
+        invoice records. Each block is best-effort and independent, so one
+        unreadable record never blanks the whole booking page.
+        """
+        # Who sees what. Staff see everything. A customer sees their own order,
+        # address and payments. A vendor sees what they must deliver and where,
+        # but never the customer's contact details or any payment data: the
+        # endpoint's long-standing rule is that customers and vendors do not see
+        # each other's identity through it.
+        is_staff = requester_role in ("admin", "super_admin", "support")
+        sees_money_and_contact = is_staff or requester_role == "customer"
+
+        # What was ordered. `lines` is the unified, labelled list (rental / keep
+        # / service); `items` keeps the older item-only shape for existing clients.
+        try:
+            items = sorted(await uow.bookings.items.find_by_booking(booking.id), key=lambda i: i.display_order)
+            response.items = [BookingItemResponse.model_validate(i) for i in items]
+            lines = await self._booking_lines(uow, booking)
+            response.lines = [self._line_response(line) for line in lines]
+        except Exception:  # noqa: BLE001
+            logger.exception("Booking %s: could not load order lines", booking.id)
+
+        # Package price (the base the lines are added to) and its occasion.
+        try:
+            package = await uow.packages.packages.get_by_id(booking.package_id)
+            if package is not None:
+                response.package_base_price = package.base_price
+        except Exception:  # noqa: BLE001
+            logger.exception("Booking %s: could not load package price", booking.id)
+
+        # Delivery address + the contact who will be there.
+        try:
+            if sees_money_and_contact:
+                response.recipient_name = booking.recipient_name
+                response.recipient_phone = booking.recipient_phone
+            if booking.address_id:
+                addr = await uow.users.addresses.get_by_id(booking.address_id)
+                if addr is not None:
+                    summary = self._address_summary(addr)
+                    if not sees_money_and_contact:
+                        summary.recipient_name = None
+                        summary.recipient_phone = None
+                    response.address = summary
+        except Exception:  # noqa: BLE001
+            logger.exception("Booking %s: could not load address", booking.id)
+
+        # Celebration: occasion + the venue text the customer saw at checkout.
+        try:
+            celebration = await uow.occasions.celebrations.get_by_id(booking.celebration_id)
+            if celebration is not None:
+                response.venue_name = celebration.venue_name
+                response.venue_address = celebration.venue_address
+                if celebration.occasion_id:
+                    occasion = await uow.occasions.occasions.get_by_id(celebration.occasion_id)
+                    response.occasion_name = occasion.name if occasion is not None else None
+        except Exception:  # noqa: BLE001
+            logger.exception("Booking %s: could not load celebration", booking.id)
+
+        # Payments, newest first.
+        try:
+            payments = await uow.payments.payments.find_by_booking(booking.id) if sees_money_and_contact else []
+            response.payments = [
+                BookingPaymentSummary(
+                    id=pay.id,
+                    payment_number=pay.payment_number,
+                    payment_status=getattr(pay.payment_status, "value", str(pay.payment_status)),
+                    payment_method=getattr(pay.payment_method, "value", pay.payment_method),
+                    gateway=getattr(pay.gateway, "value", pay.gateway),
+                    final_amount=pay.final_amount,
+                    gateway_payment_id=pay.gateway_payment_id,
+                    captured_at=pay.captured_at,
+                    failed_at=pay.failed_at,
+                    created_at=pay.created_at,
+                )
+                for pay in payments
+            ]
+        except Exception:  # noqa: BLE001
+            logger.exception("Booking %s: could not load payments", booking.id)
+
+        # Coupon codes behind the discount.
+        try:
+            codes: list[str] = []
+            for cid in (booking.applied_coupon_ids or []) if sees_money_and_contact else []:
+                coupon = await uow.payments.coupons.get_by_id(UUID(str(cid)))
+                if coupon is not None and coupon.code:
+                    codes.append(coupon.code)
+            response.applied_coupon_codes = codes
+        except Exception:  # noqa: BLE001
+            logger.exception("Booking %s: could not load coupons", booking.id)
+
+        # Cancellation / reschedules / invoices (also noload on the model).
+        try:
+            cancellation = await uow.bookings.cancellations.find_by_booking(booking.id)
+            if cancellation is not None:
+                response.cancellation = BookingCancellationResponse.model_validate(cancellation)
+            response.reschedules = [
+                BookingRescheduleResponse.model_validate(r)
+                for r in await uow.bookings.reschedules.find_by_booking(booking.id)
+            ]
+            invoice = await uow.bookings.invoices.find_by_booking(booking.id) if sees_money_and_contact else None
+            if invoice is not None:
+                response.invoices = [BookingInvoiceResponse.model_validate(invoice)]
+        except Exception:  # noqa: BLE001
+            logger.exception("Booking %s: could not load cancellation/reschedule/invoice", booking.id)
+
+    @staticmethod
+    def _address_summary(addr) -> BookingAddressSummary:
+        instructions = addr.delivery_instructions or None
+        maps_link = None
+        if instructions and instructions.startswith("Google Maps: "):
+            maps_link = instructions[len("Google Maps: "):].strip() or None
+        parts = [
+            addr.address_line_1,
+            addr.address_line_2,
+            f"Near {addr.landmark}" if addr.landmark else None,
+            addr.city,
+            " ".join(x for x in (addr.state, addr.postal_code) if x) or None,
+        ]
+        return BookingAddressSummary(
+            id=addr.id,
+            label=addr.label,
+            recipient_name=addr.recipient_name,
+            recipient_phone=addr.recipient_phone,
+            address_line_1=addr.address_line_1,
+            address_line_2=addr.address_line_2,
+            landmark=addr.landmark,
+            locality=addr.locality,
+            city=addr.city,
+            state=addr.state,
+            postal_code=addr.postal_code,
+            country=addr.country,
+            latitude=float(addr.latitude) if addr.latitude is not None else None,
+            longitude=float(addr.longitude) if addr.longitude is not None else None,
+            maps_link=maps_link,
+            delivery_instructions=None if maps_link else instructions,
+            full_address=", ".join(p for p in parts if p),
+        )
+
+    @classmethod
+    def _line_response(cls, line) -> BookingLineResponse:
+        return BookingLineResponse(
+            kind=cls._line_kind(line),
+            name=line.name,
+            description=line.description,
+            quantity=line.quantity,
+            unit=line.unit,
+            unit_price=line.unit_price,
+            final_price=line.final_price,
+            is_addon=bool(line.is_addon),
+            note=line.notes,
+        )
 
     async def list_bookings(
         self,
@@ -646,10 +805,27 @@ class BookingService(BaseService):
                 conditions.append(model.booking_status == filters.booking_status)
             if filters.payment_status is not None:
                 conditions.append(model.payment_status == filters.payment_status)
+            if filters.booking_type is not None:
+                conditions.append(model.booking_type == filters.booking_type)
+            if filters.from_date is not None:
+                conditions.append(model.scheduled_date >= filters.from_date)
+            if filters.to_date is not None:
+                conditions.append(model.scheduled_date <= filters.to_date)
             if filters.search:
                 term = f"%{filters.search.strip()}%"
                 search_conditions = [model.booking_number.ilike(term)]
                 if is_admin_view:
+                    # ...and by the vendor whose package was booked.
+                    from app.models.packages.package import Package
+                    from app.models.vendors.vendor import Vendor
+
+                    search_conditions.append(
+                        model.package_id.in_(
+                            select(Package.id)
+                            .join(Vendor, Vendor.id == Package.vendor_id)
+                            .where(Vendor.business_name.ilike(term))
+                        )
+                    )
                     # Admins search by who booked as well as by booking number.
                     search_conditions.append(
                         model.customer_id.in_(
@@ -671,11 +847,21 @@ class BookingService(BaseService):
             info = await self._attach_package_info(uow, page.items)
             celeb_info = await self._attach_celebration_info(uow, page.items)
             customers: dict = {}
+            vendor_names: dict = {}
             if is_admin_view and page.items:
                 rows = await uow.session.execute(
                     select(User).where(User.id.in_({b.customer_id for b in page.items}))
                 )
                 customers = {u.id: u for u in rows.scalars().all()}
+                from app.models.packages.package import Package
+                from app.models.vendors.vendor import Vendor
+
+                vrows = await uow.session.execute(
+                    select(Package.id, Vendor.business_name)
+                    .join(Vendor, Vendor.id == Package.vendor_id)
+                    .where(Package.id.in_({b.package_id for b in page.items}))
+                )
+                vendor_names = {pid: name for pid, name in vrows.all()}
             items = []
             for b in page.items:
                 item = BookingResponse.model_validate(b)
@@ -687,11 +873,10 @@ class BookingService(BaseService):
                 if user is not None:
                     # TMP-<hex> is a placeholder for accounts without a real
                     # number yet — not something an admin can call or read.
-                    phone = user.phone or None
-                    item.customer_phone = None if phone and phone.startswith("TMP-") else phone
-                    name = user.display_name
-                    item.customer_name = None if name and name.startswith("TMP-") else name
+                    item.customer_phone = self._real_phone(user.phone)
+                    item.customer_name = self._customer_label(user)
                     item.customer_email = user.email
+                item.vendor_name = vendor_names.get(b.package_id)
                 items.append(item)
             return CursorPage(
                 items=items,
@@ -789,8 +974,20 @@ class BookingService(BaseService):
             # A customer's captured payment already confirms the booking by
             # itself (_booking_settled_by_capture); this only stops an unpaid
             # booking being pushed through by hand.
-            if booking.payment_status != PaymentStatus.COMPLETED:
+            if booking.payment_status != PaymentStatus.COMPLETED or Decimal(booking.amount_due or 0) > 0:
                 raise BookingPaymentRequiredError()
+            # "Paid" has to rest on Razorpay's own confirmation, not just a flag:
+            # at least one payment must be COMPLETED with the gateway's payment
+            # reference and capture time, which only a verified signature, a
+            # signed webhook or a direct Razorpay lookup ever write.
+            payments = await uow.payments.payments.find_by_booking(booking.id)
+            if not any(
+                pay.payment_status == PaymentStatus.COMPLETED and pay.gateway_payment_id and pay.captured_at
+                for pay in payments
+            ):
+                raise BookingPaymentRequiredError(
+                    "Razorpay has not confirmed a payment for this booking yet."
+                )
             old_status = booking.booking_status
 
             booking = await uow.bookings.bookings.update(
@@ -1456,6 +1653,15 @@ class BookingService(BaseService):
         async with self._uow() as uow:
             booking = await validate_booking_exists(booking_id, uow)
 
+            if not approved and booking.payment_status != PaymentStatus.COMPLETED:
+                # Declining a cancellation puts a PAID booking back to confirmed.
+                # With no captured payment there is nothing to put back: doing it
+                # anyway confirmed an unpaid booking behind confirm_booking's
+                # payment check (the admin "Cancel" button used to send exactly this).
+                raise BusinessRuleError(
+                    "There is no cancellation request to decline on an unpaid booking. "
+                    "Approve the cancellation to cancel it."
+                )
             new_status = BookingStatus.CANCELLED if approved else BookingStatus.CONFIRMED
             validate_status_transition_allowed(booking, new_status.value)
             old_status = booking.booking_status
@@ -1671,24 +1877,44 @@ class BookingService(BaseService):
             booking = await validate_booking_exists(booking_id, uow)
             await self.assert_can_read_booking(uow, booking, requester_id, requester_role)
 
-            include_internal = requester_role in {"admin", "support"}
+            include_internal = requester_role in {"admin", "super_admin", "support"}
             history = await uow.bookings.history.find_by_booking(
                 booking_id, include_internal=include_internal
             )
+            names = await self._actor_names(uow, {h.actor_id for h in history if h.actor_id})
             return [
                 {
                     "id": str(h.id),
                     "booking_id": str(h.booking_id),
-                    "event_type": str(h.event_type),
+                    # .value, not str(): str() of a (str, Enum) member reads
+                    # "BookingEventType.STATUS_CHANGED" on Python 3.12.
+                    "event_type": getattr(h.event_type, "value", str(h.event_type)),
                     "event_label": h.event_label,
-                    "actor_type": str(h.actor_type),
+                    "description": h.description,
+                    "actor_type": getattr(h.actor_type, "value", str(h.actor_type)),
                     "actor_id": str(h.actor_id) if h.actor_id else None,
+                    "actor_name": names.get(h.actor_id),
                     "is_customer_visible": h.is_customer_visible,
                     "occurred_at": h.occurred_at.isoformat(),
                     "context_data": h.context_data,
                 }
                 for h in history
             ]
+
+    @staticmethod
+    async def _actor_names(uow, ids: set) -> dict:
+        """Display names for the people behind history rows (name, else email/phone)."""
+        ids = {i for i in ids if i}
+        if not ids:
+            return {}
+        from sqlalchemy import select
+
+        from app.models.users.user import User
+
+        rows = await uow.session.execute(
+            select(User.id, User.full_name, User.email, User.phone).where(User.id.in_(ids))
+        )
+        return {uid: (name or email or phone) for uid, name, email, phone in rows.all()}
 
     async def get_booking_status_history(
         self,
@@ -1700,7 +1926,13 @@ class BookingService(BaseService):
             booking = await validate_booking_exists(booking_id, uow)
             await self.assert_can_read_booking(uow, booking, requester_id, requester_role)
             records = await uow.bookings.status_history.find_by_booking(booking_id)
-            return [BookingStatusHistoryResponse.model_validate(r) for r in records]
+            names = await self._actor_names(uow, {r.changed_by_id for r in records if r.changed_by_id})
+            out = []
+            for r in records:
+                item = BookingStatusHistoryResponse.model_validate(r)
+                item.changed_by_name = names.get(r.changed_by_id)
+                out.append(item)
+            return out
 
     # ── Invoice ───────────────────────────────────────────────────────────────
 
@@ -1731,20 +1963,7 @@ class BookingService(BaseService):
     ) -> list[BookingLineResponse]:
         async with self._uow() as uow:
             booking = await self._booking_for_reader(uow, booking_id, requester_id, requester_role)
-            return [
-                BookingLineResponse(
-                    kind=self._line_kind(line),
-                    name=line.name,
-                    description=line.description,
-                    quantity=line.quantity,
-                    unit=line.unit,
-                    unit_price=line.unit_price,
-                    final_price=line.final_price,
-                    is_addon=bool(line.is_addon),
-                    note=line.notes,
-                )
-                for line in await self._booking_lines(uow, booking)
-            ]
+            return [self._line_response(line) for line in await self._booking_lines(uow, booking)]
 
     async def _build_invoice_data(self, uow, booking):
         """Everything the PDF invoice and the booking emails show, as InvoiceData."""

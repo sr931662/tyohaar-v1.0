@@ -51,6 +51,8 @@ from app.services.payments.constants import (
 )
 from app.services.common.finance_settings import read_gst_enabled
 from app.services.payments.exceptions import (
+    PaymentAmountMismatchError,
+    PaymentNotConfirmedError,
     CouponNotFoundError,
     InvalidGatewaySignatureError,
     PaymentAlreadyFailedError,
@@ -251,17 +253,33 @@ def _booking_settled_by_capture(booking, payment, now: datetime) -> dict:
     The booking columns a captured payment changes — shared by the webhook and
     the client-verify path so a booking reads the same whichever lands first.
 
-    Besides flipping payment_status and confirming a PENDING booking, this
-    records the money: amount_paid grows by what was captured and amount_due
-    drops to zero, since the payment is the charge for the whole booking. These
-    two used to stay at 0 / total after a successful payment, so a paid
-    booking still showed its full amount as outstanding.
+    The money is always recorded (amount_paid grows by what was captured), but
+    the booking is only marked paid, and a PENDING booking only confirmed, when
+    the bill is covered IN FULL: what has been paid, plus any referral discount
+    taken off at checkout, must reach the booking total. A short payment leaves
+    the booking pending with the balance still due, rather than treating any
+    capture as "paid".
     """
+    paid_before = Decimal(booking.amount_paid or 0)
+    captured = Decimal(payment.final_amount)
+    # A referral milestone discount is applied to the charge itself, so it
+    # counts toward the bill without being money received.
+    waived = Decimal(getattr(payment, "discount_amount", 0) or 0)
+    total = Decimal(booking.total_amount)
+    covered = paid_before + captured + waived
+    balance = max(total - covered, Decimal("0.00"))
     updates: dict = {
-        "payment_status": PaymentStatus.COMPLETED,
-        "amount_paid": Decimal(booking.amount_paid or 0) + Decimal(payment.final_amount),
-        "amount_due": Decimal("0.00"),
+        "amount_paid": paid_before + captured,
+        "amount_due": balance,
     }
+    if balance > Decimal("0.01"):
+        logger.warning(
+            "Booking %s only part-paid: total %s, covered %s. Not marking it paid or confirming it.",
+            getattr(booking, "id", None), total, covered,
+        )
+        return updates
+    updates["amount_due"] = Decimal("0.00")
+    updates["payment_status"] = PaymentStatus.COMPLETED
     if booking.booking_status == BookingStatus.PENDING:
         updates["booking_status"] = BookingStatus.CONFIRMED
         updates["confirmed_at"] = now
@@ -397,6 +415,9 @@ class PaymentService(BaseService):
             # added a second time on top of booking.platform_fee — at that
             # point charge booking.amount_due and drop these two lines.
             base_amount = booking.total_amount
+            if Decimal(booking.amount_paid or 0) > 0 and Decimal(booking.amount_due or 0) > 0:
+                # Part-paid already: charge what is left, never the whole bill again.
+                base_amount = booking.amount_due
             validate_payment_amount(base_amount)
 
             if abs(data.subtotal - base_amount) > Decimal("0.01"):
@@ -638,6 +659,15 @@ class PaymentService(BaseService):
                     PaymentStatus.PARTIALLY_REFUNDED,
                 ):
                     pass
+                elif outcome and not self._webhook_capture_matches(entity, payment):
+                    # Signed, but not a capture of THIS payment's amount: leave the
+                    # payment (and so the booking) unconfirmed and make noise.
+                    logger.error(
+                        "Webhook event=%s for payment=%s does not match it (status=%r, amount=%r, "
+                        "expected %s paise); not settling.",
+                        event, payment.id, entity.get("status"), entity.get("amount"),
+                        _rupees_to_paise(payment.final_amount),
+                    )
                 elif outcome:
                     if payment.payment_status == PaymentStatus.FAILED:
                         logger.warning(
@@ -816,12 +846,95 @@ class PaymentService(BaseService):
                     "Verified signature promoting previously-FAILED payment=%s", payment.id
                 )
 
+            expected_paise = _rupees_to_paise(payment.final_amount)
+            currency = payment.currency.value if hasattr(payment.currency, "value") else str(payment.currency)
+
+        # The signature only proves the checkout handed this app a result. Ask
+        # Razorpay itself before anything is marked paid: the payment must be
+        # captured, on THIS order, for THIS amount. If Razorpay cannot be asked
+        # or has not captured yet, nothing is settled: the app retries and polls,
+        # and the webhook / background sync settle it the moment Razorpay does.
+        await self._require_gateway_capture(
+            order_id=order_id,
+            gateway_payment_id=gateway_payment_id,
+            expected_paise=expected_paise,
+            currency=currency,
+        )
+
         return await self._settle_captured_payment(
             payment_id=payment_id,
             gateway_payment_id=gateway_payment_id,
             gateway_signature=gateway_signature,
             ledger_description=f"Payment captured via {gateway} (client verification)",
         )
+
+    @staticmethod
+    def _webhook_capture_matches(entity: dict, payment) -> bool:
+        """A capture event counts only if it says 'captured' for this payment's exact amount."""
+        status = entity.get("status")
+        if status not in (None, "captured"):
+            return False
+        amount = entity.get("amount")
+        if amount is None:
+            return True
+        try:
+            return int(amount) == _rupees_to_paise(payment.final_amount)
+        except (TypeError, ValueError):
+            return False
+
+    async def _require_gateway_capture(
+        self,
+        *,
+        order_id: str,
+        gateway_payment_id: str,
+        expected_paise: int,
+        currency: str,
+    ) -> dict:
+        """
+        Razorpay's own record of [gateway_payment_id], proven captured.
+
+        Raises PaymentNotConfirmedError if Razorpay does not show it captured
+        (an authorized one is captured here first), PaymentAmountMismatchError
+        if it belongs to a different order or amount, and ExternalServiceError
+        if Razorpay cannot be reached or is not configured. Never returns for
+        a payment that is not fully, verifiably paid.
+        """
+        import asyncio
+
+        client = _razorpay_client()
+        try:
+            record = await asyncio.to_thread(client.payment.fetch, gateway_payment_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Razorpay lookup failed for payment %s", gateway_payment_id)
+            raise ExternalServiceError(
+                "razorpay", "Could not confirm the payment with Razorpay right now. Please try again."
+            ) from exc
+
+        if record.get("order_id") != order_id:
+            logger.error("Razorpay payment %s is for order %r, expected %r", gateway_payment_id, record.get("order_id"), order_id)
+            raise PaymentAmountMismatchError("This payment does not belong to this order.")
+        if int(record.get("amount") or 0) != expected_paise or str(record.get("currency") or currency).upper() != currency.upper():
+            logger.error(
+                "Razorpay payment %s amount %r %s != expected %s paise %s",
+                gateway_payment_id, record.get("amount"), record.get("currency"), expected_paise, currency,
+            )
+            raise PaymentAmountMismatchError()
+
+        status = record.get("status")
+        if status == "authorized":
+            try:
+                record = await asyncio.to_thread(
+                    client.payment.capture, gateway_payment_id, expected_paise, {"currency": currency}
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Razorpay capture failed for payment %s", gateway_payment_id)
+                raise ExternalServiceError(
+                    "razorpay", "Could not complete the payment with Razorpay right now. Please try again."
+                ) from exc
+            status = record.get("status")
+        if status != "captured":
+            raise PaymentNotConfirmedError(f"Razorpay reports this payment as {status or 'unknown'}, not captured.")
+        return record
 
     async def _settle_captured_payment(
         self,
@@ -1094,7 +1207,13 @@ class PaymentService(BaseService):
         order_payments = await asyncio.to_thread(client.order.payments, order_id)
         items = order_payments.get("items", []) if isinstance(order_payments, dict) else []
 
-        captured = next((p for p in items if p.get("status") == "captured"), None)
+        captured = next(
+            (
+                p for p in items
+                if p.get("status") == "captured" and int(p.get("amount") or 0) == expected_paise
+            ),
+            None,
+        )
         if captured is None:
             authorized = next(
                 (

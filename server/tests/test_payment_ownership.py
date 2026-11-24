@@ -97,11 +97,17 @@ def _make(monkeypatch, status=PaymentStatus.PENDING):
         id=payment.booking_id,
         booking_status=None,
         payment_status=PaymentStatus.PENDING,
+        total_amount=Decimal("50000.00"),
         amount_paid=Decimal("0.00"),
-        amount_due=Decimal("500.00"),
+        amount_due=Decimal("50000.00"),
         applied_coupon_ids=None,
     )
     attempt = SimpleNamespace(id=uuid.uuid4())
+    # Razorpay's own record of the payment: captured, this order, this amount.
+    razorpay = SimpleNamespace(payment=SimpleNamespace(
+        fetch=lambda _pid: {"id": GATEWAY_PAYMENT_ID, "order_id": ORDER_ID, "amount": 5000000,
+                           "currency": "INR", "status": "captured"}))
+    monkeypatch.setattr("app.services.payments.service._razorpay_client", lambda: razorpay, raising=False)
     svc = PaymentService()
     monkeypatch.setattr(
         svc, "_uow", lambda: _FakeUow(payment, booking, [attempt]), raising=False
