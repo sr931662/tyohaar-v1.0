@@ -6,7 +6,8 @@ import { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import ImageUploadField from '../../components/ImageUploadField';
 import ItemImportExportBar from '../../components/ItemImportExportBar';
 import AttachPackagesModal from '../../components/AttachPackagesModal';
-import { PACKAGE_UNIT_OPTIONS, isKnownUnit } from '../../../constants/packageUnits';
+import { PACKAGE_UNIT_OPTIONS, isKnownUnit, formatLineQuantity, setSizeOf } from '../../../constants/packageUnits';
+import SetSizeFields from '../../../components/SetSizeFields';
 import { EMPTY_SERVICE, buildServiceBody, serviceToForm, apiErrorMessage, ServiceCustomizationFields } from './serviceForm';
 
 // ── Common Services Modal (vendor-wide service templates) ──────────────────────
@@ -119,6 +120,7 @@ export default function CommonServicesModal({ onClose }) {
                       Mandatory
                     </label>
                   </div>
+                  <SetSizeFields form={editForm} set={setEF} />
                   <input className="admin-input" type="number" min={editForm.quantity || 1} value={editForm.max_quantity} onChange={(e) => setEF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
                   <ServiceCustomizationFields form={editForm} set={setEF} />
                   <input className="admin-input" value={editForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
@@ -157,7 +159,7 @@ export default function CommonServicesModal({ onClose }) {
                     </div>
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                    {service.quantity > 1 && `${service.quantity}${service.unit ? ' ' + service.unit : 'x'} · `}
+                    {(service.quantity > 1 || setSizeOf(service)) && `${service.unit ? formatLineQuantity(service) : `${service.quantity}x`} · `}
                     ₹{Number(service.base_price).toLocaleString('en-IN')}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -189,6 +191,7 @@ export default function CommonServicesModal({ onClose }) {
                 Mandatory
               </label>
             </div>
+            <SetSizeFields form={newService} set={setNF} />
             <input className="admin-input" type="number" min={newService.quantity || 1} value={newService.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
             <ServiceCustomizationFields form={newService} set={setNF} />
             <input className="admin-input" value={newService.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />

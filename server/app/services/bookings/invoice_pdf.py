@@ -73,6 +73,17 @@ class InvoiceLine:
     total: Decimal
     note: str | None = None        # what the customer asked for, e.g. "ANITA 30"
     is_addon: bool = False
+    pieces_per_set: int | None = None
+
+    @property
+    def quantity_label(self) -> str:
+        """'3 hours', or for sets with a known size '1 set of 200'."""
+        if not self.unit:
+            return f"{self.quantity}"
+        if self.unit == "sets" and self.pieces_per_set:
+            word = "set" if self.quantity == 1 else "sets"
+            return f"{self.quantity} {word} of {self.pieces_per_set}"
+        return f"{self.quantity} {self.unit}"
 
 
 @dataclass
@@ -251,7 +262,7 @@ def build_invoice_pdf(d: InvoiceData) -> bytes:
         name = f"<b>{escape(line.name)}</b>" + (" <font color='#6B5D50'>(add-on)</font>" if line.is_addon else "")
         if line.note:
             name += f"<br/><font color='#6B5D50'>Custom: </font><b>{escape(line.note)}</b>"
-        qty = f"{line.quantity}" + (f" {escape(line.unit)}" if line.unit else "")
+        qty = escape(line.quantity_label)
         badge = Paragraph(f"<font color='{fg}'>{label}</font>", st["badge"])
         rows.append([badge, Paragraph(name, st["cell"]), Paragraph(qty, st["right"]),
                      Paragraph(inr(line.unit_price, sym), st["right"]), Paragraph(inr(line.total, sym), st["boldright"])])

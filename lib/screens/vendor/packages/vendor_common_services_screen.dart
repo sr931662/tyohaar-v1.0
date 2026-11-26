@@ -48,6 +48,7 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final priceCtrl = TextEditingController(text: existing?.basePrice.toStringAsFixed(0) ?? '');
     final qtyCtrl = TextEditingController(text: existing?.quantity.toString() ?? '1');
+    final setSizeCtrl = TextEditingController(text: existing?.piecesPerSet?.toString() ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     String? unit = packageUnitForPicker(existing?.unit);
     bool isMandatory = existing?.isMandatory ?? true;
@@ -81,6 +82,7 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
                     ),
                   ),
                 ]),
+                PiecesPerSetField(unit: unit, controller: setSizeCtrl),
                 TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorCommonServicesDescriptionLabel)),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -140,6 +142,7 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
         'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
         'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
         'unit': unit,
+        'pieces_per_set': unit == 'sets' ? int.tryParse(setSizeCtrl.text.trim()) : null,
         'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'is_mandatory': isMandatory,
         'cover_image_url': coverImageUrl,
@@ -167,6 +170,7 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
         nameCtrl.dispose();
         priceCtrl.dispose();
         qtyCtrl.dispose();
+        setSizeCtrl.dispose();
         descCtrl.dispose();
       });
     }
@@ -277,7 +281,7 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
                                         Text(l10n.vendorCommonServicesOptionalLabel, style: TyType.sans(11, color: ty.ink3)),
                                       ],
                                     ]),
-                                    Text(l10n.vendorCommonServicesQtyPriceLabel(packageUnitQuantity(service.quantity, service.unit), service.basePrice.toStringAsFixed(0), packageUnitPer(service.unit)), style: TyType.sans(12, color: ty.ink2)),
+                                    Text(l10n.vendorCommonServicesQtyPriceLabel(packageUnitQuantity(service.quantity, service.unit, piecesPerSet: service.piecesPerSet), service.basePrice.toStringAsFixed(0), packageUnitPer(service.unit, piecesPerSet: service.piecesPerSet)), style: TyType.sans(12, color: ty.ink2)),
                                     Text(
                                       service.attachedPackageCount > 0
                                           ? l10n.vendorCommonServicesAttachedCountLabel(service.attachedPackageCount)

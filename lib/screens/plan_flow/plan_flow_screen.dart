@@ -1844,8 +1844,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                       // Singular: the price is for one of them, so a "sets"
                       // line must read "₹500 / set", not "₹500 / sets".
                       locked
-                          ? l10n.planFlowItemPriceLabel(formatRupees(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback))
-                          : l10n.planFlowAddOnPriceLabel(formatRupees(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback)),
+                          ? l10n.planFlowItemPriceLabel(formatRupees(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback, piecesPerSet: item.piecesPerSet))
+                          : l10n.planFlowAddOnPriceLabel(formatRupees(item.unitPrice), packageUnitSingular(item.unit, fallback: l10n.planFlowUnitFallback, piecesPerSet: item.piecesPerSet)),
                       style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
                     ),
                   ],
@@ -2033,8 +2033,8 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                       Text(service.description!, style: TyType.sans(11.5, color: ty.ink2), maxLines: 2, overflow: TextOverflow.ellipsis),
                     Text(
                       locked
-                          ? l10n.planFlowItemPriceLabel(formatRupees(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback))
-                          : l10n.planFlowAddOnPriceLabel(formatRupees(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback)),
+                          ? l10n.planFlowItemPriceLabel(formatRupees(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback, piecesPerSet: service.piecesPerSet))
+                          : l10n.planFlowAddOnPriceLabel(formatRupees(service.unitPrice), packageUnitSingular(service.unit, fallback: l10n.planFlowUnitFallback, piecesPerSet: service.piecesPerSet)),
                       style: TyType.sans(12.5, color: ty.saffron, weight: FontWeight.w700),
                     ),
                   ],

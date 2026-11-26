@@ -164,6 +164,7 @@ class BookingItemResponse(BaseSchema):
                     "Needed to say what unit_price is per — without it a per-set line "
                     "reads as a per-piece one.",
     )
+    pieces_per_set: int | None = Field(default=None, description="For unit 'sets': pieces in one set")
     unit_price: MoneyAmount
     final_price: MoneyAmount
     is_addon: bool = False
@@ -401,6 +402,7 @@ class BookingLineResponse(BaseSchema):
     description: str | None = None
     quantity: int
     unit: str | None = None
+    pieces_per_set: int | None = None
     unit_price: MoneyAmount
     final_price: MoneyAmount
     is_addon: bool = False

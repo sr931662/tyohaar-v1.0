@@ -112,6 +112,7 @@ class PackageItemUpdate(BaseSchema):
     description: str | None = None
     quantity: int | None = Field(default=None, ge=1)
     unit: PackageUnit | None = Field(default=None)
+    pieces_per_set: int | None = Field(default=None, ge=1)
     base_price: MoneyAmount | None = None
     is_mandatory: bool | None = None
     is_returnable: bool | None = None
@@ -164,6 +165,7 @@ class PackageServiceUpdate(BaseSchema):
     description: str | None = None
     quantity: int | None = Field(default=None, ge=1)
     unit: PackageUnit | None = Field(default=None)
+    pieces_per_set: int | None = Field(default=None, ge=1)
     base_price: MoneyAmount | None = None
     is_mandatory: bool | None = None
     is_customizable: bool | None = None

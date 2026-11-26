@@ -8,6 +8,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { ConfirmDialog } from '../../components/ui/Modal';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import BalloonMix from '../../../components/BalloonMix';
+import { formatLineQuantity } from '../../../constants/packageUnits';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -417,7 +418,7 @@ export default function BookingDetailPage() {
                       {l.note && <div style={{ fontSize: 12.5, marginTop: 2 }}>Customer asked for: <strong>{l.note}</strong></div>}
                     </td>
                     <td><span className={`badge badge-${kind.color}`} title={kind.hint}>{kind.label}</span></td>
-                    <td>{l.quantity ?? 1}{l.unit ? ` ${l.unit}` : ''}</td>
+                    <td>{formatLineQuantity(l)}</td>
                     <td>{formatCurrency(l.unit_price)}</td>
                     <td>{formatCurrency(l.final_price)}</td>
                   </tr>

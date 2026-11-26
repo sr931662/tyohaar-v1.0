@@ -1,3 +1,5 @@
+import { setSizeOf } from '../../../constants/packageUnits';
+
 // Shared by the Common Services and Package Services modals, so the two
 // forms send the same payload and expose the same fields.
 
@@ -11,7 +13,7 @@ export const parseChoices = (text) =>
 export const formatChoices = (choices) => (Array.isArray(choices) ? choices.join(', ') : '');
 
 export const EMPTY_SERVICE = {
-  name: '', description: '', quantity: 1, max_quantity: '', unit: '', base_price: '',
+  name: '', description: '', quantity: 1, max_quantity: '', unit: '', pieces_per_set: '', base_price: '',
   is_mandatory: true, cover_image_url: '',
   choices: '', is_customizable: false, customization_prompt: '', character_set: 'digits', marquee_style: 'led',
 };
@@ -22,6 +24,7 @@ export const serviceToForm = (service) => ({
   quantity: service.quantity,
   max_quantity: service.max_quantity ?? '',
   unit: service.unit ?? '',
+  pieces_per_set: service.pieces_per_set ?? '',
   base_price: service.base_price,
   is_mandatory: service.is_mandatory,
   cover_image_url: service.cover_image_url ?? '',
@@ -49,6 +52,7 @@ export function buildServiceBody(form, { isUpdate }) {
     quantity: Number(form.quantity),
     max_quantity: form.max_quantity !== '' ? Number(form.max_quantity) : blank,
     unit: form.unit || blank,
+    pieces_per_set: setSizeOf(form) ?? blank,
     base_price: Number(form.base_price),
     is_mandatory: !!form.is_mandatory,
     cover_image_url: form.cover_image_url || blank,

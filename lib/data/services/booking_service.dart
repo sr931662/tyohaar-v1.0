@@ -187,6 +187,7 @@ class BookingLine {
   final String name;
   final int quantity;
   final String? unit;
+  final int? piecesPerSet;
   final double unitPrice;
   final double finalPrice;
   final bool isAddon;
@@ -198,6 +199,7 @@ class BookingLine {
     required this.name,
     required this.quantity,
     this.unit,
+    this.piecesPerSet,
     required this.unitPrice,
     required this.finalPrice,
     this.isAddon = false,
@@ -209,6 +211,7 @@ class BookingLine {
         name: json['name'] as String? ?? '',
         quantity: json['quantity'] as int? ?? 1,
         unit: json['unit'] as String?,
+        piecesPerSet: json['pieces_per_set'] as int?,
         unitPrice: asDouble(json['unit_price']),
         finalPrice: asDouble(json['final_price']),
         isAddon: json['is_addon'] as bool? ?? false,

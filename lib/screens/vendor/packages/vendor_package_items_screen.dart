@@ -55,6 +55,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final priceCtrl = TextEditingController(text: existing?.basePrice.toStringAsFixed(0) ?? '');
     final qtyCtrl = TextEditingController(text: existing?.quantity.toString() ?? '1');
+    final setSizeCtrl = TextEditingController(text: existing?.piecesPerSet?.toString() ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     String? unit = packageUnitForPicker(existing?.unit);
     String? coverImageUrl = existing?.coverImageUrl;
@@ -92,6 +93,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                     ),
                   ),
                 ]),
+                PiecesPerSetField(unit: unit, controller: setSizeCtrl),
                 TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorPackageItemsDescriptionLabel)),
                 const SizedBox(height: 12),
                 // Cover image, matching the common-items sheet — an item
@@ -157,6 +159,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
         'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
         'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
         'unit': unit,
+        'pieces_per_set': unit == 'sets' ? int.tryParse(setSizeCtrl.text.trim()) : null,
         'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'is_mandatory': isMandatory,
         'is_returnable': isReturnable,
@@ -179,6 +182,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
         nameCtrl.dispose();
         priceCtrl.dispose();
         qtyCtrl.dispose();
+        setSizeCtrl.dispose();
         descCtrl.dispose();
       });
     }
@@ -326,7 +330,7 @@ class _VendorPackageItemsScreenState extends State<VendorPackageItemsScreen> {
                                     // Qty carries its unit and the price says
                                     // what it is per, so a line priced per set
                                     // can no longer read as a per-piece one.
-                                    Text('${item.isCommon ? l10n.vendorPackageItemsCommonPrefixLabel : ""}${l10n.vendorPackageItemsQtyPriceLabel(packageUnitQuantity(item.quantity, item.unit), item.basePrice.toStringAsFixed(0), packageUnitPer(item.unit))}',
+                                    Text('${item.isCommon ? l10n.vendorPackageItemsCommonPrefixLabel : ""}${l10n.vendorPackageItemsQtyPriceLabel(packageUnitQuantity(item.quantity, item.unit, piecesPerSet: item.piecesPerSet), item.basePrice.toStringAsFixed(0), packageUnitPer(item.unit, piecesPerSet: item.piecesPerSet))}',
                                         style: TyType.sans(12, color: ty.ink2)),
                                   ],
                                 ),

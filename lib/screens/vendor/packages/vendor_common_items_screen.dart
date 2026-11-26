@@ -46,6 +46,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final priceCtrl = TextEditingController(text: existing?.basePrice.toStringAsFixed(0) ?? '');
     final qtyCtrl = TextEditingController(text: existing?.quantity.toString() ?? '1');
+    final setSizeCtrl = TextEditingController(text: existing?.piecesPerSet?.toString() ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     String? unit = packageUnitForPicker(existing?.unit);
     bool isMandatory = existing?.isMandatory ?? true;
@@ -80,6 +81,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                     ),
                   ),
                 ]),
+                PiecesPerSetField(unit: unit, controller: setSizeCtrl),
                 TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorCommonItemsDescriptionLabel)),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -145,6 +147,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
         'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
         'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
         'unit': unit,
+        'pieces_per_set': unit == 'sets' ? int.tryParse(setSizeCtrl.text.trim()) : null,
         'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'is_mandatory': isMandatory,
         'is_returnable': isReturnable,
@@ -173,6 +176,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
         nameCtrl.dispose();
         priceCtrl.dispose();
         qtyCtrl.dispose();
+        setSizeCtrl.dispose();
         descCtrl.dispose();
       });
     }
@@ -287,7 +291,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                                         Text(l10n.vendorCommonItemsReturnableBadgeLabel, style: TyType.sans(11, color: ty.saffron)),
                                       ],
                                     ]),
-                                    Text(l10n.vendorCommonItemsQtyPriceLabel(packageUnitQuantity(item.quantity, item.unit), item.basePrice.toStringAsFixed(0), packageUnitPer(item.unit)), style: TyType.sans(12, color: ty.ink2)),
+                                    Text(l10n.vendorCommonItemsQtyPriceLabel(packageUnitQuantity(item.quantity, item.unit, piecesPerSet: item.piecesPerSet), item.basePrice.toStringAsFixed(0), packageUnitPer(item.unit, piecesPerSet: item.piecesPerSet)), style: TyType.sans(12, color: ty.ink2)),
                                     Text(
                                       item.attachedPackageCount > 0
                                           ? l10n.vendorCommonItemsAttachedCountLabel(item.attachedPackageCount)

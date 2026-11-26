@@ -83,7 +83,7 @@ from app.services.packages.validators import (
 _ITEM_IMPORT_REQUIRED_COLUMNS = ["name", "base_price"]
 
 _COMMON_ITEM_IMPORT_COLUMNS = [
-    "name", "description", "quantity", "unit", "base_price", "max_quantity",
+    "name", "description", "quantity", "unit", "pieces_per_set", "base_price", "max_quantity",
     "is_customizable", "prep_time_minutes", "is_mandatory", "is_returnable", "cover_image_url",
 ]
 
@@ -150,6 +150,9 @@ def _coerce_item_import_row(row: dict[str, Any], *, is_package_item: bool) -> di
         "is_returnable": _parse_bool_cell(row.get("is_returnable"), False),
         "cover_image_url": cell("cover_image_url"),
     }
+    # A sheet exported before this column existed must not wipe a stored set size.
+    if "pieces_per_set" in row:
+        payload["pieces_per_set"] = _parse_int_cell(row.get("pieces_per_set"))
     if is_package_item:
         payload["icon_url"] = cell("icon_url")
         payload["display_order"] = _parse_int_cell(row.get("display_order")) or 0
@@ -189,6 +192,7 @@ def _item_to_export_row(item: PackageItem, columns: list[str]) -> dict[str, Any]
         "description": item.description or "",
         "quantity": item.quantity,
         "unit": item.unit or "",
+        "pieces_per_set": item.pieces_per_set or "",
         "base_price": str(item.base_price),
         "max_quantity": item.max_quantity if item.max_quantity is not None else "",
         "is_customizable": "true" if item.is_customizable else "false",
@@ -249,7 +253,7 @@ def _rows_to_xlsx_bytes(
 _SERVICE_IMPORT_REQUIRED_COLUMNS = ["name", "base_price"]
 
 _COMMON_SERVICE_IMPORT_COLUMNS = [
-    "name", "description", "quantity", "unit", "base_price", "max_quantity",
+    "name", "description", "quantity", "unit", "pieces_per_set", "base_price", "max_quantity",
     "is_customizable", "prep_time_minutes", "is_mandatory", "cover_image_url",
 ]
 
@@ -285,6 +289,9 @@ def _coerce_service_import_row(row: dict[str, Any], *, is_package_service: bool)
         "is_mandatory": _parse_bool_cell(row.get("is_mandatory"), True),
         "cover_image_url": cell("cover_image_url"),
     }
+    # A sheet exported before this column existed must not wipe a stored set size.
+    if "pieces_per_set" in row:
+        payload["pieces_per_set"] = _parse_int_cell(row.get("pieces_per_set"))
     if is_package_service:
         payload["icon_url"] = cell("icon_url")
         payload["display_order"] = _parse_int_cell(row.get("display_order")) or 0
@@ -297,6 +304,7 @@ def _service_to_export_row(service: PackageServiceLine, columns: list[str]) -> d
         "description": service.description or "",
         "quantity": service.quantity,
         "unit": service.unit or "",
+        "pieces_per_set": service.pieces_per_set or "",
         "base_price": str(service.base_price),
         "max_quantity": service.max_quantity if service.max_quantity is not None else "",
         "is_customizable": "true" if service.is_customizable else "false",

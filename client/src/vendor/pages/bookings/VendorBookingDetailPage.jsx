@@ -8,6 +8,7 @@ import { SkeletonCard } from '../../../admin/components/ui/Skeleton';
 import Modal, { ConfirmDialog } from '../../../admin/components/ui/Modal';
 import { formatDate, formatDateTime, formatCurrency } from '../../../admin/utils/format';
 import BalloonMix from '../../../components/BalloonMix';
+import { formatLineQuantity } from '../../../constants/packageUnits';
 
 function Section({ title, children }) {
   return (
@@ -261,7 +262,7 @@ export default function VendorBookingDetailPage() {
                           <div className="admin-user-email">{item.description ?? item.package_item?.description}</div>
                         )}
                       </td>
-                      <td>{item.quantity ?? 1}{item.unit ? ` ${item.unit}` : ''}</td>
+                      <td>{formatLineQuantity(item)}</td>
                       <td>{formatCurrency(item.unit_price ?? 0)}</td>
                       <td style={{ fontWeight: 600 }}>{formatCurrency(item.final_price ?? 0)}</td>
                       <td style={{ fontSize: 12.5 }}>

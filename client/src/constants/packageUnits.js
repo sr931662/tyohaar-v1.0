@@ -20,3 +20,18 @@ export const PACKAGE_UNIT_OPTIONS = [
 // sees what is stored instead of a blank "Unit (optional)"; the server maps
 // known spellings and leaves an unmappable one untouched.
 export const isKnownUnit = (value) => PACKAGE_UNIT_OPTIONS.some((u) => u.value === value);
+
+// For unit "sets", `quantity` counts sets, `base_price` is the price of one
+// set and `pieces_per_set` only says what is inside it. The size never enters
+// the price.
+export const setSizeOf = (line) =>
+  (line?.unit === 'sets' && Number(line.pieces_per_set) > 0 ? Number(line.pieces_per_set) : null);
+
+/** "1 set of 200", "3 hours", "4". */
+export function formatLineQuantity(line) {
+  const quantity = line.quantity ?? 1;
+  if (!line.unit) return `${quantity}`;
+  const word = line.unit === 'sets' && Number(quantity) === 1 ? 'set' : line.unit;
+  const size = setSizeOf(line);
+  return `${quantity} ${word}${size ? ` of ${size}` : ''}`;
+}

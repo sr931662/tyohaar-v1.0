@@ -122,7 +122,7 @@ def _lines_table(d: InvoiceData, *, show_prices: bool) -> str:
     )
     rows = []
     for line in d.lines:
-        qty = f"{line.quantity}{(' ' + line.unit) if line.unit else ''}"
+        qty = line.quantity_label
         note = (
             f'<div style="font-size:12px;color:{MUTED};font-weight:400;">{esc(line.note)}</div>' if line.note else ""
         )

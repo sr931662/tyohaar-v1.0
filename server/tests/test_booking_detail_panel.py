@@ -38,7 +38,7 @@ def repo(**methods):
 
 def line(name, *, qty=1, unit_price="100", addon=False, returnable=None, notes=None, order=0, service=False):
     base = dict(
-        id=uuid.uuid4(), booking_id=uuid.uuid4(), name=name, description=None, quantity=qty, unit="pcs",
+        id=uuid.uuid4(), booking_id=uuid.uuid4(), name=name, description=None, quantity=qty, unit="pcs", pieces_per_set=None,
         unit_price=Decimal(unit_price), final_price=Decimal(unit_price) * qty, is_addon=addon, notes=notes,
         display_order=order, scheduled_start_at=None, prep_time_minutes=None, created_at=NOW, updated_at=NOW,
     )

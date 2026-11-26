@@ -9,9 +9,10 @@ import { SkeletonCard } from '../../components/ui/Skeleton';
 import { ConfirmDialog } from '../../components/ui/Modal';
 import RatingSummary from '../../components/ui/RatingSummary';
 import ReviewList from '../../components/reviews/ReviewList';
-import { PACKAGE_UNIT_OPTIONS } from '../../../constants/packageUnits';
+import { PACKAGE_UNIT_OPTIONS, formatLineQuantity, setSizeOf } from '../../../constants/packageUnits';
+import SetSizeFields from '../../../components/SetSizeFields';
 
-const EMPTY_ITEM = { name: '', description: '', quantity: 1, unit: '', base_price: '', is_mandatory: true };
+const EMPTY_ITEM = { name: '', description: '', quantity: 1, unit: '', pieces_per_set: '', base_price: '', is_mandatory: true };
 
 function Section({ title, children }) {
   return (
@@ -162,6 +163,7 @@ export default function PackageDetailPage() {
       description: item.description ?? '',
       quantity: item.quantity,
       unit: item.unit ?? '',
+      pieces_per_set: item.pieces_per_set ?? '',
       base_price: item.base_price,
       is_mandatory: item.is_mandatory,
     });
@@ -176,6 +178,7 @@ export default function PackageDetailPage() {
       quantity: Number(newItem.quantity),
       base_price: Number(newItem.base_price),
       unit: newItem.unit || undefined,
+      pieces_per_set: setSizeOf(newItem) ?? undefined,
       description: newItem.description || undefined,
     });
   };
@@ -189,6 +192,7 @@ export default function PackageDetailPage() {
         quantity: Number(editItemForm.quantity),
         base_price: Number(editItemForm.base_price),
         unit: editItemForm.unit || undefined,
+        pieces_per_set: setSizeOf(editItemForm),
         description: editItemForm.description || undefined,
       },
     });
@@ -433,6 +437,7 @@ export default function PackageDetailPage() {
                         Mandatory
                       </label>
                     </div>
+                    <SetSizeFields form={editItemForm} set={setEF} />
                     <input className="admin-input" value={editItemForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                       <button className="btn btn-secondary btn-sm" onClick={() => setEditingItemId(null)}>Cancel</button>
@@ -449,7 +454,7 @@ export default function PackageDetailPage() {
                       {item.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{item.description}</div>}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                      {item.quantity > 1 && `${item.quantity}${item.unit ? ' ' + item.unit : 'x'} · `}
+                      {(item.quantity > 1 || setSizeOf(item)) && `${item.unit ? formatLineQuantity(item) : `${item.quantity}x`} · `}
                       {formatCurrency(item.base_price ?? 0)}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
@@ -506,6 +511,7 @@ export default function PackageDetailPage() {
                       Mandatory
                     </label>
                   </div>
+                  <SetSizeFields form={newItem} set={setNF} />
                   <input className="admin-input" value={newItem.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                     <button type="button" className="btn btn-secondary" onClick={() => { setShowAddItem(false); setNewItem(EMPTY_ITEM); }}>Cancel</button>

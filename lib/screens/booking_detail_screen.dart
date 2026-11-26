@@ -270,7 +270,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               Text(l10n.bookingDetailCustom(line.note!),
                   style: TyType.sans(12.5, color: ty.saffronDeep, weight: FontWeight.w700)),
             Text(
-              '${line.quantity}${line.unit != null ? ' ${packageUnitLabel(line.unit).toLowerCase()}' : ''} × ${formatRupees(line.unitPrice)}',
+              '${packageUnitQuantity(line.quantity, line.unit, piecesPerSet: line.piecesPerSet)} × ${formatRupees(line.unitPrice)}',
               style: TyType.sans(12, color: ty.ink3),
             ),
           ]),

@@ -135,6 +135,10 @@ class PackageItemCreate(BaseSchema):
     unit: PackageUnit | None = Field(
         default=None, description="Unit of quantity, chosen from the fixed unit list"
     )
+    pieces_per_set: int | None = Field(
+        default=None, ge=1,
+        description="For unit 'sets': pieces in one set. quantity counts sets and base_price is per set.",
+    )
     base_price: MoneyAmount = Field(description="Item base price")
     is_mandatory: bool = Field(
         default=True, description="Whether item is always included vs. optional add-on"
@@ -202,6 +206,10 @@ class CommonPackageItemCreate(BaseSchema):
     quantity: int = Field(default=1, ge=1, description="Default quantity included")
     unit: PackageUnit | None = Field(
         default=None, description="Unit of quantity, chosen from the fixed unit list"
+    )
+    pieces_per_set: int | None = Field(
+        default=None, ge=1,
+        description="For unit 'sets': pieces in one set. quantity counts sets and base_price is per set.",
     )
     base_price: MoneyAmount = Field(description="Item base price")
     is_mandatory: bool = Field(
@@ -275,6 +283,10 @@ class PackageServiceCreate(BaseSchema):
     unit: PackageUnit | None = Field(
         default=None, description="Unit of quantity, chosen from the fixed unit list"
     )
+    pieces_per_set: int | None = Field(
+        default=None, ge=1,
+        description="For unit 'sets': pieces in one set. quantity counts sets and base_price is per set.",
+    )
     base_price: MoneyAmount = Field(description="Service base price")
     is_mandatory: bool = Field(
         default=True, description="Whether service is always included vs. optional add-on"
@@ -339,6 +351,10 @@ class CommonPackageServiceCreate(BaseSchema):
     quantity: int = Field(default=1, ge=1, description="Default quantity included")
     unit: PackageUnit | None = Field(
         default=None, description="Unit of quantity, chosen from the fixed unit list"
+    )
+    pieces_per_set: int | None = Field(
+        default=None, ge=1,
+        description="For unit 'sets': pieces in one set. quantity counts sets and base_price is per set.",
     )
     base_price: MoneyAmount = Field(description="Service base price")
     is_mandatory: bool = Field(

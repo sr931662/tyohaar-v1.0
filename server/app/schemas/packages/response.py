@@ -140,6 +140,7 @@ class PackageItemResponse(BaseSchema):
     quantity: int
     max_quantity: int | None = None
     unit: str | None
+    pieces_per_set: int | None = None
     base_price: MoneyAmount
     is_mandatory: bool
     is_returnable: bool = False
@@ -211,6 +212,7 @@ class PackageServiceResponse(BaseSchema):
     quantity: int
     max_quantity: int | None = None
     unit: str | None
+    pieces_per_set: int | None = None
     base_price: MoneyAmount
     is_mandatory: bool
     is_customizable: bool = False

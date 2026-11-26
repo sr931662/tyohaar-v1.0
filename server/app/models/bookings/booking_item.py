@@ -136,6 +136,12 @@ class BookingItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment="Unit of measure (e.g. 'hours', 'kg', 'pieces')",
     )
 
+    pieces_per_set: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Set size snapshotted at booking time; quantity counts sets.",
+    )
+
     unit_price: Mapped[Decimal] = mapped_column(
         Numeric(12, 2),
         nullable=False,

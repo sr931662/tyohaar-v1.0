@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tyohaar/data/package_units.dart';
 
 void main() {
+  group('lines sold in sets', () {
+    test('the set size is described next to the set, not counted', () {
+      expect(packageUnitPer('sets', piecesPerSet: 200), 'per set of 200');
+      expect(packageUnitQuantity(1, 'sets', piecesPerSet: 200), '1 set of 200');
+      expect(packageUnitQuantity(3, 'sets', piecesPerSet: 200), '3 sets of 200');
+    });
+
+    test('a size is ignored without one or on any other unit', () {
+      expect(packageUnitQuantity(2, 'sets'), '2 sets');
+      expect(packageUnitQuantity(2, 'hours', piecesPerSet: 200), '2 hours');
+      expect(packageSetSize('sets', 0), isNull);
+    });
+  });
+
   group('canonicalPackageUnit', () {
     test('passes catalogue values through', () {
       expect(canonicalPackageUnit('sets'), 'sets');

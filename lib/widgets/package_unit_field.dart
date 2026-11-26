@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/package_units.dart';
+import '../l10n/generated/app_localizations.dart';
 
 /// Unit picker for a package item / service line.
 ///
@@ -38,6 +39,36 @@ class PackageUnitField extends StatelessWidget {
           .map((o) => DropdownMenuItem(value: o.value, child: Text(o.label)))
           .toList(),
       onChanged: onChanged,
+    );
+  }
+}
+
+/// "Pieces in one set", shown only while the unit is "sets".
+///
+/// Without it the only number to type a set's size into was the quantity,
+/// which is billed: 200 there charged the set price 200 times.
+class PiecesPerSetField extends StatelessWidget {
+  final String? unit;
+  final TextEditingController controller;
+
+  const PiecesPerSetField({
+    super.key,
+    required this.unit,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (unit != 'sets') return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context)!;
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: l10n.packagePiecesPerSetLabel,
+        helperText: l10n.packagePiecesPerSetHelper,
+        helperMaxLines: 3,
+      ),
     );
   }
 }

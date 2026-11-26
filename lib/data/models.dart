@@ -512,6 +512,7 @@ class PackageItem {
   final String? description;
   // Backend field: unit (e.g. 'hours', 'pieces'). Was incorrectly read as item_type.
   final String? unit;
+  final int? piecesPerSet;
   // Backend field: base_price. Was incorrectly read as unit_price.
   final double unitPrice;
   // Default/minimum quantity from the package template.
@@ -555,6 +556,7 @@ class PackageItem {
     required this.name,
     this.description,
     this.unit,
+    this.piecesPerSet,
     required this.unitPrice,
     required this.quantity,
     this.maxQuantity,
@@ -582,6 +584,7 @@ class PackageItem {
         name: name,
         description: description,
         unit: unit,
+        piecesPerSet: piecesPerSet,
         unitPrice: unitPrice,
         quantity: quantity,
         maxQuantity: maxQuantity,
@@ -639,6 +642,7 @@ class PackageItem {
       description: json['description'] as String?,
       // Was: json['item_type'] — backend has no item_type field; unit is closest.
       unit: json['unit'] as String?,
+      piecesPerSet: json['pieces_per_set'] as int?,
       // Was: json['unit_price'] — backend sends base_price.
       unitPrice: asDouble(json['base_price']),
       quantity: json['quantity'] as int? ?? 1,
@@ -690,6 +694,7 @@ class PackageServiceLine {
   final String name;
   final String? description;
   final String? unit;
+  final int? piecesPerSet;
   final double unitPrice;
   final int quantity;
   final int? maxQuantity;
@@ -720,6 +725,7 @@ class PackageServiceLine {
     required this.name,
     this.description,
     this.unit,
+    this.piecesPerSet,
     required this.unitPrice,
     required this.quantity,
     this.maxQuantity,
@@ -771,6 +777,7 @@ class PackageServiceLine {
       name: asString(json['name']),
       description: json['description'] as String?,
       unit: json['unit'] as String?,
+      piecesPerSet: json['pieces_per_set'] as int?,
       unitPrice: asDouble(json['base_price']),
       quantity: json['quantity'] as int? ?? 1,
       maxQuantity: json['max_quantity'] as int?,

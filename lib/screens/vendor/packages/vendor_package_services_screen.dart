@@ -45,6 +45,7 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final priceCtrl = TextEditingController(text: existing?.basePrice.toStringAsFixed(0) ?? '');
     final qtyCtrl = TextEditingController(text: existing?.quantity.toString() ?? '1');
+    final setSizeCtrl = TextEditingController(text: existing?.piecesPerSet?.toString() ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     String? unit = packageUnitForPicker(existing?.unit);
     String? coverImageUrl = existing?.coverImageUrl;
@@ -81,6 +82,7 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
                     ),
                   ),
                 ]),
+                PiecesPerSetField(unit: unit, controller: setSizeCtrl),
                 TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.vendorPackageServicesDescriptionLabel)),
                 const SizedBox(height: 12),
                 Row(children: [
@@ -137,6 +139,7 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
         'base_price': double.tryParse(priceCtrl.text.trim()) ?? 0,
         'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
         'unit': unit,
+        'pieces_per_set': unit == 'sets' ? int.tryParse(setSizeCtrl.text.trim()) : null,
         'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'is_mandatory': isMandatory,
         'cover_image_url': coverImageUrl,
@@ -158,6 +161,7 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
         nameCtrl.dispose();
         priceCtrl.dispose();
         qtyCtrl.dispose();
+        setSizeCtrl.dispose();
         descCtrl.dispose();
       });
     }
@@ -296,7 +300,7 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
                                           Text(l10n.vendorPackageServicesOptionalLabel, style: TyType.sans(11, color: ty.ink3)),
                                         ],
                                       ]),
-                                      Text(l10n.vendorPackageServicesQtyPriceLabel(packageUnitQuantity(service.quantity, service.unit), service.basePrice.toStringAsFixed(0), packageUnitPer(service.unit)),
+                                      Text(l10n.vendorPackageServicesQtyPriceLabel(packageUnitQuantity(service.quantity, service.unit, piecesPerSet: service.piecesPerSet), service.basePrice.toStringAsFixed(0), packageUnitPer(service.unit, piecesPerSet: service.piecesPerSet)),
                                           style: TyType.sans(12, color: ty.ink2)),
                                     ],
                                   ),

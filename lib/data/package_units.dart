@@ -101,26 +101,42 @@ String? packageUnitForPicker(String? raw) {
   return kPackageUnitOptions.any((o) => o.value == c) ? c : null;
 }
 
-/// Singular unit for per-unit pricing: "set", "piece", "hour".
+/// The size of one set, or null when the line is not sold in sets.
+///
+/// For a "sets" line the quantity counts sets and the price is for one set;
+/// the size only describes what is inside and never enters the price.
+int? packageSetSize(String? raw, int? piecesPerSet) =>
+    canonicalPackageUnit(raw) == 'sets' && (piecesPerSet ?? 0) > 0
+        ? piecesPerSet
+        : null;
+
+String _withSetSize(String word, String? raw, int? piecesPerSet) {
+  final size = packageSetSize(raw, piecesPerSet);
+  return size == null ? word : '$word of $size';
+}
+
+/// Singular unit for per-unit pricing: "set", "set of 200", "piece", "hour".
 /// Falls back to [fallback] when the line carries no usable unit.
-String packageUnitSingular(String? raw, {String fallback = 'unit'}) {
+String packageUnitSingular(String? raw,
+    {String fallback = 'unit', int? piecesPerSet}) {
   final c = canonicalPackageUnit(raw);
   if (c == null) return fallback;
-  return _singular[c] ?? c;
+  return _withSetSize(_singular[c] ?? c, raw, piecesPerSet);
 }
 
 /// Unit phrase for a price, e.g. "per set" — never "each", which silently
 /// asserts the line is priced per piece.
-String packageUnitPer(String? raw, {String fallback = 'unit'}) =>
-    'per ${packageUnitSingular(raw, fallback: fallback)}';
+String packageUnitPer(String? raw,
+        {String fallback = 'unit', int? piecesPerSet}) =>
+    'per ${packageUnitSingular(raw, fallback: fallback, piecesPerSet: piecesPerSet)}';
 
-/// A quantity with its unit, correctly inflected: "1 set", "3 sets",
+/// A quantity with its unit, correctly inflected: "1 set", "3 sets of 200",
 /// "2 sq ft". Returns the bare count when no unit is recorded.
-String packageUnitQuantity(int quantity, String? raw) {
+String packageUnitQuantity(int quantity, String? raw, {int? piecesPerSet}) {
   final c = canonicalPackageUnit(raw);
   if (c == null) return '$quantity';
   final word = quantity == 1 ? (_singular[c] ?? c) : c;
-  return '$quantity $word';
+  return '$quantity ${_withSetSize(word, raw, piecesPerSet)}';
 }
 
 /// Display label for a unit on its own, e.g. "Sets".

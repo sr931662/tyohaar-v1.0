@@ -160,6 +160,14 @@ class PackageItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         comment="Unit of quantity (e.g. 'hours', 'kg', 'pieces', 'persons')",
     )
 
+    pieces_per_set: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Only for unit 'sets': how many pieces one set contains. quantity "
+                "counts sets and base_price is the price of one set, so this "
+                "never enters the price calculation.",
+    )
+
     base_price: Mapped[Decimal] = mapped_column(
         Numeric(12, 2),
         nullable=False,

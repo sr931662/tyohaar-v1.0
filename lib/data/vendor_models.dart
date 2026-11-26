@@ -410,6 +410,7 @@ class VendorPackageItem {
   final double basePrice;
   final int quantity;
   final String? unit;
+  final int? piecesPerSet;
   final bool isMandatory;
   final bool isReturnable;
   final bool isOptional;
@@ -425,6 +426,7 @@ class VendorPackageItem {
     required this.basePrice,
     this.quantity = 1,
     this.unit,
+    this.piecesPerSet,
     this.isMandatory = true,
     this.isReturnable = false,
     this.isOptional = false,
@@ -442,6 +444,7 @@ class VendorPackageItem {
       basePrice: asDouble(json['base_price']),
       quantity: json['quantity'] as int? ?? 1,
       unit: json['unit'] as String?,
+      piecesPerSet: json['pieces_per_set'] as int?,
       isMandatory: json['is_mandatory'] as bool? ?? true,
       isReturnable: json['is_returnable'] as bool? ?? false,
       isOptional: json['is_optional'] as bool? ?? false,
@@ -463,6 +466,7 @@ class VendorCommonItem {
   final double basePrice;
   final int quantity;
   final String? unit;
+  final int? piecesPerSet;
   final int? maxQuantity;
   final bool isMandatory;
   final bool isReturnable;
@@ -476,6 +480,7 @@ class VendorCommonItem {
     required this.basePrice,
     this.quantity = 1,
     this.unit,
+    this.piecesPerSet,
     this.maxQuantity,
     this.isMandatory = true,
     this.isReturnable = false,
@@ -491,6 +496,7 @@ class VendorCommonItem {
       basePrice: asDouble(json['base_price']),
       quantity: json['quantity'] as int? ?? 1,
       unit: json['unit'] as String?,
+      piecesPerSet: json['pieces_per_set'] as int?,
       maxQuantity: json['max_quantity'] as int?,
       isMandatory: json['is_mandatory'] as bool? ?? true,
       isReturnable: json['is_returnable'] as bool? ?? false,
@@ -507,6 +513,7 @@ class VendorPackageService {
   final double basePrice;
   final int quantity;
   final String? unit;
+  final int? piecesPerSet;
   final bool isMandatory;
   final bool isOptional;
   final bool isCommon;
@@ -521,6 +528,7 @@ class VendorPackageService {
     required this.basePrice,
     this.quantity = 1,
     this.unit,
+    this.piecesPerSet,
     this.isMandatory = true,
     this.isOptional = false,
     this.isCommon = false,
@@ -537,6 +545,7 @@ class VendorPackageService {
       basePrice: asDouble(json['base_price']),
       quantity: json['quantity'] as int? ?? 1,
       unit: json['unit'] as String?,
+      piecesPerSet: json['pieces_per_set'] as int?,
       isMandatory: json['is_mandatory'] as bool? ?? true,
       isOptional: json['is_optional'] as bool? ?? false,
       isCommon: json['is_common'] as bool? ?? false,
@@ -557,6 +566,7 @@ class VendorCommonService {
   final double basePrice;
   final int quantity;
   final String? unit;
+  final int? piecesPerSet;
   final int? maxQuantity;
   final bool isMandatory;
   final String? coverImageUrl;
@@ -569,6 +579,7 @@ class VendorCommonService {
     required this.basePrice,
     this.quantity = 1,
     this.unit,
+    this.piecesPerSet,
     this.maxQuantity,
     this.isMandatory = true,
     this.coverImageUrl,
@@ -583,6 +594,7 @@ class VendorCommonService {
       basePrice: asDouble(json['base_price']),
       quantity: json['quantity'] as int? ?? 1,
       unit: json['unit'] as String?,
+      piecesPerSet: json['pieces_per_set'] as int?,
       maxQuantity: json['max_quantity'] as int?,
       isMandatory: json['is_mandatory'] as bool? ?? true,
       coverImageUrl: asUrl(json['cover_image_url']),

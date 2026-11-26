@@ -12,7 +12,8 @@ import ItemImportExportBar from '../../components/ItemImportExportBar';
 import AttachPackagesModal from '../../components/AttachPackagesModal';
 import CommonServicesModal from './CommonServicesModal';
 import PackageServicesModal from './PackageServicesModal';
-import { PACKAGE_UNIT_OPTIONS, isKnownUnit } from '../../../constants/packageUnits';
+import { PACKAGE_UNIT_OPTIONS, isKnownUnit, formatLineQuantity, setSizeOf } from '../../../constants/packageUnits';
+import SetSizeFields from '../../../components/SetSizeFields';
 import { MarqueeStyleSelect } from './serviceForm';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -306,7 +307,7 @@ function CommonItemsModal({ onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '', character_set: item.character_set ?? 'digits', marquee_style: item.marquee_style ?? 'led' });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', pieces_per_set: item.pieces_per_set ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '', character_set: item.character_set ?? 'digits', marquee_style: item.marquee_style ?? 'led' });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -322,6 +323,7 @@ function CommonItemsModal({ onClose }) {
       max_quantity: newItem.max_quantity !== '' ? Number(newItem.max_quantity) : undefined,
       base_price: Number(newItem.base_price),
       unit: newItem.unit || undefined,
+      pieces_per_set: setSizeOf(newItem) ?? undefined,
       description: newItem.description || undefined,
       cover_image_url: newItem.cover_image_url || undefined,
       choices: parseChoices(newItem.choices).length ? parseChoices(newItem.choices) : undefined,
@@ -344,6 +346,7 @@ function CommonItemsModal({ onClose }) {
         // null, not undefined: an omitted key means "unchanged", so a
         // cleared unit or description used to silently stay as it was.
         unit: editForm.unit || null,
+        pieces_per_set: setSizeOf(editForm),
         description: editForm.description || null,
         cover_image_url: editForm.cover_image_url || null,
         choices: parseChoices(editForm.choices).length ? parseChoices(editForm.choices) : null,
@@ -415,6 +418,7 @@ function CommonItemsModal({ onClose }) {
                       Returnable
                     </label>
                   </div>
+                  <SetSizeFields form={editForm} set={setEF} />
                   <input className="admin-input" type="number" min={editForm.quantity || 1} value={editForm.max_quantity} onChange={(e) => setEF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
                   <input className="admin-input" value={editForm.description} onChange={(e) => setEF('description', e.target.value)} placeholder="Description (optional)" />
                   <ImageUploadField
@@ -453,7 +457,7 @@ function CommonItemsModal({ onClose }) {
                     </div>
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                    {item.quantity > 1 && `${item.quantity}${item.unit ? ' ' + item.unit : 'x'} · `}
+                    {(item.quantity > 1 || setSizeOf(item)) && `${item.unit ? formatLineQuantity(item) : `${item.quantity}x`} · `}
                     ₹{Number(item.base_price).toLocaleString('en-IN')}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -505,6 +509,7 @@ function CommonItemsModal({ onClose }) {
                 Returnable
               </label>
             </div>
+            <SetSizeFields form={newItem} set={setNF} />
             <input className="admin-input" type="number" min={newItem.quantity || 1} value={newItem.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max qty (optional)" />
             <input className="admin-input" value={newItem.description} onChange={(e) => setNF('description', e.target.value)} placeholder="Description (optional)" />
             <ImageUploadField
@@ -602,7 +607,7 @@ function PackageItemsModal({ pkg, onClose }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '', character_set: item.character_set ?? 'digits', marquee_style: item.marquee_style ?? 'led' });
+    setEditForm({ name: item.name, description: item.description ?? '', quantity: item.quantity, max_quantity: item.max_quantity ?? '', unit: item.unit ?? '', pieces_per_set: item.pieces_per_set ?? '', base_price: item.base_price, is_mandatory: item.is_mandatory, is_returnable: item.is_returnable, cover_image_url: item.cover_image_url ?? '', choices: formatChoices(item.choices), is_customizable: item.is_customizable ?? false, customization_prompt: item.customization_prompt ?? '', character_set: item.character_set ?? 'digits', marquee_style: item.marquee_style ?? 'led' });
   };
 
   const setNF = (k, v) => setNewItem((f) => ({ ...f, [k]: v }));
@@ -618,6 +623,7 @@ function PackageItemsModal({ pkg, onClose }) {
       max_quantity: newItem.max_quantity !== '' ? Number(newItem.max_quantity) : undefined,
       base_price: Number(newItem.base_price),
       unit: newItem.unit || undefined,
+      pieces_per_set: setSizeOf(newItem) ?? undefined,
       description: newItem.description || undefined,
       cover_image_url: newItem.cover_image_url || undefined,
       choices: parseChoices(newItem.choices).length ? parseChoices(newItem.choices) : undefined,
@@ -640,6 +646,7 @@ function PackageItemsModal({ pkg, onClose }) {
         // null, not undefined: an omitted key means "unchanged", so a
         // cleared unit or description used to silently stay as it was.
         unit: editForm.unit || null,
+        pieces_per_set: setSizeOf(editForm),
         description: editForm.description || null,
         cover_image_url: editForm.cover_image_url || null,
         choices: parseChoices(editForm.choices).length ? parseChoices(editForm.choices) : null,
@@ -719,6 +726,7 @@ function PackageItemsModal({ pkg, onClose }) {
                       Returnable
                     </label>
                   </div>
+                  <SetSizeFields form={editForm} set={setEF} />
                   <div>
                     <input className="admin-input" type="number" min={editForm.quantity || 1} value={editForm.max_quantity} onChange={(e) => setEF('max_quantity', e.target.value)} placeholder="Max customer can pick (optional)" />
                     <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>Leave blank for no cap — e.g. cap balloon bunches at 20.</p>
@@ -756,7 +764,7 @@ function PackageItemsModal({ pkg, onClose }) {
                     {item.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{item.description}</div>}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                    {item.quantity > 1 && `${item.quantity}${item.unit ? ' ' + item.unit : 'x'} · `}
+                    {(item.quantity > 1 || setSizeOf(item)) && `${item.unit ? formatLineQuantity(item) : `${item.quantity}x`} · `}
                     ₹{Number(item.base_price).toLocaleString('en-IN')}
                   </div>
                   {!isLocked && (
@@ -854,6 +862,7 @@ function PackageItemsModal({ pkg, onClose }) {
                     Returnable
                   </label>
                 </div>
+                <SetSizeFields form={newItem} set={setNF} />
                 <div>
                   <input className="admin-input" type="number" min={newItem.quantity || 1} value={newItem.max_quantity} onChange={(e) => setNF('max_quantity', e.target.value)} placeholder="Max customer can pick (optional)" />
                   <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>Leave blank for no cap — e.g. cap balloon bunches at 20. More gallery photos can be added after creating the item.</p>
