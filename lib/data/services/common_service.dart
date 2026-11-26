@@ -5,8 +5,12 @@ import '../api_client.dart';
 /// Opts a request into ApiClient's in-memory GET cache — see PackageService
 /// for the rationale. Legal/reference data here changes rarely, so it gets a
 /// longer TTL than the catalog endpoints.
-Options _cacheable({Duration ttl = const Duration(hours: 1)}) =>
-    Options(extra: {'cache': true, 'cacheTtl': ttl});
+Options _cacheable({Duration ttl = const Duration(hours: 1), Duration? maxStale}) =>
+    Options(extra: {
+      'cache': true,
+      'cacheTtl': ttl,
+      if (maxStale != null) 'cacheMaxStale': maxStale,
+    });
 
 class TermsVersion {
   final String id;
@@ -144,7 +148,11 @@ class CommonService {
   Future<bool> isGstEnabled() async {
     try {
       final response = await _api.dio
-          .get('common/finance-settings', options: _cacheable(ttl: const Duration(minutes: 2)));
+          .get('common/finance-settings', options: _cacheable(
+            ttl: const Duration(minutes: 2),
+            // Feeds the price preview, so never show an outdated value.
+            maxStale: Duration.zero,
+          ));
       final data = response.data['data'] as Map<String, dynamic>?;
       return data?['gst_enabled'] == true;
     } catch (_) {

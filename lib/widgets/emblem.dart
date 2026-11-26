@@ -26,6 +26,7 @@ class Emblem extends StatelessWidget {
                 imageUrl: imageUrl!,
                 width: size,
                 height: size,
+                memCacheWidth: (size * 3).round(),
                 fit: BoxFit.contain,
                 errorWidget: (_, __, ___) => Icon(icon, color: c, size: size),
                 placeholder: (_, __) => Icon(icon, color: c, size: size),

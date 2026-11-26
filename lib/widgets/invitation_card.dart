@@ -92,6 +92,7 @@ class InvitationCard extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: coverImageUrl,
                       height: 200,
+                      memCacheWidth: 1080,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorWidget: (_, __, ___) => _logoPlaceholder(),

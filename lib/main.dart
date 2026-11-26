@@ -56,10 +56,12 @@ void main() {
 
       // Crashlytics/Performance collection is disabled in debug builds to
       // avoid noise from local development crashes and profiling runs.
-      await FirebaseCrashlytics.instance
-          .setCrashlyticsCollectionEnabled(!kDebugMode);
-      await FirebasePerformance.instance
-          .setPerformanceCollectionEnabled(!kDebugMode);
+      // Not awaited: these are platform-channel round trips that only toggle
+      // collection, and nothing on the first frame depends on them.
+      unawaited(Future.wait([
+        FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode),
+        FirebasePerformance.instance.setPerformanceCollectionEnabled(!kDebugMode),
+      ]).catchError((Object _) => const <void>[]));
       FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
       PlatformDispatcher.instance.onError = (error, stack) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -12,6 +14,7 @@ import 'services/google_auth_service.dart';
 const _kAccessToken = 'ty_access_token';
 const _kRefreshToken = 'ty_refresh_token';
 const _kSeenOnboarding = 'ty_seen_onboarding';
+const _kUserJson = 'ty_user_json';
 
 /// Manages authentication state and persists tokens securely across app restarts.
 class AuthManager extends ChangeNotifier {
@@ -42,14 +45,30 @@ class AuthManager extends ChangeNotifier {
   /// Called once at app startup to restore a persisted session.
   Future<void> loadStoredAuth() async {
     try {
-      final access = await _storage.read(key: _kAccessToken);
-      final refresh = await _storage.read(key: _kRefreshToken);
-      final onboarding = await _storage.read(key: _kSeenOnboarding);
+      // Read in parallel: each secure-storage read is a platform-channel
+      // round trip (plus decryption on Android), and this blocks the splash.
+      final values = await Future.wait([
+        _storage.read(key: _kAccessToken),
+        _storage.read(key: _kRefreshToken),
+        _storage.read(key: _kSeenOnboarding),
+        _storage.read(key: _kUserJson),
+      ]);
+      final access = values[0];
+      final refresh = values[1];
+      final onboarding = values[2];
+      final userJson = values[3];
 
       if (access != null && access.isNotEmpty) {
         _accessToken = access;
         _refreshToken = refresh;
         _isAuthenticated = true;
+        // Last known profile, so the shell (role, name, avatar) can render
+        // straight away while /users/me refreshes in the background.
+        if (userJson != null && userJson.isNotEmpty) {
+          try {
+            _currentUser = User.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
+          } catch (_) {}
+        }
       }
       
       _seenOnboarding = onboarding == 'true';
@@ -84,6 +103,15 @@ class AuthManager extends ChangeNotifier {
   void setUser(User user) {
     _currentUser = user;
     notifyListeners();
+  }
+
+  /// Persists the raw /users/me payload so the next cold start can restore
+  /// the profile without waiting on the network. Best-effort.
+  Future<void> rememberUserJson(Map<String, dynamic> json) async {
+    if (!_isAuthenticated) return;
+    try {
+      await _storage.write(key: _kUserJson, value: jsonEncode(json));
+    } catch (_) {}
   }
 
   /// Replaces the stored access token after a successful token refresh.

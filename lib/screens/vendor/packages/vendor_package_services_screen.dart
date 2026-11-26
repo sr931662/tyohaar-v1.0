@@ -89,7 +89,7 @@ class _VendorPackageServicesScreenState extends State<VendorPackageServicesScree
                   if (coverImageUrl != null) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(imageUrl: coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
+                      child: CachedNetworkImage(imageUrl: coverImageUrl!, width: 44, height: 44, memCacheWidth: 132, fit: BoxFit.cover),
                     ),
                     const SizedBox(width: 12),
                   ],

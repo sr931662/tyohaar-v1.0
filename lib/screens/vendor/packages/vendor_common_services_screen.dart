@@ -95,7 +95,7 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
                   if (coverImageUrl != null) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(imageUrl: coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
+                      child: CachedNetworkImage(imageUrl: coverImageUrl!, width: 44, height: 44, memCacheWidth: 132, fit: BoxFit.cover),
                     ),
                     const SizedBox(width: 10),
                   ],
@@ -261,7 +261,7 @@ class _VendorCommonServicesScreenState extends State<VendorCommonServicesScreen>
                               if (service.coverImageUrl != null) ...[
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: CachedNetworkImage(imageUrl: service.coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
+                                  child: CachedNetworkImage(imageUrl: service.coverImageUrl!, width: 44, height: 44, memCacheWidth: 132, fit: BoxFit.cover),
                                 ),
                                 const SizedBox(width: 12),
                               ],

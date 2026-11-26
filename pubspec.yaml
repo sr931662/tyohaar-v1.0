@@ -1,7 +1,7 @@
 ﻿name: tyohaar
 description: "Tyohaar â€” the home for life's celebrations. Customer mobile app UI."
 publish_to: "none"
-version: 1.0.13+14
+version: 1.0.14+15
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -65,11 +65,13 @@ flutter:
   assets:
     - assets/logo.png
     - assets/images/tyohaar-mark.png
-    - assets/images/Landing page image.png
-    - assets/images/onboarding 1.png
-    - assets/images/onboarding 2.png
-    - assets/images/onboarding 3.png
-    - assets/images/onboarding 4.png
+    - assets/images/onboarding_1.webp
+    - assets/images/onboarding_2.webp
+    - assets/images/onboarding_3.webp
+    - assets/images/onboarding_4.webp
+    # Pre-bundled so google_fonts never downloads fonts at runtime (first
+    # launch used to render fallback text, then re-layout once fonts landed).
+    - assets/google_fonts/
 
 flutter_launcher_icons:
   android: true

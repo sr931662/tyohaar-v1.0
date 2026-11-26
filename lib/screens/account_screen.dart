@@ -269,6 +269,7 @@ class _AccountScreenState extends State<AccountScreen> {
           child: photoUrl != null && photoUrl.isNotEmpty
               ? CachedNetworkImage(
                   imageUrl: photoUrl,
+                  memCacheWidth: 240,
                   fit: BoxFit.cover,
                   placeholder: (_, __) => Center(
                     child: Text(initial,

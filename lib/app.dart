@@ -128,19 +128,24 @@ class _AppStartupState extends State<_AppStartup> {
   }
 
   Future<void> _init() async {
-    await AuthManager.instance.loadStoredAuth();
-    await CityPreference.instance.loadStored();
-    // loadStoredAuth only restores tokens, not the User (and thus not the
-    // role) — fetch it now so a vendor with a persisted session lands
-    // straight in the Vendor POV instead of flashing the customer shell.
+    await Future.wait([
+      AuthManager.instance.loadStoredAuth(),
+      CityPreference.instance.loadStored(),
+    ]);
     if (AuthManager.instance.isAuthenticated) {
-      try {
-        final user = await UserService().getMe();
-        AuthManager.instance.setUser(user);
-        AppState.instance.applyRole(user.role);
-      } catch (_) {
-        // Best-effort — if this fails, the customer shell's own
-        // _ensureUserLoaded() retry will pick it up, and role stays default.
+      final cached = AuthManager.instance.currentUser;
+      if (cached != null) {
+        // Known role from the last session: open the right shell at once and
+        // refresh the profile in the background. Waiting on /users/me here
+        // held the splash for a full network round trip (several seconds on
+        // a cold server) on every single launch.
+        AppState.instance.applyRole(cached.role);
+        _refreshUser();
+      } else {
+        // First launch after sign-in (or upgrade): the role is still unknown,
+        // so a vendor would flash the customer shell. Wait for it, but never
+        // longer than a few seconds on a slow network.
+        await _refreshUser().timeout(const Duration(seconds: 4), onTimeout: () {});
       }
     }
     if (mounted) setState(() => _roleResolved = true);
@@ -148,6 +153,17 @@ class _AppStartupState extends State<_AppStartup> {
     // the native splash hands off directly to whichever real screen build()
     // resolves to below, with no intermediate in-app splash widget.
     FlutterNativeSplash.remove();
+  }
+
+  Future<void> _refreshUser() async {
+    try {
+      final user = await UserService().getMe();
+      AuthManager.instance.setUser(user);
+      AppState.instance.applyRole(user.role);
+    } catch (_) {
+      // Best-effort — if this fails, the customer shell's own
+      // _ensureUserLoaded() retry will pick it up, and role stays default.
+    }
   }
 
   @override

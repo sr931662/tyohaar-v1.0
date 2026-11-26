@@ -100,7 +100,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                   if (coverImageUrl != null) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(imageUrl: coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
+                      child: CachedNetworkImage(imageUrl: coverImageUrl!, width: 44, height: 44, memCacheWidth: 132, fit: BoxFit.cover),
                     ),
                     const SizedBox(width: 10),
                   ],
@@ -267,7 +267,7 @@ class _VendorCommonItemsScreenState extends State<VendorCommonItemsScreen> {
                               if (item.coverImageUrl != null) ...[
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: CachedNetworkImage(imageUrl: item.coverImageUrl!, width: 44, height: 44, fit: BoxFit.cover),
+                                  child: CachedNetworkImage(imageUrl: item.coverImageUrl!, width: 44, height: 44, memCacheWidth: 132, fit: BoxFit.cover),
                                 ),
                                 const SizedBox(width: 12),
                               ],

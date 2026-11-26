@@ -111,19 +111,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     try {
+      // Occasions don't depend on the city, so they load alongside the
+      // address lookup instead of waiting behind it.
+      final occasionsFuture = _packageService.listOccasions().catchError((e) {
+        logDebug('Error loading occasions: $e');
+        return <Occasion>[];
+      });
       final city = await _loadCity();
-      final results = await Future.wait([
-        _loadFeatured(city),
-        _packageService.listOccasions().catchError((e) {
-          logDebug('Error loading occasions: $e');
-          return <Occasion>[];
-        }),
-      ]);
+      final featured = await _loadFeatured(city);
+      final occasions = await occasionsFuture;
 
+      if (!mounted) return;
       setState(() {
         _cityName = city;
-        _featured = results[0] as List<Package>;
-        _occasions = results[1] as List<Occasion>;
+        _featured = featured;
+        _occasions = occasions;
         _isLoading = false;
         _error = null;
       });

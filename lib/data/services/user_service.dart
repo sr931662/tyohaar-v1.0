@@ -1,4 +1,5 @@
 import '../api_client.dart';
+import '../auth_manager.dart';
 import '../models.dart';
 
 class UserService {
@@ -6,7 +7,10 @@ class UserService {
 
   Future<User> getMe() async {
     final response = await _api.dio.get('users/me');
-    return User.fromJson(response.data['data']);
+    final data = response.data['data'] as Map<String, dynamic>;
+    final user = User.fromJson(data);
+    AuthManager.instance.rememberUserJson(data);
+    return user;
   }
 
   Future<List<Address>> getAddresses() async {

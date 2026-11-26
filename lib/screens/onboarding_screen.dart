@@ -17,6 +17,19 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _precached = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Decode every slide's artwork up front so swiping never shows a blank
+    // circle while the next image decodes.
+    if (_precached) return;
+    _precached = true;
+    for (final s in _buildScreens(context)) {
+      precacheImage(AssetImage(s.image), context);
+    }
+  }
 
   List<OnboardingData> _buildScreens(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -25,28 +38,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         title: l10n.onboardingSlideOneTitle,
         subtitle: l10n.onboardingSlideOneSubtitle,
         icon: Icons.auto_awesome_rounded,
-        image: 'assets/images/onboarding 1.png',
+        image: 'assets/images/onboarding_1.webp',
         tint: 'saffron',
       ),
       OnboardingData(
         title: l10n.onboardingSlideTwoTitle,
         subtitle: l10n.onboardingSlideTwoSubtitle,
         icon: Icons.dashboard_customize_rounded,
-        image: 'assets/images/onboarding 2.png',
+        image: 'assets/images/onboarding_2.webp',
         tint: 'rose',
       ),
       PlanOnboardingData(
         title: l10n.onboardingSlideThreeTitle,
         subtitle: l10n.onboardingSlideThreeSubtitle,
         icon: Icons.checklist_rtl_rounded,
-        image: 'assets/images/onboarding 3.png',
+        image: 'assets/images/onboarding_3.webp',
         tint: 'leaf',
       ),
       OnboardingData(
         title: l10n.onboardingSlideFourTitle,
         subtitle: l10n.onboardingSlideFourSubtitle,
         icon: Icons.verified_user_rounded,
-        image: 'assets/images/onboarding 4.png',
+        image: 'assets/images/onboarding_4.webp',
         tint: 'gold',
       ),
     ];

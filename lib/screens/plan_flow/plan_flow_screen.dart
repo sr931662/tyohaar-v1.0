@@ -1203,6 +1203,7 @@ class _PlanFlowScreenState extends State<PlanFlowScreen> {
                       children: [
                         CachedNetworkImage(
                           imageUrl: p.coverImageUrl ?? '',
+                          memCacheWidth: 720,
                           fit: BoxFit.cover,
                           placeholder: (context, url) => PhotoPlaceholder(tint: p.tint, arch: false),
                           errorWidget: (context, url, error) {

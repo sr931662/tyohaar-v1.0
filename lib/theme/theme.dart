@@ -39,7 +39,15 @@ const SystemUiOverlayStyle tyOverlayOverImage = SystemUiOverlayStyle(
 
 /// Builds a [ThemeData] for a given brightness, wiring in the [TyColors]
 /// extension and the Plus Jakarta Sans base text theme.
-ThemeData buildTyTheme(Brightness brightness) {
+ThemeData buildTyTheme(Brightness brightness) =>
+    _themeCache[brightness] ??= _buildTyTheme(brightness);
+
+/// Built once per brightness: MaterialApp rebuilds (theme toggle, POV switch)
+/// otherwise reconstructed both full themes and their Google Fonts text
+/// themes every time.
+final Map<Brightness, ThemeData> _themeCache = {};
+
+ThemeData _buildTyTheme(Brightness brightness) {
   final ty = brightness == Brightness.dark ? TyColors.dark : TyColors.light;
   final base = ThemeData(brightness: brightness, useMaterial3: true);
 

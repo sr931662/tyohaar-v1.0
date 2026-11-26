@@ -233,6 +233,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                               imageUrl: _user!.profilePhotoUrl!,
                               width: 100,
                               height: 100,
+                              memCacheWidth: 300,
                               fit: BoxFit.cover,
                               placeholder: (context, url) => Container(color: ty.saffronSoft, width: 100, height: 100),
                               errorWidget: (context, url, error) => _buildInitials(ty),
