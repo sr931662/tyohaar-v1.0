@@ -18,7 +18,8 @@ class _CacheEntry {
 /// survives app restarts. Services mark a request cacheable with
 /// `options.extra['cache'] = true`, plus optional `cacheTtl` (how long a
 /// response counts as fresh) and `cacheMaxStale` (how long past that a stale
-/// copy may still be shown while a fresh one is fetched; zero disables it).
+/// copy may still be shown while a fresh one is fetched; zero means an
+/// expired copy is never shown, not even offline: use it for prices/fees).
 /// Nothing is cached by default, so user/booking-specific data is unaffected.
 /// Only public catalog data (occasions, packages, themes, etc.) opts in.
 ///
@@ -28,16 +29,14 @@ class _CacheEntry {
 ///    is re-fetched in the background so the next read is fresh. This is
 ///    what makes cold starts and repeat visits render without a spinner.
 ///  * nothing usable: normal network request. If that fails with a network
-///    error and any cached copy exists, the copy is served (offline mode).
-///
-/// Identical cacheable GETs that are already in flight share a single
-/// network request instead of each opening their own.
+///    error and a cached copy exists, the copy is served (offline mode),
+///    except where maxStale is zero.
 class _ResponseCacheInterceptor extends Interceptor {
   _ResponseCacheInterceptor(this._dio);
 
   final Dio _dio;
   final Map<String, _CacheEntry> _memory = {};
-  final Map<String, List<_Waiter>> _inFlight = {};
+  final Set<String> _revalidating = {};
   Directory? _dir;
   Future<Directory?>? _dirFuture;
 
@@ -55,7 +54,11 @@ class _ResponseCacheInterceptor extends Interceptor {
       o.extra['cacheMaxStale'] as Duration? ?? _defaultMaxStale;
 
   Future<Directory?> _cacheDir() {
-    if (kIsWeb) return Future.value(null);
+    // No disk cache on web, or under `flutter test`: real file/plugin I/O
+    // never completes inside a widget test's fake-async zone.
+    if (kIsWeb || Platform.environment.containsKey('FLUTTER_TEST')) {
+      return Future.value(null);
+    }
     if (_dir != null) return Future.value(_dir);
     return _dirFuture ??= () async {
       try {
@@ -128,11 +131,14 @@ class _ResponseCacheInterceptor extends Interceptor {
 
   void _revalidateInBackground(RequestOptions options) {
     final key = _keyFor(options);
-    if (_inFlight.containsKey(key)) return;
+    if (!_revalidating.add(key)) return;
     final opts = options.copyWith(
       extra: {...options.extra, _kRevalidate: true},
     );
-    _dio.fetch(opts).catchError((Object _) => Response(requestOptions: opts));
+    _dio
+        .fetch(opts)
+        .catchError((Object _) => Response(requestOptions: opts))
+        .whenComplete(() => _revalidating.remove(key));
   }
 
   @override
@@ -154,31 +160,14 @@ class _ResponseCacheInterceptor extends Interceptor {
         }
       }
     }
-
-    // Join an identical request that is already on the wire.
-    final waiters = _inFlight[key];
-    if (waiters != null) {
-      waiters.add(_Waiter(options, handler));
-      return;
-    }
-    _inFlight[key] = [];
     return handler.next(options);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     final options = response.requestOptions;
-    if (_isCacheable(options)) {
-      final key = _keyFor(options);
-      if (response.statusCode == 200) _write(key, response.data);
-      for (final w in _inFlight.remove(key) ?? const <_Waiter>[]) {
-        w.handler.resolve(Response(
-          requestOptions: w.options,
-          data: response.data,
-          statusCode: response.statusCode,
-          headers: response.headers,
-        ));
-      }
+    if (_isCacheable(options) && response.statusCode == 200) {
+      _write(_keyFor(options), response.data);
     }
     return handler.next(response);
   }
@@ -186,21 +175,14 @@ class _ResponseCacheInterceptor extends Interceptor {
   @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     final options = err.requestOptions;
-    if (!_isCacheable(options)) return handler.next(err);
-    final key = _keyFor(options);
-    final waiters = _inFlight.remove(key) ?? const <_Waiter>[];
-
-    // Offline / server unreachable: any cached copy beats an error screen.
+    // Offline / server unreachable: a cached copy beats an error screen.
     final isNetworkFailure = err.response == null && err.type != DioExceptionType.cancel;
-    final entry = isNetworkFailure ? await _read(key) : null;
-    if (entry != null && options.extra[_kRevalidate] != true) {
-      for (final w in waiters) {
-        w.handler.resolve(_responseFrom(w.options, entry));
-      }
-      return handler.resolve(_responseFrom(options, entry));
-    }
-    for (final w in waiters) {
-      w.handler.reject(err.copyWith(requestOptions: w.options));
+    if (isNetworkFailure &&
+        _isCacheable(options) &&
+        options.extra[_kRevalidate] != true &&
+        _maxStale(options) > Duration.zero) {
+      final entry = await _read(_keyFor(options));
+      if (entry != null) return handler.resolve(_responseFrom(options, entry));
     }
     return handler.next(err);
   }
@@ -216,12 +198,6 @@ class _ResponseCacheInterceptor extends Interceptor {
       }
     } catch (_) {}
   }
-}
-
-class _Waiter {
-  final RequestOptions options;
-  final RequestInterceptorHandler handler;
-  _Waiter(this.options, this.handler);
 }
 
 /// Retries idempotent GET requests on transient network failures

@@ -8,6 +8,7 @@ import '../screens/auth_screen.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../widgets/ty_button.dart';
+import 'app_state.dart';
 import 'models.dart';
 import 'services/google_auth_service.dart';
 
@@ -96,6 +97,8 @@ class AuthManager extends ChangeNotifier {
     _isGuest = false;
     await _storage.write(key: _kAccessToken, value: accessToken);
     await _storage.write(key: _kRefreshToken, value: refreshToken);
+    // A previous account's cached profile must not be restored next launch.
+    await _storage.delete(key: _kUserJson);
     notifyListeners();
   }
 
@@ -141,6 +144,9 @@ class AuthManager extends ChangeNotifier {
     _currentUser = null;
     await _storage.deleteAll();
     notifyListeners();
+    // A forced logout (dead session) must also leave the vendor shell, which
+    // does not watch auth state itself.
+    AppState.instance.setPOV(UserPOV.customer);
   }
 
   /// Checks if the user is authenticated; shows the login gate if not.

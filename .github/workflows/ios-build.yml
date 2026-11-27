@@ -19,7 +19,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.3.0' # Matches pubspec environment
+          flutter-version: '3.44.9' # Same version pubspec.lock was resolved with
 
       - name: Install Apple Certificate
         env:
@@ -49,6 +49,16 @@ jobs:
           # Apply provisioning profile
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      - name: Decode lib/firebase_options.dart
+        env:
+          FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.FIREBASE_OPTIONS_DART_BASE64 }}
+        run: |
+          if [ -z "$FIREBASE_OPTIONS_DART_BASE64" ]; then
+            echo "::error::FIREBASE_OPTIONS_DART_BASE64 secret is not set (base64 of your local lib/firebase_options.dart)."
+            exit 1
+          fi
+          echo -n "$FIREBASE_OPTIONS_DART_BASE64" | base64 --decode -o lib/firebase_options.dart
 
       - name: Install dependencies
         run: flutter pub get
